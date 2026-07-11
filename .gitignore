@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.log
+.pnpm-store/
+.DS_Store
+Thumbs.db
+pnpm-lock.yaml
+.vscode
+.claude
+docs

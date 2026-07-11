@@ -1,0 +1,56 @@
+{
+  "name": "liushi-harness",
+  "version": "0.0.0",
+  "description": "A human-gated, auditable engineering harness for coding agents.",
+  "author": "Liushi_21",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/MarchRory/liushi-aweasome-agentic-engineering/tree/main/packages/liushi-harness#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarchRory/liushi-aweasome-agentic-engineering.git",
+    "directory": "packages/liushi-harness"
+  },
+  "bugs": {
+    "url": "https://github.com/MarchRory/liushi-aweasome-agentic-engineering/issues"
+  },
+  "keywords": [
+    "agent-engineering",
+    "coding-agent",
+    "codex",
+    "harness",
+    "human-in-the-loop"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "config",
+    "docs",
+    "generated",
+    "integrations",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "lint": "eslint src tests --no-error-on-unmatched-pattern",
+    "test": "vitest run --passWithNoTests",
+    "test:architecture": "vitest run tests/architecture --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  }
+}
