@@ -11,6 +11,17 @@
 - 发现依赖或 Revision 漂移时使旧 Approval 失效。
 - 不把本机绝对路径和企业信息写入开源包。
 
+### 1.1 当前实现切片
+
+当前运行时尚未实现 Workspace Scanner、Worktree、跨仓写入 Saga 和 Repository Lock。本轮已经实现 Rule Resolution 所需的最小多仓身份边界：
+
+- `WorkspaceRuleContextRef` 绑定 Workspace ID、Workspace Graph Revision 和可选 Organization ID。
+- `RepositoryRuleContextRef` 绑定 Repository ID、Base Revision、ProjectProfile Revision 和可选 ArchitectureMechanismProfile Revision。
+- `RuleResolutionContext` 显式列出 Task 目标文件、Repository、语言、文件类型和操作，不从 Import 自动扩大目标集合。
+- `ApplicableRuleBundle` Digest 绑定上述 Context；Catalog 与当前 Context 不一致时返回 `blocked` 和结构化 Drift。
+
+这些 Ref 只保存稳定 ID 与 Revision，不保存完整 WorkspaceGraph、本机绝对路径或企业原文。后文完整 Workspace 生命周期仍是目标架构。
+
 ## 2. 核心概念
 
 ```ts

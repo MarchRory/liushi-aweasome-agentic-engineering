@@ -7,5 +7,5 @@ export default {
     },
     MD033: false,
   },
-  globs: ["**/*.md", "!**/CHANGELOG.md", "!**/node_modules/**"],
+  globs: ["**/*.md", "!.changeset/*.md", "!**/CHANGELOG.md", "!**/node_modules/**"],
 };

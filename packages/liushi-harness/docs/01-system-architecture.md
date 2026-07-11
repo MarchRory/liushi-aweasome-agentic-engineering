@@ -90,7 +90,7 @@ Bootstrap -> Presentation + Application + Infrastructure
 禁止：
 
 - Domain 或 Application 导入 Codex、Claude Code、CatPaw、文件系统或进程类型。
-- Common 承载业务规则、执行器 DTO 或通用 `utils.ts`。
+- Common 仅承载跨模块、语义稳定且无业务判断的基础能力；禁止以 generic `utils.ts` 或 `helpers.ts` 归集代码。
 - Adapter 直接写任务状态、审批、知识或 Skill。
 - Hook 绕过 CLI 调用 Store。
 - Connector 将外部内容直接注入长期知识。

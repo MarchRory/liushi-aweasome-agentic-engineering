@@ -144,10 +144,14 @@ export interface GateEvaluation {
 Human 审批流程：
 
 1. CLI 展示 Artifact 摘要、Digest、精确动作、风险和推荐项。
-2. Human 选择 `approve`、`reject` 或允许的 `waive`。
+2. Human 选择 `approved`、`rejected` 或允许的 `waived`。
 3. CLI 记录 Actor、时间、原因和 Artifact Digest。
 4. Core 重新评估 Gate，不直接信任 UI 返回的“成功”。
 5. 执行前再次检查 Digest、Revision 和 Write Set。
+
+当前实现切片启用 G1、G2、G4：G1/G2/G4 均不可 `waived`，R4 直接返回 `forbidden`。`ApprovalRecord` 必须精确绑定 DecisionRequest ID/Digest、Gate、Artifact ID/Digest 和 Human Actor；相同幂等键只有在全部决策字段一致时才能复用。
+
+`Rejected` 会保留任务的 `waiting_human` 状态，但关闭当前 Request Digest。对同一 Request 使用新幂等键提交相反决策会返回 `decision_conflict`，后续必须显式修订 Artifact 并创建新 Request。
 
 以下事件使 Approval 失效：
 

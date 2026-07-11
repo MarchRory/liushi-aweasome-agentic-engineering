@@ -11,6 +11,10 @@
 - 记录 Source、Target、Revision 和 Digest，支持 Drift、Upgrade 和 Uninstall。
 - Codex、Claude-compatible 和 Generic Adapter 使用同一语义基线。
 
+### 1.1 当前实现状态
+
+Instruction Projection 尚未实现。当前 Rule Core 只提供 Canonical Rule Catalog、Applicable Rule Bundle 和只读 `rules resolve` 命令，不会生成或覆盖 `AGENTS.md`、`CLAUDE.md` 或平台 Hooks。Projection 开工前必须先具备 Workspace/ProjectProfile、Rule Scanner/Promotion 和 Managed File Merge Proposal；任何历史 Human 文件改动继续要求显式确认。
+
 Codex 从项目根目录向当前目录组装 `AGENTS.md`，越靠近目标目录的指导越晚进入上下文；默认总量上限为 32 KiB。[Codex AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md#how-codex-discovers-guidance)
 
 Claude Code 使用 `CLAUDE.md`、路径 Rule 和 Auto Memory，但这些内容属于 Context，不是机械执行配置。[Claude Code Memory](https://code.claude.com/docs/en/memory)

@@ -12,6 +12,12 @@
 
 状态机语义计划使用 XState 表达，但持久化格式是 Harness 自有 Schema，避免运行时库版本成为存储协议。
 
+### 1.1 当前实现切片
+
+当前 `0.0.x` 运行时已经实现 `TaskCreated -> RequirementProposed -> RequirementApproved -> PlanProposed -> ImplementationReady`，并支持可选的 `BusinessLogicProposed -> BusinessLogicApproved`。当前代码使用 `TaskRunState.Running` 表示可继续执行，Checkpoint、Artifact、Approval 和 `pendingDecision` 保存在可由事件完整重建的 `TaskAggregate` 中。
+
+当前持久化事件仅包含 `TaskCreated`、`ArtifactCommitted` 和 `ApprovalRecorded`。后文 Context、Implementation、Verification、Review、Learning 的完整事件与状态仍是目标架构，不应理解为当前 CLI 已经实现。
+
 ## 2. 正交状态模型
 
 Task 状态由两个正交维度组成：

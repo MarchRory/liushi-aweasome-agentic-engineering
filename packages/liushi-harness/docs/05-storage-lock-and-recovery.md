@@ -69,6 +69,8 @@
 
 每个事件占 JSONL 一行：
 
+当前实现切片只持久化 `TaskCreated`、`ArtifactCommitted` 和 `ApprovalRecorded`；下面列出的其他事件属于后续 Action Journal 和完整生命周期设计。
+
 ```ts
 /** Task Event Store 中允许持久化的核心事件类型。 */
 export enum TaskEventType {
@@ -148,6 +150,10 @@ export interface TaskEvent {
 8. 释放 Lock。
 
 如果 Snapshot 写入失败，恢复时从事件重放。Artifact 和事件 Digest 不匹配时进入只读 Recovery Mode，不能猜测正确状态继续写。
+
+当前实现以 `events.jsonl` 的成功写入和 `fsync` 作为权威 commit boundary。commit 后 Snapshot、Lock 释放或父目录同步失败会返回带恢复路径的 degraded success，不能返回“失败但实际上已提交”。旧 Snapshot 可以落后于 Event Tail，但必须精确匹配其声明 `lastSequence` 对应的事件前缀；同序列内容不一致仍按 `corrupt_store` fail closed。
+
+新事件使用 RFC 8785 JSON Canonicalization Scheme 计算 Hash。Artifact、DecisionRequest 和 ApprovalRecord 还拥有独立的 `sha256:` 内容摘要；重放会在验证 Event Hash Chain 后重新计算这些摘要，防止“事件整体 Hash 已重算，但内部授权 Digest 与内容不一致”。
 
 ## 5. Action Journal 与幂等
 

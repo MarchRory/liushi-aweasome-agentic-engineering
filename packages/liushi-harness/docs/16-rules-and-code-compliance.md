@@ -12,6 +12,20 @@
 
 因此 `liushi-harness` 需要一个独立的 Rules/Code Compliance 子系统，将“怎样才算符合项目”变成可发现、可解析、可执行、可审计和可演进的契约。
 
+### 1.1 当前实现切片
+
+当前代码已经实现 Rule Definition、Project Rule Catalog、Rule Resolution Context、Applicable Rule Bundle、RFC 8785 Digest 和只读 `rules resolve` CLI。当前 Resolver 具备以下确定性保证：
+
+- 只有 `Active` Rule 进入 Applicable 集合；其余状态只进入 `excluded` 审计字段。
+- `Blocking` Rule 必须声明 Validator，运行环境缺少该 Validator 时 Bundle 为 `blocked`。
+- `familyKey` 与 `outcomeKey` 表达结构化规则族和结果，不使用自然语言相似度推断冲突。
+- 更具体 Scope 只能用更严格 Enforcement 改变同 Family Outcome；不能削弱上层保护。
+- Catalog 与 Organization、WorkspaceGraph、Repository、ProjectProfile 或 ArchitectureMechanismProfile 身份/Revision 漂移时 Fail Closed。
+- Resolver 对 Blocking Validator 不变量执行纵深校验；即使嵌入式调用方绕过 Schema，也会输出 `definitionViolations` 并阻断。
+- Catalog、Rule 和 Bundle Digest 均由同一 RFC 8785 + SHA-256 Adapter 计算并校验。
+
+Scanner、Candidate Promotion、Validator 执行、ComplianceReport、Rule Exception 和 G8 仍是后续切片。当前命令不会修改项目、自动激活 Rule 或声明代码已经合规。
+
 ## 2. 概念边界
 
 | 概念      | 回答的问题                   | 示例                             | 是否直接执行                 |
@@ -98,9 +112,11 @@ export enum RuleScopeLevel {
 
 /** 一个可解析、可执行并可审计的项目 Rule。 */
 export interface RuleDefinition {
-  /** 经 Rule Registry 校验且跨 Revision 稳定的 Rule ID。 */
+  /** Rule Definition Schema Version。 */
+  schemaVersion: string;
+  /** 经 Registry 校验且跨 Revision 稳定的 Rule ID。 */
   ruleId: string;
-  /** Rule Schema 和内容的语义版本。 */
+  /** Rule 内容的三段式 SemVer。 */
   version: string;
   /** Rule 当前生命周期状态。 */
   status: RuleStatus;
@@ -108,37 +124,50 @@ export interface RuleDefinition {
   category: RuleCategory;
   /** Rule 违反时的处理方式。 */
   enforcement: RuleEnforcement;
-  /** Rule 生效的最大范围层级。 */
-  scopeLevel: RuleScopeLevel;
+  /** 将同一语义约束归组的显式 Registry Key。 */
+  familyKey: string;
+  /** 表示该 Family 当前要求结果的显式 Registry Key。 */
+  outcomeKey: string;
+  /** 包含 Workspace、Repository、Path 或 Task 身份的判别 Scope。 */
+  scope: RuleScope;
   /** 路径、模块、语言、文件类型和操作条件选择器。 */
   selector: RuleSelector;
   /** Agent、Human 和 Validator 使用的明确规则陈述。 */
   statement: string;
   /** 解释规则存在原因、风险和不变量。 */
   rationale: string;
-  /** 证明规则来源和当前有效性的 Evidence ID。 */
-  evidenceIds: string[];
   /** 能够机械执行该 Rule 的 Validator ID。 */
   validatorIds: string[];
+  /** 解析或执行 Rule 前必须具备的 Capability ID。 */
+  requiredCapabilityIds: string[];
+  /** 不复制原文的最小 Provenance 引用。 */
+  sourceRefs: RuleSourceRef[];
+  /** 来源变化后应使 Rule 失效的引用。 */
+  invalidationRefs: RuleSourceRef[];
   /** 经确认的正向代码范例引用。 */
   approvedExampleRefs: CodeExampleRef[];
   /** 遗留、错误或禁止代码范例引用。 */
   negativeExampleRefs: CodeExampleRef[];
+  /** Human 显式确认不能同时生效的 Rule ID。 */
+  conflictsWithRuleIds: string[];
   /** 负责确认和维护该 Rule 的 Actor。 */
   owner: ActorRef;
   /** 最后一次 Human Review 的 ISO 8601 UTC 时间。 */
   reviewedAt?: string;
-  /** Source、Revision、时间或条件失效规则。 */
-  invalidationRules: RuleInvalidationRule[];
+  /** 对除 digest 外全部机器字段计算的 RFC 8785 Digest。 */
+  digest: string;
 }
 ```
 
 规则要求：
 
 - `Blocking` Rule 必须至少关联一个确定性 Validator。只有 AI 判断的 Rule 不能宣称 Blocking。
+- `Active` Rule 必须有可信 Owner、`reviewedAt` 和至少一个 Provenance Source；Agent 不能直接成为 Active Rule Owner。
 - 语义复杂但无法完全机械验证的架构或业务 Rule 使用 `ApprovalRequired`。
 - `Advisory` 不能被展示成“检查通过”，只能生成建议或 Candidate。
 - Rule ID 是开放 Registry 标识符，不使用无法扩展的全局 Enum。
+- Selector 的 Repository、Path Glob、Language、FileKind 和 Operation 维度之间按 AND 合并，同一维度内按 OR 合并。
+- Path 使用 Repository 相对路径和正斜杠；Glob 禁用 Brace 与 Extglob，固定区分大小写并匹配 Dotfile，保证 Windows/Linux 一致。
 
 ## 4. Pattern 分类
 
@@ -285,6 +314,14 @@ Bundle 包含：
 - Bundle Digest。
 
 PlanRisk、Implementation 和 EvidenceBundle 都绑定该 Digest。Rule 或机制发生变化后旧 Plan 和 Approval 失效。
+
+当前可运行入口：
+
+```powershell
+liushi-harness rules resolve --catalog .\ruleCatalog.json --context .\ruleContext.json --json
+```
+
+命令完成输入校验后生成 Bundle。`resolutionStatus=ready` 返回退出码 `0`；`resolutionStatus=blocked` 将完整 Bundle 写入 stdout，同时返回 JSON `status=blocked` 和退出码 `4`，调用方必须停止并根据 `conflicts`、`missingValidators`、`missingCapabilities`、`contextDrifts` 或 `definitionViolations` 请求 Human/系统处理。`excluded` 只用于 Explain/Audit，不进入 Bundle Digest 或执行规则集合。
 
 ## 10. Agent 编码指导
 

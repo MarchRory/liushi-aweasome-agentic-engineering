@@ -1,5 +1,6 @@
-export * from "./task-event.js";
-export * from "./task-id.js";
-export * from "./task-phase.js";
-export * from "./task-state.js";
-export * from "./task-transition.js";
+export { MAX_TASK_SOURCE_LENGTH } from "./taskConstants.js";
+export * from "./taskEvent.js";
+export * from "./taskId.js";
+export * from "./taskPhase.js";
+export * from "./taskState.js";
+export * from "./taskTransition.js";

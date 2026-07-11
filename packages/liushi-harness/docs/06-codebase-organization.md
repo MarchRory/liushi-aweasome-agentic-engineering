@@ -41,22 +41,22 @@ packages/liushi-harness/
 │   │   ├── workspace/
 │   │   └── learning/
 │   ├── application/
-│   │   ├── use-cases/
+│   │   ├── useCases/
 │   │   ├── ports/
 │   │   ├── dto/
 │   │   └── services/
 │   ├── infrastructure/
 │   │   ├── persistence/
-│   │   │   └── file-event-store/
+│   │   │   └── fileEventStore/
 │   │   ├── vcs/
 │   │   │   └── git/
 │   │   ├── executors/
 │   │   │   ├── codex/
-│   │   │   └── claude-compatible/
+│   │   │   └── claudeCompatible/
 │   │   ├── connectors/
 │   │   │   └── mcp/
 │   │   ├── projections/
-│   │   ├── memory-index/
+│   │   ├── memoryIndex/
 │   │   ├── validation/
 │   │   ├── observability/
 │   │   └── system/
@@ -66,14 +66,17 @@ packages/liushi-harness/
 │   │   └── json/
 │   ├── common/
 │   │   ├── constants/
+│   │   ├── digest/
 │   │   ├── errors/
 │   │   ├── result/
 │   │   ├── types/
 │   │   ├── clock/
 │   │   └── id/
 │   └── bootstrap/
-│       ├── composition-root.ts
-│       └── runtime-config.ts
+│       ├── cli/
+│       ├── compositionRoot/
+│       ├── runtimeConfig/
+│       └── index.ts
 ├── integrations/
 │   ├── skills/
 │   ├── codex/
@@ -82,7 +85,7 @@ packages/liushi-harness/
 │   │   ├── agents/
 │   │   ├── instructions/
 │   │   └── templates/
-│   ├── claude-compatible/
+│   ├── claudeCompatible/
 │   │   ├── hooks/
 │   │   ├── agents/
 │   │   ├── instructions/
@@ -133,7 +136,7 @@ packages/liushi-harness/
 进一步约束：
 
 - 跨业务模块只能通过模块根 `index.ts` 暴露的 Public API 导入。
-- `index.ts` 只允许出现在层或业务模块边界，不为每个子目录创建 Barrel。
+- 每个包含 TypeScript 后代的源码目录必须有 `index.ts`，跨层和跨业务模块只能导入公开入口；内部目录入口不得承载逻辑。
 - 禁止 `../../../../` 深层穿透；使用受控 Path Alias。
 - Domain 和 Application 中禁止 `node:fs`、`node:child_process`、`process.env`、`console` 和执行器 SDK。
 - Infrastructure Adapter 之间不得直接互调，通过 Application Port 或专用协调 Use Case 组合。
@@ -144,7 +147,7 @@ packages/liushi-harness/
 新增代码按顺序判断：
 
 1. 表达业务不变量、状态、Value Object 或领域判断：放 `domain/<module>`。
-2. 编排一个用户目标、事务步骤或 Port：放 `application/use-cases/<use-case>`。
+2. 编排一个用户目标、事务步骤或 Port：放 `application/useCases/<useCase>`，每个 Use Case 使用独立目录并通过目录根 `index.ts` 暴露公共 API。
 3. 定义外部能力需求但不实现：放 `application/ports`。
 4. 访问文件、Git、进程、网络、MCP、执行器或第三方库：放 `infrastructure`。
 5. 解析 CLI、Hook 输入或渲染 JSON/Human 输出：放 `presentation`。
@@ -160,8 +163,8 @@ packages/liushi-harness/
 ```text
 domain/task/
 ├── task.aggregate.ts
-├── task-state.value-object.ts
-├── task-transition.policy.ts
+├── taskState.valueObject.ts
+├── taskTransition.policy.ts
 ├── task.events.ts
 ├── task.constants.ts
 ├── task.errors.ts
@@ -180,12 +183,13 @@ domain/task/
 ### 6.2 Application Use Case
 
 ```text
-application/use-cases/approve-gate/
-├── approve-gate.use-case.ts
-├── approve-gate.input.ts
-├── approve-gate.output.ts
-├── approve-gate.errors.ts
-└── approve-gate.use-case.test.ts
+application/useCases/approveGate/
+├── approveGate.useCase.ts
+├── approveGate.input.ts
+├── approveGate.output.ts
+├── approveGate.errors.ts
+├── approveGate.useCase.test.ts
+└── index.ts
 ```
 
 一个 Use Case 对应一个明确用户目标。输入超过四个独立参数时使用 Input Object；输出使用 Result 或显式错误联合，不能依赖字符串匹配异常。
@@ -193,12 +197,18 @@ application/use-cases/approve-gate/
 ### 6.3 Infrastructure Adapter
 
 ```text
-infrastructure/persistence/file-event-store/
-├── file-event-store.adapter.ts
-├── file-event-store.mapper.ts
-├── file-event-store.constants.ts
-├── file-event-store.errors.ts
-├── file-event-store.contract.test.ts
+infrastructure/persistence/fileEventStore/
+├── adapter/
+│   ├── fileTaskRepository.adapter.ts
+│   └── index.ts
+├── constants/
+├── contracts/
+├── errors/
+├── eventLog/
+├── lock/
+├── schema/
+├── snapshot/
+├── taskStore/
 └── index.ts
 ```
 
@@ -214,7 +224,7 @@ Adapter 实现一个或一组高度内聚的 Port。外部数据必须在边界�
 
 禁止：
 
-- `utils.ts`、`helpers.ts`、`misc.ts`、`shared-service.ts`。
+- generic `utils.ts`、`helpers.ts`、`misc.ts`、`shared-service.ts`，以及无法说明业务归属的同类文件。
 - Task、Gate、Workspace 等领域规则。
 - Codex、Claude-compatible、Git、MCP 或文件存储类型。
 - 只被一个模块使用的“公共”函数。
@@ -333,7 +343,9 @@ Generated Schema、Migration、测试 Fixture 和声明表可以通过显式 All
 
 ## 13. 命名与导出
 
-- 文件使用 kebab-case，并用职责后缀：`.port.ts`、`.adapter.ts`、`.use-case.ts`、`.policy.ts`、`.schema.ts`、`.mapper.ts`、`.errors.ts`、`.constants.ts`。
+- 源码文件名使用 lower camelCase，并用点分隔职责后缀：`.port.ts`、`.adapter.ts`、`.useCase.ts`、`.policy.ts`、`.schema.ts`、`.mapper.ts`、`.errors.ts`、`.constants.ts`。例如 `createTask.useCase.ts`、`fileTaskRepository.adapter.ts`。
+- 每个业务模块和每个 Adapter 都必须由独立目录承载，不得把同一模块或 Adapter 的文件散落在上级目录。
+- 业务模块目录和 Adapter 目录必须以根 `index.ts` 暴露公共 API；跨模块只能导入该公共 API，禁止导入内部文件。
 - 类、类型和接口使用 PascalCase；函数和变量使用 camelCase；常量使用 UPPER_SNAKE_CASE。
 - Interface 不添加 `I` 前缀；Port 使用 `EventStorePort` 这类业务名。
 - Adapter 不添加 `Impl` 后缀，使用 `FileEventStoreAdapter`。
@@ -344,19 +356,19 @@ Generated Schema、Migration、测试 Fixture 和声明表可以通过显式 All
 
 `tests/architecture/` 至少包含：
 
-1. `dependency-direction.test.ts`：检查层级依赖方向。
-2. `no-cycles.test.ts`：检查循环依赖。
-3. `module-public-api.test.ts`：禁止跨模块深层导入。
-4. `io-boundary.test.ts`：禁止 Domain/Application 使用 Node I/O、环境变量和 Console。
-5. `common-boundary.test.ts`：Common 导出白名单和反向依赖检查。
-6. `file-layout.test.ts`：根目录白名单、命名和目录文件预算。
-7. `composition-root.test.ts`：只有 Bootstrap 可以构造具体 Adapter。
-8. `generated-drift.test.ts`：Schema 生成结果必须与源码一致。
-9. `documented-types.test.ts`：导出类型、枚举及枚举成员必须包含有效 TSDoc。
-10. `rule-resolution.test.ts`：Rule 优先级、Scope、Exception 和 Bundle Digest 必须确定性一致。
-11. `instruction-projection.test.ts`：Canonical Instruction、平台文件和 Managed Digest 必须一致。
-12. `memory-boundary.test.ts`：Task State、Working Memory、Candidate 和 Active Knowledge 禁止混写。
-13. `agent-registry.test.ts`：AgentDefinition 不能绕过 Model、Permission、Skill、Memory 和 Eval Contract。
+1. `dependencyDirection.test.ts`：检查层级依赖方向。
+2. `noCycles.test.ts`：检查循环依赖。
+3. `modulePublicApi.test.ts`：禁止跨模块深层导入。
+4. `ioBoundary.test.ts`：禁止 Domain/Application 使用 Node I/O、环境变量和 Console。
+5. `commonBoundary.test.ts`：Common 导出白名单和反向依赖检查。
+6. `fileLayout.test.ts`：根目录白名单、命名、目录文件预算和 300 行源码预算。
+7. `compositionRoot.test.ts`：只有 Bootstrap 可以构造具体 Adapter。
+8. `generatedDrift.test.ts`：Schema 生成结果必须与源码一致。
+9. `documentedTypes.test.ts`：导出类型、枚举及枚举成员必须包含有效 TSDoc。
+10. `ruleResolution.test.ts`：Rule 优先级、Scope、Exception 和 Bundle Digest 必须确定性一致。
+11. `instructionProjection.test.ts`：Canonical Instruction、平台文件和 Managed Digest 必须一致。
+12. `memoryBoundary.test.ts`：Task State、Working Memory、Candidate 和 Active Knowledge 禁止混写。
+13. `agentRegistry.test.ts`：AgentDefinition 不能绕过 Model、Permission、Skill、Memory 和 Eval Contract。
 
 实现阶段使用 TypeScript AST/依赖图工具和 ESLint 执行，而不是正则扫描源码。CI 中架构测试与 Unit Test 同级，失败不能由 Agent 自动改为跳过。
 

@@ -22,15 +22,35 @@
     "human-in-the-loop"
   ],
   "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "liushi-harness": "./dist/bootstrap/cli/cliEntrypoint.js",
+    "lh": "./dist/bootstrap/cli/cliEntrypoint.js"
+  },
   "engines": {
     "node": ">=20.19.0"
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
+  },
+  "imports": {
+    "#application/*": "./src/application/*",
+    "#bootstrap/*": "./src/bootstrap/*",
+    "#common/*": "./src/common/*",
+    "#domain/*": "./src/domain/*",
+    "#infrastructure/*": "./src/infrastructure/*",
+    "#presentation/*": "./src/presentation/*"
   },
   "files": [
     "dist",
@@ -38,24 +58,34 @@
     "docs",
     "generated",
     "integrations",
+    "thirdPartyLicenses",
     "CHANGELOG.md",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "build": "tsup --config tsup.config.ts",
     "lint": "eslint src tests --no-error-on-unmatched-pattern",
-    "test": "vitest run --passWithNoTests",
-    "test:architecture": "vitest run tests/architecture --passWithNoTests",
+    "test": "vitest run",
+    "test:architecture": "vitest run tests/architecture",
+    "test:contract": "vitest run tests/contract",
+    "test:e2e": "vitest run tests/e2e",
+    "test:integration": "vitest run tests/integration",
+    "test:unit": "vitest run tests/unit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "canonicalize": "3.0.0",
+    "jsonc-parser": "3.3.1",
+    "minimatch": "10.2.5",
     "ulid": "3.0.2",
     "write-file-atomic": "7.0.1",
+    "yaml": "2.9.0",
     "zod": "4.4.3"
   },
   "devDependencies": {

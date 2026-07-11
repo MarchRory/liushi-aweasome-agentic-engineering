@@ -62,12 +62,24 @@ importers:
 
   packages/liushi-harness:
     dependencies:
+      canonicalize:
+        specifier: 3.0.0
+        version: 3.0.0
+      jsonc-parser:
+        specifier: 3.3.1
+        version: 3.3.1
+      minimatch:
+        specifier: 10.2.5
+        version: 10.2.5
       ulid:
         specifier: 3.0.2
         version: 3.0.2
       write-file-atomic:
         specifier: 7.0.1
         version: 7.0.1
+      yaml:
+        specifier: 2.9.0
+        version: 2.9.0
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -998,6 +1010,11 @@ packages:
   callsites@3.1.0:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
     engines: {node: '>=6'}
+
+  canonicalize@3.0.0:
+    resolution: {integrity: sha512-yYLfHyDMIXRyRqsKBRLX023riFLpXY2YOfdtqKXZRZy9qsfOJ9U+4F9YZL7MEzL5+ziN2x2nlBvY/Voi3EBljA==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
@@ -3340,6 +3357,8 @@ snapshots:
   cac@6.7.14: {}
 
   callsites@3.1.0: {}
+
+  canonicalize@3.0.0: {}
 
   chai@6.2.2: {}
 
