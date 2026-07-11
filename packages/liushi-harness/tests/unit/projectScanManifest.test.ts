@@ -1,33 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { PROJECT_SCAN_MANIFEST_SCHEMA_VERSION, ResultStatus } from "../../src/common/index.js";
-import {
-  DEFAULT_SCAN_MAX_CONFIG_FILE_BYTES,
-  DEFAULT_SCAN_MAX_CONFIG_FILES,
-  DEFAULT_SCAN_MAX_DEPTH,
-  DEFAULT_SCAN_MAX_DIAGNOSTICS,
-  DEFAULT_SCAN_MAX_DIRECTORIES,
-  DEFAULT_SCAN_MAX_FILES,
-  DEFAULT_SCAN_MAX_TOTAL_CONFIG_BYTES,
-  HARD_SCAN_MAX_DIRECTORIES,
-  parseProjectScanManifest,
-} from "../../src/domain/projectDiscovery/index.js";
+import { parseProjectScanManifest } from "../../src/domain/projectDiscovery/index.js";
 
 describe("Project scan manifest", () => {
-  it("fills every deterministic budget default", () => {
+  it("parses a manifest without capacity budgets", () => {
     const result = parseProjectScanManifest(manifest());
 
     expect(result.status).toBe(ResultStatus.Success);
     if (result.status === ResultStatus.Success) {
-      expect(result.value.budget).toEqual({
-        maxFilesPerRepository: DEFAULT_SCAN_MAX_FILES,
-        maxDirectoriesPerRepository: DEFAULT_SCAN_MAX_DIRECTORIES,
-        maxDepth: DEFAULT_SCAN_MAX_DEPTH,
-        maxConfigFilesPerRepository: DEFAULT_SCAN_MAX_CONFIG_FILES,
-        maxConfigFileBytes: DEFAULT_SCAN_MAX_CONFIG_FILE_BYTES,
-        maxTotalConfigBytesPerRepository: DEFAULT_SCAN_MAX_TOTAL_CONFIG_BYTES,
-        maxDiagnosticsPerRepository: DEFAULT_SCAN_MAX_DIAGNOSTICS,
-      });
+      expect(result.value).not.toHaveProperty("budget");
     }
   });
 
@@ -45,27 +27,13 @@ describe("Project scan manifest", () => {
     expect(unknown.status).toBe(ResultStatus.Failure);
   });
 
-  it("rejects a total byte budget smaller than the per-file budget", () => {
+  it("rejects manifest budget fields", () => {
     const result = parseProjectScanManifest({
       ...manifest(),
-      budget: { maxConfigFileBytes: 100, maxTotalConfigBytesPerRepository: 99 },
+      budget: { maxDirectoriesPerRepository: 1 },
     });
 
     expect(result.status).toBe(ResultStatus.Failure);
-  });
-
-  it("rejects directory budgets outside the strict positive hard limit", () => {
-    const zero = parseProjectScanManifest({
-      ...manifest(),
-      budget: { maxDirectoriesPerRepository: 0 },
-    });
-    const aboveHardLimit = parseProjectScanManifest({
-      ...manifest(),
-      budget: { maxDirectoriesPerRepository: HARD_SCAN_MAX_DIRECTORIES + 1 },
-    });
-
-    expect(zero.status).toBe(ResultStatus.Failure);
-    expect(aboveHardLimit.status).toBe(ResultStatus.Failure);
   });
 });
 

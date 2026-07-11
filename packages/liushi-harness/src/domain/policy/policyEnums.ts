@@ -6,6 +6,8 @@ export enum GateId {
   G2BusinessLogic = "G2",
   /** 确认 R2/R3 风险计划中的精确操作。 */
   G4RiskOperation = "G4",
+  /** 确认 Project Profile Proposal 可进入后续 Compiler Promotion。 */
+  G8ProjectCompliance = "G8",
 }
 
 /** Harness 的确定性风险等级。 */

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { ResultStatus } from "../../src/common/index.js";
+import { ArtifactStatus, ArtifactType } from "../../src/domain/artifact/index.js";
+import { RepositoryRole } from "../../src/domain/projectDiscovery/index.js";
 import { Rfc8785Sha256DigestAdapter, canonicalizeJson } from "../../src/infrastructure/index.js";
 
 describe("RFC 8785 Artifact Digest", () => {
@@ -15,6 +17,41 @@ describe("RFC 8785 Artifact Digest", () => {
     if (first.status === ResultStatus.Success && second.status === ResultStatus.Success) {
       expect(first.value).toBe(second.value);
       expect(first.value).toMatch(/^sha256:[a-f0-9]{64}$/);
+    }
+  });
+
+  it("ProjectProfileProposal digest is stable across field insertion order", () => {
+    const adapter = new Rfc8785Sha256DigestAdapter();
+    const first = adapter.calculate({
+      artifactType: ArtifactType.ProjectProfileProposal,
+      status: ArtifactStatus.Proposed,
+      payload: createProjectProfilePayload(),
+    });
+    const second = adapter.calculate({
+      payload: {
+        repositorySelections: [
+          {
+            rejectedMechanismCandidateIds: ["mechanism-b"],
+            acceptedMechanismCandidateIds: ["mechanism-a"],
+            rejectedRuleIds: ["rule-b"],
+            acceptedRuleIds: ["rule-a"],
+            confirmedRole: RepositoryRole.Application,
+            profileCandidateDigest: validDigest,
+            repositoryRevision: "repo-rev-1",
+            repositoryId: "repo-a",
+          },
+        ],
+        workspaceGraphRevision: "graph-rev-1",
+        discoveryReportDigest: validDigest,
+      },
+      status: ArtifactStatus.Proposed,
+      artifactType: ArtifactType.ProjectProfileProposal,
+    });
+
+    expect(first.status).toBe(ResultStatus.Success);
+    expect(second.status).toBe(ResultStatus.Success);
+    if (first.status === ResultStatus.Success && second.status === ResultStatus.Success) {
+      expect(first.value).toBe(second.value);
     }
   });
 
@@ -45,3 +82,24 @@ describe("RFC 8785 Artifact Digest", () => {
     expect(result.status).toBe(ResultStatus.Failure);
   });
 });
+
+const validDigest = `sha256:${"a".repeat(64)}`;
+
+function createProjectProfilePayload() {
+  return {
+    discoveryReportDigest: validDigest,
+    workspaceGraphRevision: "graph-rev-1",
+    repositorySelections: [
+      {
+        repositoryId: "repo-a",
+        repositoryRevision: "repo-rev-1",
+        profileCandidateDigest: validDigest,
+        confirmedRole: RepositoryRole.Application,
+        acceptedRuleIds: ["rule-a"],
+        rejectedRuleIds: ["rule-b"],
+        acceptedMechanismCandidateIds: ["mechanism-a"],
+        rejectedMechanismCandidateIds: ["mechanism-b"],
+      },
+    ],
+  };
+}

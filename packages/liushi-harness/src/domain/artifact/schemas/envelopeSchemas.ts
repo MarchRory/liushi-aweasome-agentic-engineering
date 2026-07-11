@@ -12,18 +12,18 @@ import {
 import { parseTaskId } from "#domain/task/index.js";
 import { parseWorkspaceId } from "#domain/workspace/index.js";
 
-import { ARTIFACT_ID_PATTERN } from "./artifactConstants.js";
-import {
-  type BusinessLogicChangeContractArtifact,
-  type ArtifactEnvelope,
-  type PlanRiskArtifact,
-  type RequirementContractArtifact,
-  type SupportedArtifact,
-} from "./artifactContracts.js";
-import type { ArtifactId } from "./artifactId.js";
-import { parseArtifactDigest, type ArtifactDigest } from "./artifactDigest.js";
-import { ArtifactStatus, ArtifactType } from "./artifactEnums.js";
-import { createArtifactSchemaError } from "./artifactSchemaError.js";
+import { ARTIFACT_ID_PATTERN } from "../constants/index.js";
+import type {
+  ArtifactEnvelope,
+  BusinessLogicChangeContractArtifact,
+  PlanRiskArtifact,
+  ProjectProfileProposalArtifact,
+  RequirementContractArtifact,
+  SupportedArtifact,
+} from "../contracts/index.js";
+import { parseArtifactDigest, type ArtifactDigest } from "../digest/index.js";
+import { ArtifactStatus, ArtifactType } from "../enums/index.js";
+import type { ArtifactId } from "../identity/index.js";
 import {
   businessLogicPayloadSchema,
   mapBusinessLogicPayload,
@@ -31,7 +31,12 @@ import {
   mapRequirementPayload,
   planRiskPayloadSchema,
   requirementPayloadSchema,
-} from "./artifactSchemas.js";
+} from "./payloadSchemas.js";
+import {
+  mapProjectProfileProposalPayload,
+  projectProfileProposalPayloadSchema,
+} from "./profileProposalSchemas.js";
+import { createArtifactSchemaError } from "./schemaError.js";
 
 const artifactIdSchema = z
   .string()
@@ -92,13 +97,21 @@ const planRiskArtifactSchema = z
     payload: planRiskPayloadSchema,
   })
   .strict();
+const projectProfileProposalArtifactSchema = z
+  .object({
+    ...envelopeFields,
+    artifactType: z.literal(ArtifactType.ProjectProfileProposal),
+    payload: projectProfileProposalPayloadSchema,
+  })
+  .strict();
 
-/** 当前 Harness 支持的 Artifact Envelope 严格 Schema。 */
+/** 褰撳墠 Harness 鏀寔鐨?Artifact Envelope 涓ユ牸 Schema銆?*/
 export const supportedArtifactSchema = z
   .discriminatedUnion("artifactType", [
     requirementArtifactSchema,
     businessLogicArtifactSchema,
     planRiskArtifactSchema,
+    projectProfileProposalArtifactSchema,
   ])
   .superRefine((artifact, context) => {
     const parentMatchesRevision =
@@ -113,7 +126,7 @@ export const supportedArtifactSchema = z
     }
   });
 
-/** 校验未知输入并返回完整的正式 Artifact Envelope。 */
+/** 鏍￠獙鏈煡杈撳叆骞惰繑鍥炲畬鏁寸殑姝ｅ紡 Artifact Envelope銆?*/
 export function parseSupportedArtifact(input: unknown): Result<SupportedArtifact, HarnessError> {
   const parsed = supportedArtifactSchema.safeParse(input);
   if (!parsed.success) {
@@ -132,6 +145,8 @@ export function parseSupportedArtifact(input: unknown): Result<SupportedArtifact
       return success(mapBusinessLogicArtifact(parsed.data));
     case ArtifactType.PlanRisk:
       return success(mapPlanRiskArtifact(parsed.data));
+    case ArtifactType.ProjectProfileProposal:
+      return success(mapProjectProfileProposalArtifact(parsed.data));
   }
 }
 
@@ -163,7 +178,17 @@ function mapPlanRiskArtifact(artifact: z.infer<typeof planRiskArtifactSchema>): 
   };
 }
 
-/** Artifact 各封闭 Payload 共用的 Envelope 字段。 */
+function mapProjectProfileProposalArtifact(
+  artifact: z.infer<typeof projectProfileProposalArtifactSchema>,
+): ProjectProfileProposalArtifact {
+  return {
+    ...mapArtifactCommon(artifact),
+    artifactType: ArtifactType.ProjectProfileProposal,
+    payload: mapProjectProfileProposalPayload(artifact.payload),
+  };
+}
+
+/** Artifact 鍚勫皝闂?Payload 鍏辩敤鐨?Envelope 瀛楁銆?*/
 type ArtifactCommonFields = Omit<ArtifactEnvelope<ArtifactType, unknown>, "payload">;
 
 function mapArtifactCommon(

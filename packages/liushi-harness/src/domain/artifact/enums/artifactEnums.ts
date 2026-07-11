@@ -6,6 +6,8 @@ export enum ArtifactType {
   BusinessLogicChangeContract = "business_logic_change_contract",
   /** 计划与风险 Artifact。 */
   PlanRisk = "plan_risk",
+  /** Human Project Profile Promotion Proposal Artifact。 */
+  ProjectProfileProposal = "project_profile_proposal",
 }
 
 /** Artifact 生命周期状态的封闭集合。 */

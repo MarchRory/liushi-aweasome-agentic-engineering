@@ -40,5 +40,8 @@ export const PROJECT_DISCOVERY_REPORT_SCHEMA_VERSION = "1.0.0";
 /** 当前 Project Profile Candidate Schema Version。 */
 export const PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION = "1.0.0";
 
+/** 当前 Project Profile Proposal Schema Version。 */
+export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "1.0.0";
+
 /** 当前 Architecture Mechanism Candidate Schema Version。 */
 export const ARCHITECTURE_MECHANISM_CANDIDATE_SCHEMA_VERSION = "1.0.0";

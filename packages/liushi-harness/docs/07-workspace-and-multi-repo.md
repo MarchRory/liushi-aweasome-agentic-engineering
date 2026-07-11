@@ -21,7 +21,7 @@
 - `ApplicableRuleBundle` Digest 绑定上述 Context；Catalog 与当前 Context 不一致时返回 `blocked` 和结构化 Drift。
 - `project scan` manifest 显式列出多个 Repository 的本机 root，但 root 是 runtime-only 输入，不进入 `ProjectDiscoveryReport`、Candidate 或 digest。
 - Project Scanner 只读文件树、package manifest、lockfile、JSONC/YAML 配置和目录结构，输出 ProjectProfile、Rule、Architecture Mechanism 与依赖边 Candidate。
-- 扫描预算包含 `maxDirectoriesPerRepository`；目录数量达到上限时记录 `DirectoryLimitReached` 并使报告 `truncated`，包括海量空目录场景。
+- Project Scanner 不使用人工容量或读取预算；全量遍历普通目录和文件，并读取全部被分类的配置文件。规模本身不影响完整性，路径不可读、链接跳过、大小写冲突或配置解析失败才会使报告 `incomplete`。
 - 多个 Repository 同时声明同一 package owner 时，依赖关系进入稳定排序的 `dependencyAmbiguities`，报告为 `incomplete`，不能静默丢弃或任选一条边。
 - 任何 Candidate 都不能直接变成 WorkspaceGraph、ProjectRuleCatalog、ArchitectureMechanismProfile 或 Active Rule；`profilePromotionStatus` 固定为 `HumanReviewRequired`，Profile Promotion 仍需要后续 Human Gate 切片。
 
@@ -133,7 +133,7 @@ edges:
 
 AI 不得通过发现 Import 自动扩大 Task Write Set。
 
-当前 `project scan` 只覆盖上述第 2、3、4 步中的确定性只读事实收集：不会运行 Git、不会执行构建脚本、不会修改仓库，也不会提交第 7 步的任何 Revision。扫描不完整、预算截断、配置无法解析、存在重复 package owner、大小写冲突或 symlink/junction 跳过时，报告必须进入 Human Review。扫描 `complete` 和 CLI 退出码 `0` 不等于可 Promotion；`isProjectProfilePromotionBlocked` 对当前报告仍保持阻塞。
+当前 `project scan` 只覆盖上述第 2、3、4 步中的确定性只读事实收集：不会运行 Git、不会执行构建脚本、不会修改仓库，也不会提交第 7 步的任何 Revision。配置无法解析、存在重复 package owner、大小写冲突、路径不可读或 symlink/junction 跳过时，报告必须进入 Human Review。扫描 `complete` 和 CLI 退出码 `0` 不等于可 Promotion；`isProjectProfilePromotionBlocked` 对当前报告仍保持阻塞。
 
 ## 6. Read Set 与 Write Set
 

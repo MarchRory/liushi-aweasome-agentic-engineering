@@ -52,9 +52,6 @@ export class ScanProjectUseCase {
       const inventory = await this.fileSystem.inspectRepository({
         repositoryId: repository.repositoryId,
         localRoot: repository.localRoot,
-        maxFiles: manifest.value.budget.maxFilesPerRepository,
-        maxDirectories: manifest.value.budget.maxDirectoriesPerRepository,
-        maxDepth: manifest.value.budget.maxDepth,
       });
       if (inventory.status === ResultStatus.Failure) {
         return inventory;
@@ -94,15 +91,11 @@ export class ScanProjectUseCase {
         return classification === undefined ? [] : [classification];
       })
       .sort((left, right) => compare(left.relativePath, right.relativePath));
-    const selected = classifications.slice(0, manifest.budget.maxConfigFilesPerRepository);
-    const configFileLimitReached = classifications.length > selected.length;
-    const pathsToRead = selectConfigPathsToRead(selected);
+    const pathsToRead = selectConfigPathsToRead(classifications);
     const reads = await this.fileSystem.readTextFiles({
       repositoryId: repository.repositoryId,
       localRoot: repository.localRoot,
       relativePaths: pathsToRead,
-      maxFileBytes: manifest.budget.maxConfigFileBytes,
-      maxTotalBytes: manifest.budget.maxTotalConfigBytesPerRepository,
     });
     if (reads.status === ResultStatus.Failure) {
       return reads;
@@ -110,14 +103,13 @@ export class ScanProjectUseCase {
     const configs = analyzeProjectConfigs(
       {
         repositoryId: repository.repositoryId,
-        classifications: selected,
+        classifications,
         reads: reads.value,
-        maxConfigFileBytes: manifest.budget.maxConfigFileBytes,
       },
       this.configParser,
     );
     return assembleProjectProfileCandidate(
-      { manifest, repository, inventory, configs, configFileLimitReached },
+      { manifest, repository, inventory, configs },
       this.digestPort,
     );
   }

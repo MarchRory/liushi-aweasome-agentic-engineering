@@ -23,6 +23,7 @@ import { TaskCheckpoint } from "#domain/taskRun/index.js";
 
 import {
   BUSINESS_LOGIC_APPROVAL_ACTION,
+  PROJECT_PROFILE_APPROVAL_ACTION,
   REQUIREMENT_APPROVAL_ACTION,
   RISK_OPERATION_APPROVAL_ACTION,
 } from "./proposeArtifact.constants.js";
@@ -105,6 +106,8 @@ function resumeCheckpoint(gate: GateId): string {
       return TaskCheckpoint.BusinessLogicApproved;
     case GateId.G4RiskOperation:
       return TaskCheckpoint.ImplementationReady;
+    case GateId.G8ProjectCompliance:
+      return TaskCheckpoint.ProjectProfileApproved;
   }
 }
 
@@ -116,5 +119,7 @@ function requiredAction(gate: GateId): string {
       return BUSINESS_LOGIC_APPROVAL_ACTION;
     case GateId.G4RiskOperation:
       return RISK_OPERATION_APPROVAL_ACTION;
+    case GateId.G8ProjectCompliance:
+      return PROJECT_PROFILE_APPROVAL_ACTION;
   }
 }

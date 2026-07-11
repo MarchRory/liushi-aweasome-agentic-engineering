@@ -15,30 +15,8 @@ import {
   type WorkspaceId,
 } from "#domain/workspace/index.js";
 
-import {
-  DEFAULT_SCAN_MAX_CONFIG_FILE_BYTES,
-  DEFAULT_SCAN_MAX_CONFIG_FILES,
-  DEFAULT_SCAN_MAX_DEPTH,
-  DEFAULT_SCAN_MAX_DIAGNOSTICS,
-  DEFAULT_SCAN_MAX_DIRECTORIES,
-  DEFAULT_SCAN_MAX_FILES,
-  DEFAULT_SCAN_MAX_TOTAL_CONFIG_BYTES,
-  HARD_SCAN_MAX_CONFIG_FILE_BYTES,
-  HARD_SCAN_MAX_CONFIG_FILES,
-  HARD_SCAN_MAX_DEPTH,
-  HARD_SCAN_MAX_DIAGNOSTICS,
-  HARD_SCAN_MAX_DIRECTORIES,
-  HARD_SCAN_MAX_FILES,
-  HARD_SCAN_MAX_REPOSITORIES,
-  HARD_SCAN_MAX_TOTAL_CONFIG_BYTES,
-  MAX_DISCOVERY_TEXT_LENGTH,
-  MAX_SCAN_ROOT_LENGTH,
-} from "../constants/index.js";
-import type {
-  ProjectScanBudget,
-  ProjectScanManifest,
-  ProjectScanRepository,
-} from "../contracts/index.js";
+import { MAX_DISCOVERY_TEXT_LENGTH, MAX_SCAN_ROOT_LENGTH } from "../constants/index.js";
+import type { ProjectScanManifest, ProjectScanRepository } from "../contracts/index.js";
 import { RepositoryRole } from "../enums/index.js";
 import { createProjectDiscoverySchemaError } from "./projectDiscoverySchemaError.js";
 
@@ -67,52 +45,6 @@ const repositoryIdSchema = z.string().transform((value, context): RepositoryId =
   return parsed.value;
 });
 
-const scanBudgetSchema = z
-  .object({
-    maxFilesPerRepository: z.number().int().positive().max(HARD_SCAN_MAX_FILES).optional(),
-    maxDirectoriesPerRepository: z
-      .number()
-      .int()
-      .positive()
-      .max(HARD_SCAN_MAX_DIRECTORIES)
-      .optional(),
-    maxDepth: z.number().int().positive().max(HARD_SCAN_MAX_DEPTH).optional(),
-    maxConfigFilesPerRepository: z
-      .number()
-      .int()
-      .positive()
-      .max(HARD_SCAN_MAX_CONFIG_FILES)
-      .optional(),
-    maxConfigFileBytes: z.number().int().positive().max(HARD_SCAN_MAX_CONFIG_FILE_BYTES).optional(),
-    maxTotalConfigBytesPerRepository: z
-      .number()
-      .int()
-      .positive()
-      .max(HARD_SCAN_MAX_TOTAL_CONFIG_BYTES)
-      .optional(),
-    maxDiagnosticsPerRepository: z
-      .number()
-      .int()
-      .positive()
-      .max(HARD_SCAN_MAX_DIAGNOSTICS)
-      .optional(),
-  })
-  .strict()
-  .transform((input): ProjectScanBudget => ({
-    maxFilesPerRepository: input.maxFilesPerRepository ?? DEFAULT_SCAN_MAX_FILES,
-    maxDirectoriesPerRepository: input.maxDirectoriesPerRepository ?? DEFAULT_SCAN_MAX_DIRECTORIES,
-    maxDepth: input.maxDepth ?? DEFAULT_SCAN_MAX_DEPTH,
-    maxConfigFilesPerRepository: input.maxConfigFilesPerRepository ?? DEFAULT_SCAN_MAX_CONFIG_FILES,
-    maxConfigFileBytes: input.maxConfigFileBytes ?? DEFAULT_SCAN_MAX_CONFIG_FILE_BYTES,
-    maxTotalConfigBytesPerRepository:
-      input.maxTotalConfigBytesPerRepository ?? DEFAULT_SCAN_MAX_TOTAL_CONFIG_BYTES,
-    maxDiagnosticsPerRepository: input.maxDiagnosticsPerRepository ?? DEFAULT_SCAN_MAX_DIAGNOSTICS,
-  }))
-  .refine((budget) => budget.maxTotalConfigBytesPerRepository >= budget.maxConfigFileBytes, {
-    message: "Total config byte budget cannot be smaller than the per-file budget.",
-    path: ["maxTotalConfigBytesPerRepository"],
-  });
-
 const scanRepositorySchema = z
   .object({
     repositoryId: repositoryIdSchema,
@@ -133,8 +65,7 @@ const rawProjectScanManifestSchema = z
     schemaVersion: z.literal(PROJECT_SCAN_MANIFEST_SCHEMA_VERSION),
     workspaceId: workspaceIdSchema,
     workspaceGraphRevision: nonBlank(MAX_DISCOVERY_TEXT_LENGTH),
-    repositories: z.array(scanRepositorySchema).min(1).max(HARD_SCAN_MAX_REPOSITORIES),
-    budget: scanBudgetSchema.optional(),
+    repositories: z.array(scanRepositorySchema).min(1),
   })
   .strict()
   .superRefine((input, context) => {
@@ -157,17 +88,6 @@ export const projectScanManifestSchema = rawProjectScanManifestSchema.transform(
     workspaceId: input.workspaceId,
     workspaceGraphRevision: input.workspaceGraphRevision,
     repositories: input.repositories,
-    budget:
-      input.budget ??
-      ({
-        maxFilesPerRepository: DEFAULT_SCAN_MAX_FILES,
-        maxDirectoriesPerRepository: DEFAULT_SCAN_MAX_DIRECTORIES,
-        maxDepth: DEFAULT_SCAN_MAX_DEPTH,
-        maxConfigFilesPerRepository: DEFAULT_SCAN_MAX_CONFIG_FILES,
-        maxConfigFileBytes: DEFAULT_SCAN_MAX_CONFIG_FILE_BYTES,
-        maxTotalConfigBytesPerRepository: DEFAULT_SCAN_MAX_TOTAL_CONFIG_BYTES,
-        maxDiagnosticsPerRepository: DEFAULT_SCAN_MAX_DIAGNOSTICS,
-      } satisfies ProjectScanBudget),
   }),
 );
 

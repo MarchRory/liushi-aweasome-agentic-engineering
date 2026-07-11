@@ -1,8 +1,8 @@
 import { HarnessError, HarnessErrorCode, failure, success, type Result } from "#common/index.js";
 import { ClaimClassification, type Claim, type EvidenceRef } from "#domain/evidence/index.js";
 
-import type { ArtifactProposal } from "./artifactContracts.js";
-import { ArtifactType } from "./artifactEnums.js";
+import type { ArtifactProposal } from "../contracts/index.js";
+import { ArtifactType } from "../enums/index.js";
 
 /** 校验 Proposal 内 Evidence/Claim 引用完整性与唯一性。 */
 export function validateArtifactEvidence(proposal: ArtifactProposal): Result<void, HarnessError> {
@@ -15,6 +15,7 @@ export function validateArtifactEvidence(proposal: ArtifactProposal): Result<voi
         ...proposal.payload.currentBehavior.inferences,
       ]);
     case ArtifactType.PlanRisk:
+    case ArtifactType.ProjectProfileProposal:
       return success(undefined);
   }
 }

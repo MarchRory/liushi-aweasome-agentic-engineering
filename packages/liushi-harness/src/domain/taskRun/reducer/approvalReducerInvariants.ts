@@ -38,7 +38,7 @@ export function resolveApprovalReducerTarget(
     throw new Error("ApprovalRecord must be created by a Human actor.");
   }
   if (approval.decision === ApprovalDecision.Waived) {
-    throw new Error("G1, G2 and G4 cannot be waived.");
+    throw new Error("G1, G2, G4 and G8 cannot be waived.");
   }
   if (aggregate.approvals.some((item) => item.idempotencyKey === approval.idempotencyKey)) {
     throw new Error("Approval idempotency key already exists.");

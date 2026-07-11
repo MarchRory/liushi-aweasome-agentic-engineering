@@ -26,7 +26,7 @@ afterEach(async () => {
 });
 
 describe("NodeProjectFileSystemAdapter", () => {
-  it("sorts paths, ignores default directories, and records depth limits", async () => {
+  it("sorts paths, ignores default directories, and walks nested files", async () => {
     const root = await createRoot();
     await mkdir(join(root, "src", "nested"), { recursive: true });
     await mkdir(join(root, "node_modules", "hidden"), { recursive: true });
@@ -36,46 +36,32 @@ describe("NodeProjectFileSystemAdapter", () => {
     const result = await adapter.inspectRepository({
       repositoryId: repositoryId(),
       localRoot: root,
-      maxFiles: 20,
-      maxDirectories: 20,
-      maxDepth: 1,
     });
 
     const inventory = unwrapSuccess(result);
-    expect(inventory.files).toEqual(["a.txt", "z.txt"]);
+    expect(inventory.files).toEqual(["a.txt", "src/nested/deep.txt", "z.txt"]);
     expect(inventory.directories).toEqual(["src", "src/nested"]);
     expect(inventory.ignoredDirectoryCount).toBe(1);
-    expect(inventory.depthLimitedPaths).toEqual(["src/nested"]);
     expect(inventory.caseCollisions).toEqual([]);
-    expect(inventory.directoryLimitReached).toBe(false);
     expect(inventory.files.some((path: string) => path.includes("node_modules"))).toBe(false);
   });
 
-  it("stops at the stable directory boundary and reports a blocking truncation", async () => {
+  it("enumerates all directories without capacity truncation", async () => {
     const root = await createRoot();
     await Promise.all(["d", "b", "c", "a"].map((directory) => mkdir(join(root, directory))));
-    await writeFile(join(root, "z.txt"), "not reached");
+    await writeFile(join(root, "z.txt"), "reached");
     const inventory = unwrapSuccess(
       await adapter.inspectRepository({
         repositoryId: repositoryId(),
         localRoot: root,
-        maxFiles: 20,
-        maxDirectories: 2,
-        maxDepth: 3,
       }),
     );
 
-    expect(inventory.directories).toEqual(["a", "b"]);
-    expect(inventory.files).toEqual([]);
-    expect(inventory.directoryLimitReached).toBe(true);
-    const assembly = assembleProjectDiagnostics(repositoryId(), inventory, [], false, 20);
-    expect(assembly.status).toBe(ProjectDiscoveryStatus.Truncated);
-    expect(assembly.diagnostics).toContainEqual(
-      expect.objectContaining({
-        code: ProjectDiagnosticCode.DirectoryLimitReached,
-        severity: ProjectDiagnosticSeverity.Blocking,
-      }),
-    );
+    expect(inventory.directories).toEqual(["a", "b", "c", "d"]);
+    expect(inventory.files).toEqual(["z.txt"]);
+    const assembly = assembleProjectDiagnostics(repositoryId(), inventory, []);
+    expect(assembly.status).toBe(ProjectDiscoveryStatus.Complete);
+    expect(assembly.diagnostics).toEqual([]);
   });
 
   it("records all relative path case collisions in stable order", async ({ skip }) => {
@@ -96,9 +82,6 @@ describe("NodeProjectFileSystemAdapter", () => {
     const result = await adapter.inspectRepository({
       repositoryId: repositoryId(),
       localRoot: root,
-      maxFiles: 20,
-      maxDirectories: 20,
-      maxDepth: 3,
     });
 
     const inventory = unwrapSuccess(result);
@@ -109,32 +92,26 @@ describe("NodeProjectFileSystemAdapter", () => {
     expect(JSON.stringify(inventory.caseCollisions)).not.toContain(root);
   });
 
-  it("enforces file and text byte budgets", async () => {
+  it("enumerates and reads all requested UTF-8 files", async () => {
     const root = await createRoot();
     await writeFile(join(root, "a.txt"), "12345");
     await writeFile(join(root, "b.txt"), "67890");
     const inventory = await adapter.inspectRepository({
       repositoryId: repositoryId(),
       localRoot: root,
-      maxFiles: 1,
-      maxDirectories: 20,
-      maxDepth: 3,
     });
     const inventoryValue = unwrapSuccess(inventory);
-    expect(inventoryValue.files).toEqual(["a.txt"]);
-    expect(inventoryValue.fileLimitReached).toBe(true);
+    expect(inventoryValue.files).toEqual(["a.txt", "b.txt"]);
 
     const result = await adapter.readTextFiles({
       repositoryId: repositoryId(),
       localRoot: root,
       relativePaths: ["a.txt", "b.txt"],
-      maxFileBytes: 4,
-      maxTotalBytes: 8,
     });
     const readResults = unwrapSuccess(result);
     expect(readResults.map((item: ProjectTextFileReadResult) => item.status)).toEqual([
-      ProjectTextFileReadStatus.Oversized,
-      ProjectTextFileReadStatus.Oversized,
+      ProjectTextFileReadStatus.Read,
+      ProjectTextFileReadStatus.Read,
     ]);
   });
 
@@ -147,8 +124,6 @@ describe("NodeProjectFileSystemAdapter", () => {
       repositoryId: repositoryId(),
       localRoot: root,
       relativePaths: ["invalid.txt", "../outside.txt", resolve(outside), "bad\0name"],
-      maxFileBytes: 100,
-      maxTotalBytes: 100,
     });
     await rm(outside, { force: true });
 
@@ -180,9 +155,6 @@ describe("NodeProjectFileSystemAdapter", () => {
     const result = await adapter.inspectRepository({
       repositoryId: repositoryId(),
       localRoot: root,
-      maxFiles: 20,
-      maxDirectories: 20,
-      maxDepth: 3,
     });
     const inventory = unwrapSuccess(result);
     expect(inventory.skippedLinks).toEqual(["link.txt"]);
@@ -193,11 +165,17 @@ describe("NodeProjectFileSystemAdapter", () => {
       repositoryId: repositoryId(),
       localRoot: root,
       relativePaths: ["link.txt"],
-      maxFileBytes: 100,
-      maxTotalBytes: 100,
     });
     const linkReadResults = unwrapSuccess(readResult);
     expect(linkReadResults[0]?.status).toBe(ProjectTextFileReadStatus.UnsafePath);
+    const assembly = assembleProjectDiagnostics(repositoryId(), inventory, []);
+    expect(assembly.status).toBe(ProjectDiscoveryStatus.Incomplete);
+    expect(assembly.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: ProjectDiagnosticCode.SymbolicLinkSkipped,
+        severity: ProjectDiagnosticSeverity.Blocking,
+      }),
+    );
   });
 });
 

@@ -32,8 +32,6 @@ export interface AnalyzeProjectConfigsInput {
   classifications: readonly ClassifiedProjectConfig[];
   /** FileSystem Port 的批量读取结果。 */
   reads: readonly ProjectTextFileReadResult[];
-  /** 单文件字节预算，用于区分截断原因。 */
-  maxConfigFileBytes: number;
 }
 
 /** 将配置读取结果转换为脱敏事实、Candidate 输入和诊断。 */
@@ -186,17 +184,13 @@ function toReadDiagnostic(
   const code =
     read.status === ProjectTextFileReadStatus.InvalidEncoding
       ? ProjectDiagnosticCode.InvalidTextEncoding
-      : read.status === ProjectTextFileReadStatus.Oversized
-        ? read.byteLength > input.maxConfigFileBytes
-          ? ProjectDiagnosticCode.ConfigFileTooLarge
-          : ProjectDiagnosticCode.ConfigByteLimitReached
-        : ProjectDiagnosticCode.PathUnreadable;
+      : ProjectDiagnosticCode.PathUnreadable;
   return {
     code,
     severity: ProjectDiagnosticSeverity.Blocking,
     repositoryId: input.repositoryId,
     relativePath: classification.relativePath,
-    message: "Project configuration could not be read within the declared safety budget.",
+    message: "Project configuration could not be read as safe strict UTF-8 text.",
   };
 }
 

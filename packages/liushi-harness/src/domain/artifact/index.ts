@@ -1,8 +1,7 @@
-export type * from "./artifactContracts.js";
-export * from "./artifactDigest.js";
-export * from "./artifactEnums.js";
-export * from "./artifactId.js";
-export * from "./artifactSchemas.js";
-export * from "./artifactConstants.js";
-export * from "./artifactEvidencePolicy.js";
-export * from "./artifactEnvelopeSchemas.js";
+export type * from "./contracts/index.js";
+export * from "./constants/index.js";
+export * from "./digest/index.js";
+export * from "./enums/index.js";
+export * from "./evidence/index.js";
+export * from "./identity/index.js";
+export * from "./schemas/index.js";

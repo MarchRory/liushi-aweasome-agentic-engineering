@@ -19,6 +19,7 @@ import {
   type ArtifactId,
   type BusinessLogicChangeContractArtifact,
   type PlanRiskArtifact,
+  type ProjectProfileProposalArtifact,
   type RequirementContractArtifact,
   type SupportedArtifact,
 } from "#domain/artifact/index.js";
@@ -76,6 +77,11 @@ export function createArtifact(
       );
     case ArtifactType.PlanRisk:
       return withDigest<PlanRiskArtifact>(
+        { ...common, artifactType: proposal.artifactType, payload: proposal.payload },
+        digestPort,
+      );
+    case ArtifactType.ProjectProfileProposal:
+      return withDigest<ProjectProfileProposalArtifact>(
         { ...common, artifactType: proposal.artifactType, payload: proposal.payload },
         digestPort,
       );

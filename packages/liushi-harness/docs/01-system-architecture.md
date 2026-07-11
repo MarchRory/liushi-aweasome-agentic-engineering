@@ -149,14 +149,14 @@ AI 可以基于扫描结果推断项目模式，但必须区分：强制规则�
 
 当前 Project Scanner 切片只提供只读 Project Discovery：
 
-- 输入是 JSON manifest，显式列出一个或多个 Repository 的 `repositoryId`、runtime-only `localRoot`、`repositoryRevision` 和扫描预算。
-- `ProjectScanBudget` 显式限制每仓库文件数、目录数、深度、配置数量和字节数；目录枚举达到 `maxDirectoriesPerRepository` 时记录 `DirectoryLimitReached`，报告进入 `truncated`。
+- 输入是 JSON manifest，显式列出一个或多个 Repository 的 `repositoryId`、runtime-only `localRoot` 和 `repositoryRevision`；manifest 不接受预算字段。
+- Project Scanner 不使用人工容量或读取预算；全量遍历普通目录和文件，并读取全部被分类的配置文件。规模本身不影响报告完整性，超时和取消属于当前切片尚未建模的运行时编排问题。
 - `localRoot` 只传给 FileSystem Adapter，用于解析本机 root；报告、Candidate 和 digest 均不得包含该绝对路径。
-- Scanner 只读取受预算限制的文件树和配置文件，输出 `ProjectDiscoveryReport`、`ProjectProfileCandidate`、`ArchitectureMechanismCandidate`、Rule Candidate 与依赖边 Candidate。
+- Scanner 只读文件树和配置文件，输出 `ProjectDiscoveryReport`、`ProjectProfileCandidate`、`ArchitectureMechanismCandidate`、Rule Candidate 与依赖边 Candidate。
 - JSON/JSONC 和 YAML 由确定性 parser 解析；可执行配置只记录存在、相对路径和内容摘要，不 import、不 eval、不执行脚本。
 - 当多个仓库声明同一个 package owner 时，依赖边不能静默选择其一；报告输出稳定排序的 `dependencyAmbiguities`，整体状态为 `incomplete`，等待 Human Review 判定真实所有权。
 - Rules 和 Mechanisms 均保持 Candidate-only，必须 Human Review；本切片不进行 Profile Promotion，也不写入 `ProjectRuleCatalog` 或 `ArchitectureMechanismProfile`。
-- 报告状态为 `incomplete` 或 `truncated` 时 CLI 以 blocked envelope 和退出码 `4` 结束，禁止后续流水线把 Candidate 当作已确认事实。
+- 报告状态为 `incomplete` 时 CLI 以 blocked envelope 和退出码 `4` 结束，禁止后续流水线把 Candidate 当作已确认事实。
 - `profilePromotionStatus` 固定为 `HumanReviewRequired`；扫描 `complete` 和进程退出码 `0` 只表示只读发现没有阻断诊断，`isProjectProfilePromotionBlocked` 仍必须返回阻塞。
 
 ### 4.6 Validator

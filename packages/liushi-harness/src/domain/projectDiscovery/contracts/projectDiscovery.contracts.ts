@@ -21,13 +21,12 @@ import type {
   ProjectProfilePromotionStatus,
   RepositoryRole,
 } from "../enums/index.js";
-import type { ProjectScanBudget } from "./projectScan.contracts.js";
 
 /** Repository 文件树的脱敏统计。 */
 export interface ProjectInventorySummary {
-  /** 在预算内枚举的普通文件数。 */
+  /** 已枚举的普通文件数。 */
   fileCount: number;
-  /** 在预算内枚举的目录数。 */
+  /** 已枚举的目录数。 */
   directoryCount: number;
   /** 因安全策略跳过的 Symlink/Junction 数。 */
   skippedLinkCount: number;
@@ -39,7 +38,7 @@ export interface ProjectInventorySummary {
 export interface ProjectLanguageFact {
   /** 可扩展的语言 Registry ID。 */
   languageId: string;
-  /** 该语言在预算内发现的文件数。 */
+  /** 该语言已发现的文件数。 */
   fileCount: number;
 }
 
@@ -227,8 +226,6 @@ export interface ProjectDiscoveryReport {
   workspaceId: WorkspaceId;
   /** 报告绑定的 Workspace Graph Revision。 */
   workspaceGraphRevision: string;
-  /** 本次扫描使用并进入 Digest 的预算。 */
-  budget: ProjectScanBudget;
   /** 所有 Repository Candidate 的聚合完整性。 */
   status: ProjectDiscoveryStatus;
   /** Profile Candidate 进入 Promotion 前的人工门禁状态。 */

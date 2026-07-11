@@ -32,7 +32,6 @@ export function assembleProjectDiscoveryReport(
     scannerVersion: PROJECT_SCANNER_VERSION,
     workspaceId: manifest.workspaceId,
     workspaceGraphRevision: manifest.workspaceGraphRevision,
-    budget: manifest.budget,
     status: aggregateStatus(sortedProfiles, dependencies.dependencyAmbiguities.length > 0),
     profilePromotionStatus: ProjectProfilePromotionStatus.HumanReviewRequired,
     profileCandidates: sortedProfiles,
@@ -49,9 +48,6 @@ function aggregateStatus(
   profiles: readonly ProjectProfileCandidate[],
   hasDependencyAmbiguity: boolean,
 ): ProjectDiscoveryStatus {
-  if (profiles.some((profile) => profile.status === ProjectDiscoveryStatus.Truncated)) {
-    return ProjectDiscoveryStatus.Truncated;
-  }
   return hasDependencyAmbiguity ||
     profiles.some((profile) => profile.status === ProjectDiscoveryStatus.Incomplete)
     ? ProjectDiscoveryStatus.Incomplete

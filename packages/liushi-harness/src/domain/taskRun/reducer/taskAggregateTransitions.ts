@@ -61,6 +61,8 @@ export function proposedCheckpoint(artifact: SupportedArtifact): TaskCheckpoint 
       return TaskCheckpoint.BusinessLogicProposed;
     case ArtifactType.PlanRisk:
       return TaskCheckpoint.PlanProposed;
+    case ArtifactType.ProjectProfileProposal:
+      return TaskCheckpoint.ProjectProfileProposed;
   }
 }
 
@@ -81,5 +83,7 @@ export function approvedCheckpoint(gate: GateId): TaskCheckpoint {
       return TaskCheckpoint.BusinessLogicApproved;
     case GateId.G4RiskOperation:
       return TaskCheckpoint.ImplementationReady;
+    case GateId.G8ProjectCompliance:
+      return TaskCheckpoint.ProjectProfileApproved;
   }
 }

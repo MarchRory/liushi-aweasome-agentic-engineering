@@ -76,29 +76,12 @@ export function unavailableResult(relativePath: string, byteLength = 0): Project
   return { relativePath, status: ProjectTextFileReadStatus.Unavailable, byteLength };
 }
 
-/** Creates the result used when a requested file exceeds a read budget. */
-export function oversizedResult(
-  relativePath: string,
-  byteLength: number,
-): ProjectTextFileReadResult {
-  return { relativePath, status: ProjectTextFileReadStatus.Oversized, byteLength };
-}
-
-/** Validates repository inventory limits without including runtime root values in diagnostics. */
+/** Validates repository inventory input without including runtime root values in diagnostics. */
 export function validateInspectInput(
   input: InspectProjectRepositoryInput,
 ): HarnessErrorType | undefined {
   if (!input || typeof input.localRoot !== "string") {
     return invalidInput("localRoot");
-  }
-  if (!isNonNegativeInteger(input.maxFiles)) {
-    return invalidInput("maxFiles");
-  }
-  if (!isNonNegativeInteger(input.maxDirectories)) {
-    return invalidInput("maxDirectories");
-  }
-  if (!isNonNegativeInteger(input.maxDepth)) {
-    return invalidInput("maxDepth");
   }
   return undefined;
 }
@@ -110,12 +93,6 @@ export function validateReadInput(input: ReadProjectTextFilesInput): HarnessErro
   }
   if (!Array.isArray(input.relativePaths)) {
     return invalidInput("relativePaths");
-  }
-  if (!isNonNegativeInteger(input.maxFileBytes)) {
-    return invalidInput("maxFileBytes");
-  }
-  if (!isNonNegativeInteger(input.maxTotalBytes)) {
-    return invalidInput("maxTotalBytes");
   }
   return undefined;
 }
@@ -134,10 +111,6 @@ export function toHarnessError(error: unknown, operation: string): HarnessErrorT
     : new HarnessError(HarnessErrorCode.IoFailure, "Project FileSystem operation failed.", {
         operation,
       });
-}
-
-function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 function invalidInput(field: string): HarnessErrorType {

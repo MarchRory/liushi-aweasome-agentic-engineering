@@ -28,9 +28,14 @@ export function validateArtifactProposalTransition(
 
   switch (proposal.artifactType) {
     case ArtifactType.RequirementContract:
-      return aggregate.checkpoint === TaskCheckpoint.TaskCreated
+      return aggregate.checkpoint === TaskCheckpoint.TaskCreated ||
+        aggregate.checkpoint === TaskCheckpoint.ProjectProfileApproved
         ? success(undefined)
         : invalidTransition("RequirementContract must be the first Task Artifact.");
+    case ArtifactType.ProjectProfileProposal:
+      return aggregate.checkpoint === TaskCheckpoint.TaskCreated
+        ? success(undefined)
+        : invalidTransition("ProjectProfileProposal must run before Task planning Artifacts.");
     case ArtifactType.BusinessLogicChangeContract:
       return aggregate.checkpoint === TaskCheckpoint.RequirementApproved
         ? success(undefined)
@@ -70,9 +75,10 @@ function validateRevisionProposal(
   aggregate: TaskAggregate,
   proposal: ArtifactProposal,
 ): Result<void, HarnessError> {
-  return proposal.artifactType === ArtifactType.PlanRisk
-    ? validateHistoricalPlanReference(aggregate, proposal)
-    : success(undefined);
+  if (proposal.artifactType === ArtifactType.PlanRisk) {
+    return validateHistoricalPlanReference(aggregate, proposal);
+  }
+  return success(undefined);
 }
 
 function validatePlanTransition(

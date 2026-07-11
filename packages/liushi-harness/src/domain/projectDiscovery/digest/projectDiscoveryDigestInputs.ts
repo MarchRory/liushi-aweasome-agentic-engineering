@@ -82,7 +82,6 @@ export function createProjectDiscoveryReportDigestInput(
     scannerVersion: report.scannerVersion,
     workspaceId: report.workspaceId,
     workspaceGraphRevision: report.workspaceGraphRevision,
-    budget: report.budget,
     status: report.status,
     profilePromotionStatus: report.profilePromotionStatus,
     profileCandidates: report.profileCandidates

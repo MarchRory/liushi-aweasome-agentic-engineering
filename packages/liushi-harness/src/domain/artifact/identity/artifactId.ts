@@ -1,6 +1,6 @@
 import { HarnessError, HarnessErrorCode, failure, success, type Result } from "#common/index.js";
 
-import { ARTIFACT_ID_PATTERN } from "./artifactConstants.js";
+import { ARTIFACT_ID_PATTERN } from "../constants/index.js";
 
 declare const artifactIdBrand: unique symbol;
 

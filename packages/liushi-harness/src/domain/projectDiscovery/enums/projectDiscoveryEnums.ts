@@ -16,12 +16,10 @@ export enum RepositoryRole {
 
 /** Project Scanner 报告的完整性状态。 */
 export enum ProjectDiscoveryStatus {
-  /** 在声明预算内完成且没有阻断性诊断。 */
+  /** 扫描完成且没有阻断性诊断。 */
   Complete = "complete",
   /** 扫描结束但存在安全或解析缺口。 */
   Incomplete = "incomplete",
-  /** 至少一个确定性预算已耗尽。 */
-  Truncated = "truncated",
 }
 
 /** Project Profile Candidate 进入 Promotion 前的人工门禁状态。 */
@@ -42,20 +40,6 @@ export enum ProjectDiagnosticSeverity {
 
 /** Project Scanner 可以稳定报告的诊断代码。 */
 export enum ProjectDiagnosticCode {
-  /** 文件枚举达到预算上限。 */
-  FileLimitReached = "file_limit_reached",
-  /** 目录枚举达到预算上限。 */
-  DirectoryLimitReached = "directory_limit_reached",
-  /** 目录递归达到深度上限。 */
-  DepthLimitReached = "depth_limit_reached",
-  /** 待读取配置文件达到数量上限。 */
-  ConfigFileLimitReached = "config_file_limit_reached",
-  /** 诊断条目达到预算上限。 */
-  DiagnosticLimitReached = "diagnostic_limit_reached",
-  /** 单个配置文件超过读取预算。 */
-  ConfigFileTooLarge = "config_file_too_large",
-  /** 配置内容总字节达到预算上限。 */
-  ConfigByteLimitReached = "config_byte_limit_reached",
   /** 文件不是有效 UTF-8 文本。 */
   InvalidTextEncoding = "invalid_text_encoding",
   /** JSON、JSONC 或 YAML 配置无法严格解析。 */
@@ -116,7 +100,7 @@ export enum ProjectConfigParseStatus {
   PresenceOnly = "presence_only",
   /** 内容无法通过结构化 Parser。 */
   Invalid = "invalid",
-  /** 文件因预算或编码问题没有读取。 */
+  /** 文件因安全、可读性或编码问题没有读取。 */
   Unavailable = "unavailable",
 }
 

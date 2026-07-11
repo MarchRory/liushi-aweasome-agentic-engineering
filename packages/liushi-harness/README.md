@@ -19,9 +19,9 @@
 - Rule、Catalog 和 Bundle 使用严格 Schema 与 RFC 8785 Digest；Candidate、Stale、Superseded 和 Rejected Rule 不进入执行集合。
 - Rule Resolver 支持多仓目标、Repository/Path/Task Scope、确定性 Glob、显式冲突、Revision Drift 与 Blocking Validator 可用性检查。
 - `project scan` 读取显式 JSON manifest 中声明的一个或多个仓库 root，只生成 Project/Profile、Rule 和 Architecture Mechanism Candidate 报告，不写入项目、不执行配置、不晋升 Profile。
-- `ProjectScanBudget` 包含每仓库文件数、目录数、深度、配置数量和字节预算；海量空目录触发 `DirectoryLimitReached` 诊断并使报告 `truncated`。
+- Project Scanner 不使用人工容量或读取预算；规模不会把完整扫描降级为不完整，但路径不可读、链接跳过、大小写冲突或配置解析失败仍会产生诊断。
 - Project Scanner 对 JSON/JSONC 与 YAML 配置使用确定性解析；JS/CJS/MJS/TS 等可执行配置只记录存在和 digest，不 import、不 eval、不运行脚本。
-- Project Scanner 输出不包含 manifest 中的 runtime-only `localRoot`，报告与 digest 只绑定 Repository ID、Revision、相对路径、预算、诊断和 Candidate 字段。
+- Project Scanner 输出不包含 manifest 中的 runtime-only `localRoot`，报告与 digest 只绑定 Repository ID、Revision、相对路径、诊断和 Candidate 字段。
 - 重复 package owner 不会静默丢弃依赖边；Scanner 输出稳定排序的 `dependencyAmbiguities`，并将报告标记为 `incomplete`。
 - `profilePromotionStatus` 固定为 `HumanReviewRequired`；扫描 `complete` 且 CLI 退出码为 `0` 也不表示 Profile 可晋升，`isProjectProfilePromotionBlocked` 仍保持阻塞。
 - Event、Snapshot、Hash、Schema 或 Lock 异常时 fail closed，不自动猜测或修复。
@@ -69,7 +69,7 @@ liushi-harness project scan --file .\project-scan-manifest.json --json
 
 `rules resolve` 是报告型命令，不扫描或修改项目，也不激活 Candidate Rule。可执行 Bundle 返回 JSON `status=success` 和退出码 `0`；不可执行 Bundle 仍将完整诊断写入 stdout，但返回 JSON `status=blocked` 和退出码 `4`，从进程边界阻断后续流水线。
 
-`project scan` 也是报告型命令。manifest 必须显式列出每个只读仓库的 `repositoryId`、`localRoot`、`repositoryRevision` 和预算；预算包含 `maxDirectoriesPerRepository`，达到目录上限会产生 `DirectoryLimitReached` 并截断。`localRoot` 仅用于本机 FileSystem Adapter，不进入报告和 digest。扫描完成且没有阻断诊断时返回 JSON `status=success` 和退出码 `0`；任何 `incomplete` 或 `truncated` 报告返回 JSON `status=blocked` 和退出码 `4`，后续必须 Human Review。即使扫描 `complete` 并返回退出码 `0`，`profilePromotionStatus` 仍为 `HumanReviewRequired`，不能视为已批准 Profile Promotion。
+`project scan` 也是报告型命令。manifest 必须显式列出每个只读仓库的 `repositoryId`、`localRoot` 和 `repositoryRevision`，不接受预算字段。Scanner 全量遍历普通目录和文件并读取全部被分类的配置文件；规模本身不影响完整性。`localRoot` 仅用于本机 FileSystem Adapter，不进入报告和 digest。扫描完成且没有阻断诊断时返回 JSON `status=success` 和退出码 `0`；任何 `incomplete` 报告返回 JSON `status=blocked` 和退出码 `4`，后续必须 Human Review。即使扫描 `complete` 并返回退出码 `0`，`profilePromotionStatus` 仍为 `HumanReviewRequired`，不能视为已批准 Profile Promotion。超时和取消属于运行时编排问题，当前切片没有把它们建模为领域 Profile 状态。
 
 默认 Runtime Store 为 `~/.liushi-harness`。可以通过 `LIUSHI_HARNESS_HOME` 或单次命令的 `--store <path>` 覆盖。
 

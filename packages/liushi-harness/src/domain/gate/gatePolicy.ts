@@ -77,6 +77,8 @@ function resolveRiskLevel(artifact: SupportedArtifact): RiskLevel {
       return RiskLevel.R3;
     case ArtifactType.PlanRisk:
       return artifact.payload.riskLevel;
+    case ArtifactType.ProjectProfileProposal:
+      return RiskLevel.R3;
   }
 }
 
@@ -91,6 +93,8 @@ function resolveRequiredGates(artifact: SupportedArtifact): readonly GateId[] {
         artifact.payload.riskLevel === RiskLevel.R3
         ? [GateId.G4RiskOperation]
         : [];
+    case ArtifactType.ProjectProfileProposal:
+      return [GateId.G8ProjectCompliance];
   }
 }
 
@@ -100,6 +104,7 @@ function resolveEvidenceIds(artifact: SupportedArtifact): readonly string[] {
     case ArtifactType.BusinessLogicChangeContract:
       return artifact.payload.evidence.map((evidence) => evidence.evidenceId);
     case ArtifactType.PlanRisk:
+    case ArtifactType.ProjectProfileProposal:
       return [];
   }
 }

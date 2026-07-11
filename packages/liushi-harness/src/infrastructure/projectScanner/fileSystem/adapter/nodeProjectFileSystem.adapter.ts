@@ -31,7 +31,6 @@ import {
   validateInspectInput,
   validateReadInput,
 } from "../../io/index.js";
-import { ProjectTextFileReadStatus } from "#application/ports/projectFileSystem/index.js";
 
 /** Resolved root values kept private to one adapter operation. */
 interface RootContext {
@@ -44,15 +43,12 @@ interface InventoryState {
   readonly directories: string[];
   readonly skippedLinks: string[];
   readonly unreadablePaths: string[];
-  readonly depthLimitedPaths: string[];
   readonly casePathKeys: Map<string, string>;
   readonly caseCollisions: ProjectPathCaseCollision[];
   ignoredDirectoryCount: number;
-  directoryLimitReached: boolean;
-  fileLimitReached: boolean;
 }
 
-/** Node.js FileSystem adapter for bounded, link-safe project scanning. */
+/** Node.js FileSystem adapter for link-safe project scanning. */
 export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
   /** Inspects a repository without following links or returning absolute file paths. */
   public async inspectRepository(
@@ -70,15 +66,12 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
         directories: [],
         skippedLinks: [],
         unreadablePaths: [],
-        depthLimitedPaths: [],
         casePathKeys: new Map(),
         caseCollisions: [],
         ignoredDirectoryCount: 0,
-        directoryLimitReached: false,
-        fileLimitReached: false,
       };
 
-      await this.visitDirectory(root.realRoot, "", 0, input, state, root.realRoot);
+      await this.visitDirectory(root.realRoot, "", state, root.realRoot);
       const unreadablePaths = [...new Set(state.unreadablePaths)].sort(compareRelativePaths);
       const caseCollisions = [...state.caseCollisions].sort(compareCaseCollisions);
       return success({
@@ -89,17 +82,14 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
         skippedLinks: [...new Set(state.skippedLinks)].sort(compareRelativePaths),
         ignoredDirectoryCount: state.ignoredDirectoryCount,
         unreadablePaths,
-        depthLimitedPaths: [...new Set(state.depthLimitedPaths)].sort(compareRelativePaths),
         caseCollisions,
-        directoryLimitReached: state.directoryLimitReached,
-        fileLimitReached: state.fileLimitReached,
       });
     } catch (error) {
       return failure(toHarnessError(error, "inspect_repository"));
     }
   }
 
-  /** Reads selected files after validating paths, root containment, links, and byte budgets. */
+  /** Reads selected files after validating paths, root containment, and links. */
   public async readTextFiles(
     input: ReadProjectTextFilesInput,
   ): Promise<Result<readonly ProjectTextFileReadResult[], HarnessErrorType>> {
@@ -111,7 +101,6 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
     try {
       const root = await this.resolveRoot(input.localRoot);
       const results: ProjectTextFileReadResult[] = [];
-      let totalBytes = 0;
 
       for (const requestedPath of input.relativePaths) {
         const relativePath = normalizeRequestedRelativePath(requestedPath);
@@ -120,15 +109,8 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
           continue;
         }
 
-        const result = await readProjectTextFile(root.realRoot, relativePath, {
-          maxFileBytes: input.maxFileBytes,
-          maxTotalBytes: input.maxTotalBytes,
-          consumedBytes: totalBytes,
-        });
+        const result = await readProjectTextFile(root.realRoot, relativePath);
         results.push(result);
-        if (result.status === ProjectTextFileReadStatus.Read) {
-          totalBytes += result.byteLength;
-        }
       }
 
       return success(results);
@@ -161,8 +143,6 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
   private async visitDirectory(
     directory: string,
     relativeDirectory: string,
-    depth: number,
-    input: InspectProjectRepositoryInput,
     state: InventoryState,
     root: string,
   ): Promise<void> {
@@ -178,10 +158,6 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
 
     entries.sort((left, right) => compareRelativePaths(left.name, right.name));
     for (const entry of entries) {
-      if (state.fileLimitReached || state.directoryLimitReached) {
-        return;
-      }
-
       const absolutePath = join(directory, entry.name);
       const relativePath = toRelativePosixPath(root, absolutePath);
       recordCaseInsensitivePath(relativePath, state);
@@ -203,16 +179,8 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
           state.ignoredDirectoryCount += 1;
           continue;
         }
-        if (state.directories.length >= input.maxDirectories) {
-          state.directoryLimitReached = true;
-          return;
-        }
         state.directories.push(relativePath);
-        if (depth >= input.maxDepth) {
-          state.depthLimitedPaths.push(relativePath);
-          continue;
-        }
-        await this.visitDirectory(absolutePath, relativePath, depth + 1, input, state, root);
+        await this.visitDirectory(absolutePath, relativePath, state, root);
         continue;
       }
 
@@ -221,10 +189,6 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
         continue;
       }
 
-      if (state.files.length >= input.maxFiles) {
-        state.fileLimitReached = true;
-        return;
-      }
       state.files.push(relativePath);
     }
   }

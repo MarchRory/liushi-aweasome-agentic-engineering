@@ -7,3 +7,7 @@ export const BUSINESS_LOGIC_APPROVAL_ACTION =
 
 /** G4 Risk Operation Gate 展示给 Human 的精确动作。 */
 export const RISK_OPERATION_APPROVAL_ACTION = "Confirm the exact R2/R3 implementation plan.";
+
+/** G8 Project Compliance Gate 展示给 Human 的精确动作。 */
+export const PROJECT_PROFILE_APPROVAL_ACTION =
+  "Confirm the Project Profile Proposal selections and bindings.";

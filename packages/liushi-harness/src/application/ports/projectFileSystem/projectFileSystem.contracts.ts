@@ -9,12 +9,6 @@ export interface InspectProjectRepositoryInput {
   repositoryId: RepositoryId;
   /** Runtime-only 本机 Root。 */
   localRoot: string;
-  /** 最多枚举的普通文件数。 */
-  maxFiles: number;
-  /** 最多枚举的目录数。 */
-  maxDirectories: number;
-  /** 最多递归的目录深度。 */
-  maxDepth: number;
 }
 
 /** 当前平台语义下仅大小写不同的两个相对路径。 */
@@ -41,14 +35,8 @@ export interface ProjectRepositoryFileInventory {
   ignoredDirectoryCount: number;
   /** 因权限或并发变化无法读取的相对路径。 */
   unreadablePaths: readonly string[];
-  /** 达到深度预算而未进入的目录相对路径。 */
-  depthLimitedPaths: readonly string[];
   /** 大小写折叠后发生碰撞的相对路径对。 */
   caseCollisions: readonly ProjectPathCaseCollision[];
-  /** 目录数量是否达到预算上限并导致遍历提前停止。 */
-  directoryLimitReached: boolean;
-  /** 文件数量是否达到预算上限。 */
-  fileLimitReached: boolean;
 }
 
 /** 批量读取配置文本的 Port 输入。 */
@@ -59,13 +47,9 @@ export interface ReadProjectTextFilesInput {
   localRoot: string;
   /** 只允许来自 File Inventory 的规范相对路径。 */
   relativePaths: readonly string[];
-  /** 单文件最大读取字节数。 */
-  maxFileBytes: number;
-  /** 本批次最大读取总字节数。 */
-  maxTotalBytes: number;
 }
 
-/** 单个配置文本的受预算读取结果。 */
+/** 单个配置文本的读取结果。 */
 export interface ProjectTextFileReadResult {
   /** 文件在 Repository 内的相对路径。 */
   relativePath: string;

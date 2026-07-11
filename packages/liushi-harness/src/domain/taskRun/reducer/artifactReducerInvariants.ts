@@ -74,7 +74,10 @@ export function assertWorkflowPrerequisites(
   aggregate: TaskAggregate,
   artifact: SupportedArtifact,
 ): void {
-  if (artifact.artifactType === ArtifactType.RequirementContract) {
+  if (
+    artifact.artifactType === ArtifactType.RequirementContract ||
+    artifact.artifactType === ArtifactType.ProjectProfileProposal
+  ) {
     return;
   }
   const requirement = aggregate.artifacts.find(

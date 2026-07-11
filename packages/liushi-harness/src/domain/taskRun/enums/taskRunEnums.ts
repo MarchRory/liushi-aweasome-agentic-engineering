@@ -12,6 +12,10 @@ export enum TaskCheckpoint {
   BusinessLogicApproved = "business_logic_approved",
   /** PlanRisk Artifact 已提交并等待 G4。 */
   PlanProposed = "plan_proposed",
+  /** Project Profile Proposal 已提交并等待 G8。 */
+  ProjectProfileProposed = "project_profile_proposed",
+  /** Project Profile Proposal 对应 G8 Approval 已满足。 */
+  ProjectProfileApproved = "project_profile_approved",
   /** PlanRisk 已满足全部 Gate，可以进入实现。 */
   ImplementationReady = "implementation_ready",
 }

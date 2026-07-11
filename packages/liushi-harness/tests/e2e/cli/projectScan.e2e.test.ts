@@ -37,10 +37,10 @@ describe("CLI Project Scanner E2E", () => {
     });
   });
 
-  it("project scan 预算截断返回完整 blocked envelope、退出码 4 且不泄露 localRoot", async () => {
+  it("project scan 解析缺口返回完整 blocked envelope、退出码 4 且不泄露 localRoot", async () => {
     await withStore(async (storeRoot) => {
       const { manifestFile, repositoryRoot } = await createProjectScanFixture(storeRoot, {
-        maxFilesPerRepository: 1,
+        invalidConfig: true,
       });
 
       const output = await runCommand(
@@ -58,12 +58,12 @@ describe("CLI Project Scanner E2E", () => {
         status: CliResponseStatus.Blocked,
         command: CliCommand.ProjectScan,
         data: {
-          status: "truncated",
+          status: "incomplete",
           profileCandidates: [
             {
               repositoryId: "app",
-              status: "truncated",
-              diagnostics: [{ code: "file_limit_reached", severity: "blocking" }],
+              status: "incomplete",
+              diagnostics: [{ code: "config_parse_error", severity: "blocking" }],
             },
           ],
         },
@@ -75,7 +75,7 @@ describe("CLI Project Scanner E2E", () => {
 /** 创建包含 package、tsconfig 和源码的真实临时仓扫描输入。 */
 async function createProjectScanFixture(
   storeRoot: string,
-  budget: Partial<Record<string, number>> = {},
+  options: { invalidConfig?: boolean } = {},
 ): Promise<{ manifestFile: string; repositoryRoot: string }> {
   const repositoryRoot = resolve(storeRoot, "scan-project");
   await mkdir(resolve(repositoryRoot, "src"), { recursive: true });
@@ -92,7 +92,11 @@ async function createProjectScanFixture(
   );
   await writeFile(
     resolve(repositoryRoot, "tsconfig.json"),
-    JSON.stringify({ compilerOptions: { strict: true, forceConsistentCasingInFileNames: true } }),
+    options.invalidConfig
+      ? "{ invalid json"
+      : JSON.stringify({
+          compilerOptions: { strict: true, forceConsistentCasingInFileNames: true },
+        }),
     "utf8",
   );
   await writeFile(resolve(repositoryRoot, "src", "index.ts"), "export const value = 1;\n", "utf8");
@@ -111,7 +115,6 @@ async function createProjectScanFixture(
           roleHint: "application",
         },
       ],
-      ...(Object.keys(budget).length === 0 ? {} : { budget }),
     }),
     "utf8",
   );

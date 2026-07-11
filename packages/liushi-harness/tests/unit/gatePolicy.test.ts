@@ -18,6 +18,7 @@ import {
   parseArtifactDigest,
   parseArtifactId,
   type PlanRiskArtifact,
+  type ProjectProfileProposalArtifact,
   type RequirementContractArtifact,
   type SupportedArtifact,
 } from "../../src/domain/artifact/index.js";
@@ -29,8 +30,9 @@ import {
   RiskLevel,
   evaluateArtifactGate,
 } from "../../src/domain/gate/index.js";
+import { RepositoryRole } from "../../src/domain/projectDiscovery/index.js";
 import { parseTaskId } from "../../src/domain/task/index.js";
-import { parseWorkspaceId } from "../../src/domain/workspace/index.js";
+import { parseRepositoryId, parseWorkspaceId } from "../../src/domain/workspace/index.js";
 
 const ARTIFACT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const APPROVAL_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
@@ -113,6 +115,36 @@ describe("deterministic Artifact Gate Policy", () => {
       result: GateEvaluationResult.Forbidden,
       reasons: [GateReason.RiskLevelForbidden],
     });
+  });
+
+  it("ProjectProfileProposal requires G8 human approval at R3", () => {
+    const artifact = createProjectProfileProposalArtifact();
+
+    const evaluation = evaluateArtifactGate(artifact, [], CREATED_AT);
+
+    expect(evaluation).toMatchObject({
+      result: GateEvaluationResult.WaitingHuman,
+      riskLevel: RiskLevel.R3,
+      requiredGates: [GateId.G8ProjectCompliance],
+      evidenceIds: [],
+      satisfiedApprovals: [],
+      reasons: [GateReason.RequiredApprovalMissing],
+    });
+  });
+
+  it("ProjectProfileProposal allows after matching G8 approval", () => {
+    const artifact = createProjectProfileProposalArtifact();
+    const approval = createApproval(
+      artifact,
+      ApprovalDecision.Approved,
+      GateId.G8ProjectCompliance,
+    );
+
+    const evaluation = evaluateArtifactGate(artifact, [approval], CREATED_AT);
+
+    expect(evaluation.result).toBe(GateEvaluationResult.Allow);
+    expect(evaluation.satisfiedApprovals).toEqual([approval.approvalId]);
+    expect(evaluation.reasons).toEqual([GateReason.RequiredApprovalSatisfied]);
   });
 
   it("相同显式输入产生完全相同的 Evaluation", () => {
@@ -200,7 +232,42 @@ function createPlanRiskArtifact(
   };
 }
 
-function createApproval(artifact: SupportedArtifact, decision: ApprovalDecision): ApprovalRecord {
+function createProjectProfileProposalArtifact(): ProjectProfileProposalArtifact {
+  return {
+    schemaVersion: ARTIFACT_SCHEMA_VERSION,
+    artifactId: parseArtifactIdentifier(),
+    artifactType: ArtifactType.ProjectProfileProposal,
+    workspaceId: parseWorkspace(),
+    taskId: parseTask(),
+    revision: 1,
+    status: ArtifactStatus.Proposed,
+    createdAt: CREATED_AT,
+    createdBy: { kind: ActorKind.Agent, actorId: "profile-promoter" },
+    digest: parseDigest(ARTIFACT_DIGEST),
+    payload: {
+      discoveryReportDigest: parseDigest(OTHER_DIGEST),
+      workspaceGraphRevision: "graph-rev-1",
+      repositorySelections: [
+        {
+          repositoryId: parseRepositoryIdentifier("repo-a"),
+          repositoryRevision: "repo-rev-1",
+          profileCandidateDigest: parseDigest(DECISION_DIGEST),
+          confirmedRole: RepositoryRole.Application,
+          acceptedRuleIds: ["rule-a"],
+          rejectedRuleIds: ["rule-b"],
+          acceptedMechanismCandidateIds: ["mechanism-a"],
+          rejectedMechanismCandidateIds: ["mechanism-b"],
+        },
+      ],
+    },
+  };
+}
+
+function createApproval(
+  artifact: SupportedArtifact,
+  decision: ApprovalDecision,
+  gate: GateId = GateId.G1Requirement,
+): ApprovalRecord {
   const approvalId = parseApprovalId(APPROVAL_ID);
   const decisionRequestId = parseDecisionRequestId(DECISION_REQUEST_ID);
   if (approvalId.status === ResultStatus.Failure) {
@@ -215,7 +282,7 @@ function createApproval(artifact: SupportedArtifact, decision: ApprovalDecision)
     approvalId: approvalId.value,
     decisionRequestId: decisionRequestId.value,
     decisionRequestDigest: parseDigest(DECISION_DIGEST),
-    gate: GateId.G1Requirement,
+    gate,
     artifactId: artifact.artifactId,
     artifactDigest: artifact.digest,
     idempotencyKey: "approval-key",
@@ -224,6 +291,14 @@ function createApproval(artifact: SupportedArtifact, decision: ApprovalDecision)
     createdAt: CREATED_AT,
     digest: parseDigest(APPROVAL_DIGEST),
   };
+}
+
+function parseRepositoryIdentifier(value: string) {
+  const result = parseRepositoryId(value);
+  if (result.status === ResultStatus.Failure) {
+    throw result.error;
+  }
+  return result.value;
 }
 
 function parseArtifactIdentifier() {

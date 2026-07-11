@@ -28,13 +28,13 @@ Validator 执行、Candidate Promotion、ComplianceReport、Rule Exception 和 G
 
 当前 Project Scanner 切片补充以下只读能力：
 
-- `project scan` 从 JSON manifest 读取显式多仓列表；每个仓库必须声明 `repositoryId`、`localRoot`、`repositoryRevision`，并受 manifest 预算限制。
-- 预算契约包含 `maxDirectoriesPerRepository`；达到目录上限时输出 `DirectoryLimitReached` 诊断并将报告标记为 `truncated`，即使目录本身为空也不继续无限枚举。
+- `project scan` 从 JSON manifest 读取显式多仓列表；每个仓库必须声明 `repositoryId`、`localRoot`、`repositoryRevision`，manifest 不接受预算字段。
+- Project Scanner 不使用人工容量或读取预算；全量遍历普通目录和文件，并读取全部被分类的配置文件。规模本身不影响完整性，超时和取消属于当前切片尚未建模的运行时编排问题。
 - `localRoot` 只用于本机扫描，不进入报告、Candidate、诊断、依赖边或任何 digest 输入。
 - JSON/JSONC、YAML、package manifest 和 TypeScript compiler config 使用确定性 parser 读取；JS/TS 可执行配置、lockfile、CODEOWNERS、AGENTS.md、CLAUDE.md 等只记录存在或摘要，不执行、不导入。
 - 生成的 Rule 与 Architecture Mechanism 只能是 Candidate；目录结构和依赖声明只是 Evidence，不足以自动判定 Preferred、Active 或 Blocking。
 - 重复 package owner 产生稳定 `dependencyAmbiguities` 并使报告 `incomplete`；Scanner 不静默丢边，也不自行决定哪个 Repository 是真实 owner。
-- 报告状态为 `incomplete` 或 `truncated` 时，CLI 返回 blocked envelope 和退出码 `4`；这些结果必须 Human Review 后才能进入后续 Promotion 或正式规则源。
+- 报告状态为 `incomplete` 时，CLI 返回 blocked envelope 和退出码 `4`；这些结果必须 Human Review 后才能进入后续 Promotion 或正式规则源。
 - `profilePromotionStatus` 当前固定为 `HumanReviewRequired`。扫描 `complete` 或 CLI 退出码 `0` 不能被解释为批准流程已经实现，`isProjectProfilePromotionBlocked` 仍阻塞 Profile Promotion。
 
 ## 2. 概念边界

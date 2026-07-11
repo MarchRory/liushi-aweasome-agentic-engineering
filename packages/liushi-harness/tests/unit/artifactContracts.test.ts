@@ -12,6 +12,7 @@ import {
 import { parseApprovalId, parseDecisionRequestId } from "../../src/domain/approval/index.js";
 import { ClaimClassification, EvidenceKind } from "../../src/domain/evidence/index.js";
 import { GateId, RiskLevel } from "../../src/domain/gate/index.js";
+import { RepositoryRole } from "../../src/domain/projectDiscovery/index.js";
 
 const validDigest = `sha256:${"a".repeat(64)}`;
 
@@ -131,6 +132,91 @@ describe("Artifact proposal contracts", () => {
     expect(result.status).toBe(ResultStatus.Success);
   });
 
+  it("parses a valid ProjectProfileProposal proposal without evidence", () => {
+    const result = parseArtifactProposal(createProjectProfileProposal());
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Success) {
+      expect(result.value.artifactType).toBe(ArtifactType.ProjectProfileProposal);
+      expect(validateArtifactEvidence(result.value).status).toBe(ResultStatus.Success);
+    }
+  });
+
+  it.each([
+    ["unknown top-level field", { unexpected: true }],
+    [
+      "duplicate repository",
+      {
+        payload: {
+          repositorySelections: [
+            createRepositorySelection("repo-a"),
+            createRepositorySelection("repo-a"),
+          ],
+        },
+      },
+    ],
+    [
+      "duplicate accepted Rule IDs",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              acceptedRuleIds: ["rule-a", "rule-a"],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "accepted/rejected Rule ID overlap",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              acceptedRuleIds: ["rule-a"],
+              rejectedRuleIds: ["rule-a"],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "accepted/rejected mechanism candidate ID overlap",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              acceptedMechanismCandidateIds: ["mechanism-a"],
+              rejectedMechanismCandidateIds: ["mechanism-a"],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "Unknown repository role",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              confirmedRole: RepositoryRole.Unknown,
+            },
+          ],
+        },
+      },
+    ],
+  ])("rejects ProjectProfileProposal with %s", (_name, override) => {
+    const proposal = mergeProjectProfileProposal(createProjectProfileProposal(), override);
+
+    const result = parseArtifactProposal(proposal);
+
+    expect(result.status).toBe(ResultStatus.Failure);
+  });
+
   it("rejects non-Proposed proposal statuses", () => {
     const proposal = {
       ...createPlanRiskProposal(),
@@ -217,6 +303,45 @@ function createPlanRiskProposal() {
       testPlan: ["运行 artifact contract 单测"],
       rollbackPlan: ["删除本切片新增文件"],
       requiredGates: [GateId.G1Requirement, GateId.G2BusinessLogic],
+    },
+  };
+}
+
+function createProjectProfileProposal() {
+  return {
+    artifactType: ArtifactType.ProjectProfileProposal,
+    status: ArtifactStatus.Proposed,
+    payload: {
+      discoveryReportDigest: validDigest,
+      workspaceGraphRevision: "graph-rev-1",
+      repositorySelections: [createRepositorySelection("repo-a")],
+    },
+  };
+}
+
+function createRepositorySelection(repositoryId: string) {
+  return {
+    repositoryId,
+    repositoryRevision: "repo-rev-1",
+    profileCandidateDigest: validDigest,
+    confirmedRole: RepositoryRole.Application,
+    acceptedRuleIds: ["rule-a"],
+    rejectedRuleIds: ["rule-b"],
+    acceptedMechanismCandidateIds: ["mechanism-a"],
+    rejectedMechanismCandidateIds: ["mechanism-b"],
+  };
+}
+
+function mergeProjectProfileProposal(
+  proposal: ReturnType<typeof createProjectProfileProposal>,
+  override: Record<string, unknown>,
+) {
+  return {
+    ...proposal,
+    ...override,
+    payload: {
+      ...proposal.payload,
+      ...((override["payload"] as Record<string, unknown> | undefined) ?? {}),
     },
   };
 }

@@ -35,8 +35,6 @@ export interface AssembleProjectProfileCandidateInput {
   inventory: ProjectRepositoryFileInventory;
   /** 配置文件分析事实。 */
   configs: AnalyzedProjectConfigs;
-  /** 配置文件数量预算是否被截断。 */
-  configFileLimitReached: boolean;
 }
 
 /** 组装单仓 Project Profile Candidate 并计算稳定 Digest。 */
@@ -48,8 +46,6 @@ export function assembleProjectProfileCandidate(
     input.repository.repositoryId,
     input.inventory,
     input.configs.diagnostics,
-    input.configFileLimitReached,
-    input.manifest.budget.maxDiagnosticsPerRepository,
   );
   const mechanisms = createMechanismCandidates(
     input.repository.repositoryId,

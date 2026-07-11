@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import type { HarnessError } from "#common/index.js";
-import { ResultStatus, failure, success, type Result } from "#common/index.js";
 import {
   claimSchema,
   evidenceRefSchema,
@@ -14,34 +12,19 @@ import {
   MAX_ARTIFACT_LIST_ITEMS,
   MAX_ARTIFACT_PATH_LENGTH,
   MAX_ARTIFACT_TEXT_LENGTH,
-} from "./artifactConstants.js";
-import { parseArtifactDigest, type ArtifactDigest } from "./artifactDigest.js";
+} from "../constants/index.js";
+import type {
+  BusinessLogicChangeContractPayload,
+  BusinessLogicCurrentBehavior,
+  PlanRiskPayload,
+  RequirementContractPayload,
+} from "../contracts/index.js";
 import {
-  type ArtifactProposal,
-  type BusinessLogicChangeContractPayload,
-  type BusinessLogicChangeContractProposal,
-  type BusinessLogicCurrentBehavior,
-  type PlanRiskPayload,
-  type PlanRiskProposal,
-  type RequirementContractPayload,
-  type RequirementContractProposal,
-} from "./artifactContracts.js";
-import { ArtifactStatus, ArtifactType } from "./artifactEnums.js";
-import { createArtifactSchemaError } from "./artifactSchemaError.js";
-
-const nonBlank = (maxLength: number): z.ZodString =>
-  z
-    .string()
-    .min(1)
-    .max(maxLength)
-    .refine((value) => value === value.trim());
-
-const textArraySchema = z.array(nonBlank(MAX_ARTIFACT_TEXT_LENGTH)).max(MAX_ARTIFACT_LIST_ITEMS);
-const pathArraySchema = z.array(nonBlank(MAX_ARTIFACT_PATH_LENGTH)).max(MAX_ARTIFACT_LIST_ITEMS);
-const artifactDigestSchema = z
-  .string()
-  .refine((value) => parseArtifactDigest(value).status === ResultStatus.Success)
-  .transform((value) => value as ArtifactDigest);
+  artifactDigestSchema,
+  nonBlank,
+  pathArraySchema,
+  textArraySchema,
+} from "./schemaPrimitives.js";
 
 const currentBehaviorSchema = z
   .object({
@@ -127,69 +110,7 @@ export const planRiskPayloadSchema = z
     },
   );
 
-const requirementProposalSchema = z
-  .object({
-    artifactType: z.literal(ArtifactType.RequirementContract),
-    status: z.literal(ArtifactStatus.Proposed),
-    payload: requirementPayloadSchema,
-  })
-  .strict();
-
-const businessLogicProposalSchema = z
-  .object({
-    artifactType: z.literal(ArtifactType.BusinessLogicChangeContract),
-    status: z.literal(ArtifactStatus.Proposed),
-    payload: businessLogicPayloadSchema,
-  })
-  .strict();
-
-const planRiskProposalSchema = z
-  .object({
-    artifactType: z.literal(ArtifactType.PlanRisk),
-    status: z.literal(ArtifactStatus.Proposed),
-    payload: planRiskPayloadSchema,
-  })
-  .strict();
-
-const artifactProposalSchema = z.discriminatedUnion("artifactType", [
-  requirementProposalSchema,
-  businessLogicProposalSchema,
-  planRiskProposalSchema,
-]);
-
-/** 校验未知输入并返回严格 Artifact Proposal。 */
-export function parseArtifactProposal(input: unknown): Result<ArtifactProposal, HarnessError> {
-  const parsed = artifactProposalSchema.safeParse(input);
-  if (!parsed.success) {
-    return failure(
-      createArtifactSchemaError(
-        parsed.error,
-        "Artifact proposal does not match the supported schema.",
-      ),
-    );
-  }
-
-  switch (parsed.data.artifactType) {
-    case ArtifactType.RequirementContract:
-      return success(mapRequirementProposal(parsed.data));
-    case ArtifactType.BusinessLogicChangeContract:
-      return success(mapBusinessLogicProposal(parsed.data));
-    case ArtifactType.PlanRisk:
-      return success(mapPlanRiskProposal(parsed.data));
-  }
-}
-
-function mapRequirementProposal(
-  proposal: z.infer<typeof requirementProposalSchema>,
-): RequirementContractProposal {
-  return {
-    artifactType: proposal.artifactType,
-    status: proposal.status,
-    payload: mapRequirementPayload(proposal.payload),
-  };
-}
-
-/** 将 Requirement Payload Schema 输出映射为 exact-optional 领域契约。 */
+/** 灏?Requirement Payload Schema 杈撳嚭鏄犲皠涓?exact-optional 棰嗗煙濂戠害銆?*/
 export function mapRequirementPayload(
   payload: z.infer<typeof requirementPayloadSchema>,
 ): RequirementContractPayload {
@@ -211,17 +132,7 @@ export function mapRequirementPayload(
   };
 }
 
-function mapBusinessLogicProposal(
-  proposal: z.infer<typeof businessLogicProposalSchema>,
-): BusinessLogicChangeContractProposal {
-  return {
-    artifactType: proposal.artifactType,
-    status: proposal.status,
-    payload: mapBusinessLogicPayload(proposal.payload),
-  };
-}
-
-/** 将 Business Logic Payload Schema 输出映射为 exact-optional 领域契约。 */
+/** 灏?Business Logic Payload Schema 杈撳嚭鏄犲皠涓?exact-optional 棰嗗煙濂戠害銆?*/
 export function mapBusinessLogicPayload(
   payload: z.infer<typeof businessLogicPayloadSchema>,
 ): BusinessLogicChangeContractPayload {
@@ -246,15 +157,7 @@ function mapCurrentBehavior(
   };
 }
 
-function mapPlanRiskProposal(proposal: z.infer<typeof planRiskProposalSchema>): PlanRiskProposal {
-  return {
-    artifactType: proposal.artifactType,
-    status: proposal.status,
-    payload: mapPlanRiskPayload(proposal.payload),
-  };
-}
-
-/** 将 PlanRisk Payload Schema 输出映射为 exact-optional 领域契约。 */
+/** 灏?PlanRisk Payload Schema 杈撳嚭鏄犲皠涓?exact-optional 棰嗗煙濂戠害銆?*/
 export function mapPlanRiskPayload(
   payload: z.infer<typeof planRiskPayloadSchema>,
 ): PlanRiskPayload {

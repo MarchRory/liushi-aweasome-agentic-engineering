@@ -14,7 +14,7 @@ export interface ProjectFileSystemPort {
     input: InspectProjectRepositoryInput,
   ): Promise<Result<ProjectRepositoryFileInventory, HarnessError>>;
 
-  /** 对已选配置文件执行预算、边界与 UTF-8 校验后读取。 */
+  /** 对已选配置文件执行边界与 UTF-8 校验后读取。 */
   readTextFiles(
     input: ReadProjectTextFilesInput,
   ): Promise<Result<readonly ProjectTextFileReadResult[], HarnessError>>;
