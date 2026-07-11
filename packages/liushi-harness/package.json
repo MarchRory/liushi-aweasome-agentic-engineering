@@ -52,5 +52,13 @@
     "test": "vitest run --passWithNoTests",
     "test:architecture": "vitest run tests/architecture --passWithNoTests",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ulid": "3.0.2",
+    "write-file-atomic": "7.0.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/write-file-atomic": "4.0.3"
   }
 }
