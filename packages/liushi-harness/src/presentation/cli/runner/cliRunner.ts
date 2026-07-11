@@ -1,4 +1,4 @@
-import { isRuleResolutionBlocked } from "#application/index.js";
+import { isProjectDiscoveryBlocked, isRuleResolutionBlocked } from "#application/index.js";
 import { ActorKind, HarnessError, HarnessErrorCode, ResultStatus } from "#common/index.js";
 
 import { parseCliArguments, requestsJsonOutput } from "../parser/index.js";
@@ -10,6 +10,7 @@ import {
   type CliApplication,
   type DoctorCliCommand,
   type ParsedCliCommand,
+  type ProjectScanCliCommand,
   type RunCliDependencies,
   type RulesResolveCliCommand,
   type TaskCreateCliCommand,
@@ -78,6 +79,8 @@ async function executeCommand(
       return executeApprovalDecide(command, createApplication(command, dependencies), dependencies);
     case CliCommand.RulesResolve:
       return executeRulesResolve(command, createApplication(command, dependencies), dependencies);
+    case CliCommand.ProjectScan:
+      return executeProjectScan(command, createApplication(command, dependencies), dependencies);
   }
 }
 
@@ -211,6 +214,29 @@ async function executeRulesResolve(
     return mapErrorExitCode(result.error.code);
   }
   if (isRuleResolutionBlocked(result.value)) {
+    writeBlocked(dependencies, command.outputFormat, command.command, result.value);
+    return CLI_EXIT_CODE_CONFLICT;
+  }
+  writeSuccess(dependencies, command.outputFormat, command.command, result.value);
+  return CLI_EXIT_CODE_SUCCESS;
+}
+
+async function executeProjectScan(
+  command: ProjectScanCliCommand,
+  application: CliApplication,
+  dependencies: RunCliDependencies,
+): Promise<number> {
+  const manifest = await dependencies.jsonDocumentReader.read(command.filePath);
+  if (manifest.status === ResultStatus.Failure) {
+    writeFailure(dependencies, command.outputFormat, command.command, manifest.error);
+    return mapErrorExitCode(manifest.error.code);
+  }
+  const result = await application.scanProject.execute({ manifest: manifest.value });
+  if (result.status === ResultStatus.Failure) {
+    writeFailure(dependencies, command.outputFormat, command.command, result.error);
+    return mapErrorExitCode(result.error.code);
+  }
+  if (isProjectDiscoveryBlocked(result.value)) {
     writeBlocked(dependencies, command.outputFormat, command.command, result.value);
     return CLI_EXIT_CODE_CONFLICT;
   }

@@ -1,9 +1,6 @@
 /** 当前确定性 Project Scanner 实现版本。 */
 export const PROJECT_SCANNER_VERSION = "1.0.0";
 
-/** 单次 Scan 允许的默认 Repository 数量。 */
-export const DEFAULT_SCAN_MAX_REPOSITORIES = 10;
-
 /** 单次 Scan 允许的 Repository 硬上限。 */
 export const HARD_SCAN_MAX_REPOSITORIES = 20;
 
@@ -12,6 +9,12 @@ export const DEFAULT_SCAN_MAX_FILES = 20_000;
 
 /** 每个 Repository 可配置的最大文件数硬上限。 */
 export const HARD_SCAN_MAX_FILES = 50_000;
+
+/** 每个 Repository 默认枚举的最大目录数。 */
+export const DEFAULT_SCAN_MAX_DIRECTORIES = 10_000;
+
+/** 每个 Repository 可配置的最大目录数硬上限。 */
+export const HARD_SCAN_MAX_DIRECTORIES = 25_000;
 
 /** Repository 默认递归深度。 */
 export const DEFAULT_SCAN_MAX_DEPTH = 32;

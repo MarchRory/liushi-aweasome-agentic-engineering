@@ -29,4 +29,5 @@ export const CLI_USAGE_LINES: readonly string[] = [
   "liushi-harness artifact propose --workspace <id> --task <ulid> --file <proposal.json> [--actor-id <id>] [--store <path>] [--json]",
   "liushi-harness approval decide --workspace <id> --task <ulid> --request <ulid> --request-digest <sha256> --decision <approved|rejected|waived> --idempotency-key <key> [--reason <text>] [--actor-id <id>] [--store <path>] [--json]",
   "liushi-harness rules resolve --catalog <catalog.json> --context <context.json> [--json]",
+  "liushi-harness project scan --file <scan-manifest.json> [--json]",
 ];

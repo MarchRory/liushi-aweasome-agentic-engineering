@@ -11,3 +11,15 @@ The bundled work is licensed under Apache License 2.0. A copy is included at [th
 `liushi-harness` uses [minimatch](https://github.com/isaacs/minimatch) as a runtime dependency for deterministic Rule path selector matching.
 
 The work is licensed under the Blue Oak Model License 1.0.0. A copy is included at [thirdPartyLicenses/minimatchLicense.md](./thirdPartyLicenses/minimatchLicense.md).
+
+## jsonc-parser 3.3.1
+
+`liushi-harness` uses [jsonc-parser](https://github.com/microsoft/node-jsonc-parser) as a runtime dependency for deterministic JSON and JSONC project configuration parsing.
+
+The work is licensed under the MIT License. A copy is included at [thirdPartyLicenses/jsoncParserLicense.txt](./thirdPartyLicenses/jsoncParserLicense.txt).
+
+## yaml 2.9.0
+
+`liushi-harness` uses [yaml](https://github.com/eemeli/yaml) as a runtime dependency for deterministic YAML project configuration parsing.
+
+The work is licensed under the ISC License. A copy is included at [thirdPartyLicenses/yamlLicense.txt](./thirdPartyLicenses/yamlLicense.txt).

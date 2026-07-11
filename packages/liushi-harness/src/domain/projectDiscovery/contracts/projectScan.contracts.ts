@@ -7,6 +7,8 @@ import type { RepositoryRole } from "../enums/index.js";
 export interface ProjectScanBudget {
   /** 每个 Repository 最多枚举的文件数。 */
   maxFilesPerRepository: number;
+  /** 每个 Repository 最多枚举的目录数。 */
+  maxDirectoriesPerRepository: number;
   /** 每个 Repository 允许的最大目录深度。 */
   maxDepth: number;
   /** 每个 Repository 最多读取的配置文件数。 */

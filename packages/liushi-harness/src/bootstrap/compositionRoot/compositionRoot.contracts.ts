@@ -5,6 +5,7 @@ import type {
   ProposeArtifactUseCase,
   RecordApprovalUseCase,
   ResolveRulesUseCase,
+  ScanProjectUseCase,
 } from "#application/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
 
@@ -22,6 +23,8 @@ export interface HarnessApplication {
   recordApproval: RecordApprovalUseCase;
   /** 确定性 Rule Catalog 解析。 */
   resolveRules: ResolveRulesUseCase;
+  /** 显式多仓只读 Project Discovery。 */
+  scanProject: ScanProjectUseCase;
 }
 
 /** 创建 Harness Application 的可注入依赖。 */

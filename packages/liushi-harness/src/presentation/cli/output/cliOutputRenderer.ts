@@ -77,6 +77,10 @@ export function writeSuccess<T>(
       writeRuleBundleSummary(dependencies, data);
       return;
     }
+    if (command === CliCommand.ProjectScan) {
+      writeProjectDiscoverySummary(dependencies, data);
+      return;
+    }
     const taskId = String(data["taskId"]);
     const workspaceId = String(data["workspaceId"]);
     if (command === CliCommand.TaskCreate) {
@@ -107,7 +111,13 @@ export function writeBlocked<T>(
     dependencies.writer.stdout(`${JSON.stringify(envelope)}\n`);
     return;
   }
-  writeRuleBundleSummary(dependencies, data);
+  if (command === CliCommand.RulesResolve) {
+    writeRuleBundleSummary(dependencies, data);
+    return;
+  }
+  if (command === CliCommand.ProjectScan) {
+    writeProjectDiscoverySummary(dependencies, data);
+  }
 }
 
 /** 将 HarnessError 渲染为稳定 JSON Schema 或 Human 文本。 */
@@ -179,6 +189,15 @@ function writeRuleBundleSummary(dependencies: RunCliDependencies, data: unknown)
   }
   dependencies.writer.stdout(
     `Rule bundle ${String(data["digest"])}: status=${String(data["resolutionStatus"])} rules=${countEntries(data["rules"])} conflicts=${countEntries(data["conflicts"])} missingValidators=${countEntries(data["missingValidators"])} missingCapabilities=${countEntries(data["missingCapabilities"])} contextDrifts=${countEntries(data["contextDrifts"])} definitionViolations=${countEntries(data["definitionViolations"])}.\n`,
+  );
+}
+
+function writeProjectDiscoverySummary(dependencies: RunCliDependencies, data: unknown): void {
+  if (!isRecord(data)) {
+    return;
+  }
+  dependencies.writer.stdout(
+    `Project discovery ${String(data["digest"])}: status=${String(data["status"])} profilePromotion=${String(data["profilePromotionStatus"])} repositories=${countEntries(data["profileCandidates"])} dependencyEdges=${countEntries(data["dependencyEdges"])} dependencyAmbiguities=${countEntries(data["dependencyAmbiguities"])}.\n`,
   );
 }
 

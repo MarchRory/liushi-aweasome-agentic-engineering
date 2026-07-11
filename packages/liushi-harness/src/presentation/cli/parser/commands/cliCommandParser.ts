@@ -140,6 +140,14 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
       contextFilePath: requireValue(collected, CliOptionName.Context),
     };
   }
+  if (isExactCommand(collected.positionals, ["project", "scan"])) {
+    validateAllowedOptions(collected, new Set([CliOptionName.Json, CliOptionName.File]));
+    return {
+      command: CliCommand.ProjectScan,
+      outputFormat,
+      filePath: requireValue(collected, CliOptionName.File),
+    };
+  }
   throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported CLI command.", {
     command: collected.positionals.join(" "),
   });

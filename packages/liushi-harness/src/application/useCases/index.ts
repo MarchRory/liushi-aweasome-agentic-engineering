@@ -4,3 +4,4 @@ export * from "./getTaskStatus/index.js";
 export * from "./proposeArtifact/index.js";
 export * from "./recordApproval/index.js";
 export * from "./resolveRules/index.js";
+export * from "./scanProject/index.js";

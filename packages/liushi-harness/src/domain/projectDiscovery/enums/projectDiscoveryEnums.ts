@@ -24,6 +24,12 @@ export enum ProjectDiscoveryStatus {
   Truncated = "truncated",
 }
 
+/** Project Profile Candidate 进入 Promotion 前的人工门禁状态。 */
+export enum ProjectProfilePromotionStatus {
+  /** 当前 Scanner 只产出 Candidate，必须经过独立 Human Review。 */
+  HumanReviewRequired = "human_review_required",
+}
+
 /** Project Scanner 诊断的严重程度。 */
 export enum ProjectDiagnosticSeverity {
   /** 仅记录可解释事实。 */
@@ -38,10 +44,14 @@ export enum ProjectDiagnosticSeverity {
 export enum ProjectDiagnosticCode {
   /** 文件枚举达到预算上限。 */
   FileLimitReached = "file_limit_reached",
+  /** 目录枚举达到预算上限。 */
+  DirectoryLimitReached = "directory_limit_reached",
   /** 目录递归达到深度上限。 */
   DepthLimitReached = "depth_limit_reached",
   /** 待读取配置文件达到数量上限。 */
   ConfigFileLimitReached = "config_file_limit_reached",
+  /** 诊断条目达到预算上限。 */
+  DiagnosticLimitReached = "diagnostic_limit_reached",
   /** 单个配置文件超过读取预算。 */
   ConfigFileTooLarge = "config_file_too_large",
   /** 配置内容总字节达到预算上限。 */

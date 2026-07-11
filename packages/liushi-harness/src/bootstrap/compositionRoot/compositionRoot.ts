@@ -5,6 +5,7 @@ import {
   ProposeArtifactUseCase,
   RecordApprovalUseCase,
   ResolveRulesUseCase,
+  ScanProjectUseCase,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
 import {
@@ -13,7 +14,9 @@ import {
   FileRuntimeHealthAdapter,
   FileSnapshotStore,
   FileTaskRepository,
+  NodeProjectFileSystemAdapter,
   Rfc8785Sha256DigestAdapter,
+  StructuredProjectConfigParserAdapter,
   SystemDelayAdapter,
   SystemClock,
   UlidGenerator,
@@ -47,6 +50,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   });
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
+  const projectFileSystem = new NodeProjectFileSystemAdapter();
+  const projectConfigParser = new StructuredProjectConfigParserAdapter();
 
   return {
     checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
@@ -67,5 +72,6 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       delay,
     ),
     resolveRules: new ResolveRulesUseCase(digest),
+    scanProject: new ScanProjectUseCase(projectFileSystem, projectConfigParser, digest),
   };
 }

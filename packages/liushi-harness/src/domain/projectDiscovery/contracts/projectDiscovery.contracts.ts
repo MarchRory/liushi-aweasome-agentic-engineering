@@ -18,6 +18,7 @@ import type {
   ProjectDiscoveryStatus,
   ProjectMechanismKind,
   ProjectPackageManager,
+  ProjectProfilePromotionStatus,
   RepositoryRole,
 } from "../enums/index.js";
 import type { ProjectScanBudget } from "./projectScan.contracts.js";
@@ -202,6 +203,20 @@ export interface ProjectDependencyEdgeCandidate {
   sourcePath: string;
 }
 
+/** 多个 Repository 声明同名 Package 时无法唯一解析的依赖候选。 */
+export interface ProjectDependencyAmbiguityCandidate {
+  /** 依赖发起 Repository。 */
+  fromRepositoryId: RepositoryId;
+  /** Package Manifest 中的依赖类别。 */
+  kind: ProjectDependencyKind;
+  /** 无法唯一匹配 Owner 的 Package Name。 */
+  packageName: string;
+  /** 声明依赖的 Manifest 相对路径。 */
+  sourcePath: string;
+  /** 声明该 Package 的候选 Repository，按 Repository ID 稳定排序。 */
+  owners: readonly RepositoryId[];
+}
+
 /** 显式多仓只读扫描的完整报告。 */
 export interface ProjectDiscoveryReport {
   /** Project Discovery Report Schema Version。 */
@@ -216,10 +231,14 @@ export interface ProjectDiscoveryReport {
   budget: ProjectScanBudget;
   /** 所有 Repository Candidate 的聚合完整性。 */
   status: ProjectDiscoveryStatus;
+  /** Profile Candidate 进入 Promotion 前的人工门禁状态。 */
+  profilePromotionStatus: ProjectProfilePromotionStatus;
   /** 每个显式 Repository 的 ProjectProfile Candidate。 */
   profileCandidates: readonly ProjectProfileCandidate[];
   /** 由 Package Name 匹配形成的跨仓依赖边候选。 */
   dependencyEdges: readonly ProjectDependencyEdgeCandidate[];
+  /** 因 Package Name 存在多个 Owner 而无法唯一解析的依赖候选。 */
+  dependencyAmbiguities: readonly ProjectDependencyAmbiguityCandidate[];
   /** 对报告全部机器字段计算的 Content Digest。 */
   digest: ContentDigest;
 }

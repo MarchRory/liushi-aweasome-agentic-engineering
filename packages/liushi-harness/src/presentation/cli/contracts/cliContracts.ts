@@ -5,6 +5,7 @@ import type {
   ProposeArtifactUseCase,
   RecordApprovalUseCase,
   ResolveRulesUseCase,
+  ScanProjectUseCase,
 } from "#application/index.js";
 import type { HarnessErrorCode } from "#common/index.js";
 
@@ -28,6 +29,8 @@ export enum CliCommand {
   ApprovalDecide = "approval.decide",
   /** 只读解析 Project Rule Catalog。 */
   RulesResolve = "rules.resolve",
+  /** 对显式多仓执行只读 Project Discovery。 */
+  ProjectScan = "project.scan",
 }
 
 /** CLI 接受的 Human Approval 决策值。 */
@@ -143,6 +146,14 @@ export interface RulesResolveCliCommand extends BaseCliCommand {
   contextFilePath: string;
 }
 
+/** Project Scan 命令。 */
+export interface ProjectScanCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  command: CliCommand.ProjectScan;
+  /** Project Scan Manifest JSON 文件路径。 */
+  filePath: string;
+}
+
 /** CLI Parser 成功后允许进入执行阶段的命令。 */
 export type ParsedCliCommand =
   | HelpCliCommand
@@ -151,7 +162,8 @@ export type ParsedCliCommand =
   | TaskStatusCliCommand
   | ArtifactProposeCliCommand
   | ApprovalDecideCliCommand
-  | RulesResolveCliCommand;
+  | RulesResolveCliCommand
+  | ProjectScanCliCommand;
 
 /** CLI 可调用的 Application Use Cases。 */
 export interface CliApplication {
@@ -167,6 +179,8 @@ export interface CliApplication {
   recordApproval: RecordApprovalUseCase;
   /** 确定性 Rule Resolution Use Case。 */
   resolveRules: ResolveRulesUseCase;
+  /** 显式多仓只读 Project Discovery Use Case。 */
+  scanProject: ScanProjectUseCase;
 }
 /** 按 Store Root 创建 Use Cases 的工厂。 */
 export interface CliApplicationFactory {
