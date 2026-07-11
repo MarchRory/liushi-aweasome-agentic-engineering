@@ -84,7 +84,7 @@
     "jsonc-parser": "3.3.1",
     "minimatch": "10.2.5",
     "ulid": "3.0.2",
-    "write-file-atomic": "7.0.1",
+    "write-file-atomic": "8.0.0",
     "yaml": "2.9.0",
     "zod": "4.4.3"
   },
