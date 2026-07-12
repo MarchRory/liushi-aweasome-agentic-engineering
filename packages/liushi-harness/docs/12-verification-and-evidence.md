@@ -15,7 +15,7 @@ Harness 不能以 Agent 声称“完成”作为交付依据。Verification 层�
 
 ### 1.1 当前实现状态
 
-**状态：基础契约部分实现，执行编排尚未实现。** 当前 Domain 已有 Evidence 类型，Artifact/Gate/Approval 和 Profile Compiler 会记录摘要与来源；仓库自身也具备 Typecheck、Lint、Unit、Integration、E2E 和 Architecture Test。尚未实现面向真实项目的 VerificationPlan、Command Runner、EvidenceBundle、影响面选择、Flaky 策略、G5 Waiver 和多仓验证编排。
+**状态：验证协议和证据装配部分实现，生产执行编排尚未实现。** 当前已实现 `VerificationPlan`、`VerificationCheck` 的严格校验，`VerificationExecutorPort`、`RunVerificationUseCase`、`EvidenceBundle` 装配和可注入的 fail-closed Mock Executor。每条 Check 的输出只用于进程内计算 Digest，不进入 Bundle；未配置的 Mock Check 返回 `Blocked`，不能伪造通过。尚未实现真实 Command Runner、影响面选择、重试/Flaky 策略、G5 Waiver、独立 Verifier 和多仓验证编排。
 
 ## 2. Verification Kind
 
@@ -83,6 +83,16 @@ PlanRisk 为每个 Check 声明：
 - 失败时是否允许 Waiver。
 
 命令来自已确认 ProjectProfile 或仓库脚本。Agent 建议的新命令必须先进入 Plan Proposal，不能直接执行未知脚本。
+
+### 3.1 当前已实现的协议切片
+
+- `VerificationPlan` 绑定 Repository、Worktree、Base Revision、Target Revision 和按 `checkId` 排序的 Check 集合。
+- `VerificationCommandSpec` 只描述可执行文件、参数、相对工作目录和允许的环境变量名；校验器拒绝路径穿越、绝对工作目录、控制字符和不安全环境变量名，真实执行器仍必须使用非 Shell 参数数组。
+- `RunVerificationUseCase` 串行调用 `VerificationExecutorPort`，把执行异常和非法结果转换为 `Blocked`，并按 Required/Conditional/Advisory 聚合整体状态。
+- `EvidenceBundle` 保存 Plan Digest、Check 状态、失败分类、时间、退出码、输出 Digest 和可定位的 `EvidenceRef`，不保存原始 stdout/stderr。
+- 默认 `MockVerificationExecutorAdapter` 不执行命令；只有显式注入的结果才会产生 Passed/Failed，未配置结果固定为 `Blocked`。
+
+该切片只提供可替换的 Application/Infrastructure 边界，不代表已经具备真实项目执行能力。真实执行器必须在独立切片中补齐命令白名单、Worktree Root 校验、环境隔离、超时/取消、输出上限和 Action Journal。
 
 ## 4. 分层验证
 

@@ -23,7 +23,7 @@
 | 09 Hooks 与 Agent Runtime   | 已完成   | `partial`     | Canonical Pre/PostAction、Codex `apply_patch` Projection/Wrapper、PlanRisk/Human Gate 授权、Dispatcher、Action Journal 与 Trace                                                                                                                                                                                                 | 其他平台 Projection、自动安装、其他生命周期、Role Runtime 和 Human Battle                                                    |
 | 10 模型路由与 Eval          | 已完成   | `designed`    | 无产品运行时能力                                                                                                                                                                                                                                                                                                                | Model Registry、Router、升级、Eval Dataset 和成本策略                                                                        |
 | 11 Skills 与 Connectors     | 已完成   | `designed`    | Scanner、CLI 和 Digest 可供未来复用                                                                                                                                                                                                                                                                                             | Skill Registry/Runner、MCP、Wiki、Issue、Obsidian、认证和写入 Gate                                                           |
-| 12 Verification 与 Evidence | 已完成   | `partial`     | Evidence 基础类型、项目自身测试门禁、Artifact/Gate/Profile 来源摘要                                                                                                                                                                                                                                                             | VerificationPlan、Command Runner、EvidenceBundle、影响面、Flaky、G5 和多仓验证                                               |
+| 12 Verification 与 Evidence | 已完成   | `partial`     | Evidence 基础类型、项目自身测试门禁、Artifact/Gate/Profile 来源摘要、VerificationPlan 校验、Verification Port、EvidenceBundle 装配和 fail-closed Mock Executor                                                                                                                                                                  | 真实 Command Runner、影响面、Flaky、G5、Independent Verifier 和多仓验证                                                      |
 | 13 Learning 与 Knowledge    | 已完成   | `designed`    | 无产品运行时能力                                                                                                                                                                                                                                                                                                                | Candidate Store、Eval、Promotion、Retrieval、Curator 和 Skill 改进                                                           |
 | 14 生产 SOP                 | 已完成   | `partial`     | npm、Doctor、Task、Artifact、Approval、Rule、Scanner、Profile Compile、Codex Probe                                                                                                                                                                                                                                              | 自动 Task Delivery、Executor、Workflow、验证、Memory、Learning 和长期治理命令                                                |
 | 15 交付路线                 | 已完成   | `implemented` | 能力门、决策门、完成门和真实项目验证口径                                                                                                                                                                                                                                                                                        | Workflow 后的切片顺序等待对齐                                                                                                |
@@ -42,8 +42,9 @@
 - 默认 Composition Root 通过上游 Task Replay 重算 PlanRisk、Business Logic G2、Approval 和 Write Set；调用方提交的 `ExecutionAuthorization` 只作为引用，不能绕过 Human Gate。
 - 候选事件的非法状态返回 `InvalidStateTransition`；已提交日志的非法状态仍按 `CorruptStore` 处理。
 - `WorktreeInspectorPort` 通过 `shell=false` 的 Git Command Runner 只读读取真实 Worktree，检查 Root containment、分支、Base Revision、完整状态和 Write Set 越界；异常只返回稳定诊断码，不泄露本机路径或命令输出。
+- `VerificationPlan`、`VerificationExecutorPort` 和 `RunVerificationUseCase` 已定义验证边界；EvidenceBundle 绑定 Plan/Revision/Digest，默认 Mock Executor 对未配置 Check 返回 `Blocked`，不执行任何命令。
 
-因此，表格中 CodingTask Store/Command 的旧描述以本节为准；Worktree 创建/管理、Repository Lock、受控写入、Action Journal 接入、Verification Runner/EvidenceBundle、Mock/真实 Executor 和 Studio 仍未实现。
+因此，表格中 CodingTask Store/Command 的旧描述以本节为准；Worktree 创建/管理、Repository Lock、受控写入、Action Journal 接入、真实 Verification Command Runner、影响面选择、重试/Flaky、Waiver、多仓编排和 Studio 仍未实现。
 
 ## 4. 当前产品边界
 
@@ -69,15 +70,16 @@
 - RequirementWorkflow Aggregate/Reducer、Event Replay、File Store、版本冲突、幂等 Command 和 Human Pause/Resume/Cancel Gateway API。
 - CodingTask 单仓 Aggregate/Reducer、独立 Schema、PlanRisk/G2 ExecutionAuthorization、Attempt 串行约束、Verification 结果接纳和 Human Resolution Domain API。
 - CodingTask Worktree Inspector：真实 Worktree Root containment、分支、HEAD/Base Revision、Git 状态、Rename/Copy 解析、Write Set 越界检查和不泄露本机路径的稳定报告。
+- VerificationPlan/Check 严格校验、Verification Executor/Runner Port、串行验证用例、Required/Conditional/Advisory 状态聚合、输出 Digest 和不携带原始输出的 EvidenceBundle 装配；默认 Mock 未配置结果时 fail-closed 为 `Blocked`。
 
 当前 npm 包不提供：
 
-- 自动需求澄清、Plan、Implementation、Verification 和 Learning Workflow。
-- 现有 CLI 写命令向 Command Gateway 的完整迁移、Child Workflow、Cell Runtime、Worktree 创建/管理/写入和 Verification Runner/Evidence。
+- 自动需求澄清、Plan、Implementation、完整 Verification 和 Learning Workflow。
+- 现有 CLI 写命令向 Command Gateway 的完整迁移、Child Workflow、Cell Runtime、Worktree 创建/管理/写入、真实 Verification Command Runner 和影响面编排。
 - Codex 真实受信任项目的自动安装与平台 Smoke、Claude-compatible 或 CatPaw Adapter。
 - 自动代码写入、Worktree、多仓写入 Saga、合并、发布或部署。
 - Skill、Connector、Wiki、Obsidian、Memory、Knowledge 或 Agent Registry Runtime。
-- 完整项目 Validator Execution、EvidenceBundle 和 ComplianceReport。
+- 完整项目 Validator Execution、真实命令输出存储/截断、Flaky/Waiver、Independent Verifier 和 ComplianceReport。
 
 ## 5. 依赖关系
 
@@ -119,4 +121,4 @@ flowchart LR
 
 ## 7. 下一实现门
 
-Workflow 产品与技术方案已经对齐，S0 的持久化 Command Gateway、因果标识、Revision/Context、Failure Taxonomy、Golden Replay、`outcomeUnknown`、Timeline、Action Journal、完成态 Trace、Canonical Action Hook Core、固定 Cell/Failure 路由 Domain Policy、S2 Workflow Kernel 和 CodingTask Domain Core 已通过测试。Codex `apply_patch` 的输入 Adapter、Binding、配置投影、CLI Wrapper 和静态 Capability Probe 已完成 Fixture 验证；CodingTask Store/Command 与 Worktree/Write Set 只读检查已完成，下一步是 Verification Port、EvidenceBundle、Mock Executor，以及继续等待 Human 在受信任真实项目中执行 Hook Smoke/Negative Test。Worktree 生命周期、Claude-compatible/CatPaw、自动安装和 Role Invocation 仍未实现。
+Workflow 产品与技术方案已经对齐，S0 的持久化 Command Gateway、因果标识、Revision/Context、Failure Taxonomy、Golden Replay、`outcomeUnknown`、Timeline、Action Journal、完成态 Trace、Canonical Action Hook Core、固定 Cell/Failure 路由 Domain Policy、S2 Workflow Kernel 和 CodingTask Domain Core 已通过测试。Codex `apply_patch` 的输入 Adapter、Binding、配置投影、CLI Wrapper 和静态 Capability Probe 已完成 Fixture 验证；CodingTask Store/Command、Worktree/Write Set 只读检查、VerificationPlan/Port、EvidenceBundle 和 fail-closed Mock Executor 已完成，下一步是 Worktree 生命周期、真实 Verification Command Runner、影响面/重试策略、Action Journal 接入，以及继续等待 Human 在受信任真实项目中执行 Hook Smoke/Negative Test。Claude-compatible/CatPaw、自动安装和 Role Invocation 仍未实现。

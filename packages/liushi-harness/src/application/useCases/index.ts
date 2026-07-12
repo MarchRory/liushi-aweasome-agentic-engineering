@@ -16,3 +16,4 @@ export * from "./scanProject/index.js";
 export * from "./bindHookWorkspace/index.js";
 export * from "./probeCodexCapabilities/index.js";
 export * from "./inspectWorktree/index.js";
+export * from "./runVerification/index.js";

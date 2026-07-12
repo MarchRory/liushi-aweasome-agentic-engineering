@@ -13,6 +13,7 @@ import {
   GetTaskTimelineUseCase,
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
+  RunVerificationUseCase,
   ListTraceObservationsUseCase,
   ListRecoverableActionsUseCase,
   ProposeArtifactUseCase,
@@ -44,6 +45,7 @@ import {
   FileCodingTaskRepository,
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
+  MockVerificationExecutorAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
   StructuredProjectConfigParserAdapter,
@@ -174,6 +176,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     ),
     inspectWorktree: new InspectWorktreeUseCase(
       new NodeWorktreeInspectorAdapter(new NodeCommandRunnerAdapter()),
+    ),
+    runVerification: new RunVerificationUseCase(
+      options.verificationExecutor ?? new MockVerificationExecutorAdapter(clock),
+      digest,
+      clock,
     ),
   };
 }

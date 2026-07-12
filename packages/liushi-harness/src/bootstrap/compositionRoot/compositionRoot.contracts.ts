@@ -11,6 +11,7 @@ import type {
   GetTaskTimelineUseCase,
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
+  RunVerificationUseCase,
   ListRecoverableActionsUseCase,
   ListTraceObservationsUseCase,
   ProposeArtifactUseCase,
@@ -24,7 +25,10 @@ import type {
   ScanProjectUseCase,
   WorkflowCommandService,
 } from "#application/index.js";
-import type { CodingTaskExecutionAuthorizationResolver } from "#application/ports/index.js";
+import type {
+  CodingTaskExecutionAuthorizationResolver,
+  VerificationExecutorPort,
+} from "#application/ports/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
 
 /** Harness 对 CLI 和嵌入式调用方公开的 Use Case 集合。 */
@@ -77,6 +81,8 @@ export interface HarnessApplication {
   codingTaskCommands: CodingTaskCommandService;
   /** 只读检查 CodingTask 工作树、基线和 Write Set。 */
   inspectWorktree: InspectWorktreeUseCase;
+  /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
+  runVerification: RunVerificationUseCase;
 }
 
 /** 创建 Harness Application 的可注入依赖。 */
@@ -99,4 +105,6 @@ export interface HarnessApplicationOptions {
   approvalIdGenerator?: IdGenerator;
   /** 可替换的 CodingTask 权威授权解析器，默认从 Task Replay 派生。 */
   codingTaskAuthorizationResolver?: CodingTaskExecutionAuthorizationResolver;
+  /** 可注入的 Verification Executor，默认使用 fail-closed Mock。 */
+  verificationExecutor?: VerificationExecutorPort;
 }
