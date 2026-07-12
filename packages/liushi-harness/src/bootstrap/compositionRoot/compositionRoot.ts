@@ -1,5 +1,6 @@
 import {
   CheckRuntimeHealthUseCase,
+  CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
   ProposeArtifactUseCase,
@@ -55,6 +56,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
 
   return {
     checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
+    compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
     createTask: new CreateTaskUseCase(taskRepository, clock, taskIdGenerator),
     getTaskStatus: new GetTaskStatusUseCase(taskRepository),
     proposeArtifact: new ProposeArtifactUseCase(

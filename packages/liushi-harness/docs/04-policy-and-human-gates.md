@@ -68,19 +68,21 @@ AI 信号只能提高风险或请求 Human 澄清，不能单独降低确定性�
 
 ## 4. Gate 清单
 
-| Gate                  | 触发条件                                                  | 所需 Artifact               | Human 决策           |
-| --------------------- | --------------------------------------------------------- | --------------------------- | -------------------- |
-| G0 Managed Files      | 安装、升级、覆盖执行器配置                                | InstallPlan、Diff           | 确认写入             |
-| G1 Requirement        | 所有实现任务                                              | RequirementContract         | 确认需求与范围       |
-| G2 Business Logic     | 历史逻辑或业务敏感路径                                    | BusinessLogicChangeContract | 确认现状与改动方案   |
-| G3 Cross Repo         | Write Set 超过一个仓库                                    | WorkspaceGraph、PlanRisk    | 确认仓库和顺序       |
-| G4 Risk Operation     | R2/R3 外部、破坏性、权限操作                              | PlanRisk、Action Proposal   | 确认精确动作         |
-| G5 Validation Waiver  | 必需检查失败或无法执行                                    | EvidenceBundle Draft        | 接受剩余风险         |
-| G6 Merge/Release      | 合并、发布、部署                                          | Final EvidenceBundle        | Human 执行或明确确认 |
-| G7 Governed Promotion | 正式知识、Rule、Instruction、Agent、Skill、Wiki 或 Policy | Candidate、Eval             | 确认晋升             |
-| G8 Rule/Architecture  | 临时 Rule 例外或架构机制偏离                              | RuleComplianceReport、Diff  | 确认精确例外或变更   |
+| Gate                  | 触发条件                                                    | 所需 Artifact                                      | Human 决策               |
+| --------------------- | ----------------------------------------------------------- | -------------------------------------------------- | ------------------------ |
+| G0 Managed Files      | 安装、升级、覆盖执行器配置                                  | InstallPlan、Diff                                  | 确认写入                 |
+| G1 Requirement        | 所有实现任务                                                | RequirementContract                                | 确认需求与范围           |
+| G2 Business Logic     | 历史逻辑或业务敏感路径                                      | BusinessLogicChangeContract                        | 确认现状与改动方案       |
+| G3 Cross Repo         | Write Set 超过一个仓库                                      | WorkspaceGraph、PlanRisk                           | 确认仓库和顺序           |
+| G4 Risk Operation     | R2/R3 外部、破坏性、权限操作                                | PlanRisk、Action Proposal                          | 确认精确动作             |
+| G5 Validation Waiver  | 必需检查失败或无法执行                                      | EvidenceBundle Draft                               | 接受剩余风险             |
+| G6 Merge/Release      | 合并、发布、部署                                            | Final EvidenceBundle                               | Human 执行或明确确认     |
+| G7 Governed Promotion | 正式知识、Rule、Instruction、Agent、Skill、Wiki 或 Policy   | Candidate、Eval                                    | 确认晋升                 |
+| G8 Project Compliance | ProjectProfile Candidate 晋升、临时 Rule 例外或架构机制偏离 | ProjectProfileProposal、RuleComplianceReport、Diff | 确认精确选择、例外或变更 |
 
 所有风险操作都必须经过对应 Human Gate。G2 必须同时确认“当前业务逻辑理解”和“计划改动”，不能只确认代码 Diff。
+
+当前已实现的 G8 路径是 ProjectProfile Candidate 晋升：风险固定为 R3、不可豁免，并绑定最新 `ProjectProfileProposal` 的 Artifact ID、Revision 和 Digest。Report、仓库 Revision、候选集合或 Proposal 内容变化后，必须生成新 Revision 并重新审批。Rule Exception 与实现 Diff 的 G8 仍属于后续切片。
 
 ## 5. Gate Evaluation
 

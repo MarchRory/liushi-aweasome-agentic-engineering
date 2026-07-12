@@ -1,5 +1,6 @@
 import type {
   CheckRuntimeHealthUseCase,
+  CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
   ProposeArtifactUseCase,
@@ -31,6 +32,8 @@ export enum CliCommand {
   RulesResolve = "rules.resolve",
   /** 对显式多仓执行只读 Project Discovery。 */
   ProjectScan = "project.scan",
+  /** 将已批准的 ProjectProfileProposal 编译为完整 Bundle。 */
+  ProfileCompile = "profile.compile",
 }
 
 /** CLI 接受的 Human Approval 决策值。 */
@@ -96,7 +99,7 @@ export interface TaskStatusCliCommand extends BaseCliCommand {
   command: CliCommand.TaskStatus;
   /** Task 所属 Workspace。 */
   workspaceId: string;
-  /** Task ULID。 */
+  /** Task ULID 标识。 */
   taskId: string;
 }
 
@@ -106,7 +109,7 @@ export interface ArtifactProposeCliCommand extends BaseCliCommand {
   command: CliCommand.ArtifactPropose;
   /** Task 所属 Workspace。 */
   workspaceId: string;
-  /** Task ULID。 */
+  /** Task ULID 标识。 */
   taskId: string;
   /** Artifact Proposal JSON 文件路径。 */
   filePath: string;
@@ -120,7 +123,7 @@ export interface ApprovalDecideCliCommand extends BaseCliCommand {
   command: CliCommand.ApprovalDecide;
   /** Task 所属 Workspace。 */
   workspaceId: string;
-  /** Task ULID。 */
+  /** Task ULID 标识。 */
   taskId: string;
   /** 正在响应的 DecisionRequest ID。 */
   decisionRequestId: string;
@@ -154,6 +157,20 @@ export interface ProjectScanCliCommand extends BaseCliCommand {
   filePath: string;
 }
 
+/** Profile Compile 命令。 */
+export interface ProfileCompileCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  command: CliCommand.ProfileCompile;
+  /** Task 所属 Workspace。 */
+  workspaceId: string;
+  /** Task ULID 标识。 */
+  taskId: string;
+  /** 已批准的 ProjectProfileProposal Artifact ULID。 */
+  artifactId: string;
+  /** 当前 Project Discovery Report JSON 文件路径。 */
+  reportFilePath: string;
+}
+
 /** CLI Parser 成功后允许进入执行阶段的命令。 */
 export type ParsedCliCommand =
   | HelpCliCommand
@@ -163,12 +180,15 @@ export type ParsedCliCommand =
   | ArtifactProposeCliCommand
   | ApprovalDecideCliCommand
   | RulesResolveCliCommand
-  | ProjectScanCliCommand;
+  | ProjectScanCliCommand
+  | ProfileCompileCliCommand;
 
 /** CLI 可调用的 Application Use Cases。 */
 export interface CliApplication {
   /** Runtime 健康检查 Use Case。 */
   checkRuntimeHealth: CheckRuntimeHealthUseCase;
+  /** Project Profile 编译 Use Case。 */
+  compileProjectProfile: CompileProjectProfileUseCase;
   /** Task 创建 Use Case。 */
   createTask: CreateTaskUseCase;
   /** Task 状态查询 Use Case。 */

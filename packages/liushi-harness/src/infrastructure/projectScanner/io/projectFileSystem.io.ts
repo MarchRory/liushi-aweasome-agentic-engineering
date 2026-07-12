@@ -38,7 +38,7 @@ export interface PathInspection {
   readonly status: PathInspectionStatus;
 }
 
-/** Records a collision using the first enumerated path for the lower-case key. */
+/** 使用小写 key 首次枚举到的路径记录冲突。 */
 export function recordCaseInsensitivePath(relativePath: string, state: CaseCollisionState): void {
   const key = relativePath.toLowerCase();
   const firstPath = state.casePathKeys.get(key);
@@ -49,7 +49,7 @@ export function recordCaseInsensitivePath(relativePath: string, state: CaseColli
   state.casePathKeys.set(key, relativePath);
 }
 
-/** Checks path components without following a symbolic link or junction. */
+/** 检查路径组件时不跟随符号链接或 junction。 */
 export async function inspectPath(root: string, relativePath: string): Promise<PathInspection> {
   let current = root;
   for (const segment of relativePath.split("/")) {
@@ -66,17 +66,17 @@ export async function inspectPath(root: string, relativePath: string): Promise<P
   return { status: PathInspectionStatus.Ok };
 }
 
-/** Creates the redacted result used when a requested path is unsafe. */
+/** 创建请求路径不安全时使用的脱敏结果。 */
 export function unsafePathResult(relativePath = "<unsafe-path>"): ProjectTextFileReadResult {
   return { relativePath, status: ProjectTextFileReadStatus.UnsafePath, byteLength: 0 };
 }
 
-/** Creates the result used when a requested file cannot be read. */
+/** 创建请求文件无法读取时使用的结果。 */
 export function unavailableResult(relativePath: string, byteLength = 0): ProjectTextFileReadResult {
   return { relativePath, status: ProjectTextFileReadStatus.Unavailable, byteLength };
 }
 
-/** Validates repository inventory input without including runtime root values in diagnostics. */
+/** 校验 repository inventory 输入，诊断中不包含运行时 root 值。 */
 export function validateInspectInput(
   input: InspectProjectRepositoryInput,
 ): HarnessErrorType | undefined {
@@ -86,7 +86,7 @@ export function validateInspectInput(
   return undefined;
 }
 
-/** Validates text read limits without including runtime root values in diagnostics. */
+/** 校验文本读取限制，诊断中不包含运行时 root 值。 */
 export function validateReadInput(input: ReadProjectTextFilesInput): HarnessErrorType | undefined {
   if (!input || typeof input.localRoot !== "string") {
     return invalidInput("localRoot");
@@ -97,14 +97,14 @@ export function validateReadInput(input: ReadProjectTextFilesInput): HarnessErro
   return undefined;
 }
 
-/** Creates the sanitized error used when the repository root cannot be resolved. */
+/** 创建仓库 root 无法解析时使用的净化错误。 */
 export function rootFailure(operation: string): HarnessErrorType {
   return new HarnessError(HarnessErrorCode.IoFailure, "Project root is unavailable.", {
     operation,
   });
 }
 
-/** Converts unexpected scanner failures into sanitized Harness errors. */
+/** 将意外 scanner 失败转换为净化后的 Harness errors。 */
 export function toHarnessError(error: unknown, operation: string): HarnessErrorType {
   return error instanceof HarnessError
     ? error

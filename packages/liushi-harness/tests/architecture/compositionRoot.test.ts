@@ -42,4 +42,15 @@ describe("composition root", () => {
     ]);
     expect(violations).toEqual([]);
   });
+
+  it("仅由 composition root 装配 Project Profile 编译 Use Case", () => {
+    const graph = createSourceGraph();
+    const owners = graph.sourceFiles.flatMap((sourceFile) =>
+      collectNewExpressionNames(sourceFile)
+        .filter((expression) => expression.className === "CompileProjectProfileUseCase")
+        .map(() => formatRelative(graph, sourceFile.fileName).replaceAll("\\", "/")),
+    );
+
+    expect(owners).toEqual(["src/bootstrap/compositionRoot/compositionRoot.ts"]);
+  });
 });

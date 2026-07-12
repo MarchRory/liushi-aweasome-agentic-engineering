@@ -2,7 +2,7 @@ import { isAbsolute, normalize, relative, sep } from "node:path";
 
 import type { ProjectPathCaseCollision } from "#application/ports/projectFileSystem/index.js";
 
-/** Compares repository-relative paths using a locale-independent ordering. */
+/** 使用与 locale 无关的排序比较仓库相对路径。 */
 export function compareRelativePaths(left: string, right: string): number {
   if (left < right) {
     return -1;
@@ -13,12 +13,12 @@ export function compareRelativePaths(left: string, right: string): number {
   return 0;
 }
 
-/** Converts an absolute path into a repository-relative POSIX path. */
+/** 将绝对路径转换为仓库相对 POSIX 路径。 */
 export function toRelativePosixPath(root: string, absolutePath: string): string {
   return relative(root, absolutePath).split(sep).join("/");
 }
 
-/** Creates the stable internal identity used for a real repository root. */
+/** 为真实仓库 root 创建稳定的内部 identity。 */
 export function canonicalizeRootIdentity(realRoot: string): string {
   const normalized = normalize(realRoot);
   const withoutTrailingSeparator = normalized.replace(/[\\/]$/, "");
@@ -27,7 +27,7 @@ export function canonicalizeRootIdentity(realRoot: string): string {
     : withoutTrailingSeparator;
 }
 
-/** Tests whether a candidate path is the root or is lexically below the root. */
+/** 测试候选路径是否为 root，或按字面路径位于 root 下方。 */
 export function isPathWithinRoot(root: string, candidate: string): boolean {
   const candidateRelativePath = relative(root, candidate);
   return (
@@ -38,7 +38,7 @@ export function isPathWithinRoot(root: string, candidate: string): boolean {
   );
 }
 
-/** Compares collision records by their two relative paths. */
+/** 按两个相对路径比较 collision records。 */
 export function compareCaseCollisions(
   left: ProjectPathCaseCollision,
   right: ProjectPathCaseCollision,
@@ -49,7 +49,7 @@ export function compareCaseCollisions(
   );
 }
 
-/** Normalizes an untrusted repository-relative path, or returns undefined when unsafe. */
+/** 规范化不可信的仓库相对路径；不安全时返回 undefined。 */
 export function normalizeRequestedRelativePath(value: unknown): string | undefined {
   if (typeof value !== "string" || value.length === 0 || value.includes("\0")) {
     return undefined;

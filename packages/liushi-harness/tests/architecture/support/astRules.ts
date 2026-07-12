@@ -1,17 +1,17 @@
 import * as ts from "typescript";
 
 import type { SourceGraph } from "./architectureGraph.js";
-import { sourceLocation } from "./architectureGraph.js";
+import { normalizePath, sourceLocation } from "./architectureGraph.js";
 
-/** Describes an AST policy violation and the source file that contains it. */
+/** 描述一条 AST 策略违规及其所在源码文件。 */
 export interface AstFinding {
-  /** Absolute path of the source file containing the violation. */
+  /** 包含违规的源码文件绝对路径。 */
   fileName: string;
-  /** Human-readable violation including its one-based source location. */
+  /** 包含一基源码位置的可读违规说明。 */
   message: string;
 }
 
-/** Finds forbidden Node.js imports and runtime globals in source files selected by the caller. */
+/** 在调用方选定的源码文件中查找被禁止的 Node.js imports 和运行时 globals。 */
 export function collectForbiddenRuntimeFindings(
   graph: SourceGraph,
   isForbiddenFile: (sourceFile: ts.SourceFile) => boolean,
@@ -67,7 +67,7 @@ export function collectForbiddenRuntimeFindings(
   return findings;
 }
 
-/** Collects identifier-based constructor calls so composition-root ownership can be verified. */
+/** 收集基于 identifier 的构造调用，以便校验 composition-root 所有权。 */
 export function collectNewExpressionNames(sourceFile: ts.SourceFile): Array<{
   className: string;
   location: string;
@@ -89,7 +89,7 @@ export function collectNewExpressionNames(sourceFile: ts.SourceFile): Array<{
   return expressions;
 }
 
-/** Collects exported concrete class names declared by infrastructure adapter implementation files. */
+/** 收集 infrastructure adapter 实现文件声明的 exported concrete class 名称。 */
 export function collectExportedConcreteAdapterClassNames(graph: SourceGraph): Set<string> {
   const classNames = new Set<string>();
 
@@ -112,7 +112,7 @@ export function collectExportedConcreteAdapterClassNames(graph: SourceGraph): Se
   return classNames;
 }
 
-/** Finds exported declarations and interface properties that lack attached TSDoc nodes. */
+/** 查找缺少附着 TSDoc 节点的 exported declarations 和 interface properties。 */
 export function collectUndocumentedExportFindings(graph: SourceGraph): string[] {
   const findings: string[] = [];
 
@@ -153,6 +153,27 @@ export function collectUndocumentedExportFindings(graph: SourceGraph): string[] 
   return findings;
 }
 
+/** 查找不含 CJK 字符且不属于最小白名单的源码注释。 */
+export function collectNonCjkSourceCommentFindings(graph: SourceGraph): string[] {
+  const findings: string[] = [];
+
+  for (const sourceFile of graph.sourceFiles) {
+    for (const comment of collectCommentRanges(sourceFile)) {
+      const text = sourceFile.getFullText().slice(comment.pos, comment.end);
+
+      if (hasCjk(text) || isAllowedNonCjkComment(text)) {
+        continue;
+      }
+
+      findings.push(
+        `${formatCommentLocation(sourceFile, comment.pos)} comment must contain CJK text`,
+      );
+    }
+  }
+
+  return findings;
+}
+
 function getDeclarationName(node: ts.Node): string {
   if (
     (ts.isInterfaceDeclaration(node) ||
@@ -183,12 +204,67 @@ function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
   );
 }
 
+function collectCommentRanges(sourceFile: ts.SourceFile): ts.CommentRange[] {
+  const text = sourceFile.getFullText();
+  const comments: ts.CommentRange[] = [];
+  const seen = new Set<string>();
+
+  const addComment = (comment: ts.CommentRange): void => {
+    const key = `${comment.pos}:${comment.end}`;
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    comments.push(comment);
+  };
+
+  const visit = (node: ts.Node): void => {
+    for (const comment of ts.getLeadingCommentRanges(text, node.pos) ?? []) {
+      addComment(comment);
+    }
+
+    for (const comment of ts.getTrailingCommentRanges(text, node.end) ?? []) {
+      addComment(comment);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+  return comments.sort((left, right) => left.pos - right.pos);
+}
+
+function formatCommentLocation(sourceFile: ts.SourceFile, position: number): string {
+  const location = sourceFile.getLineAndCharacterOfPosition(position);
+
+  return `${normalizePath(sourceFile.fileName)}:${location.line + 1}:${location.character + 1}`;
+}
+
 function hasTsDoc(sourceFile: ts.SourceFile, node: ts.Node): boolean {
   const documentedNode = node as ts.Node & { jsDoc?: ts.JSDoc[] };
 
   return (
     documentedNode.jsDoc?.some((comment) => comment.getFullText(sourceFile).trim().length > 0) ===
     true
+  );
+}
+
+function hasCjk(text: string): boolean {
+  return /[\u3400-\u9fff\uf900-\ufaff]/u.test(text);
+}
+
+function isAllowedNonCjkComment(text: string): boolean {
+  const normalized = text.trim();
+
+  return (
+    normalized.startsWith("#!") ||
+    /^\/\*!\s*[\s\S]*(?:@license|copyright|license)/iu.test(normalized) ||
+    /^\/\/\s*(?:c8|istanbul) ignore\b/u.test(normalized) ||
+    /^\/\*\s*(?:c8|istanbul) ignore\b[\s\S]*\*\/$/u.test(normalized) ||
+    /^\/\/\s*(?:@ts-|eslint(?:-| |$)|prettier-ignore\b)/u.test(normalized) ||
+    /^\/\*\s*(?:@ts-|eslint(?:-| |$)|prettier-ignore\b)[\s\S]*\*\/$/u.test(normalized)
   );
 }
 

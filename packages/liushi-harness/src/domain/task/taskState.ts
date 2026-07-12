@@ -5,7 +5,7 @@ import { TaskPhase, TaskRunState } from "./taskPhase.js";
 
 /** 一个可以由 Event Replay 重建的 Task 当前状态。 */
 export interface TaskState {
-  /** Task State Schema Version。 */
+  /** Task State schema 版本。 */
   schemaVersion: typeof TASK_STATE_SCHEMA_VERSION;
   /** Task 的稳定 ULID。 */
   taskId: TaskId;

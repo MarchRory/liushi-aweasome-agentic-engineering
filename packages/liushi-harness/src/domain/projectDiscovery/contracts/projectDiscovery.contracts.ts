@@ -134,7 +134,7 @@ export interface ProjectDiscoveryDiagnostic {
 
 /** 由目录结构提出且必须 Human Review 的架构机制候选。 */
 export interface ArchitectureMechanismCandidate {
-  /** Architecture Mechanism Candidate Schema Version。 */
+  /** Architecture Mechanism Candidate schema 版本。 */
   schemaVersion: typeof ARCHITECTURE_MECHANISM_CANDIDATE_SCHEMA_VERSION;
   /** 在当前 Repository 内确定性生成的 Candidate ID。 */
   candidateId: string;
@@ -154,7 +154,7 @@ export interface ArchitectureMechanismCandidate {
 
 /** 单个 Repository 的 ProjectProfile 待评审候选。 */
 export interface ProjectProfileCandidate {
-  /** Project Profile Candidate Schema Version。 */
+  /** Project Profile Candidate schema 版本。 */
   schemaVersion: typeof PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION;
   /** Candidate 所属 Repository。 */
   repositoryId: RepositoryId;
@@ -218,7 +218,7 @@ export interface ProjectDependencyAmbiguityCandidate {
 
 /** 显式多仓只读扫描的完整报告。 */
 export interface ProjectDiscoveryReport {
-  /** Project Discovery Report Schema Version。 */
+  /** Project Discovery Report schema 版本。 */
   schemaVersion: typeof PROJECT_DISCOVERY_REPORT_SCHEMA_VERSION;
   /** 生成报告的确定性 Scanner Version。 */
   scannerVersion: typeof PROJECT_SCANNER_VERSION;

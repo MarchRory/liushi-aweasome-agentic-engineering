@@ -10,9 +10,9 @@ import type { SnapshotStore } from "../snapshot/index.js";
 export interface TaskPersistenceDependencies {
   /** Event ID 生成器。 */
   eventIdGenerator: IdGenerator;
-  /** Snapshot Store Adapter。 */
+  /** Snapshot Store 适配器。 */
   snapshotStore: SnapshotStore;
-  /** File Lock Manager Adapter。 */
+  /** File Lock Manager 适配器。 */
   lockManager: FileLockManager;
   /** 父目录 fsync Adapter。 */
   parentDirectoryDurability: ParentDirectoryDurability;

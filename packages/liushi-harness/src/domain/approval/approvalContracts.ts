@@ -12,7 +12,7 @@ import type { ApprovalDecision } from "./approvalEnums.js";
 
 /** Human 决策前由 Core 创建的请求。 */
 export interface DecisionRequest {
-  /** Decision Request Schema Version。 */
+  /** Decision Request schema 版本。 */
   schemaVersion: typeof DECISION_REQUEST_SCHEMA_VERSION;
   /** Decision Request 的稳定 ULID。 */
   decisionRequestId: DecisionRequestId;
@@ -46,7 +46,7 @@ export interface DecisionRequest {
 
 /** Human 决策被记录后的审计条目。 */
 export interface ApprovalRecord {
-  /** Approval Record Schema Version。 */
+  /** Approval Record schema 版本。 */
   schemaVersion: typeof APPROVAL_RECORD_SCHEMA_VERSION;
   /** Approval Record 的稳定 ULID。 */
   approvalId: ApprovalId;

@@ -51,7 +51,7 @@ export interface RuleCodeExampleRef {
 
 /** 一个可解析、可执行并可审计的项目 Rule。 */
 export interface RuleDefinition {
-  /** Rule Definition Schema Version。 */
+  /** Rule Definition schema 版本。 */
   schemaVersion: typeof RULE_SCHEMA_VERSION;
   /** 经 Registry 校验且跨 Revision 稳定的 Rule ID。 */
   ruleId: string;

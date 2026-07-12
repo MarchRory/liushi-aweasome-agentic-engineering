@@ -42,7 +42,7 @@ export interface TaskEventAppendBase {
 
 /** Append ArtifactCommitted Event 的输入。 */
 export interface AppendArtifactCommittedInput extends TaskEventAppendBase {
-  /** Event discriminator。 */
+  /** 事件判别字段。 */
   type: TaskRunEventType.ArtifactCommitted;
   /** Artifact、Gate Evaluation 与可选 DecisionRequest。 */
   payload: ArtifactCommittedPayload;
@@ -50,7 +50,7 @@ export interface AppendArtifactCommittedInput extends TaskEventAppendBase {
 
 /** Append ApprovalRecorded Event 的输入。 */
 export interface AppendApprovalRecordedInput extends TaskEventAppendBase {
-  /** Event discriminator。 */
+  /** 事件判别字段。 */
   type: TaskRunEventType.ApprovalRecorded;
   /** Approval 与 Gate Evaluation。 */
   payload: ApprovalRecordedPayload;

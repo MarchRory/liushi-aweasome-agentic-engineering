@@ -1,4 +1,5 @@
 export * from "./checkRuntimeHealth/index.js";
+export * from "./compileProjectProfile/index.js";
 export * from "./createTask/index.js";
 export * from "./getTaskStatus/index.js";
 export * from "./proposeArtifact/index.js";

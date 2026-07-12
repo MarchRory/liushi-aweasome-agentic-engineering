@@ -20,6 +20,10 @@ export enum CliOptionName {
   ActorId = "--actor-id",
   /** 指定 Artifact Proposal JSON 文件。 */
   File = "--file",
+  /** 指定已批准的 ProjectProfileProposal Artifact ID。 */
+  Artifact = "--artifact",
+  /** 指定 Project Discovery Report JSON 文件。 */
+  Report = "--report",
   /** 指定 DecisionRequest ID。 */
   Request = "--request",
   /** 指定 DecisionRequest Digest。 */

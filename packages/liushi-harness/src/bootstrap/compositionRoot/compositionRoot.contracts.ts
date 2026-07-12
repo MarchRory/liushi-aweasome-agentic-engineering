@@ -1,5 +1,6 @@
 import type {
   CheckRuntimeHealthUseCase,
+  CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
   ProposeArtifactUseCase,
@@ -13,6 +14,8 @@ import type { Clock, Delay, IdGenerator } from "#common/index.js";
 export interface HarnessApplication {
   /** Runtime Store 健康检查。 */
   checkRuntimeHealth: CheckRuntimeHealthUseCase;
+  /** 将已获 G8 批准的 ProjectProfileProposal 编译为 Profile Bundle。 */
+  compileProjectProfile: CompileProjectProfileUseCase;
   /** Task 创建。 */
   createTask: CreateTaskUseCase;
   /** Task 状态查询。 */

@@ -148,6 +148,28 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
       filePath: requireValue(collected, CliOptionName.File),
     };
   }
+  if (isExactCommand(collected.positionals, ["profile", "compile"])) {
+    validateAllowedOptions(
+      collected,
+      new Set([
+        CliOptionName.Json,
+        CliOptionName.Store,
+        CliOptionName.Workspace,
+        CliOptionName.Task,
+        CliOptionName.Artifact,
+        CliOptionName.Report,
+      ]),
+    );
+    return {
+      command: CliCommand.ProfileCompile,
+      outputFormat,
+      ...(storeRoot === undefined ? {} : { storeRoot }),
+      workspaceId: requireValue(collected, CliOptionName.Workspace),
+      taskId: requireValue(collected, CliOptionName.Task),
+      artifactId: requireValue(collected, CliOptionName.Artifact),
+      reportFilePath: requireValue(collected, CliOptionName.Report),
+    };
+  }
   throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported CLI command.", {
     command: collected.positionals.join(" "),
   });

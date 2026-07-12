@@ -45,6 +45,7 @@ describe("CLI doctor 与 help E2E", () => {
         expect.stringContaining("approval decide"),
         expect.stringContaining("rules resolve"),
         expect.stringContaining("project scan"),
+        expect.stringContaining("profile compile"),
       ]);
     });
   });

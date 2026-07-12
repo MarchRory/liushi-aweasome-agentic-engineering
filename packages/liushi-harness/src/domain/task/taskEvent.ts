@@ -21,7 +21,7 @@ export interface TaskCreatedPayload {
 
 /** Append-only Store 中的一条 TaskCreated Event。 */
 export interface TaskEventRecord {
-  /** Task Event Schema Version。 */
+  /** Task Event schema 版本。 */
   schemaVersion: typeof TASK_EVENT_SCHEMA_VERSION;
   /** Event 的稳定 ULID。 */
   eventId: EventId;
@@ -37,7 +37,7 @@ export interface TaskEventRecord {
   occurredAt: string;
   /** 触发 Event 的 Actor。 */
   actor: ActorRef;
-  /** TaskCreated Event Payload。 */
+  /** TaskCreated Event 负载。 */
   payload: TaskCreatedPayload;
   /** 前一条 Event Hash 或固定 Genesis Hash。 */
   previousHash: string;
@@ -47,7 +47,7 @@ export interface TaskEventRecord {
 
 /** Snapshot 保存的 Task State 和对应 Event Tail。 */
 export interface TaskSnapshot {
-  /** Task Snapshot Schema Version。 */
+  /** Task Snapshot schema 版本。 */
   schemaVersion: typeof TASK_SNAPSHOT_SCHEMA_VERSION;
   /** Snapshot 对应的 Task State。 */
   task: TaskState;

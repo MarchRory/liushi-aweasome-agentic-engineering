@@ -29,6 +29,7 @@ describe("TaskPhase 迁移", () => {
   it.each([
     [TaskPhase.Context, TaskPhase.Planning],
     [TaskPhase.Requirements, TaskPhase.Context],
+    [TaskPhase.Planning, TaskPhase.Requirements],
     [TaskPhase.Planning, TaskPhase.Verification],
     [TaskPhase.Implementation, TaskPhase.Review],
     [TaskPhase.Verification, TaskPhase.Learning],

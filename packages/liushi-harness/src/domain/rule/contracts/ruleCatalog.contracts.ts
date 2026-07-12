@@ -40,7 +40,7 @@ export interface RuleCatalogDigestEntry {
 
 /** 一个 Workspace 下可独立版本化的 Rule Catalog。 */
 export interface ProjectRuleCatalog {
-  /** Project Rule Catalog Schema Version。 */
+  /** Project Rule Catalog schema 版本。 */
   schemaVersion: typeof RULE_CATALOG_SCHEMA_VERSION;
   /** Catalog 的稳定 Registry ID。 */
   catalogId: string;
@@ -58,7 +58,7 @@ export interface ProjectRuleCatalog {
 
 /** Project Rule Catalog Digest 的规范输入。 */
 export interface ProjectRuleCatalogDigestInput {
-  /** Project Rule Catalog Schema Version。 */
+  /** Project Rule Catalog schema 版本。 */
   schemaVersion: typeof RULE_CATALOG_SCHEMA_VERSION;
   /** Catalog 的稳定 Registry ID。 */
   catalogId: string;

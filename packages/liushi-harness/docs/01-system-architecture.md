@@ -155,9 +155,11 @@ AI 可以基于扫描结果推断项目模式，但必须区分：强制规则�
 - Scanner 只读文件树和配置文件，输出 `ProjectDiscoveryReport`、`ProjectProfileCandidate`、`ArchitectureMechanismCandidate`、Rule Candidate 与依赖边 Candidate。
 - JSON/JSONC 和 YAML 由确定性 parser 解析；可执行配置只记录存在、相对路径和内容摘要，不 import、不 eval、不执行脚本。
 - 当多个仓库声明同一个 package owner 时，依赖边不能静默选择其一；报告输出稳定排序的 `dependencyAmbiguities`，整体状态为 `incomplete`，等待 Human Review 判定真实所有权。
-- Rules 和 Mechanisms 均保持 Candidate-only，必须 Human Review；本切片不进行 Profile Promotion，也不写入 `ProjectRuleCatalog` 或 `ArchitectureMechanismProfile`。
+- Scanner 输出中的 Rules 和 Mechanisms 均保持 Candidate-only，必须 Human Review；Scanner 自身不进行 Profile Promotion。
 - 报告状态为 `incomplete` 时 CLI 以 blocked envelope 和退出码 `4` 结束，禁止后续流水线把 Candidate 当作已确认事实。
-- `profilePromotionStatus` 固定为 `HumanReviewRequired`；扫描 `complete` 和进程退出码 `0` 只表示只读发现没有阻断诊断，`isProjectProfilePromotionBlocked` 仍必须返回阻塞。
+- `profilePromotionStatus` 固定为 `HumanReviewRequired`；扫描 `complete` 和进程退出码 `0` 只表示只读发现没有阻断诊断。
+- Human 通过 `ProjectProfileProposal` 明确仓库 Role，并对每个 Rule/Mechanism Candidate 完整接受或拒绝；G8 始终绑定最新 Proposal Artifact Digest。
+- `profile compile` 在 Application 边界严格解析不可信 Report，校验 Workspace、Task、Revision、Candidate 与 Approval 身份后，生成 ProjectProfile Bundle 和 Active ProjectRuleCatalog。它不写业务仓库，也不替代后续 Validator。
 
 ### 4.6 Validator
 

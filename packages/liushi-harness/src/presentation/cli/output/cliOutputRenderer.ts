@@ -81,6 +81,10 @@ export function writeSuccess<T>(
       writeProjectDiscoverySummary(dependencies, data);
       return;
     }
+    if (command === CliCommand.ProfileCompile) {
+      writeProjectProfileBundleSummary(dependencies, data);
+      return;
+    }
     const taskId = String(data["taskId"]);
     const workspaceId = String(data["workspaceId"]);
     if (command === CliCommand.TaskCreate) {
@@ -198,6 +202,16 @@ function writeProjectDiscoverySummary(dependencies: RunCliDependencies, data: un
   }
   dependencies.writer.stdout(
     `Project discovery ${String(data["digest"])}: status=${String(data["status"])} profilePromotion=${String(data["profilePromotionStatus"])} repositories=${countEntries(data["profileCandidates"])} dependencyEdges=${countEntries(data["dependencyEdges"])} dependencyAmbiguities=${countEntries(data["dependencyAmbiguities"])}.\n`,
+  );
+}
+
+function writeProjectProfileBundleSummary(dependencies: RunCliDependencies, data: unknown): void {
+  if (!isRecord(data)) {
+    return;
+  }
+  const ruleCatalog = data["ruleCatalog"];
+  dependencies.writer.stdout(
+    `Project profile bundle ${String(data["digest"])}: workspace=${String(data["workspaceId"])} graphRevision=${String(data["workspaceGraphRevision"])} revision=${String(data["revision"])} profiles=${countEntries(data["profiles"])} rules=${isRecord(ruleCatalog) ? countEntries(ruleCatalog["rules"]) : 0}.\n`,
   );
 }
 

@@ -32,12 +32,12 @@ import {
   validateReadInput,
 } from "../../io/index.js";
 
-/** Resolved root values kept private to one adapter operation. */
+/** 仅在单次 adapter 操作内私有保留的 resolved root 值。 */
 interface RootContext {
   readonly realRoot: string;
   readonly rootIdentity: string;
 }
-/** Mutable traversal state for one bounded inventory operation. */
+/** 单次有界 inventory 操作的可变遍历状态。 */
 interface InventoryState {
   readonly files: string[];
   readonly directories: string[];
@@ -48,9 +48,9 @@ interface InventoryState {
   ignoredDirectoryCount: number;
 }
 
-/** Node.js FileSystem adapter for link-safe project scanning. */
+/** 用于链接安全项目扫描的 Node.js FileSystem adapter。 */
 export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
-  /** Inspects a repository without following links or returning absolute file paths. */
+  /** 检查仓库时不跟随链接，也不返回绝对文件路径。 */
   public async inspectRepository(
     input: InspectProjectRepositoryInput,
   ): Promise<Result<ProjectRepositoryFileInventory, HarnessErrorType>> {
@@ -89,7 +89,7 @@ export class NodeProjectFileSystemAdapter implements ProjectFileSystemPort {
     }
   }
 
-  /** Reads selected files after validating paths, root containment, and links. */
+  /** 校验路径、根目录包含关系和链接后读取选中文件。 */
   public async readTextFiles(
     input: ReadProjectTextFilesInput,
   ): Promise<Result<readonly ProjectTextFileReadResult[], HarnessErrorType>> {

@@ -4,12 +4,12 @@ import { PROJECT_SCAN_MANIFEST_SCHEMA_VERSION, ResultStatus } from "../../src/co
 import { parseProjectScanManifest } from "../../src/domain/projectDiscovery/index.js";
 
 describe("Project scan manifest", () => {
-  it("parses a manifest without capacity budgets", () => {
+  it("parses a manifest without capacity limits", () => {
     const result = parseProjectScanManifest(manifest());
 
     expect(result.status).toBe(ResultStatus.Success);
     if (result.status === ResultStatus.Success) {
-      expect(result.value).not.toHaveProperty("budget");
+      expect(result.value).toEqual(manifest());
     }
   });
 
@@ -27,10 +27,10 @@ describe("Project scan manifest", () => {
     expect(unknown.status).toBe(ResultStatus.Failure);
   });
 
-  it("rejects manifest budget fields", () => {
+  it("rejects capacity limit fields", () => {
     const result = parseProjectScanManifest({
       ...manifest(),
-      budget: { maxDirectoriesPerRepository: 1 },
+      capacityLimits: { directoryCount: 1 },
     });
 
     expect(result.status).toBe(ResultStatus.Failure);

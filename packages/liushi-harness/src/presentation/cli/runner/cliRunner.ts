@@ -10,6 +10,7 @@ import {
   type CliApplication,
   type DoctorCliCommand,
   type ParsedCliCommand,
+  type ProfileCompileCliCommand,
   type ProjectScanCliCommand,
   type RunCliDependencies,
   type RulesResolveCliCommand,
@@ -81,6 +82,8 @@ async function executeCommand(
       return executeRulesResolve(command, createApplication(command, dependencies), dependencies);
     case CliCommand.ProjectScan:
       return executeProjectScan(command, createApplication(command, dependencies), dependencies);
+    case CliCommand.ProfileCompile:
+      return executeProfileCompile(command, createApplication(command, dependencies), dependencies);
   }
 }
 
@@ -239,6 +242,30 @@ async function executeProjectScan(
   if (isProjectDiscoveryBlocked(result.value)) {
     writeBlocked(dependencies, command.outputFormat, command.command, result.value);
     return CLI_EXIT_CODE_CONFLICT;
+  }
+  writeSuccess(dependencies, command.outputFormat, command.command, result.value);
+  return CLI_EXIT_CODE_SUCCESS;
+}
+
+async function executeProfileCompile(
+  command: ProfileCompileCliCommand,
+  application: CliApplication,
+  dependencies: RunCliDependencies,
+): Promise<number> {
+  const document = await dependencies.jsonDocumentReader.read(command.reportFilePath);
+  if (document.status === ResultStatus.Failure) {
+    writeFailure(dependencies, command.outputFormat, command.command, document.error);
+    return mapErrorExitCode(document.error.code);
+  }
+  const result = await application.compileProjectProfile.execute({
+    workspaceId: command.workspaceId,
+    taskId: command.taskId,
+    artifactId: command.artifactId,
+    report: document.value,
+  });
+  if (result.status === ResultStatus.Failure) {
+    writeFailure(dependencies, command.outputFormat, command.command, result.error);
+    return mapErrorExitCode(result.error.code);
   }
   writeSuccess(dependencies, command.outputFormat, command.command, result.value);
   return CLI_EXIT_CODE_SUCCESS;

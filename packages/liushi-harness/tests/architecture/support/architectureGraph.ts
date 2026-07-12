@@ -3,43 +3,43 @@ import type { Stats } from "node:fs";
 import path from "node:path";
 import * as ts from "typescript";
 
-/** Describes one resolved dependency between two TypeScript files inside the harness source tree. */
+/** 描述 harness 源码树中两个 TypeScript 文件之间的一条已解析依赖。 */
 export interface SourceDependency {
-  /** Absolute normalized path of the source file that declares the dependency. */
+  /** 声明依赖的源码文件规范化绝对路径。 */
   importer: string;
-  /** Absolute normalized path of the source file reached by the dependency. */
+  /** 依赖指向的源码文件规范化绝对路径。 */
   imported: string;
-  /** Module specifier exactly as represented by the TypeScript import or export node. */
+  /** TypeScript import 或 export 节点中原样表示的 module specifier。 */
   specifier: string;
 }
 
-/** Holds the compiler program and deterministic dependency data used by architecture tests. */
+/** 保存 architecture tests 使用的 compiler program 和确定性依赖数据。 */
 export interface SourceGraph {
-  /** Absolute normalized path of the liushi-harness package root. */
+  /** liushi-harness 包根目录的规范化绝对路径。 */
   harnessRoot: string;
-  /** Absolute normalized path of the package source root. */
+  /** 包源码根目录的规范化绝对路径。 */
   srcRoot: string;
-  /** TypeScript program created from the package tsconfig. */
+  /** 从包 tsconfig 创建的 TypeScript program。 */
   program: ts.Program;
-  /** Non-declaration source files located beneath src. */
+  /** 位于 src 下方的非声明源码文件。 */
   sourceFiles: ts.SourceFile[];
-  /** Resolved dependencies whose importer and target are both beneath src. */
+  /** importer 与 target 均位于 src 下方的已解析依赖。 */
   dependencies: SourceDependency[];
 }
 
-/** Identifies an approved top-level source layer in dependency-order sequence. */
+/** 标识按依赖顺序排列的已批准顶层源码分层。 */
 export enum ArchitectureLayer {
-  /** Shared primitives with no dependency on business or runtime layers. */
+  /** 不依赖业务层或运行时层的共享 primitives。 */
   Common = "common",
-  /** Business rules and domain state. */
+  /** 业务规则和 domain state。 */
   Domain = "domain",
-  /** Use cases and outbound port contracts. */
+  /** Use cases 与 outbound port contracts。 */
   Application = "application",
-  /** Runtime and persistence implementations of application ports. */
+  /** application ports 的 runtime 与 persistence 实现。 */
   Infrastructure = "infrastructure",
-  /** User-facing input and output translation. */
+  /** 面向用户的输入输出转换。 */
   Presentation = "presentation",
-  /** Process startup and concrete dependency composition. */
+  /** 进程启动和具体依赖装配。 */
   Bootstrap = "bootstrap",
 }
 
@@ -52,7 +52,7 @@ const architectureLayers: readonly ArchitectureLayer[] = [
   ArchitectureLayer.Bootstrap,
 ];
 
-/** Creates a compiler-backed graph of all internal source dependencies. */
+/** 创建由 compiler 支撑的全部内部源码依赖图。 */
 export function createSourceGraph(): SourceGraph {
   const harnessRoot = findHarnessRoot();
   const tsconfigPath = path.join(harnessRoot, "tsconfig.json");
@@ -101,7 +101,7 @@ export function createSourceGraph(): SourceGraph {
   };
 }
 
-/** Collects static import, re-export, and literal dynamic-import specifiers from one AST. */
+/** 从单个 AST 收集 static import、re-export 和字面量 dynamic-import specifiers。 */
 export function collectModuleSpecifiers(sourceFile: ts.SourceFile): string[] {
   const specifiers: string[] = [];
 
@@ -133,7 +133,7 @@ export function collectModuleSpecifiers(sourceFile: ts.SourceFile): string[] {
   return specifiers;
 }
 
-/** Recursively lists normalized file paths beneath a directory in filesystem order. */
+/** 按文件系统顺序递归列出目录下的规范化文件路径。 */
 export function collectFiles(root: string): string[] {
   const entries = readdirSync(root, { withFileTypes: true });
   const files: string[] = [];
@@ -152,7 +152,7 @@ export function collectFiles(root: string): string[] {
   return files;
 }
 
-/** Recursively lists normalized directory paths beneath a root in filesystem order. */
+/** 按文件系统顺序递归列出 root 下的规范化目录路径。 */
 export function collectDirectories(root: string): string[] {
   const entries = readdirSync(root, { withFileTypes: true });
   const directories: string[] = [];
@@ -169,7 +169,7 @@ export function collectDirectories(root: string): string[] {
   return directories;
 }
 
-/** Finds and de-duplicates source dependency cycles, including the closing file in each path. */
+/** 查找源码依赖环并去重，每条路径包含闭环文件。 */
 export function findCycles(graph: SourceGraph): string[][] {
   const adjacency = new Map<string, string[]>();
 
@@ -216,63 +216,63 @@ export function findCycles(graph: SourceGraph): string[][] {
   return dedupeCycles(cycles);
 }
 
-/** Formats an absolute path relative to the harness package for readable test diagnostics. */
+/** 将绝对路径格式化为相对 harness 包的路径，便于测试诊断阅读。 */
 export function formatRelative(graph: Pick<SourceGraph, "harnessRoot">, fileName: string): string {
   return normalizePath(path.relative(graph.harnessRoot, fileName));
 }
 
-/** Returns the approved top-level architecture layer containing a source file. */
+/** 返回包含某个源码文件的已批准顶层 architecture layer。 */
 export function getLayer(graph: SourceGraph, fileName: string): ArchitectureLayer | undefined {
   const [layerName] = path.relative(graph.srcRoot, fileName).split(path.sep);
 
   return architectureLayers.find((architectureLayer) => architectureLayer === layerName);
 }
 
-/** Reports whether a directory exposes an index.ts public entry point. */
+/** 判断目录是否暴露 index.ts public entry point。 */
 export function hasIndexFile(directory: string): boolean {
   return existsSync(path.join(directory, "index.ts"));
 }
 
-/** Reports whether a directory tree contains at least one TypeScript source file. */
+/** 判断目录树是否至少包含一个 TypeScript 源码文件。 */
 export function hasTypescriptDescendants(directory: string): boolean {
   return collectFiles(directory).some((fileName) => fileName.endsWith(".ts"));
 }
 
-/** Reports whether a file is an index.ts module entry point. */
+/** 判断文件是否为 index.ts module entry point。 */
 export function isPublicEntryPoint(fileName: string): boolean {
   return path.basename(fileName) === "index.ts";
 }
 
-/** Reports whether two files belong to the same nearest index.ts-owned public module. */
+/** 判断两个文件是否属于同一个最近 index.ts 管辖的 public module。 */
 export function isSamePublicModule(graph: SourceGraph, left: string, right: string): boolean {
   return findPublicModuleRoot(graph.srcRoot, left) === findPublicModuleRoot(graph.srcRoot, right);
 }
 
-/** Reports whether a candidate path is the root itself or a descendant of that root. */
+/** 判断候选路径是否为 root 本身或其后代路径。 */
 export function isWithin(candidate: string, root: string): boolean {
   const relativePath = path.relative(root, candidate);
 
   return relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
 }
 
-/** Normalizes path separators and path segments for stable graph comparisons. */
+/** 规范化路径分隔符和路径片段，以便稳定比较 graph。 */
 export function normalizePath(fileName: string): string {
   return path.normalize(fileName);
 }
 
-/** Lists normalized absolute paths for the direct entries of a directory. */
+/** 列出目录直接条目的规范化绝对路径。 */
 export function readDirectoryEntries(directory: string): string[] {
   return readdirSync(directory).map((entry) => normalizePath(path.join(directory, entry)));
 }
 
-/** Formats the one-based source location of an AST node for an actionable failure message. */
+/** 格式化 AST 节点的一基源码位置，用于可执行的失败信息。 */
 export function sourceLocation(sourceFile: ts.SourceFile, node: ts.Node): string {
   const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
 
   return `${normalizePath(sourceFile.fileName)}:${position.line + 1}:${position.character + 1}`;
 }
 
-/** Reads filesystem metadata for a path inspected by a layout rule. */
+/** 读取 layout rule 所检查路径的文件系统元数据。 */
 export function statFile(fileName: string): Stats {
   return statSync(fileName);
 }

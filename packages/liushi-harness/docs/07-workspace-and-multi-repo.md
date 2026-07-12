@@ -13,7 +13,7 @@
 
 ### 1.1 当前实现切片
 
-当前运行时尚未实现 Worktree、跨仓写入 Saga、Repository Lock 和 Profile Promotion。本轮已经实现 Rule Resolution 所需的最小多仓身份边界，并新增只读 Project Scanner 切片：
+当前运行时尚未实现 Worktree、跨仓写入 Saga 和 Repository Lock。本轮已经实现 Rule Resolution 所需的最小多仓身份边界、只读 Project Scanner 和 Human-gated Profile Bundle 编译：
 
 - `WorkspaceRuleContextRef` 绑定 Workspace ID、Workspace Graph Revision 和可选 Organization ID。
 - `RepositoryRuleContextRef` 绑定 Repository ID、Base Revision、ProjectProfile Revision 和可选 ArchitectureMechanismProfile Revision。
@@ -23,7 +23,9 @@
 - Project Scanner 只读文件树、package manifest、lockfile、JSONC/YAML 配置和目录结构，输出 ProjectProfile、Rule、Architecture Mechanism 与依赖边 Candidate。
 - Project Scanner 不使用人工容量或读取预算；全量遍历普通目录和文件，并读取全部被分类的配置文件。规模本身不影响完整性，路径不可读、链接跳过、大小写冲突或配置解析失败才会使报告 `incomplete`。
 - 多个 Repository 同时声明同一 package owner 时，依赖关系进入稳定排序的 `dependencyAmbiguities`，报告为 `incomplete`，不能静默丢弃或任选一条边。
-- 任何 Candidate 都不能直接变成 WorkspaceGraph、ProjectRuleCatalog、ArchitectureMechanismProfile 或 Active Rule；`profilePromotionStatus` 固定为 `HumanReviewRequired`，Profile Promotion 仍需要后续 Human Gate 切片。
+- 任何 Candidate 都不能直接变成 Active Rule；`profilePromotionStatus` 固定为 `HumanReviewRequired`。
+- Human 必须在 `ProjectProfileProposal` 中确认每个 Repository Role 并完整划分 Rule/Mechanism Candidate；G8 对精确 Proposal Digest 审批。
+- `profile compile` 重新校验 Report 与审批域，生成多仓 ProjectProfile Bundle 和 repository-qualified Active Rule，避免不同仓库的同语义 Rule ID 碰撞。
 
 这些 Ref 只保存稳定 ID 与 Revision，不保存完整 WorkspaceGraph、本机绝对路径或企业原文。后文完整 Workspace 生命周期仍是目标架构。
 
@@ -133,7 +135,7 @@ edges:
 
 AI 不得通过发现 Import 自动扩大 Task Write Set。
 
-当前 `project scan` 只覆盖上述第 2、3、4 步中的确定性只读事实收集：不会运行 Git、不会执行构建脚本、不会修改仓库，也不会提交第 7 步的任何 Revision。配置无法解析、存在重复 package owner、大小写冲突、路径不可读或 symlink/junction 跳过时，报告必须进入 Human Review。扫描 `complete` 和 CLI 退出码 `0` 不等于可 Promotion；`isProjectProfilePromotionBlocked` 对当前报告仍保持阻塞。
+当前 `project scan` 覆盖上述第 2、3、4 步中的确定性只读事实收集；`ProjectProfileProposal`、G8 和 `profile compile` 覆盖第 6 步及第 7 步的可审计 Bundle 编译。它们不会运行 Git、执行构建脚本或修改仓库。配置无法解析、存在重复 package owner、大小写冲突、路径不可读或 symlink/junction 跳过时，报告为 `incomplete`，不能进入编译。扫描 `complete` 也必须经过 Human G8；旧 Proposal Revision 的 Approval 不得复用。
 
 ## 6. Read Set 与 Write Set
 

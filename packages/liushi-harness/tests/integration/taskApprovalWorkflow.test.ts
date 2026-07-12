@@ -12,6 +12,7 @@ import {
   GateEvaluationResult,
   GateId,
   HarnessErrorCode,
+  RepositoryRole,
   ResultStatus,
   RiskLevel,
   TaskCheckpoint,
@@ -50,6 +51,197 @@ const CONCURRENT_EVENT_ID_B = "01ARZ3NDEKTSV4RRFFQ69G5FE1";
 const CONCURRENT_APPROVAL_ID_A = "01ARZ3NDEKTSV4RRFFQ69G5FF0";
 const CONCURRENT_APPROVAL_ID_B = "01ARZ3NDEKTSV4RRFFQ69G5FF1";
 const runtimeStores = new TemporaryRuntimeStore();
+
+describe("ProjectProfile promotion persistence", () => {
+  it("ProjectProfile propose -> G8 decision -> approval -> Requirement proposal supports persistence replay", async () => {
+    const storeRoot = await runtimeStores.create("liushi-profile-promotion-");
+    const app = makeApp(storeRoot);
+
+    await createTask(app);
+    const profile = await app.proposeArtifact.execute({
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+      actor: ACTOR,
+      proposal: projectProfileProposal(),
+    });
+
+    expect(profile.status).toBe(ResultStatus.Success);
+    if (profile.status !== ResultStatus.Success || profile.value.decisionRequest === undefined) {
+      throw new Error("ProjectProfileProposal must create a G8 DecisionRequest.");
+    }
+    expect(profile.value.gateEvaluation).toMatchObject({
+      result: GateEvaluationResult.WaitingHuman,
+      requiredGates: [GateId.G8ProjectCompliance],
+    });
+    expect(profile.value.decisionRequest).toMatchObject({
+      gate: GateId.G8ProjectCompliance,
+      artifactId: profile.value.artifact.artifactId,
+      artifactDigest: profile.value.artifact.digest,
+    });
+    expect(profile.value.task).toMatchObject({
+      phase: TaskPhase.Planning,
+      runState: TaskRunState.WaitingHuman,
+    });
+    expect((await readSnapshot(storeRoot)).aggregate).toMatchObject({
+      checkpoint: TaskCheckpoint.ProjectProfileProposed,
+      pendingDecision: {
+        decisionRequestId: profile.value.decisionRequest.decisionRequestId,
+        digest: profile.value.decisionRequest.digest,
+      },
+    });
+
+    const profileApproval = await approveDecision(app, profile.value.decisionRequest, "approve-g8");
+    expect(profileApproval.status).toBe(ResultStatus.Success);
+    if (profileApproval.status === ResultStatus.Success) {
+      expect(profileApproval.value.gateEvaluation).toMatchObject({
+        result: GateEvaluationResult.Allow,
+        requiredGates: [GateId.G8ProjectCompliance],
+      });
+      expect(profileApproval.value.task).toMatchObject({
+        phase: TaskPhase.Planning,
+        runState: TaskRunState.Running,
+      });
+    }
+    const approvedProfileSnapshot = await readSnapshot(storeRoot);
+    expect(approvedProfileSnapshot.aggregate.checkpoint).toBe(
+      TaskCheckpoint.ProjectProfileApproved,
+    );
+    expect(approvedProfileSnapshot.aggregate.pendingDecision).toBeUndefined();
+
+    await rm(snapshotFile(storeRoot));
+    const replayedRequirement = await createHarnessApplication({
+      storeRoot,
+      clock: new FixedClock(CREATED_AT),
+      eventIdGenerator: new FixedSequenceIdGenerator([EVENT_IDS[3]!]),
+      artifactIdGenerator: new FixedSequenceIdGenerator([ARTIFACT_IDS[1]!]),
+      decisionRequestIdGenerator: new FixedSequenceIdGenerator([DECISION_REQUEST_IDS[1]!]),
+    }).proposeArtifact.execute({
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+      actor: ACTOR,
+      proposal: requirementProposal(),
+    });
+
+    expect(replayedRequirement.status).toBe(ResultStatus.Success);
+    if (
+      replayedRequirement.status !== ResultStatus.Success ||
+      replayedRequirement.value.decisionRequest === undefined
+    ) {
+      throw new Error("Requirement proposal after replay must create a G1 DecisionRequest.");
+    }
+    expect(replayedRequirement.value.gateEvaluation).toMatchObject({
+      result: GateEvaluationResult.WaitingHuman,
+      requiredGates: [GateId.G1Requirement],
+    });
+    expect(replayedRequirement.value.decisionRequest).toMatchObject({
+      gate: GateId.G1Requirement,
+      artifactId: replayedRequirement.value.artifact.artifactId,
+      artifactDigest: replayedRequirement.value.artifact.digest,
+      resumeCheckpoint: TaskCheckpoint.RequirementApproved,
+    });
+    expect(replayedRequirement.value.task).toMatchObject({
+      phase: TaskPhase.Requirements,
+      runState: TaskRunState.WaitingHuman,
+    });
+    expect((await readSnapshot(storeRoot)).aggregate).toMatchObject({
+      checkpoint: TaskCheckpoint.RequirementProposed,
+      pendingDecision: {
+        decisionRequestId: replayedRequirement.value.decisionRequest.decisionRequestId,
+        artifactDigest: replayedRequirement.value.artifact.digest,
+      },
+    });
+    expect(await readEvents(storeRoot)).toHaveLength(4);
+  });
+
+  it("rejected ProjectProfile revision creates a fresh G8 request and can be approved", async () => {
+    const storeRoot = await runtimeStores.create("liushi-profile-revision-");
+    const app = makeApp(storeRoot);
+
+    await createTask(app);
+    const proposed = await app.proposeArtifact.execute({
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+      actor: ACTOR,
+      proposal: projectProfileProposal(),
+    });
+    expect(proposed.status).toBe(ResultStatus.Success);
+    if (proposed.status !== ResultStatus.Success || proposed.value.decisionRequest === undefined) {
+      throw new Error("ProjectProfileProposal must create a G8 DecisionRequest.");
+    }
+
+    const rejected = await app.recordApproval.execute({
+      ...approvalInput(proposed.value.decisionRequest, "reject-g8", ApprovalDecision.Rejected),
+      reason: "profile selection needs revision",
+    });
+    expect(rejected.status).toBe(ResultStatus.Success);
+    if (rejected.status === ResultStatus.Success) {
+      expect(rejected.value.task).toMatchObject({
+        phase: TaskPhase.Planning,
+        runState: TaskRunState.WaitingHuman,
+      });
+    }
+    const afterRejected = await readEvents(storeRoot);
+
+    const staleApproval = await approveDecision(
+      app,
+      proposed.value.decisionRequest,
+      "approve-rejected-g8",
+    );
+    expect(staleApproval.status).toBe(ResultStatus.Failure);
+    if (staleApproval.status === ResultStatus.Failure) {
+      expect(staleApproval.error.code).toBe(HarnessErrorCode.DecisionConflict);
+    }
+    expect(await readEvents(storeRoot)).toHaveLength(afterRejected.length);
+
+    const revisionProposal = projectProfileProposal();
+    revisionProposal.payload.workspaceGraphRevision = "graph-rev-2";
+    const revised = await app.proposeArtifact.execute({
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+      actor: ACTOR,
+      proposal: revisionProposal,
+    });
+    expect(revised.status).toBe(ResultStatus.Success);
+    if (revised.status !== ResultStatus.Success || revised.value.decisionRequest === undefined) {
+      throw new Error("Rejected ProjectProfile revision must create a new G8 DecisionRequest.");
+    }
+    expect(revised.value.artifact).toMatchObject({
+      artifactId: proposed.value.artifact.artifactId,
+      revision: 2,
+      parentDigest: proposed.value.artifact.digest,
+    });
+    expect(revised.value.artifact.digest).not.toBe(proposed.value.artifact.digest);
+    expect(revised.value.decisionRequest).toMatchObject({
+      gate: GateId.G8ProjectCompliance,
+      artifactId: revised.value.artifact.artifactId,
+      artifactDigest: revised.value.artifact.digest,
+      resumeCheckpoint: TaskCheckpoint.ProjectProfileApproved,
+    });
+    expect(revised.value.decisionRequest.decisionRequestId).not.toBe(
+      proposed.value.decisionRequest.decisionRequestId,
+    );
+
+    const approved = await approveDecision(
+      app,
+      revised.value.decisionRequest,
+      "approve-revised-g8",
+    );
+    expect(approved.status).toBe(ResultStatus.Success);
+    if (approved.status === ResultStatus.Success) {
+      expect(approved.value.task).toMatchObject({
+        phase: TaskPhase.Planning,
+        runState: TaskRunState.Running,
+      });
+      expect(approved.value.gateEvaluation.result).toBe(GateEvaluationResult.Allow);
+    }
+    const approvedRevisionSnapshot = await readSnapshot(storeRoot);
+    expect(approvedRevisionSnapshot.aggregate.checkpoint).toBe(
+      TaskCheckpoint.ProjectProfileApproved,
+    );
+    expect(approvedRevisionSnapshot.aggregate.pendingDecision).toBeUndefined();
+    expect(await readEvents(storeRoot)).toHaveLength(afterRejected.length + 2);
+  });
+});
 
 afterEach(async () => runtimeStores.cleanup());
 
@@ -516,6 +708,31 @@ function planRiskProposal(riskLevel: RiskLevel) {
       testPlan: ["Run integration tests."],
       rollbackPlan: ["Restore from backup."],
       requiredGates: [],
+    },
+  };
+}
+
+function projectProfileProposal() {
+  return {
+    artifactType: ArtifactType.ProjectProfileProposal,
+    status: ArtifactStatus.Proposed,
+    payload: {
+      discoveryReportDigest:
+        "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      workspaceGraphRevision: "graph-rev-1",
+      repositorySelections: [
+        {
+          repositoryId: "repo-a",
+          repositoryRevision: "repo-rev-1",
+          profileCandidateDigest:
+            "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          confirmedRole: RepositoryRole.Application,
+          acceptedRuleIds: ["rule-a"],
+          rejectedRuleIds: ["rule-b"],
+          acceptedMechanismCandidateIds: ["mechanism-a"],
+          rejectedMechanismCandidateIds: ["mechanism-b"],
+        },
+      ],
     },
   };
 }

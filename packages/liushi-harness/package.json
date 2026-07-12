@@ -77,7 +77,8 @@
     "test:e2e": "vitest run tests/e2e",
     "test:integration": "vitest run tests/integration",
     "test:unit": "vitest run tests/unit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:ts6": "tsc6 --noEmit"
   },
   "dependencies": {
     "canonicalize": "3.0.0",

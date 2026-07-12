@@ -4,6 +4,7 @@ export * from "./evidence/index.js";
 export * from "./gate/index.js";
 export * from "./policy/index.js";
 export * from "./projectDiscovery/index.js";
+export * from "./projectProfile/index.js";
 export * from "./rule/index.js";
 export * from "./task/index.js";
 export * from "./taskRun/index.js";

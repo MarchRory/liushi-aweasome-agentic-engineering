@@ -44,4 +44,10 @@ export const PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION = "1.0.0";
 export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "1.0.0";
 
 /** 当前 Architecture Mechanism Candidate Schema Version。 */
+/** 当前 Project Profile Schema Version。 */
+export const PROJECT_PROFILE_SCHEMA_VERSION = "1.0.0";
+
+/** 当前 Project Profile Bundle Schema Version。 */
+export const PROJECT_PROFILE_BUNDLE_SCHEMA_VERSION = "1.0.0";
+
 export const ARCHITECTURE_MECHANISM_CANDIDATE_SCHEMA_VERSION = "1.0.0";

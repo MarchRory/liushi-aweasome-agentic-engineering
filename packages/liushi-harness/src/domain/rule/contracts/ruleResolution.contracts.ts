@@ -174,7 +174,7 @@ export interface RuleDefinitionViolation {
 
 /** 尚未计算 Bundle Digest 的纯领域解析结果。 */
 export interface ResolvedRuleBundle {
-  /** Applicable Rule Bundle Schema Version。 */
+  /** Applicable Rule Bundle schema 版本。 */
   schemaVersion: typeof RULE_BUNDLE_SCHEMA_VERSION;
   /** 生成该结果的确定性 Resolver Version。 */
   resolverVersion: typeof RULE_RESOLVER_VERSION;

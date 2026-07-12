@@ -24,7 +24,7 @@
 - Resolver 对 Blocking Validator 不变量执行纵深校验；即使嵌入式调用方绕过 Schema，也会输出 `definitionViolations` 并阻断。
 - Catalog、Rule 和 Bundle Digest 均由同一 RFC 8785 + SHA-256 Adapter 计算并校验。
 
-Validator 执行、Candidate Promotion、ComplianceReport、Rule Exception 和 G8 仍是后续切片。当前命令不会修改项目、自动激活 Rule、晋升 Profile 或声明代码已经合规。
+Validator 执行、ComplianceReport 和 Rule Exception 仍是后续切片。当前已经支持 ProjectProfile Candidate 的 Human-gated G8 Promotion，但命令不会修改项目，也不声明代码已经合规。
 
 当前 Project Scanner 切片补充以下只读能力：
 
@@ -35,7 +35,9 @@ Validator 执行、Candidate Promotion、ComplianceReport、Rule Exception 和 G
 - 生成的 Rule 与 Architecture Mechanism 只能是 Candidate；目录结构和依赖声明只是 Evidence，不足以自动判定 Preferred、Active 或 Blocking。
 - 重复 package owner 产生稳定 `dependencyAmbiguities` 并使报告 `incomplete`；Scanner 不静默丢边，也不自行决定哪个 Repository 是真实 owner。
 - 报告状态为 `incomplete` 时，CLI 返回 blocked envelope 和退出码 `4`；这些结果必须 Human Review 后才能进入后续 Promotion 或正式规则源。
-- `profilePromotionStatus` 当前固定为 `HumanReviewRequired`。扫描 `complete` 或 CLI 退出码 `0` 不能被解释为批准流程已经实现，`isProjectProfilePromotionBlocked` 仍阻塞 Profile Promotion。
+- `profilePromotionStatus` 固定为 `HumanReviewRequired`。扫描 `complete` 或 CLI 退出码 `0` 不能被解释为批准；Human 必须提交完整 Candidate 分区的 `ProjectProfileProposal` 并批准 G8。
+- Scanner 生成的 Rule ID 包含 Repository 身份，`familyKey` 保留跨仓语义；`profile compile` 同时拒绝重复 Rule 身份、Scope/Selector/Source Revision 越界和 Digest 漂移。
+- G8 Approval 与 Workspace、Task、Proposal Artifact ID、最新 Revision 和精确 Digest 绑定。编译结果包含 Approval Provenance，并通过 ProjectRuleCatalog 严格 Schema 复验。
 
 ## 2. 概念边界
 

@@ -47,7 +47,7 @@ export interface ApprovalRecordedPayload {
 
 /** Append-only Store 中的一条 ArtifactCommitted Event。 */
 export interface ArtifactCommittedEventRecord {
-  /** Task Event Schema Version。 */
+  /** Task Event schema 版本。 */
   schemaVersion: TaskEventRecord["schemaVersion"];
   /** Event 的稳定 ULID。 */
   eventId: EventId;
@@ -73,7 +73,7 @@ export interface ArtifactCommittedEventRecord {
 
 /** Append-only Store 中的一条 ApprovalRecorded Event。 */
 export interface ApprovalRecordedEventRecord {
-  /** Task Event Schema Version。 */
+  /** Task Event schema 版本。 */
   schemaVersion: TaskEventRecord["schemaVersion"];
   /** Event 的稳定 ULID。 */
   eventId: EventId;
@@ -113,7 +113,7 @@ export interface TaskAggregateRecord {
 
 /** 新版 Snapshot 保存完整 Task Aggregate 和对应 Event Tail。 */
 export interface TaskAggregateSnapshot {
-  /** Task Aggregate Snapshot Schema Version。 */
+  /** Task Aggregate Snapshot schema 版本。 */
   schemaVersion: typeof TASK_AGGREGATE_SNAPSHOT_SCHEMA_VERSION;
   /** Snapshot 对应的 Task Aggregate。 */
   aggregate: TaskAggregate;

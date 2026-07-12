@@ -17,7 +17,7 @@ export interface ProjectScanRepository {
 
 /** 显式多仓只读扫描输入。 */
 export interface ProjectScanManifest {
-  /** Project Scan Manifest Schema Version。 */
+  /** Project Scan Manifest schema 版本。 */
   schemaVersion: typeof PROJECT_SCAN_MANIFEST_SCHEMA_VERSION;
   /** 扫描所属 Workspace。 */
   workspaceId: WorkspaceId;

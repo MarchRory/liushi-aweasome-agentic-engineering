@@ -61,7 +61,7 @@ function buildCandidateInputs(input: CreateRuleCandidatesInput): readonly RuleDi
   if (strictConfigs.length > 0 && explicitStrictValues.every((value) => value === true)) {
     candidates.push(
       baseRule(input, {
-        ruleId: "project.typescript.strict",
+        ruleId: repositoryRuleId(input.repositoryId, "typescript.strict"),
         category: RuleCategory.CodeStyle,
         enforcement: RuleEnforcement.Blocking,
         familyKey: "typescript.strict",
@@ -79,7 +79,7 @@ function buildCandidateInputs(input: CreateRuleCandidatesInput): readonly RuleDi
   if (eslintSources.length > 0) {
     candidates.push(
       baseRule(input, {
-        ruleId: "project.eslint.validation",
+        ruleId: repositoryRuleId(input.repositoryId, "eslint.validation"),
         category: RuleCategory.CodeStyle,
         enforcement: scriptNames.has("lint") ? RuleEnforcement.Blocking : RuleEnforcement.Advisory,
         familyKey: "eslint.validation",
@@ -99,7 +99,7 @@ function buildCandidateInputs(input: CreateRuleCandidatesInput): readonly RuleDi
   if (prettierSources.length > 0) {
     candidates.push(
       baseRule(input, {
-        ruleId: "project.prettier.validation",
+        ruleId: repositoryRuleId(input.repositoryId, "prettier.validation"),
         category: RuleCategory.CodeStyle,
         enforcement:
           prettierScript === undefined ? RuleEnforcement.Advisory : RuleEnforcement.Blocking,
@@ -117,7 +117,7 @@ function buildCandidateInputs(input: CreateRuleCandidatesInput): readonly RuleDi
   if (scriptNames.has("test") && packageSources.length > 0) {
     candidates.push(
       baseRule(input, {
-        ruleId: "project.test.validation",
+        ruleId: repositoryRuleId(input.repositoryId, "test.validation"),
         category: RuleCategory.Testing,
         enforcement: RuleEnforcement.Blocking,
         familyKey: "test.validation",
@@ -198,4 +198,8 @@ function configPaths(configs: AnalyzedProjectConfigs, kind: ProjectConfigKind): 
 
 function compare(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function repositoryRuleId(repositoryId: RepositoryId, suffix: string): string {
+  return `project.${repositoryId.toLowerCase()}.${suffix}`;
 }

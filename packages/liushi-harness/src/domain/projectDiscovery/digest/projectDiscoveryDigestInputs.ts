@@ -35,7 +35,9 @@ export function createProjectProfileCandidateDigestInput(
     ...(candidate.roleHint === undefined ? {} : { roleHint: candidate.roleHint }),
     status: candidate.status,
     inventory: candidate.inventory,
-    languages: [...candidate.languages].sort((a, b) => compare(a.languageId, b.languageId)),
+    languages: [...candidate.languages].sort((a, b) =>
+      compare(`${a.languageId}:${a.fileCount}`, `${b.languageId}:${b.fileCount}`),
+    ),
     packageManagers: [...candidate.packageManagers].sort((a, b) =>
       compare(`${a.manager}:${a.sourcePath}`, `${b.manager}:${b.sourcePath}`),
     ),
@@ -48,10 +50,10 @@ export function createProjectProfileCandidateDigestInput(
           compare(dependencyIdentity(a), dependencyIdentity(b)),
         ),
       }))
-      .sort((a, b) => compare(a.manifestPath, b.manifestPath)),
+      .sort((a, b) => compare(packageIdentity(a), packageIdentity(b))),
     compilerConfigs: candidate.compilerConfigs
       .map((fact) => ({ ...fact, pathAliasKeys: [...fact.pathAliasKeys].sort(compare) }))
-      .sort((a, b) => compare(a.configPath, b.configPath)),
+      .sort((a, b) => compare(compilerIdentity(a), compilerIdentity(b))),
     frameworkHints: [...candidate.frameworkHints].sort((a, b) =>
       compare(frameworkIdentity(a), frameworkIdentity(b)),
     ),
@@ -63,7 +65,7 @@ export function createProjectProfileCandidateDigestInput(
         ...createArchitectureMechanismCandidateDigestInput(mechanism),
         digest: mechanism.digest,
       }))
-      .sort((a, b) => compare(a.candidateId, b.candidateId)),
+      .sort((a, b) => compare(mechanismIdentity(a), mechanismIdentity(b))),
     ruleCandidates: candidate.ruleCandidates
       .map((rule) => ({ ...createRuleDigestInput(rule), digest: rule.digest }))
       .sort((a, b) =>
@@ -89,7 +91,12 @@ export function createProjectDiscoveryReportDigestInput(
         ...createProjectProfileCandidateDigestInput(profile),
         digest: profile.digest,
       }))
-      .sort((a, b) => compare(a.repositoryId, b.repositoryId)),
+      .sort((a, b) =>
+        compare(
+          `${a.repositoryId}:${a.repositoryRevision}:${a.digest}`,
+          `${b.repositoryId}:${b.repositoryRevision}:${b.digest}`,
+        ),
+      ),
     dependencyEdges: [...report.dependencyEdges].sort((a, b) =>
       compare(
         `${a.fromRepositoryId}:${a.toRepositoryId}:${a.kind}:${a.packageName}:${a.sourcePath}`,
@@ -125,6 +132,20 @@ function frameworkIdentity(framework: ProjectProfileCandidate["frameworkHints"][
 
 function diagnosticIdentity(diagnostic: ProjectDiscoveryDiagnostic): string {
   return `${diagnostic.repositoryId}:${diagnostic.code}:${diagnostic.severity}:${diagnostic.relativePath ?? ""}:${diagnostic.message}`;
+}
+
+function packageIdentity(fact: ProjectProfileCandidate["packages"][number]): string {
+  return `${fact.manifestPath}:${fact.packageName ?? ""}:${fact.scriptNames.join(",")}:${fact.workspacePatterns.join(",")}:${fact.dependencies.map(dependencyIdentity).join(",")}`;
+}
+
+function compilerIdentity(fact: ProjectProfileCandidate["compilerConfigs"][number]): string {
+  return `${fact.configPath}:${String(fact.strict)}:${String(fact.forceConsistentCasingInFileNames)}:${String(fact.noUncheckedIndexedAccess)}:${String(fact.exactOptionalPropertyTypes)}:${fact.pathAliasKeys.join(",")}:${fact.extendsRef ?? ""}`;
+}
+
+function mechanismIdentity(
+  mechanism: ProjectProfileCandidate["mechanismCandidates"][number],
+): string {
+  return `${mechanism.candidateId}:${mechanism.repositoryId}:${mechanism.kind}:${mechanism.relativePath}:${mechanism.confidence}:${mechanism.rationale}:${mechanism.digest}`;
 }
 
 function compare(left: string, right: string): number {

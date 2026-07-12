@@ -60,7 +60,7 @@ export enum ProjectDiagnosticCode {
 
 /** Scanner 识别的配置文件类别。 */
 export enum ProjectConfigKind {
-  /** npm-compatible package manifest。 */
+  /** npm 兼容的 package manifest。 */
   PackageManifest = "package_manifest",
   /** TypeScript 或 JavaScript Compiler 配置。 */
   TypeScript = "typescript",
@@ -80,7 +80,7 @@ export enum ProjectConfigKind {
   CodeOwners = "codeowners",
   /** Package Manager Workspace 配置。 */
   Workspace = "workspace",
-  /** Package Manager Lockfile。 */
+  /** Package Manager 锁文件。 */
   Lockfile = "lockfile",
   /** Codex AGENTS.md 指导文件。 */
   CodexInstruction = "codex_instruction",
@@ -106,13 +106,13 @@ export enum ProjectConfigParseStatus {
 
 /** Scanner 从 Lockfile 或 packageManager 字段识别的工具。 */
 export enum ProjectPackageManager {
-  /** npm。 */
+  /** npm 包管理器。 */
   Npm = "npm",
-  /** pnpm。 */
+  /** pnpm 包管理器。 */
   Pnpm = "pnpm",
   /** Yarn Classic 或 Berry。 */
   Yarn = "yarn",
-  /** Bun。 */
+  /** Bun 包管理器。 */
   Bun = "bun",
 }
 
