@@ -22,6 +22,12 @@ export const APPROVAL_RECORD_SCHEMA_VERSION = "1.0.0";
 /** 包含 Artifact 与 Approval 索引的 Task Aggregate Snapshot Schema Version。 */
 export const TASK_AGGREGATE_SNAPSHOT_SCHEMA_VERSION = "2.0.0";
 
+/** Workflow V2 Aggregate 的持久化 Schema Version。 */
+export const WORKFLOW_AGGREGATE_SCHEMA_VERSION = "1.0.0";
+
+/** Workflow V2 Semantic Event 的持久化 Schema Version。 */
+export const WORKFLOW_EVENT_SCHEMA_VERSION = "1.0.0";
+
 /** 当前 Rule Definition Schema Version。 */
 export const RULE_SCHEMA_VERSION = "1.0.0";
 

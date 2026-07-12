@@ -20,6 +20,8 @@ import {
   RecordTraceObservationUseCase,
   ResolveRulesUseCase,
   ScanProjectUseCase,
+  RequirementWorkflowCommandHandler,
+  WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
 import {
@@ -34,6 +36,7 @@ import {
   FileRuntimeHealthAdapter,
   FileSnapshotStore,
   FileTaskRepository,
+  FileWorkflowRepository,
   NodeProjectFileSystemAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
@@ -66,6 +69,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const taskRepository = new FileTaskRepository(options.storeRoot, {
     eventIdGenerator,
     snapshotStore,
+    lockManager,
+    parentDirectoryDurability,
+  });
+  const workflowRepository = new FileWorkflowRepository(options.storeRoot, {
     lockManager,
     parentDirectoryDurability,
   });
@@ -139,5 +146,9 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     recordTraceObservation: new RecordTraceObservationUseCase(traceObservationStore),
     resolveRules: new ResolveRulesUseCase(digest),
     scanProject: new ScanProjectUseCase(projectFileSystem, projectConfigParser, digest),
+    workflowCommands: new WorkflowCommandService(
+      applicationCommandGateway,
+      new RequirementWorkflowCommandHandler(workflowRepository, clock, eventIdGenerator),
+    ),
   };
 }

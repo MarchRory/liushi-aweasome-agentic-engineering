@@ -69,19 +69,19 @@ Human、Lead 与六角色评审已经确认：
 
 以下切片按 Workflow 评审后的依赖顺序推进；无依赖冲突的基础能力可以并行。
 
-| 能力切片                 | 当前状态   | 已满足基础                                       | 主要缺口                                          |
-| ------------------------ | ---------- | ------------------------------------------------ | ------------------------------------------------- |
-| Workflow 前置契约        | `partial`  | Task、Artifact、Gate、Approval、Cell 路由 Policy | Command/Receipt、Replay、Revision、Context        |
-| Workflow Core            | `designed` | 固定 Cell、Failure 路由、Human 控制 Policy       | Aggregate、Store、合法 Command、恢复与 Child 引用 |
-| Executor Adapter         | `partial`  | CLI、Composition Root、Codex Probe、Hook Adapter | 真实 Host Smoke、权限、调用、安装                 |
-| Hooks 与 Agent Runtime   | `partial`  | Gate、Canonical Event、Codex Projection/Wrapper  | 真实 Hook、其他平台、Role Runtime                 |
-| Verification 与 Evidence | `designed` | Evidence 基础类型、ProjectProfile                | VerificationPlan、Runner、EvidenceBundle          |
-| Instruction Projection   | `designed` | Rule Core、Profile Bundle                        | Canonical Instruction、Managed Merge Proposal     |
-| Agent Registry           | `designed` | Model/Role 设计                                  | Registry、Resolution、Eval、平台渲染              |
-| Skills 与 Connectors     | `designed` | Scanner、CLI、Digest                             | Registry、Runner、认证、Wiki Adapter              |
-| Memory 与 Knowledge      | `designed` | Event/Snapshot/Artifact                          | Memory Store、Retrieval、Curation、Promotion      |
-| 多仓写入与 Worktree      | `designed` | 多仓身份、Profile                                | Write Set、Lock、Saga、Compensation               |
-| 生产安装、升级与卸载     | `designed` | npm 发布物                                       | Managed Files、Migration、Rollback                |
+| 能力切片                 | 当前状态      | 已满足基础                                                                                   | 主要缺口                                                    |
+| ------------------------ | ------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Workflow 前置契约        | `implemented` | Task、Artifact、Gate、Approval、Command/Receipt、Replay、Revision、Context、Cell 路由 Policy | 真实 Executor Smoke、CLI 全量迁移                           |
+| Workflow Core            | `partial`     | 固定 Cell、Failure 路由、Human 控制、Aggregate、Reducer、File Store、合法 Command            | Child 引用、恢复编排、Cell Runtime、CodingTask/Verification |
+| Executor Adapter         | `partial`     | CLI、Composition Root、Codex Probe、Hook Adapter                                             | 真实 Host Smoke、权限、调用、安装                           |
+| Hooks 与 Agent Runtime   | `partial`     | Gate、Canonical Event、Codex Projection/Wrapper                                              | 真实 Hook、其他平台、Role Runtime                           |
+| Verification 与 Evidence | `designed`    | Evidence 基础类型、ProjectProfile                                                            | VerificationPlan、Runner、EvidenceBundle                    |
+| Instruction Projection   | `designed`    | Rule Core、Profile Bundle                                                                    | Canonical Instruction、Managed Merge Proposal               |
+| Agent Registry           | `designed`    | Model/Role 设计                                                                              | Registry、Resolution、Eval、平台渲染                        |
+| Skills 与 Connectors     | `designed`    | Scanner、CLI、Digest                                                                         | Registry、Runner、认证、Wiki Adapter                        |
+| Memory 与 Knowledge      | `designed`    | Event/Snapshot/Artifact                                                                      | Memory Store、Retrieval、Curation、Promotion                |
+| 多仓写入与 Worktree      | `designed`    | 多仓身份、Profile                                                                            | Write Set、Lock、Saga、Compensation                         |
+| 生产安装、升级与卸载     | `designed`    | npm 发布物                                                                                   | Managed Files、Migration、Rollback                          |
 
 ## 6. 每个切片的统一开工门
 

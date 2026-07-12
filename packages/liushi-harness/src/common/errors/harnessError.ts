@@ -4,8 +4,12 @@ export enum HarnessErrorCode {
   InvalidInput = "invalid_input",
   /** 请求的 Task 不存在。 */
   TaskNotFound = "task_not_found",
+  /** Workflow 的持久化状态不存在。 */
+  WorkflowNotFound = "workflow_not_found",
   /** 相同 Workspace 和 Task ID 已存在。 */
   TaskAlreadyExists = "task_already_exists",
+  /** 相同 Workspace 和 Workflow ID 已经存在。 */
+  WorkflowAlreadyExists = "workflow_already_exists",
   /** Task 当前状态不允许目标迁移。 */
   InvalidStateTransition = "invalid_state_transition",
   /** 另一个进程或未修复 Lock 阻止当前操作。 */

@@ -163,9 +163,11 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.InvalidInput:
       return CLI_EXIT_CODE_INVALID_INPUT;
     case HarnessErrorCode.TaskNotFound:
+    case HarnessErrorCode.WorkflowNotFound:
     case HarnessErrorCode.ActionNotFound:
       return CLI_EXIT_CODE_NOT_FOUND;
     case HarnessErrorCode.TaskAlreadyExists:
+    case HarnessErrorCode.WorkflowAlreadyExists:
     case HarnessErrorCode.InvalidStateTransition:
     case HarnessErrorCode.WorkspaceBusy:
     case HarnessErrorCode.VersionConflict:

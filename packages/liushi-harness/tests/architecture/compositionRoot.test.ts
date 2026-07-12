@@ -38,6 +38,7 @@ describe("composition root", () => {
       "FileSnapshotStore",
       "FileTaskRepository",
       "FileTraceObservationStore",
+      "FileWorkflowRepository",
       "NodeCommandRunnerAdapter",
       "NodeHookInputReaderAdapter",
       "NodeJsonDocumentReaderAdapter",

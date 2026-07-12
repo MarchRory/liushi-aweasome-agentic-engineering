@@ -10,3 +10,4 @@ export type * from "./contentDigest/index.js";
 export * from "./projectConfigParser/index.js";
 export * from "./projectFileSystem/index.js";
 export type * from "./hookBindingStore/index.js";
+export type * from "./workflowRepository/index.js";
