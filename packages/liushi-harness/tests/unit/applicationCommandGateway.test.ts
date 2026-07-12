@@ -142,6 +142,27 @@ describe("Application Command Gateway", () => {
       },
     });
   });
+
+  it("锁不可用映射为 ResourceUnavailable", async () => {
+    const handler: CommandHandler = {
+      execute: () =>
+        Promise.resolve(
+          failure(new HarnessError(HarnessErrorCode.LockUnavailable, "resource is busy")),
+        ),
+    };
+    const result = await new ApplicationCommandGateway(completingStore(), immediateDelay).execute(
+      command(),
+      handler,
+    );
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        status: CommandStatus.Rejected,
+        errorCode: CommandErrorCode.ResourceUnavailable,
+      },
+    });
+  });
 });
 
 const immediateDelay = { wait: () => Promise.resolve() };

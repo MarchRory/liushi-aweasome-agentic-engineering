@@ -139,6 +139,15 @@ function errorReceipt(command: CommandEnvelope, error: HarnessError): CommandRec
   ) {
     return outcomeUnknownReceipt(command, error.message);
   }
+  if (error.code === HarnessErrorCode.LockUnavailable) {
+    return unwrapReceipt({
+      commandId: command.commandId,
+      requestDigest: command.requestDigest,
+      status: CommandStatus.Rejected,
+      errorCode: CommandErrorCode.ResourceUnavailable,
+      errorMessage: error.message,
+    });
+  }
   return unwrapReceipt({
     commandId: command.commandId,
     requestDigest: command.requestDigest,

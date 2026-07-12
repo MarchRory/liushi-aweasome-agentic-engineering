@@ -8,8 +8,8 @@ import type {
   CodingTaskHumanResolution,
   CodingTaskRunState,
   CodingTaskVerificationOutcome,
-  FailureTaxonomy,
 } from "../enums/index.js";
+import type { FailureTaxonomy } from "#domain/workflow/index.js";
 import type { CodingTaskEventId, CodingTaskId } from "../identifiers/index.js";
 import type { CodingTaskEventType } from "./codingTaskEventEnums.js";
 import type { CodingTaskCreatedPayload } from "../contracts/index.js";

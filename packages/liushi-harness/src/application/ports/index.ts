@@ -11,3 +11,5 @@ export * from "./projectConfigParser/index.js";
 export * from "./projectFileSystem/index.js";
 export type * from "./hookBindingStore/index.js";
 export type * from "./workflowRepository/index.js";
+export type * from "./codingTaskRepository/index.js";
+export type * from "./codingTaskAuthorization/index.js";

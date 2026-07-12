@@ -165,6 +165,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.TaskNotFound:
     case HarnessErrorCode.WorkflowNotFound:
     case HarnessErrorCode.ActionNotFound:
+    case HarnessErrorCode.CodingTaskNotFound:
       return CLI_EXIT_CODE_NOT_FOUND;
     case HarnessErrorCode.TaskAlreadyExists:
     case HarnessErrorCode.WorkflowAlreadyExists:
@@ -174,6 +175,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.OperationForbidden:
     case HarnessErrorCode.DecisionConflict:
     case HarnessErrorCode.ActionConflict:
+    case HarnessErrorCode.CodingTaskAlreadyExists:
       return CLI_EXIT_CODE_CONFLICT;
     case HarnessErrorCode.LockUnavailable:
       return CLI_EXIT_CODE_UNAVAILABLE;

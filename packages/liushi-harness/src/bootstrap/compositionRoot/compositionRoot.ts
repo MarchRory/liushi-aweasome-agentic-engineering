@@ -1,5 +1,8 @@
 import {
   ApplicationCommandGateway,
+  CodingTaskCommandHandler,
+  CodingTaskCommandService,
+  TaskBackedCodingTaskAuthorizationPolicy,
   ActionHookAuthorizationPolicy,
   BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
@@ -37,6 +40,7 @@ import {
   FileSnapshotStore,
   FileTaskRepository,
   FileWorkflowRepository,
+  FileCodingTaskRepository,
   NodeProjectFileSystemAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
@@ -76,6 +80,13 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     lockManager,
     parentDirectoryDurability,
   });
+  const codingTaskRepository = new FileCodingTaskRepository(options.storeRoot, {
+    lockManager,
+    parentDirectoryDurability,
+  });
+  const codingTaskAuthorizationResolver =
+    options.codingTaskAuthorizationResolver ??
+    new TaskBackedCodingTaskAuthorizationPolicy(taskRepository, clock);
   const actionJournalRepository = new FileActionJournalRepository(options.storeRoot, {
     lockManager,
     parentDirectoryDurability,
@@ -149,6 +160,15 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     workflowCommands: new WorkflowCommandService(
       applicationCommandGateway,
       new RequirementWorkflowCommandHandler(workflowRepository, clock, eventIdGenerator),
+    ),
+    codingTaskCommands: new CodingTaskCommandService(
+      applicationCommandGateway,
+      new CodingTaskCommandHandler(
+        codingTaskRepository,
+        clock,
+        eventIdGenerator,
+        codingTaskAuthorizationResolver,
+      ),
     ),
   };
 }

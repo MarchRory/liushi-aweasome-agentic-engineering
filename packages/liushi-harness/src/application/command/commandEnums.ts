@@ -46,6 +46,8 @@ export enum CommandErrorCode {
   InvalidPayload = "invalid_payload",
   /** Command 未获得执行所需的授权。 */
   AuthorizationDenied = "authorization_denied",
+  /** Command 鍦ㄦ墽琛屽墠鍥犺祫婧愭垨 Lock 鐑欏崰鏈墽琛岋紝鍙樉寮忛噸璇曘€?*/
+  ResourceUnavailable = "resource_unavailable",
   /** Aggregate 当前版本与 Command 的期望版本不一致。 */
   VersionConflict = "version_conflict",
   /** 同一幂等键对应了不同的 Request Digest。 */

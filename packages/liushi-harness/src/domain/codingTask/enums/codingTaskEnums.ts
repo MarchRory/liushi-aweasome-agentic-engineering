@@ -57,6 +57,3 @@ export enum CodingTaskHumanResolution {
   /** 明确取消当前 CodingTask。 */
   Cancel = "cancel",
 }
-
-/** 复用 Workflow 已定义的失败分类。 */
-export { FailureTaxonomy } from "#domain/workflow/enums/index.js";

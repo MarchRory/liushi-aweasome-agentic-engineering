@@ -1,5 +1,6 @@
 import type {
   ApplicationCommandGateway,
+  CodingTaskCommandService,
   BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
   CodexHookHandler,
@@ -22,6 +23,7 @@ import type {
   ScanProjectUseCase,
   WorkflowCommandService,
 } from "#application/index.js";
+import type { CodingTaskExecutionAuthorizationResolver } from "#application/ports/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
 
 /** Harness 对 CLI 和嵌入式调用方公开的 Use Case 集合。 */
@@ -70,6 +72,8 @@ export interface HarnessApplication {
   scanProject: ScanProjectUseCase;
   /** RequirementWorkflow 的版本化写入入口。 */
   workflowCommands: WorkflowCommandService;
+  /** CodingTask 的版本化写入入口。 */
+  codingTaskCommands: CodingTaskCommandService;
 }
 
 /** 创建 Harness Application 的可注入依赖。 */
@@ -90,4 +94,6 @@ export interface HarnessApplicationOptions {
   decisionRequestIdGenerator?: IdGenerator;
   /** 可选 Approval ID Generator。 */
   approvalIdGenerator?: IdGenerator;
+  /** 可替换的 CodingTask 权威授权解析器，默认从 Task Replay 派生。 */
+  codingTaskAuthorizationResolver?: CodingTaskExecutionAuthorizationResolver;
 }

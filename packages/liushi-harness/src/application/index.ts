@@ -7,3 +7,4 @@ export * from "./query/index.js";
 export * from "./ports/index.js";
 export * from "./useCases/index.js";
 export * from "./workflow/index.js";
+export * from "./codingTask/index.js";

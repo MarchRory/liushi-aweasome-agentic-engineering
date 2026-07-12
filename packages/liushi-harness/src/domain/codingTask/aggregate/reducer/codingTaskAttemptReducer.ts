@@ -4,8 +4,8 @@ import {
   CodingTaskPhase,
   CodingTaskRunState,
   CodingTaskVerificationOutcome,
-  FailureTaxonomy,
 } from "../../enums/index.js";
+import { FailureTaxonomy } from "#domain/workflow/index.js";
 import type {
   AttemptFinishedEvent,
   AttemptStartedEvent,

@@ -272,6 +272,12 @@ Snapshot 只是缓存；版本不兼容时从 Event 重建。Event 迁移写入�
 
 切片不绑定日历期限。可以并行实现无冲突的基础能力，但不能绕过进入门和完成门。
 
+## 12.1 S3 CodingTask 实现修订
+
+当前 `CodingTask` 已具备可恢复的 File Store、严格 Schema/Hash Replay、Versioned Command Gateway/Service 和默认 Task-backed Authorization Policy。该 Policy 会回读上游 Task 的 PlanRisk、Business Logic Artifact、Approval 和 Write Set，未通过 Human Gate 或发生 Write Set 漂移时拒绝创建。
+
+当前仍缺少 Worktree/Write Set 实体校验、Verification Runner/EvidenceBundle、Mock/真实 Executor、Child Workflow 和 Cell Runtime；Workflow Studio 仍是同级独立包，不在本轮 Harness 实现范围内。
+
 ## 13. 发布阻断条件
 
 - Event Commit 或外部副作用无法区分失败与 `outcomeUnknown`。

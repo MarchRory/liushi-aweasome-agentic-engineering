@@ -46,6 +46,10 @@
 
 现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Cell Runtime、CodingTask Store/Command/Worktree、Verification Runner/Evidence、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
+本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
+
+本轮仍未提供 Worktree/Write Set 实体校验、Verification Runner/EvidenceBundle、真实 Executor、完整 Workflow Runtime、Skills/Memory/Connectors 或 Studio；这些能力不能因为 Command 已可调用而被视为已完成。
+
 ## Documents
 
 - [技术方案索引](./docs/README.md)

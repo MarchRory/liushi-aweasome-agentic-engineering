@@ -16,7 +16,6 @@ import {
   CodingTaskPhase,
   CodingTaskRunState,
   CodingTaskVerificationOutcome,
-  FailureTaxonomy,
   applyCodingTaskEvent,
   createInitialCodingTaskAggregate,
   normalizeWriteSet,
@@ -33,10 +32,14 @@ import {
   type HumanResolutionAppliedEvent,
   type VerificationFinishedEvent,
 } from "../../src/domain/codingTask/index.js";
+import { FailureTaxonomy } from "../../src/domain/workflow/index.js";
 import { parseArtifactDigest, parseArtifactId } from "../../src/domain/artifact/index.js";
 import { parseApprovalId } from "../../src/domain/approval/index.js";
 import { GateEvaluationResult, GateId } from "../../src/domain/policy/index.js";
 import { parseRepositoryId, parseWorkspaceId } from "../../src/domain/workspace/index.js";
+import { parseTaskId } from "../../src/domain/task/index.js";
+
+const sourceTaskId = unwrap(parseTaskId("01ARZ3NDEKTSV4RRFFQ69G5FB2"));
 
 const taskId = unwrap(parseCodingTaskId("task-1"));
 const workspaceId = unwrap(parseWorkspaceId("workspace-1"));
@@ -120,6 +123,7 @@ function created(
     ...eventBase(1),
     type: CodingTaskEventType.CodingTaskCreated,
     payload: {
+      sourceTaskId,
       repositoryId,
       baseRevision: "abc123",
       worktreeBinding: {

@@ -10,6 +10,10 @@ export enum HarnessErrorCode {
   TaskAlreadyExists = "task_already_exists",
   /** 相同 Workspace 和 Workflow ID 已经存在。 */
   WorkflowAlreadyExists = "workflow_already_exists",
+  /** CodingTask 的持久化状态不存在。 */
+  CodingTaskNotFound = "coding_task_not_found",
+  /** 相同 Workspace 与 CodingTask ID 已经存在。 */
+  CodingTaskAlreadyExists = "coding_task_already_exists",
   /** Task 当前状态不允许目标迁移。 */
   InvalidStateTransition = "invalid_state_transition",
   /** 另一个进程或未修复 Lock 阻止当前操作。 */

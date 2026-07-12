@@ -35,6 +35,7 @@ export function createInitialCodingTaskAggregate(
     schemaVersion: CODING_TASK_AGGREGATE_SCHEMA_VERSION,
     codingTaskId: event.codingTaskId,
     workspaceId: event.workspaceId,
+    sourceTaskId: event.payload.sourceTaskId,
     repositoryId: event.payload.repositoryId,
     baseRevision: event.payload.baseRevision,
     worktreeBinding: event.payload.worktreeBinding,

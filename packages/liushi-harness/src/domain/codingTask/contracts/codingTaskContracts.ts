@@ -4,14 +4,15 @@ import type { ApprovalId } from "#domain/approval/index.js";
 import type { GateEvaluationResult, GateId } from "#domain/policy/index.js";
 import type { InputBindingSet } from "#domain/workflow/index.js";
 import type { RepositoryId, WorkspaceId } from "#domain/workspace/index.js";
+import type { TaskId } from "#domain/task/index.js";
 
 import type {
   CodingTaskAttemptOutcome,
   CodingTaskPhase,
   CodingTaskRunState,
   CodingTaskVerificationOutcome,
-  FailureTaxonomy,
 } from "../enums/index.js";
+import type { FailureTaxonomy } from "#domain/workflow/index.js";
 import type { CodingTaskId } from "../identifiers/index.js";
 
 /** CodingTask 的工作树绑定信息。 */
@@ -70,6 +71,8 @@ export interface CodingTaskExecutionAuthorization {
 
 /** CodingTask 创建事件载荷。 */
 export interface CodingTaskCreatedPayload {
+  /** RequirementWorkflow Task 的稳定标识，用于回溯授权。 */
+  sourceTaskId: TaskId;
   /** 仓库标识。 */
   repositoryId: RepositoryId;
   /** 创建时锁定的基础 Revision。 */
@@ -92,6 +95,8 @@ export interface CodingTaskAggregate {
   codingTaskId: CodingTaskId;
   /** 所属 Workspace。 */
   workspaceId: WorkspaceId;
+  /** 创建 CodingTask 时依赖的 RequirementWorkflow Task。 */
+  sourceTaskId: TaskId;
   /** 所属 Repository。 */
   repositoryId: RepositoryId;
   /** 创建时锁定的基础 Revision。 */

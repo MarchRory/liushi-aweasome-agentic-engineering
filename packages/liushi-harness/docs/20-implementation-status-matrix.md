@@ -33,6 +33,17 @@
 | 19 Agent Registry           | 已完成   | `designed`    | 无产品运行时能力                                                                                                                                                                                                                      | Registry、Resolution、Permission、Skill/Memory 绑定、Eval、平台渲染和 Runtime                                                                |
 | 21 Workflow 产品与技术方案  | 已完成   | `partial`     | Command Gateway、Revision/Context、Replay、Timeline、Action Journal、Trace、Canonical Hook Core、固定 Cell/Failure 路由 Domain Policy、RequirementWorkflow Aggregate/Reducer、File Store、Gateway Command API、CodingTask Domain Core | CLI 迁移、Child Workflow、平台 Hook/Executor、实时 Trace/Exporter、CodingTask Store/Command/Worktree、Verification Runner/Evidence 与 Studio |
 
+### 3.1 本轮 S3 修订
+
+本轮代码已将 `CodingTask Domain Core` 扩展为可调用的编码 Cell 持久化切片：
+
+- `FileCodingTaskRepository` 提供严格 Event Schema、append-only JSONL、Hash Chain、目录 Locator 身份校验、锁、Replay 和 `outcomeUnknown` 边界。
+- `CodingTaskCommandService` 通过 Application Command Gateway 提供 Create、Attempt、Verification、Human Control 和 Human Resolution 命令。
+- 默认 Composition Root 通过上游 Task Replay 重算 PlanRisk、Business Logic G2、Approval 和 Write Set；调用方提交的 `ExecutionAuthorization` 只作为引用，不能绕过 Human Gate。
+- 候选事件的非法状态返回 `InvalidStateTransition`；已提交日志的非法状态仍按 `CorruptStore` 处理。
+
+因此，表格中 CodingTask Store/Command 的旧描述以本节为准；Worktree/Write Set 实体校验、Verification Runner/EvidenceBundle、Mock/真实 Executor 和 Studio 仍未实现。
+
 ## 4. 当前产品边界
 
 当前 npm 包实际提供：

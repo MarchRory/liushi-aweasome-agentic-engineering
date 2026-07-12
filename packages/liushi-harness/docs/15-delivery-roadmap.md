@@ -83,6 +83,10 @@ Human、Lead 与六角色评审已经确认：
 | 多仓写入与 Worktree      | `designed`    | 多仓身份、Profile                                                                                         | Write Set、Lock、Saga、Compensation                                                        |
 | 生产安装、升级与卸载     | `designed`    | npm 发布物                                                                                                | Managed Files、Migration、Rollback                                                         |
 
+### 5.1 S3 CodingTask 进展修订
+
+S3 当前已经完成 Domain Core、File Store/Replay、Command Gateway/Service 和默认权威授权解析。进入下一切片前仍必须补齐 Worktree/Write Set Port、Verification Port、EvidenceBundle 和 Mock Executor；在这些能力完成前，不得宣称 CodingTask 已能独立完成真实代码交付。
+
 ## 6. 每个切片的统一开工门
 
 开工前必须具备：

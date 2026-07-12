@@ -2,4 +2,4 @@
 "liushi-harness": minor
 ---
 
-新增 CodingTask Domain Core：提供单仓 CodingTask Aggregate/Reducer、独立 Aggregate/Event Schema、PlanRisk 与 G2 历史逻辑 Human 授权绑定、Attempt 串行状态机、Verification 结果接纳和 WaitingHuman 的显式 Human Resolution。该切片不包含 CodingTask Store、Command、Worktree、真实 Executor 或 Verification Runner。
+新增 CodingTask 编码 Cell 的可恢复持久化与命令入口：提供严格 Event Schema、append-only File Store、Hash Chain、Locator 身份校验、候选 Replay、Versioned Command Gateway、Attempt/Verification/Human Command Service，以及默认从上游 Task Replay 重算 PlanRisk、Business Logic G2、Approval 和 Write Set 的权威授权解析。Worktree、Verification Runner、EvidenceBundle 和真实 Executor 仍属于后续切片。
