@@ -18,6 +18,8 @@
 
 当前持久化事件仅包含 `TaskCreated`、`ArtifactCommitted` 和 `ApprovalRecorded`。后文 Context、Implementation、Verification、Review、Learning 的完整事件与状态仍是目标架构，不应理解为当前 CLI 已经实现。
 
+后续对齐已经将完整需求生命周期的所有权调整为 `RequirementWorkflowAggregate`，现有 `TaskAggregate` 将通过版本化迁移收缩为编码实现 Cell 内的 `CodingTaskAggregate`。在迁移完成前，本章记录的是当前兼容状态机，不再作为 Workflow 终态设计。新边界见 [21 需求生命周期 Workflow Runtime](./21-requirement-workflow-runtime.md)。
+
 ## 2. 正交状态模型
 
 Task 状态由两个正交维度组成：
@@ -179,7 +181,7 @@ stateDiagram-v2
 - 实际行为与 BusinessLogicChangeContract 冲突。
 - 需要跨仓写入。
 - 需要破坏性、外部或不可逆操作。
-- Requirement 或基础 Revision 已失效。
+- Human 确认 Requirement 需要更新，或基础 Revision 发生漂移。
 - 实现需要偏离 ApplicableRuleBundle、既有架构机制或扩大已批准 Rule Exception。
 
 ### 4.5 Verification

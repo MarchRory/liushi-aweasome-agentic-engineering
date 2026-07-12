@@ -7,6 +7,7 @@ import {
   CLI_EXIT_CODE_INVALID_INPUT,
   CLI_EXIT_CODE_IO_FAILURE,
   CLI_EXIT_CODE_NOT_FOUND,
+  CLI_EXIT_CODE_OUTCOME_UNKNOWN,
   CLI_EXIT_CODE_SUCCESS,
   CLI_EXIT_CODE_UNAVAILABLE,
   CLI_EXIT_CODE_UNEXPECTED,
@@ -164,6 +165,8 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
       return CLI_EXIT_CODE_CORRUPT_STORE;
     case HarnessErrorCode.IoFailure:
       return CLI_EXIT_CODE_IO_FAILURE;
+    case HarnessErrorCode.EventLogCommitOutcomeUnknown:
+      return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }
 }
 

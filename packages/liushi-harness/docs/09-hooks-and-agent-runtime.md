@@ -11,6 +11,12 @@ Hooks 将 Harness 的确定性规则接入执行器生命周期；Agent Runtime 
 - Hook 并发、失败和重入行为必须可测试、可恢复。
 - Agent Role 是领域职责，具体 Model、Permission、Tool、Skill、Context 和 Memory 由 Active AgentDefinition 解析。
 
+### 1.1 当前实现状态
+
+**状态：设计完成，尚未实现。** 当前代码没有 Canonical Hook Event、Hook Dispatcher、Agent Role Runtime、Human Battle Runtime 或平台 Hook Projection。已经实现的 Gate/Approval Core 可作为未来 Hook Handler 的确定性决策后端，但不能据此宣称任何 Codex 或 Claude Hook 已生效。该章与 Workflow Core 强相关，需在下一轮对齐中明确两者边界。
+
+Workflow、Cell、Agent、Skill、Executor 与 Hook 的职责边界已经在 [21 需求生命周期 Workflow Runtime](./21-requirement-workflow-runtime.md) 中建立；本章后续只定义 Hook 映射和 Agent Runtime，不拥有 Workflow 状态。
+
 ## 2. Canonical Hook Event
 
 ```ts
@@ -85,7 +91,7 @@ Wrapper 不读取或修改 Store，不包含风险正则和业务规则。Rule R
 
 Codex 当前并非所有 Tool Path 都可由 PreToolUse 拦截，而且多个匹配 Hook 可能并发，因此 CLI、Sandbox、Git 和 CI 必须重复执行同一 Policy Engine。[Codex Hooks](https://learn.chatgpt.com/docs/hooks)
 
-Claude-compatible 的命令、Prompt、Agent、HTTP 等扩展 Hook 只有 Command Hook 属于首月 Core 共同子集。[Claude Code Hooks](https://code.claude.com/docs/en/hooks-guide)
+Claude-compatible 的命令、Prompt、Agent、HTTP 等扩展 Hook 只有 Command Hook 属于初始版本 Core 共同子集。[Claude Code Hooks](https://code.claude.com/docs/en/hooks-guide)
 
 ## 5. Event Failure Policy
 
@@ -124,10 +130,10 @@ Hook 不是唯一执行点；相同检查必须能由显式 CLI、Git Hook 和 C
 
 ## 7. Agent Role
 
-首月使用五个内置角色：
+初始版本使用五个内置角色：
 
 ```ts
-/** 首月由 Harness 提供并维护 Contract 的内置 Agent Role。 */
+/** 初始版本由 Harness 提供并维护 Contract 的内置 Agent Role。 */
 export enum BuiltInAgentRole {
   /** 保持 Human 对话、状态和端到端决策编排的顶层角色。 */
   Orchestrator = "orchestrator",
@@ -167,7 +173,7 @@ export enum RoleWriteCapability {
 - 汇总但不能伪造角色结果。
 - 没有 Approval 权限。
 
-首月不额外创建通用 Implementer Subagent，避免 Plan、Human 对话和实现上下文在多次 Handoff 中丢失。需要隔离的高容量操作交给只读角色。
+初始版本不额外创建通用 Implementer Subagent，避免 Plan、Human 对话和实现上下文在多次 Handoff 中丢失。需要隔离的高容量操作交给只读角色。
 
 ### 8.2 Context Scout
 

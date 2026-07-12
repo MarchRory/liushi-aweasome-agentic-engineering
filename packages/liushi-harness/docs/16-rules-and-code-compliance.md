@@ -534,7 +534,7 @@ Rule 数量和 Prompt 长度不是成功指标。目标是减少真实违规、�
 - Architecture Mechanism Change 触发 Human Gate。
 - Rule Candidate Regression 和 False Positive Fixture。
 
-## 22. 首月范围
+## 22. 初始版本范围
 
 - 实现 Rule Schema、Catalog、Resolver、Bundle Digest 和 Compliance Report。
 - 从 ESLint、TypeScript、Package、Import Graph 和 ProjectProfile 发现 Rule Candidate。

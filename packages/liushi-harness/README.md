@@ -28,8 +28,12 @@
 - `profile compile` 只接受最新且已获 G8 精确批准的 Proposal；它重新校验 Report、Candidate、Rule、Mechanism、Workspace、Task、Revision 和 Digest 后，确定性生成 ProjectProfile Bundle 与 Active ProjectRuleCatalog。
 - Event、Snapshot、Hash、Schema 或 Lock 异常时 fail closed，不自动猜测或修复。
 - ESM/CJS Library 入口，以及 `liushi-harness`、`lh` 两个 CLI Bin。
+- 版本化 Application Command Envelope/Receipt 契约，包含因果标识、期望版本、幂等键和 `outcome_unknown`。
+- Workflow S0 提供 EffectiveRevisionSet、InputBindingSet、ContextManifest、信任通道和失败分类的确定性校验。
+- V1 Golden Replay Fixture 已冻结 Requirement 提交、审批、拒绝后新 Revision 和 Snapshot 重建语义。
+- Event Log 写入或 `fsync` 失败返回独立的未知结果错误与退出码，禁止调用方自动重试。
 
-Agent Runtime、Hooks、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
+Application Command Gateway 的持久化幂等、Workflow Aggregate/Reducer、Agent Runtime、Hooks、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 ## Documents
 
@@ -49,11 +53,13 @@ Agent Runtime、Hooks、Validator Execution、Instruction Projection、Memory、
 - [12 验证与 Evidence](./docs/12-verification-and-evidence.md)
 - [13 学习与知识治理](./docs/13-learning-and-knowledge.md)
 - [14 生产接入与长期使用 SOP](./docs/14-production-adoption-sop.md)
-- [15 四周开发路线](./docs/15-four-week-roadmap.md)
+- [15 能力门驱动的交付路线](./docs/15-delivery-roadmap.md)
 - [16 Rules 与代码合规](./docs/16-rules-and-code-compliance.md)
 - [17 Instruction Projection](./docs/17-instruction-projection.md)
 - [18 Memory Runtime 与记忆治理](./docs/18-memory-runtime-and-curation.md)
 - [19 Agent Registry 与平台配置生成](./docs/19-agent-registry-and-platform-rendering.md)
+- [20 文档与实现状态矩阵](./docs/20-implementation-status-matrix.md)
+- [21 需求生命周期 Workflow 产品与技术方案](./docs/21-requirement-workflow-runtime.md)
 
 ## CLI
 

@@ -9,3 +9,4 @@ export * from "./rule/index.js";
 export * from "./task/index.js";
 export * from "./taskRun/index.js";
 export * from "./workspace/index.js";
+export * from "./workflow/index.js";

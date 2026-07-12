@@ -17,6 +17,10 @@ Codex 支持项目级 `.codex/agents/*.toml`，自定义 Agent 可以配置模�
 
 Claude Code 使用项目级 Subagent 定义配置 Prompt、Tool、Permission、Skill 和 Hook；背景 Agent 无法获得新权限时会失败而不是等待 Human。[Claude Code Subagents](https://code.claude.com/docs/en/sub-agents)
 
+### 1.1 当前实现状态
+
+**状态：设计完成，尚未实现。** 当前代码没有 Canonical Agent Registry、Agent Resolution、Permission 渲染、Codex/Claude Agent 配置生成、多 Agent Runtime 或 Agent Promotion。现有开发过程中的外部 Sub Agent 使用不属于 `liushi-harness` 产品能力，也不能作为本章已实现证据。
+
 ## 2. 概念边界
 
 | 概念                | 含义                                  | 生命周期          |
@@ -199,7 +203,7 @@ packages/liushi-harness/config/agents/
 - 平台投影登记 Managed Ownership 和 Source Digest。
 - 企业 Agent 可以存在于私有 Extension Package，不进入开源包。
 
-## 5. 首月内置 Agent
+## 5. 初始版本内置 Agent
 
 | Agent                  | Mode              | Permission         | Memory            | 核心输出                                 |
 | ---------------------- | ----------------- | ------------------ | ----------------- | ---------------------------------------- |
@@ -209,7 +213,7 @@ packages/liushi-harness/config/agents/
 | Independent Verifier   | Fresh Read-only   | Read-only          | Read Scoped       | Verification Finding                     |
 | Learning Curator       | Isolated Subagent | Proposal-only      | Propose Candidate | Learning/MemoryCandidate                 |
 
-首月不提供通用 Implementer Subagent。Implementation 由 Orchestrator 在冻结 Write Set、RuleBundle 和 Gate 内执行，减少 Plan 与 Human 决策在多次 Handoff 中丢失。
+初始版本不提供通用 Implementer Subagent。Implementation 由 Orchestrator 在冻结 Write Set、RuleBundle 和 Gate 内执行，减少 Plan 与 Human 决策在多次 Handoff 中丢失。
 
 Orchestrator 虽然进入 Registry，但不会被自己递归 Spawn；Adapter 将其配置投影为主 Session Model、Instruction、Permission 和 Runtime Policy。
 
@@ -291,7 +295,7 @@ Skill 与 Agent 的关系：
 - Agent 未预加载 Skill 时可以提出 SkillInvocation Proposal，由 Orchestrator/CLI 校验后加载。
 - 平台原生 Skill 注入不改变 Harness Canonical Skill Version。
 
-首月推荐绑定：
+初始版本推荐绑定：
 
 - Context Scout：`harness-onboard`、`workspace-sync` 的只读步骤。
 - Risk Reviewer：`plan-risk`、`business-logic-contract`。
@@ -318,7 +322,7 @@ Codex Adapter 生成：
 - `sandbox_mode`：Permission Profile 的平台下界。
 - `mcp_servers`、`skills.config`：经过 Allowlist 的能力。
 
-首月设置 `max_depth = 1`，禁止 Subagent 递归委派；`max_threads` 由 Workspace Concurrency Policy 控制，不直接采用平台最大值。
+初始版本设置 `max_depth = 1`，禁止 Subagent 递归委派；`max_threads` 由 Workspace Concurrency Policy 控制，不直接采用平台最大值。
 
 Project-scoped `.codex/` 配置只在 Trusted Project 中加载，因此 `doctor` 必须验证实际 Trust 和 Agent Discovery。无法验证时降级 Assisted。
 
@@ -407,9 +411,9 @@ AgentStop 只允许一次 Schema Repair。第二次失败返回 `InvalidOutput`�
 
 ## 16. 并发与多 Agent
 
-- 首月最大嵌套深度为 1。
+- 初始版本最大嵌套深度为 1。
 - 只读探索、验证和文档调查可以并行。
-- 同一 Repository 同时最多一个写 Agent，首月由 Orchestrator 持有。
+- 同一 Repository 同时最多一个写 Agent，初始版本由 Orchestrator 持有。
 - 并行 Agent 不共享可变 Working Memory，只通过 Proposal/Evidence 汇合。
 - Human 等待时停止依赖该决策的 Agent，不让其继续猜测。
 - Agent 冲突不使用多数投票决定业务事实。
@@ -470,7 +474,7 @@ liushi-harness agents audit --workspace <workspace-id>
 - Prompt Injection 不能修改 AgentDefinition 或 Tool Allowlist。
 - 多 Agent 并发、冲突、预算和 Depth=1。
 
-## 21. 首月范围
+## 21. 初始版本范围
 
 - 实现 AgentDefinition、Registry、Resolver、AgentInstance 和 ProjectionManifest。
 - Codex Custom Agent 是 Production Path。

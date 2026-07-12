@@ -168,7 +168,7 @@ Shared Infrastructure 默认只读。Task 需要修改公共层时必须：
 
 ## 8. 多仓写入 Saga
 
-首月默认一个 Task 只有一个 Write Repository。明确批准的跨仓写入不宣称原子性，而是使用 Saga：
+初始版本默认一个 Task 只有一个 Write Repository。明确批准的跨仓写入不宣称原子性，而是使用 Saga：
 
 ```text
 Prepare all repositories
@@ -275,9 +275,9 @@ liushi-harness task scope show <task-id>
 - 公共层下游影响分析 Fixture。
 - 多仓 Context 去重与 Token Budget。
 
-## 16. 首月边界
+## 16. 初始版本边界
 
 - 支持显式登记的多仓读取和公共层影响分析。
 - 默认只允许单仓写入。
-- 跨仓写入只用于受控试验，必须 Human Gate，不作为首月成功指标。
+- 跨仓写入只用于受控试验，必须 Human Gate，不作为初始版本成功指标。
 - 不实现自动创建多仓 Pull Request、自动合并和跨仓发布。

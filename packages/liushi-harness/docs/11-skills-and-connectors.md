@@ -10,6 +10,10 @@ Skill 将可重复工作流、项目知识和确定性脚本封装为可发现�
 - Connector 不决定业务工作流、Human Gate 或知识晋升。
 - AI 可以生成 Skill/Knowledge Proposal，确定性 CLI 执行写入。
 
+### 1.1 当前实现状态
+
+**状态：设计完成，尚未实现。** 当前包没有 Skill Registry、Skill Runner、Wiki/Issue Connector、MCP Adapter、Obsidian 同步或知识写入能力。Scanner 和 Digest Adapter 是可供未来 Skill 复用的确定性基础，但不属于 Skill Runtime。Connector 写入、Wiki 发布和企业认证仍必须视为未支持能力。
+
 ## 2. 标准复用
 
 Skill Authoring 遵循 [Agent Skills Specification](https://openagentskills.dev/docs/specification)，使用 `SKILL.md`、`scripts/`、`references/` 和 `assets/`。外部能力优先通过 [Model Context Protocol](https://modelcontextprotocol.io/) 或执行器 Connector 接入。
@@ -93,7 +97,7 @@ Trigger 不能只写“处理项目任务”之类宽泛描述。多个 Skill �
 
 ## 6. 内置 Skill
 
-首月最小集合：
+初始版本最小集合：
 
 1. `harness-onboard`：扫描项目、生成 Profile Proposal 和安装计划。
 2. `project-rules`：扫描规则和架构机制候选，编译 ApplicableRuleBundle 并生成合规报告。
@@ -158,7 +162,7 @@ export interface ConnectorPort {
 }
 ```
 
-首月 Wiki Connector 必须支持 Read、Search 和 CreateDraft。Publish 只有在真实企业环境通过权限、幂等和负向测试后才可启用。
+初始版本 Wiki Connector 必须支持 Read、Search 和 CreateDraft。Publish 只有在真实企业环境通过权限、幂等和负向测试后才可启用。
 
 ## 9. Wiki 读取
 
@@ -213,7 +217,7 @@ Obsidian 是可选的 Human View，不是运行时唯一事实源：
 - Frontmatter 保存 Knowledge ID、Scope、Source、Revision 和 Digest。
 - Human 在 Obsidian 的修改先生成 Knowledge Proposal。
 - 同步冲突不自动双向覆盖。
-- 首月不开发 Obsidian Plugin，只提供目录投影和链接。
+- 初始版本不开发 Obsidian Plugin，只提供目录投影和链接。
 
 ## 14. Skill 生成与改进
 
@@ -248,9 +252,9 @@ liushi-harness knowledge sync --connector wiki --dry-run
 - Skill Eval 失败时不能 Active。
 - Obsidian Projection 单向一致性和冲突。
 
-## 17. 首月边界
+## 17. 初始版本边界
 
-- 内置十个最小 Skill 可以逐步实现，生产闭环优先前七个，`memory-curator` 在 Week 3 接入。
+- 内置十个最小 Skill 可以逐步实现，生产闭环优先前七个；`memory-curator` 只能在 Memory Candidate、Retrieval 和 Promotion Gate 完成后接入。
 - Wiki Read/Search/CreateDraft 可用，Publish 默认关闭。
 - Learning Candidate 自动生成，Skill 自动晋升永久关闭。
 - 企业 Connector 以 Port 和 Fixture 提供，不进入开源包 Credential 或业务逻辑。

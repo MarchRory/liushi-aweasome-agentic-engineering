@@ -4,7 +4,12 @@ import { HarnessError, HarnessErrorCode } from "#common/index.js";
 import type { TaskRunEventRecord } from "#domain/taskRun/index.js";
 
 import { JSON_LINE_SEPARATOR, MAX_TASK_EVENT_LOG_BYTES } from "../constants/index.js";
-import { EventLogHandleStatus, type EventLogCommitOutcome } from "./eventLogWriter.contracts.js";
+import {
+  EventLogCommitFailureStage,
+  EventLogHandleStatus,
+  type EventLogCommitHandle,
+  type EventLogCommitOutcome,
+} from "./eventLogWriter.contracts.js";
 
 /** 创建新的 Event Log，并在返回前刷新文件内容。 */
 export async function writeNewEventLog(
@@ -47,23 +52,24 @@ function serializeEvent(event: TaskRunEventRecord): Buffer {
   return content;
 }
 
-async function commitEventBytes(
-  handle: FileHandle,
+/** Event Log 提交边界的内部 seam，用于隔离写入、fsync 与关闭结果。 */
+export async function commitEventBytes(
+  handle: EventLogCommitHandle,
   write: () => Promise<void>,
 ): Promise<EventLogCommitOutcome> {
+  let failureStage = EventLogCommitFailureStage.Write;
   try {
     await write();
+    failureStage = EventLogCommitFailureStage.Sync;
     await handle.sync();
   } catch (error) {
+    let closeError: unknown;
     try {
       await handle.close();
-    } catch (closeError) {
-      throw new AggregateError(
-        [error, closeError],
-        "Event Log write and handle close both failed.",
-      );
+    } catch (caughtCloseError) {
+      closeError = caughtCloseError;
     }
-    throw error;
+    throw createCommitOutcomeUnknownError(failureStage, error, closeError);
   }
 
   try {
@@ -72,6 +78,23 @@ async function commitEventBytes(
   } catch {
     return { handle: EventLogHandleStatus.RecoveryRequired };
   }
+}
+
+function createCommitOutcomeUnknownError(
+  stage: EventLogCommitFailureStage,
+  error: unknown,
+  closeError: unknown,
+): HarnessError {
+  const cause =
+    closeError === undefined
+      ? error
+      : new AggregateError([error, closeError], "Event Log commit and handle close both failed.");
+  return new HarnessError(
+    HarnessErrorCode.EventLogCommitOutcomeUnknown,
+    "Event Log persistence outcome is unknown after writing started; automatic retry is prohibited.",
+    { stage },
+    cause,
+  );
 }
 
 async function writeBufferAt(handle: FileHandle, content: Buffer, position: number): Promise<void> {

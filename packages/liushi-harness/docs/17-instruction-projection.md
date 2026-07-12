@@ -87,7 +87,7 @@ export enum InstructionStatus {
   Rejected = "rejected",
 }
 
-/** Harness 首月支持的指导投影目标。 */
+/** Harness 初始版本支持的指导投影目标。 */
 export enum InstructionProjectionTarget {
   /** Codex 根目录或路径级 AGENTS.md。 */
   CodexAgents = "codex_agents",
@@ -344,7 +344,7 @@ liushi-harness instructions audit --workspace <workspace-id>
 - Resume/Compact 后 InstructionBundle Digest 一致。
 - Windows、macOS 和 Linux 换行与路径确定性。
 
-## 16. 首月范围
+## 16. 初始版本范围
 
 - 实现 Instruction Schema、Catalog、Resolver、Compiler 和 ProjectionManifest。
 - Codex `AGENTS.md` 是 Production Path。

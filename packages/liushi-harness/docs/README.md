@@ -1,6 +1,6 @@
 # liushi-harness 技术方案
 
-Status: Draft for Architecture Review
+Status: Implementation-aware Architecture Baseline
 
 ## Architecture Baseline
 
@@ -8,7 +8,7 @@ Status: Draft for Architecture Review
 
 | 文档                                                       | 评审重点                                       |
 | ---------------------------------------------------------- | ---------------------------------------------- |
-| [00 愿景与范围](./00-vision-and-scope.md)                  | 目标、非目标、首月范围、成功标准               |
+| [00 愿景与范围](./00-vision-and-scope.md)                  | 目标、非目标、初始版本范围、成功标准           |
 | [01 系统架构](./01-system-architecture.md)                 | 模块边界、依赖方向、执行器适配、信任边界       |
 | [02 Artifact 契约](./02-artifact-contracts.md)             | AI 与确定性核心之间的数据协议                  |
 | [03 任务状态机](./03-task-state-machine.md)                | 生命周期、Human 等待、失败与恢复语义           |
@@ -34,10 +34,12 @@ Status: Draft for Architecture Review
 
 ## Operations
 
-| 文档                                                         | 评审重点                                |
-| ------------------------------------------------------------ | --------------------------------------- |
-| [14 生产接入与长期使用 SOP](./14-production-adoption-sop.md) | Onboarding、Task 交付、治理、异常与卸载 |
-| [15 四周开发路线](./15-four-week-roadmap.md)                 | 四周范围、交付物、周 Gate、指标与止损   |
+| 文档                                                                            | 评审重点                                              |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| [14 生产接入与长期使用 SOP](./14-production-adoption-sop.md)                    | Onboarding、Task 交付、治理、异常与卸载               |
+| [15 能力门驱动的交付路线](./15-delivery-roadmap.md)                             | 当前能力、决策门、完成门与真实项目验证                |
+| [20 文档与实现状态矩阵](./20-implementation-status-matrix.md)                   | 06-19 状态、产品边界、依赖与文档完成门                |
+| [21 需求生命周期 Workflow 产品与技术方案](./21-requirement-workflow-runtime.md) | Workflow、Command、CodingTask、Studio 与多仓 PR-ready |
 
 ## 评审规则
 

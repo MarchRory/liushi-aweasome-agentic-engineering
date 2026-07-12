@@ -13,6 +13,10 @@
 
 本文件治理“什么可以成为长期知识”；Task Working Memory、MemoryCandidate、Retrieval、Compact/Resume 和平台 Memory 边界见 [18 Memory Runtime](./18-memory-runtime-and-curation.md)。Working Memory 不自动成为 Knowledge，Codex/Claude 平台记忆也不能作为 Fact Evidence。
 
+### 1.1 当前实现状态
+
+**状态：设计完成，尚未实现。** 当前代码没有 Knowledge Candidate Store、Eval、Promotion、Retrieval、Learning Curator 或 Skill 自动改进流程。Project Scanner 只生成工程 Candidate，不能替代知识治理；任何自动学习、知识飞轮或 Wiki 回写均不得标记为当前能力。
+
 ## 2. Knowledge Kind
 
 ```ts

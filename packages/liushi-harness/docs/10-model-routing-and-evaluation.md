@@ -11,6 +11,10 @@
 - 其他 Agent 可以按风险和任务形态选择模型。
 - 顶层模型不可用时不允许静默降级。
 
+### 1.1 当前实现状态
+
+**状态：设计完成，尚未实现。** 当前代码没有 Model Registry、Role Router、自动升级、成本策略或 Eval Dataset Runner；模型选择仍由外部 Coding Agent 会话负责。本章中的模型名称和能力只能作为可更新 Policy 示例，正式实现必须通过当时可用模型的实时能力探测与 Eval，不能硬编码当前 SOTA 名称。
+
 ## 2. 当前 OpenAI 基线
 
 截至 2026-07-11，OpenAI 官方模型指南将 `gpt-5.6-sol` 定义为旗舰能力模型，`gpt-5.6` Alias 指向 Sol；`gpt-5.6-terra` 是平衡型，`gpt-5.6-luna` 是高吞吐型。[OpenAI Latest Model Guide](https://developers.openai.com/api/docs/guides/latest-model)
@@ -160,7 +164,7 @@ Frontier Model 不可用时：
 - Verification：Critical Finding Recall、False Positive 和证据质量。
 - Learning：候选准确性、污染率和适用范围。
 
-首月使用 5 个预登记历史需求和至少 3 个真实任务。后续每个主要角色积累至少 20 个代表性 Fixture 后再进行稳定成本优化。
+初始版本使用 5 个预登记历史需求和至少 3 个真实任务。后续每个主要角色积累至少 20 个代表性 Fixture 后再进行稳定成本优化。
 
 ## 10. 评估指标
 

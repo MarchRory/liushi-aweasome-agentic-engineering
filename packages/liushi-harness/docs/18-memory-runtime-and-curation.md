@@ -18,6 +18,10 @@ Codex 官方将 Memories 定位为本地、可选、后台生成的辅助召回�
 
 Claude Code 同样区分 Human 维护的 `CLAUDE.md` 和模型维护的 Auto Memory，两者都是上下文而不是强制执行机制。[Claude Code Memory](https://code.claude.com/docs/en/memory)
 
+### 1.1 当前实现状态
+
+**状态：Task 持久化基础已实现，Memory Runtime 尚未实现。** 当前 append-only Event、Snapshot、Artifact、Approval 和 Task Replay 能保存确定性任务状态，但没有 Working Memory、Project Memory、Organization Memory、Memory Candidate、Retrieval、Compaction、Curator Skill 或 Obsidian/Wiki 同步。Task Store 不得被描述为完整记忆系统。
+
 ## 2. 五层记忆模型
 
 | 层级                   | Source of Truth                | 生命周期      | 默认写入者     | 是否自动进入 Context |
@@ -208,7 +212,7 @@ export interface MemoryCandidate {
 
 ## 8. memory-curator Skill
 
-`memory-curator` 是首月内置 Skill，负责“判断建议记什么以及写到哪里”，不负责直接修改正式 Store。
+`memory-curator` 是初始版本内置 Skill，负责“判断建议记什么以及写到哪里”，不负责直接修改正式 Store。
 
 触发条件：
 
@@ -282,7 +286,7 @@ Task + Role + Read Set
 原则：
 
 - Eligibility 必须先由确定性 Scope 和 Status 计算，模型不能扩大检索范围。
-- 首月使用 Metadata Index 和 Lexical Search，不引入 Vector Database。
+- 初始版本使用 Metadata Index 和 Lexical Search，不引入 Vector Database。
 - 可选语义 Reranker 只能调整已授权候选顺序，不能加入新条目。
 - 每条注入内容携带 Knowledge ID、Source、Revision、Scope 和 Digest。
 - 没有命中时明确返回 Empty，不用平台记忆编造项目事实。
@@ -341,7 +345,7 @@ Codex 和 Claude-compatible Adapter 分别记录：
 - Store 是否本机、跨 Worktree 或跨 Repository。
 - 是否可以审计和删除。
 
-首月默认策略：
+初始版本默认策略：
 
 - 平台 Memory 为 `assist_only`。
 - 从平台 Memory 得到的事实必须重新取 Evidence。
@@ -405,7 +409,7 @@ Memory 数量不是成功指标。目标是在不污染上下文的前提下减�
 - 平台 Memory 不能作为 Evidence。
 - TTL、Tombstone、Index Rebuild 和 Purge。
 
-## 19. 首月范围
+## 19. 初始版本范围
 
 - 实现 Working Memory、MemoryCandidate、Policy、Retrieval Index 和 Selection Digest。
 - 提供 `memory-curator` Skill 和 Learning Curator Role 配置。

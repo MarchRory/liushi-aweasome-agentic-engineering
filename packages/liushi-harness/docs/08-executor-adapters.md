@@ -4,13 +4,17 @@
 
 Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 Codex 与 Claude-compatible 工具中运行，同时保留各平台的原生能力。适配器必须解决能力差异，不能只转换 Prompt 文件名。
 
-首月目标：
+初始版本目标：
 
 - Codex 是生产主路径。
 - Claude-compatible 是可移植路径。
 - CatPaw 必须通过真实 Capability Probe、Smoke Test 和 Negative Test 后才能声明支持。
 - Core 不嵌入模型 SDK，不管理用户 API Key。
 - 平台不可用或能力下降时显式停止或降级，不静默改变保证。
+
+### 1.1 当前实现状态
+
+**状态：设计完成，尚未实现。** 当前 npm 包没有 Codex、Claude-compatible 或 CatPaw Executor Adapter，也没有 Capability Probe、安装协议或 Role Invocation Runtime。现有 CLI 只能执行 Harness 自身的确定性命令。开工前依赖稳定的 Workflow/Run Contract、Permission Contract 和 Managed File Merge Proposal；具体先后顺序需在 Workflow 对齐后确认。
 
 ## 2. Adapter 边界
 
@@ -251,4 +255,4 @@ README 和发布信息只能使用以下措辞：
 - `experimental`：仅部分能力验证，不承诺生产保证。
 - `unsupported`：明确阻止安装对应 Profile。
 
-首月预期：Codex `production`，Claude Code `compatible`，CatPaw 在获得真实环境验证前保持 `experimental`。
+初始版本预期：Codex `production`，Claude Code `compatible`，CatPaw 在获得真实环境验证前保持 `experimental`。

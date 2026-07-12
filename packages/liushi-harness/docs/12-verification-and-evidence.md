@@ -13,6 +13,10 @@ Harness 不能以 Agent 声称“完成”作为交付依据。Verification 层�
 - Evidence 保存原始来源引用，不只保存 Agent 摘要。
 - 高风险任务使用 Frontier Independent Verifier。
 
+### 1.1 当前实现状态
+
+**状态：基础契约部分实现，执行编排尚未实现。** 当前 Domain 已有 Evidence 类型，Artifact/Gate/Approval 和 Profile Compiler 会记录摘要与来源；仓库自身也具备 Typecheck、Lint、Unit、Integration、E2E 和 Architecture Test。尚未实现面向真实项目的 VerificationPlan、Command Runner、EvidenceBundle、影响面选择、Flaky 策略、G5 Waiver 和多仓验证编排。
+
 ## 2. Verification Kind
 
 ```ts
@@ -133,7 +137,7 @@ Runner 使用参数数组而不是拼接 Shell String。需要 Shell 语法时�
 
 ## 8. Flaky Test
 
-首月默认最多重试一次，并满足：
+初始版本默认最多重试一次，并满足：
 
 - ProjectProfile 明确标记该 Check 可重试。
 - 保存首次失败和重试结果。
@@ -231,7 +235,7 @@ Harness 不替换项目原有测试框架，只负责发现、确认、编排和
 
 ## 15. Security Verification
 
-按项目能力复用 Semgrep、CodeQL、Dependency Audit、Secret Scanner 和企业 CI。首月不自研安全分析引擎。工具未安装或企业网络受限时返回 Blocked，不伪装为“未发现问题”。
+按项目能力复用 Semgrep、CodeQL、Dependency Audit、Secret Scanner 和企业 CI。初始版本不自研安全分析引擎。工具未安装或企业网络受限时返回 Blocked，不伪装为“未发现问题”。
 
 ## 16. Metrics
 

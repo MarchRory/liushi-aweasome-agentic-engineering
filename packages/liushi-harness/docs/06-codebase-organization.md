@@ -11,16 +11,20 @@
 - 新增代码时可以根据规则判断放在哪里，而不是继续堆入已有目录。
 - 复杂度、循环依赖和越层导入在 CI 阶段失败，而不是依赖 Reviewer 记忆。
 
+### 1.1 当前实现状态
+
+本章约束已作为当前代码库的强制工程基线：Clean Architecture 依赖方向、循环依赖、Composition Root、目录与文件职责、lower camelCase 文件名、纯 Barrel、300 行源码上限、类型 TSDoc、中文注释、ESLint、Prettier、Changesets 和双版本 TypeScript 检查均有自动化门禁。完整目标目录中的未启用业务模块只是预留结构，不代表对应运行时能力已经实现。
+
 ## 2. 架构风格
 
-首月采用一个 npm 包内的模块化单体：
+初始版本采用一个 npm 包内的模块化单体：
 
 - **Clean Architecture** 定义依赖只能向内。
 - **Hexagonal Architecture** 使用 Port 隔离文件系统、Git、执行器、Connector 和 Validator。
 - **Domain-oriented modules** 在每层内部按 Task、Artifact、Gate、Rule、Instruction、Memory、Agent、Workspace、Learning 等能力分组。
 - **Composition Root** 集中构造依赖，不使用 Service Locator 或全局可变 Singleton。
 
-不在首月拆成多个 npm 子包。只有模块具备独立发布、独立版本或被多个包真实复用的需求时，才通过 ADR 拆包。
+初始版本不拆成多个 npm 子包。只有模块具备独立发布、独立版本或被多个包真实复用的需求时，才通过 ADR 拆包。
 
 ## 3. 完整目录结构
 
@@ -374,7 +378,7 @@ Generated Schema、Migration、测试 Fixture 和声明表可以通过显式 All
 
 ## 15. TypeScript 基线
 
-首月启用：
+初始版本启用：
 
 - `strict`、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`。
 - Promise、Switch Exhaustiveness、Restricted Imports 和 Type-only Import 检查。
@@ -413,4 +417,4 @@ Generated Schema、Migration、测试 Fixture 和声明表可以通过显式 All
 - ApplicableRuleBundle 中的 Blocking Rule 全部通过，未决项进入 G8 而不是静默忽略。
 - Instruction、Memory 和 Agent 平台文件由 Canonical Contract 生成，不直接散落手工配置。
 
-第一周实现必须先建立这些架构测试和一个纵向 Use Case Skeleton，再批量增加功能模块。
+首个实现切片必须先建立这些架构测试和一个纵向 Use Case Skeleton，再批量增加功能模块。

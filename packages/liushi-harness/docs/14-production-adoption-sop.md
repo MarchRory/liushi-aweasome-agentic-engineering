@@ -10,6 +10,10 @@
 
 任何阶段出现异常都可以退回 Report-only，不要求卸载 Harness。
 
+### 1.1 当前可执行范围
+
+**状态：完整 SOP 设计已完成，但只有确定性 Bootstrap 子集可执行。** 当前可以安装 npm 包、检查 Runtime Store、创建与查询 Task、提交 Artifact、记录 Human Approval、解析 Rule、扫描多仓并通过 G8 编译 ProjectProfile Bundle。Executor Adapter、Workflow Runtime、Hooks、真实项目写入、Verification Runner、Skills、Connectors、Memory 和 Learning 尚未实现，因此第 5 节之后的自动交付流程目前是目标 SOP，不是生产能力声明。
+
 ## 2. 责任角色
 
 | 角色               | 责任                                                   |

@@ -20,6 +20,8 @@ export const CLI_EXIT_CODE_UNAVAILABLE = 5;
 export const CLI_EXIT_CODE_CORRUPT_STORE = 6;
 /** CLI I/O 失败退出码。 */
 export const CLI_EXIT_CODE_IO_FAILURE = 7;
+/** CLI 持久化结果未知退出码，调用方不得自动重试。 */
+export const CLI_EXIT_CODE_OUTCOME_UNKNOWN = 8;
 
 /** CLI 首个纵向切片支持的使用方式。 */
 export const CLI_USAGE_LINES: readonly string[] = [
