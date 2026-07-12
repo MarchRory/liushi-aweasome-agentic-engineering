@@ -3,8 +3,16 @@ import type {
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
+  GetTaskTimelineUseCase,
+  GetActionJournalUseCase,
+  ListRecoverableActionsUseCase,
+  ListTraceObservationsUseCase,
   ProposeArtifactUseCase,
   RecordApprovalUseCase,
+  RecordActionIntentUseCase,
+  RecordActionObservationUseCase,
+  RecordActionResolutionUseCase,
+  RecordTraceObservationUseCase,
   ResolveRulesUseCase,
   ScanProjectUseCase,
 } from "#application/index.js";
@@ -20,10 +28,26 @@ export interface HarnessApplication {
   createTask: CreateTaskUseCase;
   /** Task 状态查询。 */
   getTaskStatus: GetTaskStatusUseCase;
+  /** Tracker 使用的只读 Task Timeline Projection。 */
+  getTaskTimeline: GetTaskTimelineUseCase;
+  /** 重放一个 Action Journal。 */
+  getActionJournal: GetActionJournalUseCase;
+  /** 查询 Task 中全部非终态 Action。 */
+  listRecoverableActions: ListRecoverableActionsUseCase;
+  /** 为 Tracker 查询可丢失 Trace Observation。 */
+  listTraceObservations: ListTraceObservationsUseCase;
   /** Artifact 提交与 Gate 计算。 */
   proposeArtifact: ProposeArtifactUseCase;
   /** Human Approval 记录与 Gate 恢复。 */
   recordApproval: RecordApprovalUseCase;
+  /** Action Intent 记录。 */
+  recordActionIntent: RecordActionIntentUseCase;
+  /** Action Observation 记录。 */
+  recordActionObservation: RecordActionObservationUseCase;
+  /** Action Resolution 记录。 */
+  recordActionResolution: RecordActionResolutionUseCase;
+  /** Best-effort Trace Observation 记录。 */
+  recordTraceObservation: RecordTraceObservationUseCase;
   /** 确定性 Rule Catalog 解析。 */
   resolveRules: ResolveRulesUseCase;
   /** 显式多仓只读 Project Discovery。 */

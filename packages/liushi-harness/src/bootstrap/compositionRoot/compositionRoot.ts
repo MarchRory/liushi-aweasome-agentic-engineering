@@ -3,8 +3,16 @@ import {
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
+  GetTaskTimelineUseCase,
+  GetActionJournalUseCase,
+  ListTraceObservationsUseCase,
+  ListRecoverableActionsUseCase,
   ProposeArtifactUseCase,
   RecordApprovalUseCase,
+  RecordActionIntentUseCase,
+  RecordActionObservationUseCase,
+  RecordActionResolutionUseCase,
+  RecordTraceObservationUseCase,
   ResolveRulesUseCase,
   ScanProjectUseCase,
 } from "#application/index.js";
@@ -12,6 +20,8 @@ import { HarnessError, HarnessErrorCode } from "#common/index.js";
 import {
   ExclusiveFileLockManager,
   FileParentDirectoryDurability,
+  FileActionJournalRepository,
+  FileTraceObservationStore,
   FileRuntimeHealthAdapter,
   FileSnapshotStore,
   FileTaskRepository,
@@ -49,6 +59,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     lockManager,
     parentDirectoryDurability,
   });
+  const actionJournalRepository = new FileActionJournalRepository(options.storeRoot, {
+    lockManager,
+    parentDirectoryDurability,
+  });
+  const traceObservationStore = new FileTraceObservationStore(options.storeRoot, { lockManager });
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
   const projectFileSystem = new NodeProjectFileSystemAdapter();
@@ -59,6 +74,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
     createTask: new CreateTaskUseCase(taskRepository, clock, taskIdGenerator),
     getTaskStatus: new GetTaskStatusUseCase(taskRepository),
+    getTaskTimeline: new GetTaskTimelineUseCase(taskRepository),
+    getActionJournal: new GetActionJournalUseCase(actionJournalRepository),
+    listRecoverableActions: new ListRecoverableActionsUseCase(actionJournalRepository),
+    listTraceObservations: new ListTraceObservationsUseCase(traceObservationStore),
     proposeArtifact: new ProposeArtifactUseCase(
       taskRepository,
       digest,
@@ -73,6 +92,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       approvalIdGenerator,
       delay,
     ),
+    recordActionIntent: new RecordActionIntentUseCase(actionJournalRepository),
+    recordActionObservation: new RecordActionObservationUseCase(actionJournalRepository),
+    recordActionResolution: new RecordActionResolutionUseCase(actionJournalRepository),
+    recordTraceObservation: new RecordTraceObservationUseCase(traceObservationStore),
     resolveRules: new ResolveRulesUseCase(digest),
     scanProject: new ScanProjectUseCase(projectFileSystem, projectConfigParser, digest),
   };

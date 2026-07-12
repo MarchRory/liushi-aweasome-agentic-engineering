@@ -20,8 +20,16 @@ export interface TaskStorePaths {
   eventsFile: string;
   /** 原子更新的 Snapshot JSON 文件。 */
   snapshotFile: string;
+  /** Append-only Action Journal JSONL 文件。 */
+  actionsFile: string;
+  /** 可丢失 Trace Observation JSONL 文件。 */
+  tracesFile: string;
   /** Task 级跨进程排他 Lock 文件。 */
   lockFile: string;
+  /** Action Journal 跨进程排他 Lock 文件。 */
+  actionsLockFile: string;
+  /** Trace Observation 跨进程排他 Lock 文件。 */
+  tracesLockFile: string;
   /** Workspace 内 Task 创建排他 Lock 文件。 */
   workspaceTaskCreationLockFile: string;
 }

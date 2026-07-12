@@ -1,5 +1,6 @@
 import type {
   TaskEventAppendInput,
+  TaskEventQuery,
   TaskLocator,
   TaskRepository,
   TaskRepositoryAppendOutput,
@@ -8,7 +9,7 @@ import type {
 import type { HarnessError } from "#common/index.js";
 import { ResultStatus, failure, success, type Result } from "#common/index.js";
 import type { TaskState } from "#domain/task/index.js";
-import type { TaskAggregateRecord } from "#domain/taskRun/index.js";
+import type { TaskAggregateRecord, TaskRunEventRecord } from "#domain/taskRun/index.js";
 
 import type { TaskStorePaths } from "../contracts/index.js";
 import { createTaskNotFoundError, toFileEventStoreError } from "../errors/index.js";
@@ -22,7 +23,7 @@ import { pathExists, resolveTaskStorePaths } from "../taskStore/index.js";
 export type FileTaskRepositoryDependencies = TaskPersistenceDependencies;
 
 /** 使用本地 append-only JSONL 和原子 Snapshot 实现 Task Repository。 */
-export class FileTaskRepository implements TaskRepository {
+export class FileTaskRepository implements TaskRepository, TaskEventQuery {
   public constructor(
     private readonly storeRoot: string,
     private readonly dependencies: FileTaskRepositoryDependencies,
@@ -55,6 +56,22 @@ export class FileTaskRepository implements TaskRepository {
         lastSequence: loaded.replay.lastSequence,
         lastEventHash: loaded.replay.lastEventHash,
       };
+    });
+  }
+
+  /** 在既有 Task Lock 与 Store Loader 内读取完整 Event 历史，不暴露文件路径。 */
+  public async getTaskRunEventHistory(
+    locator: TaskLocator,
+  ): Promise<Result<readonly TaskRunEventRecord[], HarnessError>> {
+    const paths = resolveTaskStorePaths(this.storeRoot, locator.workspaceId, locator.taskId);
+    const exists = await this.taskDirectoryExists(paths, locator);
+    if (exists.status === ResultStatus.Failure) {
+      return exists;
+    }
+
+    return this.withTaskLock(paths, async () => {
+      const loaded = await loadTaskStore(paths, this.dependencies.snapshotStore);
+      return loaded.events;
     });
   }
 

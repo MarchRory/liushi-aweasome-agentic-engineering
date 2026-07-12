@@ -1,4 +1,4 @@
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
@@ -81,6 +81,18 @@ export async function readWorkflowMigrationEvents(
 
 export async function removeWorkflowMigrationSnapshot(storeRoot: string): Promise<void> {
   await rm(snapshotFile(storeRoot));
+}
+
+/** 覆盖测试 Event Log，用于验证 Query Projection 对损坏历史 fail closed。 */
+export async function overwriteWorkflowMigrationEvents(
+  storeRoot: string,
+  events: readonly TaskRunEventRecord[],
+): Promise<void> {
+  await writeFile(
+    eventsFile(storeRoot),
+    `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
 }
 
 function taskDirectory(storeRoot: string): string {

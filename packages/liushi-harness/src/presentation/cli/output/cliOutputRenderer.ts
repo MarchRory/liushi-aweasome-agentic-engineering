@@ -151,6 +151,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.InvalidInput:
       return CLI_EXIT_CODE_INVALID_INPUT;
     case HarnessErrorCode.TaskNotFound:
+    case HarnessErrorCode.ActionNotFound:
       return CLI_EXIT_CODE_NOT_FOUND;
     case HarnessErrorCode.TaskAlreadyExists:
     case HarnessErrorCode.InvalidStateTransition:
@@ -158,6 +159,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.VersionConflict:
     case HarnessErrorCode.OperationForbidden:
     case HarnessErrorCode.DecisionConflict:
+    case HarnessErrorCode.ActionConflict:
       return CLI_EXIT_CODE_CONFLICT;
     case HarnessErrorCode.LockUnavailable:
       return CLI_EXIT_CODE_UNAVAILABLE;
@@ -166,6 +168,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.IoFailure:
       return CLI_EXIT_CODE_IO_FAILURE;
     case HarnessErrorCode.EventLogCommitOutcomeUnknown:
+    case HarnessErrorCode.ActionJournalCommitOutcomeUnknown:
       return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }
 }

@@ -13,8 +13,20 @@ export const TASK_EVENTS_FILE_NAME = "events.jsonl";
 /** Task 原子 Snapshot 文件名。 */
 export const TASK_SNAPSHOT_FILE_NAME = "snapshot.json";
 
+/** Task 内全部 Action 的 append-only Journal 文件名。 */
+export const TASK_ACTIONS_FILE_NAME = "actions.jsonl";
+
+/** Task 内可丢失 Trace Observation 的 JSONL 文件名。 */
+export const TASK_TRACES_FILE_NAME = "traces.jsonl";
+
 /** Task 排他 Lock 文件名。 */
 export const TASK_LOCK_FILE_NAME = ".task.lock";
+
+/** Task Action Journal 排他 Lock 文件名。 */
+export const TASK_ACTIONS_LOCK_FILE_NAME = ".actions.lock";
+
+/** Task Trace Observation 排他 Lock 文件名。 */
+export const TASK_TRACES_LOCK_FILE_NAME = ".traces.lock";
 
 /** Workspace 内 Task 创建排他 Lock 文件名。 */
 export const WORKSPACE_TASK_CREATION_LOCK_FILE_NAME = ".task-creation.lock";

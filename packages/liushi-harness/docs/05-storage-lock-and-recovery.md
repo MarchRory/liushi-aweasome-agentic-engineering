@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-首月采用本地文件型存储，不引入数据库或 Daemon。存储层必须支持：
+初始本地版本采用文件型存储，不引入数据库或 Daemon。存储层必须支持：
 
 - Windows、macOS 和 Linux。
 - 进程崩溃和机器重启恢复。
@@ -10,6 +10,10 @@
 - Append-only 事件与可重建 Snapshot。
 - 原子写入、幂等副作用和可解释修复。
 - Uninstall 时不误删用户文件。
+
+### 1.1 当前实现状态
+
+**状态：部分实现。** Task Event、Snapshot、Lock、Replay、Event Commit Unknown，Action Journal 的严格 Schema、独立 Lock、`actions.jsonl`、Hash Chain、幂等追加、跨实例重放与恢复查询，以及可丢失 Trace 的独立 Lock、`traces.jsonl` 和容错查询已落地；自动恢复命令、实时 Trace 生命周期和与 Executor/Hook 的接入尚未实现。
 
 ## 2. 存储分区
 
@@ -179,7 +183,7 @@ ACTION_INTENT -> SIDE_EFFECT -> ACTION_OBSERVED -> ACTION_COMMITTED
 - 明确未执行：允许重试同一 Idempotency Key。
 - 状态不确定：进入 `waiting_human`。
 
-外部系统不支持幂等键时，首月不得自动重试写入。
+外部系统不支持幂等键时，初始本地版本不得自动重试写入。
 
 ## 6. 锁模型
 

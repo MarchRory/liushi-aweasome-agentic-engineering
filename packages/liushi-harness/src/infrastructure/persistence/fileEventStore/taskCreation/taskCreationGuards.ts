@@ -3,6 +3,10 @@ import { HarnessError, HarnessErrorCode } from "#common/index.js";
 import type { TaskStorePaths } from "../contracts/index.js";
 import {
   TASK_EVENTS_FILE_NAME,
+  TASK_ACTIONS_FILE_NAME,
+  TASK_ACTIONS_LOCK_FILE_NAME,
+  TASK_TRACES_FILE_NAME,
+  TASK_TRACES_LOCK_FILE_NAME,
   TASK_LOCK_FILE_NAME,
   TASK_SNAPSHOT_FILE_NAME,
 } from "../constants/index.js";
@@ -47,16 +51,30 @@ export async function assertNewTaskStore(paths: TaskStorePaths): Promise<void> {
 
 async function classifyExistingTaskStore(paths: TaskStorePaths): Promise<HarnessError> {
   const entries = (await listTaskStoreEntries(paths.taskDirectory)).sort();
-  if (entries.includes(TASK_LOCK_FILE_NAME)) {
+  if (
+    entries.includes(TASK_LOCK_FILE_NAME) ||
+    entries.includes(TASK_ACTIONS_LOCK_FILE_NAME) ||
+    entries.includes(TASK_TRACES_LOCK_FILE_NAME)
+  ) {
     return new HarnessError(
       HarnessErrorCode.LockUnavailable,
-      "Task lock is already held or requires explicit recovery.",
-      { lockFile: paths.lockFile },
+      "Task runtime lock is already held or requires explicit recovery.",
+      {
+        lockFile: entries.includes(TASK_LOCK_FILE_NAME)
+          ? paths.lockFile
+          : entries.includes(TASK_ACTIONS_LOCK_FILE_NAME)
+            ? paths.actionsLockFile
+            : paths.tracesLockFile,
+      },
     );
   }
 
   const unknownEntries = entries.filter(
-    (entry) => entry !== TASK_EVENTS_FILE_NAME && entry !== TASK_SNAPSHOT_FILE_NAME,
+    (entry) =>
+      entry !== TASK_EVENTS_FILE_NAME &&
+      entry !== TASK_SNAPSHOT_FILE_NAME &&
+      entry !== TASK_ACTIONS_FILE_NAME &&
+      entry !== TASK_TRACES_FILE_NAME,
   );
   if (unknownEntries.length > 0 || entries.length === 0) {
     return new HarnessError(

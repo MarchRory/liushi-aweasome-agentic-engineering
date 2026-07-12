@@ -24,6 +24,12 @@ export enum HarnessErrorCode {
   IoFailure = "io_failure",
   /** Event Log 已开始写入但写入或 fsync 失败，持久化结果未知且禁止自动重试。 */
   EventLogCommitOutcomeUnknown = "event_log_commit_outcome_unknown",
+  /** 请求的 Action Journal 不存在。 */
+  ActionNotFound = "action_not_found",
+  /** Action ID、幂等键或 Journal 状态与既有记录冲突。 */
+  ActionConflict = "action_conflict",
+  /** Action Journal 已开始写入但结果未知，禁止自动重试。 */
+  ActionJournalCommitOutcomeUnknown = "action_journal_commit_outcome_unknown",
 }
 
 /** Harness 跨层返回的可分类错误。 */

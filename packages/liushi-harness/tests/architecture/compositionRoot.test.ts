@@ -28,10 +28,12 @@ describe("composition root", () => {
 
     expect([...concreteAdapterClassNames].sort()).toEqual([
       "ExclusiveFileLockManager",
+      "FileActionJournalRepository",
       "FileParentDirectoryDurability",
       "FileRuntimeHealthAdapter",
       "FileSnapshotStore",
       "FileTaskRepository",
+      "FileTraceObservationStore",
       "NodeJsonDocumentReaderAdapter",
       "NodeProjectFileSystemAdapter",
       "Rfc8785Sha256DigestAdapter",

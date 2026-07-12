@@ -5,6 +5,10 @@ import type { WorkspaceId } from "#domain/workspace/index.js";
 
 import {
   TASK_EVENTS_FILE_NAME,
+  TASK_ACTIONS_FILE_NAME,
+  TASK_ACTIONS_LOCK_FILE_NAME,
+  TASK_TRACES_FILE_NAME,
+  TASK_TRACES_LOCK_FILE_NAME,
   TASK_LOCK_FILE_NAME,
   TASK_SNAPSHOT_FILE_NAME,
   TASKS_DIRECTORY_NAME,
@@ -33,7 +37,11 @@ export function resolveTaskStorePaths(
     taskDirectory,
     eventsFile: resolve(taskDirectory, TASK_EVENTS_FILE_NAME),
     snapshotFile: resolve(taskDirectory, TASK_SNAPSHOT_FILE_NAME),
+    actionsFile: resolve(taskDirectory, TASK_ACTIONS_FILE_NAME),
+    tracesFile: resolve(taskDirectory, TASK_TRACES_FILE_NAME),
     lockFile: resolve(taskDirectory, TASK_LOCK_FILE_NAME),
+    actionsLockFile: resolve(taskDirectory, TASK_ACTIONS_LOCK_FILE_NAME),
+    tracesLockFile: resolve(taskDirectory, TASK_TRACES_LOCK_FILE_NAME),
     workspaceTaskCreationLockFile: resolve(
       workspaceDirectory,
       WORKSPACE_TASK_CREATION_LOCK_FILE_NAME,
