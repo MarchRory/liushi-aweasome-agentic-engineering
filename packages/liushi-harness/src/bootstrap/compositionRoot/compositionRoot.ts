@@ -51,6 +51,7 @@ import {
   NodeWorktreeInspectorAdapter,
   NodeWorktreeProvisionerAdapter,
   MockVerificationExecutorAdapter,
+  NodeVerificationExecutorAdapter,
   NodeRepositoryLockAdapter,
   FileActionExecutionLockAdapter,
   NodeCommandRunnerAdapter,
@@ -62,6 +63,7 @@ import {
 } from "#infrastructure/index.js";
 
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
+import { VerificationExecutionMode } from "./enums/index.js";
 
 /** 唯一 Composition Root，负责构造具体 Adapter 和 Use Case。 */
 export function createHarnessApplication(options: HarnessApplicationOptions): HarnessApplication {
@@ -143,6 +145,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     worktreeInspector,
     digest,
   );
+  const verificationExecutor =
+    options.verificationExecutor ??
+    (options.verificationExecutionMode === VerificationExecutionMode.LocalCommand
+      ? new NodeVerificationExecutorAdapter(commandRunner, clock)
+      : new MockVerificationExecutorAdapter(clock));
 
   return {
     applicationCommandGateway,
@@ -201,11 +208,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       ),
     ),
     inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
-    runVerification: new RunVerificationUseCase(
-      options.verificationExecutor ?? new MockVerificationExecutorAdapter(clock),
-      digest,
-      clock,
-    ),
+    runVerification: new RunVerificationUseCase(verificationExecutor, digest, clock),
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
     journaledActionRunner,
     worktreeProvisionCommands: new WorktreeProvisionCommandService(

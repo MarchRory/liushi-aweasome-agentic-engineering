@@ -56,4 +56,33 @@ describe("Node Command Runner", () => {
     if (result.status === ResultStatus.Failure) return;
     expect(path.resolve(result.value.stdout)).toBe(cwd);
   });
+
+  it("使用显式环境变量集合隔离子进程环境", async () => {
+    const result = await new NodeCommandRunnerAdapter().run({
+      executable: process.execPath,
+      args: ["-e", "process.stdout.write(process.env.VERIFICATION_VISIBLE ?? 'missing')"],
+      timeoutMs: 1000,
+      environment: { VERIFICATION_VISIBLE: "visible" },
+    });
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Failure) return;
+    expect(result.value).toMatchObject({ exitCode: 0, stdout: "visible", stderr: "" });
+  });
+
+  it("输出超过上限时终止并等待子进程关闭", async () => {
+    const result = await new NodeCommandRunnerAdapter().run({
+      executable: process.execPath,
+      args: ["-e", "process.stdout.write('x'.repeat(2048))"],
+      timeoutMs: 1000,
+      maxOutputBytes: 1024,
+    });
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Failure) return;
+    expect(result.value).toMatchObject({ exitCode: null, launchError: "output_limit" });
+    expect(
+      Buffer.byteLength(result.value.stdout) + Buffer.byteLength(result.value.stderr),
+    ).toBeLessThanOrEqual(1024);
+  });
 });

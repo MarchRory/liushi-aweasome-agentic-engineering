@@ -34,6 +34,8 @@ import type {
 } from "#application/ports/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
 
+import type { VerificationExecutionMode } from "./enums/index.js";
+
 /** Harness 对 CLI 和嵌入式调用方公开的 Use Case 集合。 */
 export interface HarnessApplication {
   /** 所有版本化写入口复用的持久化 Command Gateway。 */
@@ -116,6 +118,8 @@ export interface HarnessApplicationOptions {
   codingTaskAuthorizationResolver?: CodingTaskExecutionAuthorizationResolver;
   /** 可注入的 Verification Executor，默认使用 fail-closed Mock。 */
   verificationExecutor?: VerificationExecutorPort;
+  /** 未注入 Executor 时使用的验证模式；默认 fail-closed Mock。 */
+  verificationExecutionMode?: VerificationExecutionMode;
   /** 可注入的 Repository Lock ID Generator。 */
   repositoryLockIdGenerator?: IdGenerator;
 }

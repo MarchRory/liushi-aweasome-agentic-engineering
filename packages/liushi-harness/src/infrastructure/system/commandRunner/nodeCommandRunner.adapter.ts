@@ -19,6 +19,7 @@ export class NodeCommandRunnerAdapter implements CommandRunner {
           shell: false,
           cwd: request.cwd,
           windowsHide: true,
+          env: request.environment === undefined ? process.env : { ...request.environment },
         });
       } catch (error) {
         resolve(
@@ -32,6 +33,7 @@ export class NodeCommandRunnerAdapter implements CommandRunner {
         return;
       }
       let settled = false;
+      let terminalError: string | undefined;
       const finish = (value: Result<CommandRunResult, HarnessError>): void => {
         if (!settled) {
           settled = true;
@@ -39,27 +41,64 @@ export class NodeCommandRunnerAdapter implements CommandRunner {
         }
       };
       const timer = setTimeout(() => {
+        terminalError = "timeout";
         child.kill();
-        finish(success({ exitCode: null, stdout, stderr, launchError: "timeout" }));
       }, request.timeoutMs);
       child.stdout?.on("data", (chunk: Buffer) => {
-        stdout += chunk.toString();
+        if (terminalError !== undefined) return;
+        if (appendOutput(chunk, request.maxOutputBytes, stdout, stderr)) {
+          stdout += chunk.toString();
+        } else {
+          terminalError = "output_limit";
+          child.kill();
+          clearTimeout(timer);
+        }
       });
       child.stderr?.on("data", (chunk: Buffer) => {
-        stderr += chunk.toString();
+        if (terminalError !== undefined) return;
+        if (appendOutput(chunk, request.maxOutputBytes, stdout, stderr)) {
+          stderr += chunk.toString();
+        } else {
+          terminalError = "output_limit";
+          child.kill();
+          clearTimeout(timer);
+        }
       });
       child.on("error", (error: NodeJS.ErrnoException) => {
         clearTimeout(timer);
         finish(
-          success({ exitCode: null, stdout, stderr, launchError: error.code ?? "spawn_error" }),
+          success({
+            exitCode: null,
+            stdout,
+            stderr,
+            launchError: terminalError ?? error.code ?? "spawn_error",
+          }),
         );
       });
       child.on("close", (exitCode) => {
         clearTimeout(timer);
-        finish(success({ exitCode, stdout, stderr }));
+        finish(
+          success(
+            terminalError === undefined
+              ? { exitCode, stdout, stderr }
+              : { exitCode: null, stdout, stderr, launchError: terminalError },
+          ),
+        );
       });
     });
   }
+}
+
+function appendOutput(
+  chunk: Buffer,
+  maxOutputBytes: number | undefined,
+  stdout: string,
+  stderr: string,
+): boolean {
+  return (
+    maxOutputBytes === undefined ||
+    Buffer.byteLength(stdout) + Buffer.byteLength(stderr) + chunk.byteLength <= maxOutputBytes
+  );
 }
 
 function getLaunchError(error: unknown): string {

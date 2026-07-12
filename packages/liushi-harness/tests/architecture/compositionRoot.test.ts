@@ -47,6 +47,7 @@ describe("composition root", () => {
       "NodeJsonDocumentReaderAdapter",
       "NodeProjectFileSystemAdapter",
       "NodeRepositoryLockAdapter",
+      "NodeVerificationExecutorAdapter",
       "NodeWorktreeInspectorAdapter",
       "NodeWorktreeProvisionerAdapter",
       "Rfc8785Sha256DigestAdapter",

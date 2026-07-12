@@ -15,7 +15,7 @@ Harness 不能以 Agent 声称“完成”作为交付依据。Verification 层�
 
 ### 1.1 当前实现状态
 
-**状态：验证协议和证据装配部分实现，生产执行编排尚未实现。** 当前已实现 `VerificationPlan`、`VerificationCheck` 的严格校验，`VerificationExecutorPort`、`RunVerificationUseCase`、`EvidenceBundle` 装配和可注入的 fail-closed Mock Executor。每条 Check 的输出只用于进程内计算 Digest，不进入 Bundle；未配置的 Mock Check 返回 `Blocked`，不能伪造通过。尚未实现真实 Command Runner、影响面选择、重试/Flaky 策略、G5 Waiver、独立 Verifier 和多仓验证编排。
+**状态：验证协议、证据装配和显式本地执行部分实现，生产恢复编排尚未实现。** 当前已实现 `VerificationPlan`、`VerificationExecutorPort`、`RunVerificationUseCase`、`EvidenceBundle`、fail-closed Mock 和 `NodeVerificationExecutorAdapter`。Local Command 模式校验 Worktree Git Root、Base/Target/HEAD 绑定，以 `shell=false` 执行命令，并限制工作目录 containment、环境白名单、超时和输出。原始输出只用于计算 Digest，不进入 Bundle。尚未实现版本化 Verification Command/Journal 恢复、影响面选择、重试/Flaky、G5 Waiver、独立 Verifier和多仓编排。
 
 ## 2. Verification Kind
 
@@ -91,6 +91,8 @@ PlanRisk 为每个 Check 声明：
 - `RunVerificationUseCase` 串行调用 `VerificationExecutorPort`，把执行异常和非法结果转换为 `Blocked`，并按 Required/Conditional/Advisory 聚合整体状态。
 - `EvidenceBundle` 保存 Plan Digest、Check 状态、失败分类、时间、退出码、输出 Digest 和可定位的 `EvidenceRef`，不保存原始 stdout/stderr。
 - 默认 `MockVerificationExecutorAdapter` 不执行命令；只有显式注入的结果才会产生 Passed/Failed，未配置结果固定为 `Blocked`。
+- `VerificationExecutionMode.LocalCommand` 必须由嵌入方显式选择；真实执行前会验证 Worktree Root、HEAD、Target Commit、Base Commit 和祖先关系，Revision 不一致固定为 `Blocked`。
+- 真实命令使用非 Shell 参数数组，只传递 Plan 白名单中的环境变量，stdout/stderr 合计超过 1 MiB 或超时时终止；子进程关闭后才返回结果。
 
 该切片只提供可替换的 Application/Infrastructure 边界，不代表已经具备真实项目执行能力。真实执行器必须在独立切片中补齐命令白名单、Worktree Root 校验、环境隔离、超时/取消、输出上限和 Action Journal。
 

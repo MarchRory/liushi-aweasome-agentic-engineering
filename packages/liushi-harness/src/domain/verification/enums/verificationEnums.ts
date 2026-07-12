@@ -58,6 +58,10 @@ export enum VerificationFailureKind {
   OutputLimit = "output_limit",
   /** 执行结果无法按协议解析。 */
   InvalidOutput = "invalid_output",
+  /** Worktree 不是可验证的 Git Root。 */
+  WorktreeUnavailable = "worktree_unavailable",
+  /** Worktree HEAD、Target 或 Base Revision 与 Plan 不一致。 */
+  RevisionMismatch = "revision_mismatch",
   /** Mock 或执行器没有为该 Check 提供结果。 */
   Unconfigured = "unconfigured",
 }

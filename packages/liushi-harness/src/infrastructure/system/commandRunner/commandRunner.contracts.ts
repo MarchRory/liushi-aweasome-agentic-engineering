@@ -10,6 +10,10 @@ export interface CommandRunRequest {
   cwd?: string;
   /** 超时毫秒数。 */
   timeoutMs: number;
+  /** 子进程可见的完整环境变量集合；缺失时继承当前进程环境。 */
+  environment?: Readonly<Record<string, string>>;
+  /** stdout 与 stderr 合计允许收集的最大字节数。 */
+  maxOutputBytes?: number;
 }
 
 /** 外部命令的结构化完成结果。 */

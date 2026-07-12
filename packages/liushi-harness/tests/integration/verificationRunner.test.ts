@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { RunVerificationUseCase } from "../../src/application/useCases/runVerification/index.js";
 import { ResultStatus } from "../../src/common/index.js";
 import type { VerificationExecutorPort } from "../../src/application/ports/verification/index.js";
-import { createHarnessApplication } from "../../src/index.js";
+import { VerificationExecutionMode, createHarnessApplication } from "../../src/index.js";
 import {
   VerificationKind,
   VerificationRequirement,
@@ -20,6 +20,7 @@ import {
   MockVerificationExecutorAdapter,
   type MockVerificationOutcome,
 } from "../../src/infrastructure/verification/index.js";
+import { NodeCommandRunnerAdapter } from "../../src/infrastructure/system/index.js";
 import { FixedClock } from "../support/runtime/index.js";
 
 const WORKTREE_ROOT = "C:\\verification-worktree";
@@ -185,4 +186,153 @@ describe("Run Verification Use Case", () => {
       await rm(storeRoot, { recursive: true, force: true });
     }
   });
+
+  it("显式 LocalCommand 模式执行真实命令并只保留输出摘要", async () => {
+    const worktreeRoot = await mkdtemp(join(tmpdir(), "liushi-verification-command-"));
+    const storeRoot = await mkdtemp(join(tmpdir(), "liushi-verification-store-"));
+    try {
+      const revision = await initializeGit(worktreeRoot);
+      const result = await createHarnessApplication({
+        storeRoot,
+        clock: new FixedClock(FIXED_TIME),
+        verificationExecutionMode: VerificationExecutionMode.LocalCommand,
+      }).runVerification.execute({
+        verificationRunId: "run-local",
+        plan: createLocalCommandPlan(
+          ["-e", "process.stdout.write('verification-secret')"],
+          revision,
+        ),
+        worktreeRoot,
+      });
+
+      expect(result.status).toBe(ResultStatus.Success);
+      if (result.status === ResultStatus.Failure) return;
+      expect(result.value.status).toBe(VerificationStatus.Passed);
+      expect(result.value.checks[0]).toMatchObject({
+        status: VerificationStatus.Passed,
+        exitCode: 0,
+      });
+      expect(JSON.stringify(result.value)).not.toContain("verification-secret");
+
+      const mismatchedPlan = createLocalCommandPlan(["-e", "process.exit(0)"], revision);
+      const mismatched = await createHarnessApplication({
+        storeRoot,
+        clock: new FixedClock(FIXED_TIME),
+        verificationExecutionMode: VerificationExecutionMode.LocalCommand,
+      }).runVerification.execute({
+        verificationRunId: "run-mismatched",
+        plan: {
+          ...mismatchedPlan,
+          targetRevision: `${revision.slice(0, -1)}${revision.endsWith("0") ? "1" : "0"}`,
+        },
+        worktreeRoot,
+      });
+      expect(mismatched).toMatchObject({
+        status: ResultStatus.Success,
+        value: {
+          status: VerificationStatus.Blocked,
+          checks: [{ failureKind: "revision_mismatch" }],
+        },
+      });
+    } finally {
+      await Promise.all([
+        rm(worktreeRoot, { recursive: true, force: true }),
+        rm(storeRoot, { recursive: true, force: true }),
+      ]);
+    }
+  });
+
+  it("真实命令非零退出映射为 Failed，输出超限映射为 Blocked", async () => {
+    const worktreeRoot = await mkdtemp(join(tmpdir(), "liushi-verification-limits-"));
+    const storeRoot = await mkdtemp(join(tmpdir(), "liushi-verification-limit-store-"));
+    try {
+      const revision = await initializeGit(worktreeRoot);
+      const application = createHarnessApplication({
+        storeRoot,
+        clock: new FixedClock(FIXED_TIME),
+        verificationExecutionMode: VerificationExecutionMode.LocalCommand,
+      });
+      const failed = await application.runVerification.execute({
+        verificationRunId: "run-failed",
+        plan: createLocalCommandPlan(["-e", "process.exit(7)"], revision),
+        worktreeRoot,
+      });
+      const limited = await application.runVerification.execute({
+        verificationRunId: "run-limited",
+        plan: createLocalCommandPlan(["-e", "process.stdout.write('x'.repeat(1100000))"], revision),
+        worktreeRoot,
+      });
+
+      expect(failed).toMatchObject({
+        status: ResultStatus.Success,
+        value: {
+          status: VerificationStatus.Failed,
+          checks: [{ exitCode: 7, failureKind: "command_failed" }],
+        },
+      });
+      expect(limited).toMatchObject({
+        status: ResultStatus.Success,
+        value: {
+          status: VerificationStatus.Blocked,
+          checks: [{ exitCode: null, failureKind: "output_limit" }],
+        },
+      });
+    } finally {
+      await Promise.all([
+        rm(worktreeRoot, { recursive: true, force: true }),
+        rm(storeRoot, { recursive: true, force: true }),
+      ]);
+    }
+  });
 });
+
+function createLocalCommandPlan(args: readonly string[], revision: string): VerificationPlan {
+  const pathKey = Object.keys(process.env).find((key) => key.toUpperCase() === "PATH");
+  if (pathKey === undefined) throw new Error("测试环境缺少 PATH。");
+  return {
+    ...createPlan([
+      {
+        checkId: "local-command",
+        kind: VerificationKind.Custom,
+        requirement: VerificationRequirement.Required,
+        command: {
+          executable: "node",
+          args,
+          workingDirectory: "",
+          allowedEnvironmentKeys: [pathKey],
+        },
+        timeoutMs: 10_000,
+        retryable: false,
+      },
+    ]),
+    baseRevision: revision,
+    targetRevision: revision,
+  };
+}
+
+async function initializeGit(worktreeRoot: string): Promise<string> {
+  await runGit(worktreeRoot, ["init", "-b", "main"]);
+  await runGit(worktreeRoot, [
+    "-c",
+    "user.name=liushi-test",
+    "-c",
+    "user.email=liushi-test@example.com",
+    "commit",
+    "--allow-empty",
+    "-m",
+    "base",
+  ]);
+  return runGit(worktreeRoot, ["rev-parse", "HEAD"]);
+}
+
+async function runGit(cwd: string, args: readonly string[]): Promise<string> {
+  const result = await new NodeCommandRunnerAdapter().run({
+    executable: "git",
+    args,
+    cwd,
+    timeoutMs: 10_000,
+  });
+  if (result.status === ResultStatus.Failure) throw result.error;
+  if (result.value.exitCode !== 0) throw new Error(`Git command failed: ${args[0] ?? "unknown"}`);
+  return result.value.stdout.trim();
+}
