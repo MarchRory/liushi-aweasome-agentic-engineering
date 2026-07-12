@@ -384,6 +384,28 @@ describe("Task approval workflow 生产语义集成测试", () => {
     expect(await readEvents(storeRoot)).toHaveLength(3);
   });
 
+  it("Approval 在超过旧冲突窗口后仍能等待 Lock 释放并提交", async () => {
+    const storeRoot = await runtimeStores.create("liushi-delayed-lock-release-");
+    const setupApp = makeApp(storeRoot);
+    const proposed = await createAndProposeRequirement(setupApp);
+    await writeFile(lockFile(storeRoot), "held by delayed concurrent request\n", "utf8");
+    const release = new Promise<void>((resolveRelease, rejectRelease) => {
+      setTimeout(() => {
+        rm(lockFile(storeRoot)).then(() => resolveRelease(), rejectRelease);
+      }, 400);
+    });
+
+    const result = await approveDecision(
+      makeApprovalApp(storeRoot, CONCURRENT_EVENT_ID_A, CONCURRENT_APPROVAL_ID_A),
+      proposed.decisionRequest,
+      "delayed-lock-key",
+    );
+    await release;
+
+    expect(result.status).toBe(ResultStatus.Success);
+    expect(await readEvents(storeRoot)).toHaveLength(3);
+  });
+
   it("锁冲突补偿重载发现 CorruptStore 时立即透传完整性错误", async () => {
     const storeRoot = await runtimeStores.create("liushi-lock-then-corrupt-");
     const setupApp = makeApp(storeRoot);

@@ -58,17 +58,27 @@ export class RecordApprovalUseCase {
     }
 
     const locator = { workspaceId: workspaceId.value, taskId: taskId.value };
+    return this.executeWithConflictRecovery(
+      locator,
+      submission.value,
+      APPROVAL_CONFLICT_RESOLUTION_ATTEMPTS,
+    );
+  }
+
+  private async executeWithConflictRecovery(
+    locator: Parameters<TaskRepository["load"]>[0],
+    submission: ApprovalSubmission,
+    remainingAttempts: number,
+  ): Promise<Result<RecordApprovalOutput, HarnessError>> {
     const loaded = await this.repository.load(locator);
     if (loaded.status === ResultStatus.Failure) {
-      return loaded.error.code === HarnessErrorCode.LockUnavailable
-        ? this.resolveConcurrentDuplicate(locator, submission.value, loaded.error)
-        : loaded;
+      return this.retryConflict(locator, submission, loaded.error, remainingAttempts);
     }
-    const reused = this.reuseExistingApproval(loaded.value, submission.value);
+    const reused = this.reuseExistingApproval(loaded.value, submission);
     if (reused !== undefined) {
       return reused;
     }
-    const target = resolveApprovalTarget(loaded.value.aggregate, submission.value);
+    const target = resolveApprovalTarget(loaded.value.aggregate, submission);
     if (target.status === ResultStatus.Failure) {
       return target;
     }
@@ -76,7 +86,7 @@ export class RecordApprovalUseCase {
     const occurredAt = this.clock.now().toISOString();
     const approval = createApprovalRecord(
       target.value.decisionRequest,
-      submission.value,
+      submission,
       occurredAt,
       this.approvalIdGenerator,
       this.digestPort,
@@ -94,15 +104,12 @@ export class RecordApprovalUseCase {
       expectedLastSequence: loaded.value.lastSequence,
       expectedLastEventHash: loaded.value.lastEventHash,
       occurredAt,
-      actor: submission.value.actor,
+      actor: submission.actor,
       type: TaskRunEventType.ApprovalRecorded,
       payload: { approval: approval.value, gateEvaluation },
     });
     if (appended.status === ResultStatus.Failure) {
-      return appended.error.code === HarnessErrorCode.VersionConflict ||
-        appended.error.code === HarnessErrorCode.LockUnavailable
-        ? this.resolveConcurrentDuplicate(locator, submission.value, appended.error)
-        : appended;
+      return this.retryConflict(locator, submission, appended.error, remainingAttempts);
     }
 
     return success({
@@ -128,29 +135,22 @@ export class RecordApprovalUseCase {
       : success(this.createReusedOutput(record, approval, artifact.value));
   }
 
-  private async resolveConcurrentDuplicate(
+  private async retryConflict(
     locator: Parameters<TaskRepository["load"]>[0],
     submission: ApprovalSubmission,
     conflict: HarnessError,
+    remainingAttempts: number,
   ): Promise<Result<RecordApprovalOutput, HarnessError>> {
-    for (let attempt = 0; attempt < APPROVAL_CONFLICT_RESOLUTION_ATTEMPTS; attempt += 1) {
-      await this.delay.wait(APPROVAL_CONFLICT_RESOLUTION_DELAY_MS);
-      const reloaded = await this.repository.load(locator);
-      if (reloaded.status === ResultStatus.Failure) {
-        if (
-          conflict.code === HarnessErrorCode.LockUnavailable &&
-          reloaded.error.code === HarnessErrorCode.LockUnavailable
-        ) {
-          continue;
-        }
-        return reloaded;
-      }
-      const reused = this.reuseExistingApproval(reloaded.value, submission);
-      if (reused !== undefined) {
-        return reused;
-      }
+    if (
+      ![HarnessErrorCode.LockUnavailable, HarnessErrorCode.VersionConflict].includes(
+        conflict.code,
+      ) ||
+      remainingAttempts <= 0
+    ) {
+      return { status: ResultStatus.Failure, error: conflict };
     }
-    return { status: ResultStatus.Failure, error: conflict };
+    await this.delay.wait(APPROVAL_CONFLICT_RESOLUTION_DELAY_MS);
+    return this.executeWithConflictRecovery(locator, submission, remainingAttempts - 1);
   }
 
   private createReusedOutput(
