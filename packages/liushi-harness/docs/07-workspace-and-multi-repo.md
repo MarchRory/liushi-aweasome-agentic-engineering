@@ -13,7 +13,7 @@
 
 ### 1.1 当前实现切片
 
-当前运行时尚未实现 Worktree 创建/管理、跨仓写入 Saga 和 Repository Lock。本轮已经实现 Rule Resolution 所需的最小多仓身份边界、只读 Project Scanner、Human-gated Profile Bundle 编译，以及 CodingTask Worktree 的只读实体检查：
+当前运行时尚未实现 Worktree 创建/管理和跨仓写入 Saga。本轮已经实现 Rule Resolution 所需的最小多仓身份边界、只读 Project Scanner、Human-gated Profile Bundle 编译、CodingTask Worktree 的只读实体检查，以及不执行 Git 写操作的 Repository Lock：
 
 - `WorkspaceRuleContextRef` 绑定 Workspace ID、Workspace Graph Revision 和可选 Organization ID。
 - `RepositoryRuleContextRef` 绑定 Repository ID、Base Revision、ProjectProfile Revision 和可选 ArchitectureMechanismProfile Revision。
@@ -25,6 +25,7 @@
 - 多个 Repository 同时声明同一 package owner 时，依赖关系进入稳定排序的 `dependencyAmbiguities`，报告为 `incomplete`，不能静默丢弃或任选一条边。
 - 任何 Candidate 都不能直接变成 Active Rule；`profilePromotionStatus` 固定为 `HumanReviewRequired`。
 - `WorktreeInspectorPort` 只读取真实 Worktree Root、分支、HEAD、Base Revision 和 `git status --porcelain=v1 -z`，并将变化路径与 canonical Write Set 做确定性比较；它不创建、删除、Reset、Checkout、Merge 或写入文件。
+- `HarnessApplication.acquireRepositoryLock.execute` 以 Workspace/Repository 为作用域获取 Runtime Store 排他 Lock，竞争时返回脱敏的 `LockUnavailable`；句柄释放幂等，Lock 不授予 Worktree 创建、代码写入或 Git 操作权限。
 - Human 必须在 `ProjectProfileProposal` 中确认每个 Repository Role 并完整划分 Rule/Mechanism Candidate；G8 对精确 Proposal Digest 审批。
 - `profile compile` 重新校验 Report 与审批域，生成多仓 ProjectProfile Bundle 和 repository-qualified Active Rule，避免不同仓库的同语义 Rule ID 碰撞。
 
@@ -216,7 +217,7 @@ lh/<task-id>/<short-description>
 - Write Set 外的任一变化、Base Revision 漂移、分支不匹配、Git 失败或超时的闭合状态报告。
 - 报告只包含 Repository 相对 POSIX 路径，不返回本机绝对路径、stderr 或命令输出。
 
-该 Inspector 只证明当前工作树是否满足编码前置条件，不负责 Worktree 创建、Repository Lock、Action Journal 接入、代码写入或清理。
+该 Inspector 只证明当前工作树是否满足编码前置条件，不负责 Worktree 创建、Action Journal 接入、代码写入或清理；Repository Lock 是独立的协调 Port，不能被 Inspector 的成功结果替代。
 
 ## 10. Revision 漂移
 

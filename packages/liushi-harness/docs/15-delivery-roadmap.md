@@ -80,12 +80,12 @@ Human、Lead 与六角色评审已经确认：
 | Agent Registry           | `designed`    | Model/Role 设计                                                                                                                                                                                                             | Registry、Resolution、Eval、平台渲染                                                |
 | Skills 与 Connectors     | `designed`    | Scanner、CLI、Digest                                                                                                                                                                                                        | Registry、Runner、认证、Wiki Adapter                                                |
 | Memory 与 Knowledge      | `designed`    | Event/Snapshot/Artifact                                                                                                                                                                                                     | Memory Store、Retrieval、Curation、Promotion                                        |
-| 多仓写入与 Worktree      | `partial`     | 多仓身份、Profile、Write Set 规范化、Worktree 只读检查                                                                                                                                                                      | Workspace Registry、Repository Lock、创建/清理、受控写入、Saga、Compensation        |
+| 多仓写入与 Worktree      | `partial`     | 多仓身份、Profile、Write Set 规范化、Worktree 只读检查、Workspace/Repository 排他 Lock                                                                                                                                      | Workspace Registry、Worktree 创建/清理、受控写入、Saga、Compensation                |
 | 生产安装、升级与卸载     | `designed`    | npm 发布物                                                                                                                                                                                                                  | Managed Files、Migration、Rollback                                                  |
 
 ### 5.1 S3 CodingTask 进展修订
 
-S3 当前已经完成 Domain Core、File Store/Replay、Command Gateway/Service、默认权威授权解析、Worktree/Write Set 只读检查 Port、VerificationPlan/Port、EvidenceBundle 装配和 fail-closed Mock Executor。进入真实代码交付前仍必须补齐 Worktree 生命周期与 Repository Lock、Action Journal 接入、真实 Verification Runner、影响面选择、失败分类/重试和多仓编排；在这些能力完成前，不得宣称 CodingTask 已能独立完成真实代码交付。
+S3 当前已经完成 Domain Core、File Store/Replay、Command Gateway/Service、默认权威授权解析、Worktree/Write Set 只读检查 Port、Workspace/Repository 排他 Lock、VerificationPlan/Port、EvidenceBundle 装配和 fail-closed Mock Executor。进入真实代码交付前仍必须补齐 Worktree 生命周期、受控写入、Action Journal 接入、真实 Verification Runner、影响面选择、失败分类/重试和多仓编排；在这些能力完成前，不得宣称 CodingTask 已能独立完成真实代码交付。
 
 ## 6. 每个切片的统一开工门
 

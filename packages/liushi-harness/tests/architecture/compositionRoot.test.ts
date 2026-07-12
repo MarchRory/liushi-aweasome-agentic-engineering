@@ -45,6 +45,7 @@ describe("composition root", () => {
       "NodeHookInputReaderAdapter",
       "NodeJsonDocumentReaderAdapter",
       "NodeProjectFileSystemAdapter",
+      "NodeRepositoryLockAdapter",
       "NodeWorktreeInspectorAdapter",
       "Rfc8785Sha256DigestAdapter",
       "StructuredProjectConfigParserAdapter",

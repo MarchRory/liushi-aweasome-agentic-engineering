@@ -12,6 +12,7 @@ import type {
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
   RunVerificationUseCase,
+  AcquireRepositoryLockUseCase,
   ListRecoverableActionsUseCase,
   ListTraceObservationsUseCase,
   ProposeArtifactUseCase,
@@ -83,6 +84,8 @@ export interface HarnessApplication {
   inspectWorktree: InspectWorktreeUseCase;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
   runVerification: RunVerificationUseCase;
+  /** 获取 Repository 级排他 Lock；不执行 Worktree 创建或代码写入。 */
+  acquireRepositoryLock: AcquireRepositoryLockUseCase;
 }
 
 /** 创建 Harness Application 的可注入依赖。 */
@@ -107,4 +110,6 @@ export interface HarnessApplicationOptions {
   codingTaskAuthorizationResolver?: CodingTaskExecutionAuthorizationResolver;
   /** 可注入的 Verification Executor，默认使用 fail-closed Mock。 */
   verificationExecutor?: VerificationExecutorPort;
+  /** 可注入的 Repository Lock ID Generator。 */
+  repositoryLockIdGenerator?: IdGenerator;
 }

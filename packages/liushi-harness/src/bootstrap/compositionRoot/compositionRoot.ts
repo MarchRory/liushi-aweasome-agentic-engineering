@@ -14,6 +14,7 @@ import {
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
   RunVerificationUseCase,
+  AcquireRepositoryLockUseCase,
   ListTraceObservationsUseCase,
   ListRecoverableActionsUseCase,
   ProposeArtifactUseCase,
@@ -46,6 +47,7 @@ import {
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
   MockVerificationExecutorAdapter,
+  NodeRepositoryLockAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
   StructuredProjectConfigParserAdapter,
@@ -71,6 +73,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const artifactIdGenerator = options.artifactIdGenerator ?? new UlidGenerator();
   const decisionRequestIdGenerator = options.decisionRequestIdGenerator ?? new UlidGenerator();
   const approvalIdGenerator = options.approvalIdGenerator ?? new UlidGenerator();
+  const repositoryLockIdGenerator = options.repositoryLockIdGenerator ?? new UlidGenerator();
   const snapshotStore = new FileSnapshotStore();
   const lockManager = new ExclusiveFileLockManager();
   const parentDirectoryDurability = new FileParentDirectoryDurability();
@@ -181,6 +184,14 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       options.verificationExecutor ?? new MockVerificationExecutorAdapter(clock),
       digest,
       clock,
+    ),
+    acquireRepositoryLock: new AcquireRepositoryLockUseCase(
+      new NodeRepositoryLockAdapter(
+        options.storeRoot,
+        lockManager,
+        clock,
+        repositoryLockIdGenerator,
+      ),
     ),
   };
 }
