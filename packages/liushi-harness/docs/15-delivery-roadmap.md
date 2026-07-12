@@ -85,7 +85,7 @@ Human、Lead 与六角色评审已经确认：
 
 ### 5.1 S3 CodingTask 进展修订
 
-S3 当前已经完成 Domain Core、File Store/Replay、Command Gateway/Service、默认权威授权解析、Worktree/Write Set 只读检查 Port、Workspace/Repository 排他 Lock、Action 级执行锁和 Intent-first `JournaledActionRunner`、VerificationPlan/Port、EvidenceBundle 装配和 fail-closed Mock Executor。进入真实代码交付前仍必须补齐 Worktree 生命周期、受控写入、Worktree/Verification 对 Journaled Runner 的接入、真实 Verification Runner、影响面选择、失败分类/重试和多仓编排；在这些能力完成前，不得宣称 CodingTask 已能独立完成真实代码交付。
+S3 当前已经完成 Domain Core、File Store/Replay、Command Gateway/Service、默认权威授权解析、Managed Worktree Provision/Inspector、Workspace/Repository 排他 Lock、Action 级执行锁和 Intent-first `JournaledActionRunner`、VerificationPlan/Port、EvidenceBundle 装配和 fail-closed Mock Executor。进入真实代码交付前仍必须补齐 Worktree 清理/重建、受控代码写入、真实 Verification Runner、影响面选择、失败分类/重试和多仓编排；在这些能力完成前，不得宣称 CodingTask 已能独立完成真实代码交付。
 
 ## 6. 每个切片的统一开工门
 

@@ -9,3 +9,4 @@ export * from "./useCases/index.js";
 export * from "./workflow/index.js";
 export * from "./codingTask/index.js";
 export * from "./actionExecution/index.js";
+export * from "./worktreeProvisioning/index.js";

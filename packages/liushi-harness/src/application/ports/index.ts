@@ -17,3 +17,4 @@ export * from "./worktree/index.js";
 export type * from "./verification/index.js";
 export type * from "./repositoryLock/index.js";
 export type * from "./actionExecutionLock/index.js";
+export * from "./worktreeProvisioner/index.js";

@@ -43,13 +43,13 @@
 - `hook config --executor codex` 可只读生成受审阅的 `hooks.json` 投影，`hook handle --executor codex` 提供 Codex 原生 stdin/stdout Wrapper；配置文件写入和项目受信任由 Human 控制。
 - `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出和静态 Hook 能力；找不到、Access Denied、超时或未知版本均不会被标记为生产支持。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
-- CodingTask 已提供单仓 Aggregate、独立 Schema、File Store/Replay、Versioned Command Gateway/Service、权威 ExecutionAuthorization、G2 历史逻辑确认绑定、Attempt 串行状态机、Verification 结果接纳和 Human Resolution；Worktree Inspector 已能只读检查真实 Worktree、Base Revision、分支、Git Diff 和 canonical Write Set；Repository Lock、VerificationPlan、Verification Port、EvidenceBundle 装配和 fail-closed Mock Executor 已落地，仍不包含 Worktree 生命周期管理或真实命令执行器。
+- CodingTask 已提供单仓 Aggregate、独立 Schema、File Store/Replay、Versioned Command Gateway/Service、权威 ExecutionAuthorization、G2 历史逻辑确认绑定、Attempt 串行状态机、Verification 结果接纳和 Human Resolution；Managed Worktree Provision Command 已通过 Repository Lock、JournaledActionRunner 和真实 `shell=false` Git Adapter 创建 Worktree，并用 Inspector 验证 Base Revision、分支和 canonical Write Set；VerificationPlan、Verification Port、EvidenceBundle 装配和 fail-closed Mock Executor 已落地。
 
 现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Cell Runtime、Worktree 创建/清理与受控写入、多仓写入编排、真实 Verification Command Runner、影响面选择、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
-本轮仍未提供 Worktree 创建/管理、受控写入、跨仓 Saga、真实 Verification Command Runner、影响面选择、重试/Flaky、Waiver、真实 Executor、完整 Workflow Runtime、Skills/Memory/Connectors 或 Studio；Repository Lock 只提供运行时互斥，不创建 Worktree、不修改 Git、不授予写权限；当前 Mock 只用于契约和测试，未配置 Check 必须返回 `Blocked`，不能因为它存在而视为生产验证已完成。
+本轮仍未提供 Worktree 清理/重建、受控代码写入、跨仓 Saga、真实 Verification Command Runner、影响面选择、重试/Flaky、Waiver、完整 Workflow Runtime、Skills/Memory/Connectors 或 Studio；Worktree Provision 仅创建 CodingTask 已声明的 managed 绑定，不删除、Reset、Checkout 或自动修复既有历史；当前 Verification Mock 只用于契约和测试，未配置 Check 必须返回 `Blocked`。
 
 ## Documents
 

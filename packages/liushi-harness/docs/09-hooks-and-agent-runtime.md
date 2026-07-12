@@ -13,7 +13,7 @@ Hooks 将 Harness 的确定性规则接入执行器生命周期；Agent Runtime 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。PreAction 会从权威 Task Replay 重算 PlanRisk Write Set、风险等级、G4 和 G2 Human Approval；PostAction 会写入 Action Journal 并记录可丢失 Trace。通用 `JournaledActionRunner` 已实现 Action 级跨进程执行锁、Intent-first 执行、完成态幂等复用、`retry_permitted` 受控重试、已有 Observation 的 Resolution 恢复和 Journal 闭合未知态阻断。Codex `apply_patch` 的 PreToolUse/PostToolUse Adapter、绑定 Store、原生 CLI Wrapper、`hooks.json` 投影和只读 Capability Probe 已实现并通过 Fixture 集成测试；真实受信任项目的 Hook 启用仍需 Human 执行和验收。Worktree/Verification 尚未接入该 Runner，其他平台 Projection、Hook 安装、其他生命周期 Handler、Agent Role Runtime 和 Human Battle Runtime 尚未实现。
+**状态：部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。PreAction 会从权威 Task Replay 重算 PlanRisk Write Set、风险等级、G4 和 G2 Human Approval；PostAction 会写入 Action Journal 并记录可丢失 Trace。通用 `JournaledActionRunner` 已实现 Action 级跨进程执行锁、Intent-first 执行、完成态幂等复用、受控重试和未知态阻断；Managed Worktree Provision 已接入该 Runner。Codex `apply_patch` Adapter、CLI Wrapper、`hooks.json` 投影和只读 Capability Probe 已通过 Fixture 测试；真实受信任项目 Hook 验收、Verification Runner、其他平台 Projection、Role Runtime 和 Human Battle Runtime 尚未实现。
 
 Workflow、Cell、Agent、Skill、Executor 与 Hook 的职责边界已经在 [21 需求生命周期 Workflow Runtime](./21-requirement-workflow-runtime.md) 中建立；本章后续只定义 Hook 映射和 Agent Runtime，不拥有 Workflow 状态。
 

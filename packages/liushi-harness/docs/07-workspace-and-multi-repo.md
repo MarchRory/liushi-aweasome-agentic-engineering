@@ -13,7 +13,7 @@
 
 ### 1.1 当前实现切片
 
-当前运行时尚未实现 Worktree 创建/管理和跨仓写入 Saga。本轮已经实现 Rule Resolution 所需的最小多仓身份边界、只读 Project Scanner、Human-gated Profile Bundle 编译、CodingTask Worktree 的只读实体检查，以及不执行 Git 写操作的 Repository Lock：
+当前运行时已实现单仓 Managed Worktree 创建，尚未实现清理、重建和跨仓写入 Saga。本轮已经实现 Rule Resolution 所需的最小多仓身份边界、只读 Project Scanner、Human-gated Profile Bundle 编译、CodingTask Worktree 的只读实体检查、Repository Lock 和 Journaled Provision Command：
 
 - `WorkspaceRuleContextRef` 绑定 Workspace ID、Workspace Graph Revision 和可选 Organization ID。
 - `RepositoryRuleContextRef` 绑定 Repository ID、Base Revision、ProjectProfile Revision 和可选 ArchitectureMechanismProfile Revision。
@@ -26,6 +26,8 @@
 - 任何 Candidate 都不能直接变成 Active Rule；`profilePromotionStatus` 固定为 `HumanReviewRequired`。
 - `WorktreeInspectorPort` 只读取真实 Worktree Root、分支、HEAD、Base Revision 和 `git status --porcelain=v1 -z`，并将变化路径与 canonical Write Set 做确定性比较；它不创建、删除、Reset、Checkout、Merge 或写入文件。
 - `HarnessApplication.acquireRepositoryLock.execute` 以 Workspace/Repository 为作用域获取 Runtime Store 排他 Lock，竞争时返回脱敏的 `LockUnavailable`；句柄释放幂等，Lock 不授予 Worktree 创建、代码写入或 Git 操作权限。
+- `HarnessApplication.worktreeProvisionCommands.execute` 只为处于 Implementation/Active 的 Managed CodingTask 创建绑定 Worktree；它重新解析权威授权，持有 Repository Lock，先写 Action Intent，再执行 `git worktree add`，最后以 Inspector 证明后置条件。
+- Runtime Repository Root 仅参与本次执行并以 SHA-256 摘要绑定 Command；绝对路径和 Git 原始输出不进入 Receipt、Journal 或 Evidence。无法证明完整成功或完全未执行时必须等待 Human。
 - Human 必须在 `ProjectProfileProposal` 中确认每个 Repository Role 并完整划分 Rule/Mechanism Candidate；G8 对精确 Proposal Digest 审批。
 - `profile compile` 重新校验 Report 与审批域，生成多仓 ProjectProfile Bundle 和 repository-qualified Active Rule，避免不同仓库的同语义 Rule ID 碰撞。
 

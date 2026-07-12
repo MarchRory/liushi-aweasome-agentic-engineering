@@ -134,6 +134,7 @@ function errorReceipt(command: CommandEnvelope, error: HarnessError): CommandRec
   if (
     error.code === HarnessErrorCode.EventLogCommitOutcomeUnknown ||
     error.code === HarnessErrorCode.ActionJournalCommitOutcomeUnknown ||
+    error.code === HarnessErrorCode.ActionExecutionLockReleaseUnknown ||
     error.code === HarnessErrorCode.CommandGatewayCommitOutcomeUnknown ||
     error.code === HarnessErrorCode.IoFailure
   ) {

@@ -5,6 +5,7 @@ export * from "./serialization/index.js";
 export * from "./system/index.js";
 export * from "./executors/index.js";
 export * from "./worktree/index.js";
+export * from "./worktreeProvisioner/index.js";
 export * from "./verification/index.js";
 export * from "./repositoryLock/index.js";
 export * from "./actionExecutionLock/index.js";

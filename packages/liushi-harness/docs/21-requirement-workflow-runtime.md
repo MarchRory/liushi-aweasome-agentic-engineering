@@ -6,7 +6,7 @@
 
 `liushi-harness` 的 Workflow 是本地优先、Human-gated、可审计、可恢复的需求交付语义内核。它编排从 PRD 输入到每个 Repository 达到 PR-ready 的完整生命周期，但不是通用 DAG、低代码平台或模型聊天外壳。
 
-当前实现仍属于 Harness 前置机制：持久化 Command Gateway/Receipt、Revision/Context、Golden Replay、Event Unknown、只读 Task Timeline Query、持久化 Action Journal、Action 级执行锁、Intent-first JournaledActionRunner、可丢失的完成态 Trace Span Observation、执行器无关的 Canonical Action Hook Core、RequirementWorkflow 的固定 Cell/Failure 路由与 Human 控制 Domain Policy、RequirementWorkflow Aggregate/Reducer、File Store、Gateway Command API，以及 CodingTask 的单仓 Domain Core、File Store/Replay、Command Service、权威授权解析、Worktree/Write Set 只读检查、Repository Lock、VerificationPlan/Port、EvidenceBundle 装配和 fail-closed Mock Executor 已落地。现有 CLI 写命令尚未全部迁移到 Gateway，Codex/Claude-compatible 平台 Hook Projection 与安装、实时 Span 生命周期、OTel Exporter、Cell Runtime、Worktree 生命周期及其 Journaled Runner 接入、真实 Verification Runner、失败重试和 Studio 均未实现。
+当前实现仍属于 Harness 前置机制：持久化 Command Gateway/Receipt、Revision/Context、Golden Replay、Event Unknown、只读 Task Timeline Query、持久化 Action Journal、Action 级执行锁、Intent-first JournaledActionRunner、可丢失 Trace、Canonical Action Hook Core、RequirementWorkflow Domain/Store/Command，以及 CodingTask Domain/Store/Command、权威授权解析、Managed Worktree Provision/Inspector、Repository Lock、VerificationPlan/Port、EvidenceBundle 和 fail-closed Mock Executor 已落地。现有 CLI 写命令尚未全部迁移到 Gateway，Codex/Claude-compatible 平台安装、实时 Span、OTel Exporter、Cell Runtime、Worktree 清理/重建、真实 Verification Runner、失败重试和 Studio 均未实现。
 
 六角色评审后的核心结论：
 
@@ -276,7 +276,7 @@ Snapshot 只是缓存；版本不兼容时从 Event 重建。Event 迁移写入�
 
 当前 `CodingTask` 已具备可恢复的 File Store、严格 Schema/Hash Replay、Versioned Command Gateway/Service 和默认 Task-backed Authorization Policy。该 Policy 会回读上游 Task 的 PlanRisk、Business Logic Artifact、Approval 和 Write Set，未通过 Human Gate 或发生 Write Set 漂移时拒绝创建。
 
-当前仍缺少 Worktree 创建/管理、受控写入、Worktree/Verification 对 Journaled Runner 的接入、真实 Verification Command Runner、影响面选择、重试/Flaky、Waiver、Child Workflow 和 Cell Runtime；Workflow Studio 仍是同级独立包，不在本轮 Harness 实现范围内。Worktree Inspector 只读检查真实 Root、分支、Base Revision、Git 状态和 Write Set 越界，不执行创建、删除、Reset、Checkout、Merge 或文件写入。Repository Lock 只提供协调互斥，不代表 Worktree 生命周期已经可用；Verification Mock 仅用于契约和测试，不代表生产执行能力。
+当前仍缺少 Worktree 清理/重建、受控代码写入、真实 Verification Command Runner、影响面选择、重试/Flaky、Waiver、Child Workflow 和 Cell Runtime；Workflow Studio 仍是同级独立包，不在本轮 Harness 实现范围内。Worktree Provision 只创建权威 CodingTask 声明的 managed 绑定，不执行删除、Reset、Checkout、Merge 或自动修复；Verification Mock 仅用于契约和测试，不代表生产执行能力。
 
 ## 13. 发布阻断条件
 

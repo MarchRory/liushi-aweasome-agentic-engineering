@@ -26,6 +26,7 @@ import type {
   ResolveRulesUseCase,
   ScanProjectUseCase,
   WorkflowCommandService,
+  WorktreeProvisionCommandService,
 } from "#application/index.js";
 import type {
   CodingTaskExecutionAuthorizationResolver,
@@ -89,6 +90,8 @@ export interface HarnessApplication {
   acquireRepositoryLock: AcquireRepositoryLockUseCase;
   /** 以 Action 执行锁和持久化 Journal 闭合副作用。 */
   journaledActionRunner: JournaledActionRunner;
+  /** 创建并验证 Managed Worktree 的版本化命令入口。 */
+  worktreeProvisionCommands: WorktreeProvisionCommandService;
 }
 
 /** 创建 Harness Application 的可注入依赖。 */

@@ -28,6 +28,8 @@ import {
   ResolveRulesUseCase,
   ScanProjectUseCase,
   RequirementWorkflowCommandHandler,
+  WorktreeProvisionCommandHandler,
+  WorktreeProvisionCommandService,
   WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
@@ -47,6 +49,7 @@ import {
   FileCodingTaskRepository,
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
+  NodeWorktreeProvisionerAdapter,
   MockVerificationExecutorAdapter,
   NodeRepositoryLockAdapter,
   FileActionExecutionLockAdapter,
@@ -122,6 +125,24 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     traceObservationStore,
     digest,
   );
+  const commandRunner = new NodeCommandRunnerAdapter();
+  const worktreeInspector = new NodeWorktreeInspectorAdapter(commandRunner);
+  const repositoryLock = new NodeRepositoryLockAdapter(
+    options.storeRoot,
+    lockManager,
+    clock,
+    repositoryLockIdGenerator,
+  );
+  const journaledActionRunner = new JournaledActionRunner(
+    actionJournalRepository,
+    clock,
+    new FileActionExecutionLockAdapter(options.storeRoot, lockManager),
+  );
+  const worktreeProvisioner = new NodeWorktreeProvisionerAdapter(
+    commandRunner,
+    worktreeInspector,
+    digest,
+  );
 
   return {
     applicationCommandGateway,
@@ -141,7 +162,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       clock,
     ),
     probeCodexCapabilities: new ProbeCodexCapabilitiesUseCase(
-      new CodexCapabilityProbeAdapter(new NodeCommandRunnerAdapter()),
+      new CodexCapabilityProbeAdapter(commandRunner),
     ),
     getActionJournal: new GetActionJournalUseCase(actionJournalRepository),
     listRecoverableActions: new ListRecoverableActionsUseCase(actionJournalRepository),
@@ -179,26 +200,24 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
         codingTaskAuthorizationResolver,
       ),
     ),
-    inspectWorktree: new InspectWorktreeUseCase(
-      new NodeWorktreeInspectorAdapter(new NodeCommandRunnerAdapter()),
-    ),
+    inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
     runVerification: new RunVerificationUseCase(
       options.verificationExecutor ?? new MockVerificationExecutorAdapter(clock),
       digest,
       clock,
     ),
-    acquireRepositoryLock: new AcquireRepositoryLockUseCase(
-      new NodeRepositoryLockAdapter(
-        options.storeRoot,
-        lockManager,
-        clock,
-        repositoryLockIdGenerator,
+    acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
+    journaledActionRunner,
+    worktreeProvisionCommands: new WorktreeProvisionCommandService(
+      applicationCommandGateway,
+      new WorktreeProvisionCommandHandler(
+        codingTaskRepository,
+        codingTaskAuthorizationResolver,
+        repositoryLock,
+        journaledActionRunner,
+        worktreeProvisioner,
+        digest,
       ),
-    ),
-    journaledActionRunner: new JournaledActionRunner(
-      actionJournalRepository,
-      clock,
-      new FileActionExecutionLockAdapter(options.storeRoot, lockManager),
     ),
   };
 }
