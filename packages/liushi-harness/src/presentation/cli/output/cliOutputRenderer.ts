@@ -166,6 +166,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.WorkflowNotFound:
     case HarnessErrorCode.ActionNotFound:
     case HarnessErrorCode.CodingTaskNotFound:
+    case HarnessErrorCode.EvidenceBundleNotFound:
       return CLI_EXIT_CODE_NOT_FOUND;
     case HarnessErrorCode.TaskAlreadyExists:
     case HarnessErrorCode.WorkflowAlreadyExists:
@@ -176,6 +177,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.DecisionConflict:
     case HarnessErrorCode.ActionConflict:
     case HarnessErrorCode.CodingTaskAlreadyExists:
+    case HarnessErrorCode.EvidenceBundleConflict:
       return CLI_EXIT_CODE_CONFLICT;
     case HarnessErrorCode.LockUnavailable:
       return CLI_EXIT_CODE_UNAVAILABLE;
@@ -187,6 +189,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.ActionJournalCommitOutcomeUnknown:
     case HarnessErrorCode.ActionExecutionLockReleaseUnknown:
     case HarnessErrorCode.CommandGatewayCommitOutcomeUnknown:
+    case HarnessErrorCode.EvidenceBundleCommitOutcomeUnknown:
       return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }
 }

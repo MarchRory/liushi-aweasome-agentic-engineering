@@ -14,6 +14,10 @@ export enum HarnessErrorCode {
   CodingTaskNotFound = "coding_task_not_found",
   /** 相同 Workspace 与 CodingTask ID 已经存在。 */
   CodingTaskAlreadyExists = "coding_task_already_exists",
+  /** 请求的 EvidenceBundle 不存在。 */
+  EvidenceBundleNotFound = "evidence_bundle_not_found",
+  /** 同一 Verification Run 已绑定不同 EvidenceBundle。 */
+  EvidenceBundleConflict = "evidence_bundle_conflict",
   /** Task 当前状态不允许目标迁移。 */
   InvalidStateTransition = "invalid_state_transition",
   /** 另一个进程或未修复 Lock 阻止当前操作。 */
@@ -40,6 +44,8 @@ export enum HarnessErrorCode {
   ActionJournalCommitOutcomeUnknown = "action_journal_commit_outcome_unknown",
   /** Action 执行锁释放失败，必须恢复 Lock 后再决定后续动作。 */
   ActionExecutionLockReleaseUnknown = "action_execution_lock_release_unknown",
+  /** EvidenceBundle 已开始持久化但提交结果未知，禁止自动重试。 */
+  EvidenceBundleCommitOutcomeUnknown = "evidence_bundle_commit_outcome_unknown",
   /** Command Handler 已执行但 Receipt 无法可靠落盘，禁止自动重试。 */
   CommandGatewayCommitOutcomeUnknown = "command_gateway_commit_outcome_unknown",
 }

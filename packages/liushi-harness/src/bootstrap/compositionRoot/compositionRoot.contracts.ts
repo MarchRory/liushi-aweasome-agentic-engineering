@@ -30,6 +30,7 @@ import type {
 } from "#application/index.js";
 import type {
   CodingTaskExecutionAuthorizationResolver,
+  EvidenceBundleStore,
   VerificationExecutorPort,
 } from "#application/ports/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
@@ -40,6 +41,8 @@ import type { VerificationExecutionMode } from "./enums/index.js";
 export interface HarnessApplication {
   /** 所有版本化写入口复用的持久化 Command Gateway。 */
   applicationCommandGateway: ApplicationCommandGateway;
+  /** Verification 结果的强一致不可变 Store。 */
+  evidenceBundleStore: EvidenceBundleStore;
   /** 规范化 Action Hook 调度器。 */
   handleHook: CanonicalHookDispatcher;
   /** Codex PreToolUse/PostToolUse 平台适配器。 */

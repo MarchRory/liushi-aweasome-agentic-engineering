@@ -38,6 +38,7 @@ import {
   FileParentDirectoryDurability,
   FileActionJournalRepository,
   FileCommandReservationStore,
+  FileEvidenceBundleStore,
   FileHookBindingStore,
   CodexHookAdapter,
   CodexCapabilityProbeAdapter,
@@ -112,6 +113,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const traceObservationStore = new FileTraceObservationStore(options.storeRoot, { lockManager });
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
+  const evidenceBundleStore = new FileEvidenceBundleStore(options.storeRoot, {
+    lockManager,
+    parentDirectoryDurability,
+    digest,
+  });
   const projectFileSystem = new NodeProjectFileSystemAdapter();
   const projectConfigParser = new StructuredProjectConfigParserAdapter();
   const applicationCommandGateway = new ApplicationCommandGateway(commandReservationStore, delay);
@@ -153,6 +159,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
 
   return {
     applicationCommandGateway,
+    evidenceBundleStore,
     bindHookWorkspace: new BindHookWorkspaceUseCase(taskRepository, hookBindingStore, clock),
     checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
     compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),

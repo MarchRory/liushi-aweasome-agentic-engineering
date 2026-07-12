@@ -6,7 +6,7 @@
 
 `liushi-harness` 的 Workflow 是本地优先、Human-gated、可审计、可恢复的需求交付语义内核。它编排从 PRD 输入到每个 Repository 达到 PR-ready 的完整生命周期，但不是通用 DAG、低代码平台或模型聊天外壳。
 
-当前实现仍属于 Harness 前置机制：持久化 Command Gateway/Receipt、Revision/Context、Golden Replay、Event Unknown、Timeline、Action Journal、JournaledActionRunner、Trace、Canonical Hook Core、RequirementWorkflow Domain/Store/Command，以及 CodingTask Domain/Store/Command、权威授权、Managed Worktree Provision/Inspector、Repository Lock、VerificationPlan/EvidenceBundle、fail-closed Mock 和显式 Local Command Runner 已落地。现有 CLI 写命令尚未全部迁移到 Gateway，平台安装、实时 Span、OTel Exporter、Cell Runtime、Worktree 清理/重建、Verification 版本化命令/恢复、失败重试和 Studio 均未实现。
+当前实现仍属于 Harness 前置机制：持久化 Command Gateway/Receipt、Revision/Context、Golden Replay、Timeline、Action Journal、JournaledActionRunner、Trace、Canonical Hook Core、RequirementWorkflow Domain/Store/Command，以及 CodingTask Domain/Store/Command、权威授权、Managed Worktree Provision/Inspector、Repository Lock、VerificationPlan、Local Command Runner 和 EvidenceBundle Store 已落地。现有 CLI 写命令尚未全部迁移到 Gateway，平台安装、实时 Span、OTel Exporter、Cell Runtime、Worktree 清理/重建、Verification 版本化命令/恢复、失败重试和 Studio 均未实现。
 
 六角色评审后的核心结论：
 

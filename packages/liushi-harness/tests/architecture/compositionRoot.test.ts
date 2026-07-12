@@ -34,6 +34,7 @@ describe("composition root", () => {
       "FileActionJournalRepository",
       "FileCodingTaskRepository",
       "FileCommandReservationStore",
+      "FileEvidenceBundleStore",
       "FileHookBindingStore",
       "FileParentDirectoryDurability",
       "FileRuntimeHealthAdapter",
