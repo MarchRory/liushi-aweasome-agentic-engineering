@@ -12,6 +12,7 @@ import {
   GetTaskStatusUseCase,
   GetTaskTimelineUseCase,
   GetActionJournalUseCase,
+  InspectWorktreeUseCase,
   ListTraceObservationsUseCase,
   ListRecoverableActionsUseCase,
   ProposeArtifactUseCase,
@@ -42,6 +43,7 @@ import {
   FileWorkflowRepository,
   FileCodingTaskRepository,
   NodeProjectFileSystemAdapter,
+  NodeWorktreeInspectorAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
   StructuredProjectConfigParserAdapter,
@@ -169,6 +171,9 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
         eventIdGenerator,
         codingTaskAuthorizationResolver,
       ),
+    ),
+    inspectWorktree: new InspectWorktreeUseCase(
+      new NodeWorktreeInspectorAdapter(new NodeCommandRunnerAdapter()),
     ),
   };
 }

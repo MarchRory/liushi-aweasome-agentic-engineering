@@ -10,6 +10,7 @@ import type {
   GetTaskStatusUseCase,
   GetTaskTimelineUseCase,
   GetActionJournalUseCase,
+  InspectWorktreeUseCase,
   ListRecoverableActionsUseCase,
   ListTraceObservationsUseCase,
   ProposeArtifactUseCase,
@@ -74,6 +75,8 @@ export interface HarnessApplication {
   workflowCommands: WorkflowCommandService;
   /** CodingTask 的版本化写入入口。 */
   codingTaskCommands: CodingTaskCommandService;
+  /** 只读检查 CodingTask 工作树、基线和 Write Set。 */
+  inspectWorktree: InspectWorktreeUseCase;
 }
 
 /** 创建 Harness Application 的可注入依赖。 */

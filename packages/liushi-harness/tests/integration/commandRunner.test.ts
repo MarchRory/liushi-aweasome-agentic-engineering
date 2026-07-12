@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { ResultStatus } from "../../src/common/index.js";
@@ -39,5 +41,19 @@ describe("Node Command Runner", () => {
     if (result.status === ResultStatus.Failure) return;
     expect(result.value.exitCode).toBeNull();
     expect(result.value.launchError).toBeTruthy();
+  });
+
+  it("将可选 cwd 传递给非 shell 子进程", async () => {
+    const cwd = path.resolve(process.cwd(), "..");
+    const result = await new NodeCommandRunnerAdapter().run({
+      executable: process.execPath,
+      args: ["-e", "process.stdout.write(process.cwd())"],
+      cwd,
+      timeoutMs: 1000,
+    });
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Failure) return;
+    expect(path.resolve(result.value.stdout)).toBe(cwd);
   });
 });

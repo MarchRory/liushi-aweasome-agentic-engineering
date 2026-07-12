@@ -13,3 +13,4 @@ export type * from "./hookBindingStore/index.js";
 export type * from "./workflowRepository/index.js";
 export type * from "./codingTaskRepository/index.js";
 export type * from "./codingTaskAuthorization/index.js";
+export * from "./worktree/index.js";

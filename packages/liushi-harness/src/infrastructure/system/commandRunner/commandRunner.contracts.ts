@@ -6,6 +6,8 @@ export interface CommandRunRequest {
   executable: string;
   /** 命令参数。 */
   args: readonly string[];
+  /** 命令运行时的工作目录；不传时沿用当前进程目录。 */
+  cwd?: string;
   /** 超时毫秒数。 */
   timeoutMs: number;
 }

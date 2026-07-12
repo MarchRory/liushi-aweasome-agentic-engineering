@@ -17,6 +17,7 @@ export class NodeCommandRunnerAdapter implements CommandRunner {
       try {
         child = spawn(request.executable, [...request.args], {
           shell: false,
+          cwd: request.cwd,
           windowsHide: true,
         });
       } catch (error) {
