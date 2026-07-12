@@ -169,6 +169,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
       return CLI_EXIT_CODE_IO_FAILURE;
     case HarnessErrorCode.EventLogCommitOutcomeUnknown:
     case HarnessErrorCode.ActionJournalCommitOutcomeUnknown:
+    case HarnessErrorCode.CommandGatewayCommitOutcomeUnknown:
       return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }
 }

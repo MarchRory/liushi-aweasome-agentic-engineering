@@ -15,23 +15,23 @@
 
 ## 3. 06-19 审计结果
 
-| 文档                        | 方案状态 | 实现状态      | 当前可验证能力                                                                                           | 尚未实现或待确认                                                                                    |
-| --------------------------- | -------- | ------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 06 代码库组织               | 已完成   | `implemented` | 分层、循环依赖、目录、命名、Barrel、行数、TSDoc、中文注释、ESLint、Prettier、TS7/TS6 和 Changesets 门禁  | 目标目录中的未来模块不计为能力                                                                      |
-| 07 Workspace 与多仓         | 已完成   | `partial`     | 多仓身份、只读扫描、依赖歧义、Profile Proposal、G8 和 Profile Bundle                                     | WorkspaceGraph Registry、Read/Write Set、Repository Lock、Worktree 和跨仓 Saga                      |
-| 08 Executor Adapter         | 已完成   | `designed`    | 无产品运行时能力                                                                                         | Codex/Claude/CatPaw Probe、安装、权限和 Invocation                                                  |
-| 09 Hooks 与 Agent Runtime   | 已完成   | `designed`    | Gate/Approval Core 可作为后端，Workflow 职责边界已对齐                                                   | Canonical Hook、Dispatcher、Role Runtime 和平台映射                                                 |
-| 10 模型路由与 Eval          | 已完成   | `designed`    | 无产品运行时能力                                                                                         | Model Registry、Router、升级、Eval Dataset 和成本策略                                               |
-| 11 Skills 与 Connectors     | 已完成   | `designed`    | Scanner、CLI 和 Digest 可供未来复用                                                                      | Skill Registry/Runner、MCP、Wiki、Issue、Obsidian、认证和写入 Gate                                  |
-| 12 Verification 与 Evidence | 已完成   | `partial`     | Evidence 基础类型、项目自身测试门禁、Artifact/Gate/Profile 来源摘要                                      | VerificationPlan、Command Runner、EvidenceBundle、影响面、Flaky、G5 和多仓验证                      |
-| 13 Learning 与 Knowledge    | 已完成   | `designed`    | 无产品运行时能力                                                                                         | Candidate Store、Eval、Promotion、Retrieval、Curator 和 Skill 改进                                  |
-| 14 生产 SOP                 | 已完成   | `partial`     | npm 安装、Doctor、Task、Artifact、Approval、Rule、Scanner 和 Profile Compile                             | 自动 Task Delivery、Executor、Workflow、验证、Memory、Learning 和长期治理命令                       |
-| 15 交付路线                 | 已完成   | `implemented` | 能力门、决策门、完成门和真实项目验证口径                                                                 | Workflow 后的切片顺序等待对齐                                                                       |
-| 16 Rules 与代码合规         | 已完成   | `partial`     | Rule Schema、Catalog、Resolver、Scanner Candidate、G8 Profile Promotion                                  | Validator Execution、ComplianceReport、Rule Exception、Pattern/Mechanism Registry 和编码期执行      |
-| 17 Instruction Projection   | 已完成   | `designed`    | Rule/Profile 前置基础已具备                                                                              | Canonical Instruction、Resolution、Managed Merge Proposal 和三平台 Projection                       |
-| 18 Memory Runtime           | 已完成   | `partial`     | Task Event、Snapshot、Artifact、Approval 和 Replay                                                       | Working/Project/Organization Memory、Retrieval、Compaction、Curation 和 Obsidian/Wiki               |
-| 19 Agent Registry           | 已完成   | `designed`    | 无产品运行时能力                                                                                         | Registry、Resolution、Permission、Skill/Memory 绑定、Eval、平台渲染和 Runtime                       |
-| 21 Workflow 产品与技术方案  | 已完成   | `partial`     | Command/Receipt、Revision/Context、Golden Replay、Event Unknown、Timeline、Action Journal 与完成态 Trace | Gateway 幂等、实时 Trace/Exporter、Hook/Executor 接入、Workflow、CodingTask、Verification 与 Studio |
+| 文档                        | 方案状态 | 实现状态      | 当前可验证能力                                                                                            | 尚未实现或待确认                                                                                |
+| --------------------------- | -------- | ------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 06 代码库组织               | 已完成   | `implemented` | 分层、循环依赖、目录、命名、Barrel、行数、TSDoc、中文注释、ESLint、Prettier、TS7/TS6 和 Changesets 门禁   | 目标目录中的未来模块不计为能力                                                                  |
+| 07 Workspace 与多仓         | 已完成   | `partial`     | 多仓身份、只读扫描、依赖歧义、Profile Proposal、G8 和 Profile Bundle                                      | WorkspaceGraph Registry、Read/Write Set、Repository Lock、Worktree 和跨仓 Saga                  |
+| 08 Executor Adapter         | 已完成   | `designed`    | 无产品运行时能力                                                                                          | Codex/Claude/CatPaw Probe、安装、权限和 Invocation                                              |
+| 09 Hooks 与 Agent Runtime   | 已完成   | `designed`    | Gate/Approval Core 可作为后端，Workflow 职责边界已对齐                                                    | Canonical Hook、Dispatcher、Role Runtime 和平台映射                                             |
+| 10 模型路由与 Eval          | 已完成   | `designed`    | 无产品运行时能力                                                                                          | Model Registry、Router、升级、Eval Dataset 和成本策略                                           |
+| 11 Skills 与 Connectors     | 已完成   | `designed`    | Scanner、CLI 和 Digest 可供未来复用                                                                       | Skill Registry/Runner、MCP、Wiki、Issue、Obsidian、认证和写入 Gate                              |
+| 12 Verification 与 Evidence | 已完成   | `partial`     | Evidence 基础类型、项目自身测试门禁、Artifact/Gate/Profile 来源摘要                                       | VerificationPlan、Command Runner、EvidenceBundle、影响面、Flaky、G5 和多仓验证                  |
+| 13 Learning 与 Knowledge    | 已完成   | `designed`    | 无产品运行时能力                                                                                          | Candidate Store、Eval、Promotion、Retrieval、Curator 和 Skill 改进                              |
+| 14 生产 SOP                 | 已完成   | `partial`     | npm 安装、Doctor、Task、Artifact、Approval、Rule、Scanner 和 Profile Compile                              | 自动 Task Delivery、Executor、Workflow、验证、Memory、Learning 和长期治理命令                   |
+| 15 交付路线                 | 已完成   | `implemented` | 能力门、决策门、完成门和真实项目验证口径                                                                  | Workflow 后的切片顺序等待对齐                                                                   |
+| 16 Rules 与代码合规         | 已完成   | `partial`     | Rule Schema、Catalog、Resolver、Scanner Candidate、G8 Profile Promotion                                   | Validator Execution、ComplianceReport、Rule Exception、Pattern/Mechanism Registry 和编码期执行  |
+| 17 Instruction Projection   | 已完成   | `designed`    | Rule/Profile 前置基础已具备                                                                               | Canonical Instruction、Resolution、Managed Merge Proposal 和三平台 Projection                   |
+| 18 Memory Runtime           | 已完成   | `partial`     | Task Event、Snapshot、Artifact、Approval 和 Replay                                                        | Working/Project/Organization Memory、Retrieval、Compaction、Curation 和 Obsidian/Wiki           |
+| 19 Agent Registry           | 已完成   | `designed`    | 无产品运行时能力                                                                                          | Registry、Resolution、Permission、Skill/Memory 绑定、Eval、平台渲染和 Runtime                   |
+| 21 Workflow 产品与技术方案  | 已完成   | `partial`     | 持久化 Command Gateway、Revision/Context、Golden Replay、Event Unknown、Timeline、Action Journal 与 Trace | CLI 迁移、实时 Trace/Exporter、Hook/Executor 接入、Workflow、CodingTask、Verification 与 Studio |
 
 ## 4. 当前产品边界
 
@@ -49,11 +49,12 @@
 - 从权威 Event 历史生成且可供 Tracker 消费的版本化 Task Timeline Projection。
 - 具备独立锁、Hash Chain、幂等追加、跨实例重放和恢复查询的持久化 Action Journal。
 - 可丢失、可过滤、不会反向修改语义状态的完成态 Trace Span Observation。
+- 使用原子 Reservation、独立 Lock 和稳定 Receipt 的持久化 Application Command Gateway。
 
 当前 npm 包不提供：
 
 - 自动需求澄清、Plan、Implementation、Verification 和 Learning Workflow。
-- 持久化 Command Gateway、Workflow Aggregate 和 Cell 路由。
+- 现有 CLI 写命令向 Command Gateway 的完整迁移、Workflow Aggregate 和 Cell 路由。
 - Codex、Claude-compatible 或 CatPaw Executor Adapter 与有效 Hook 安装。
 - 自动代码写入、Worktree、多仓写入 Saga、合并、发布或部署。
 - Skill、Connector、Wiki、Obsidian、Memory、Knowledge 或 Agent Registry Runtime。
@@ -99,4 +100,4 @@ flowchart LR
 
 ## 7. 下一实现门
 
-Workflow 产品与技术方案已经对齐，S0 的 Command/Receipt、因果标识、Revision/Context、Failure Taxonomy、Golden Replay、`outcomeUnknown`、Timeline、Action Journal 和完成态 Trace 前置机制已经通过测试。下一步实现持久化 Application Command Gateway，并接通一个真实 Hook/Executor 主路径；其幂等、权限、副作用恢复与观测契约通过负向测试后，才进入固定 Workflow Kernel。
+Workflow 产品与技术方案已经对齐，S0 的持久化 Command Gateway、因果标识、Revision/Context、Failure Taxonomy、Golden Replay、`outcomeUnknown`、Timeline、Action Journal 和完成态 Trace 前置机制已经通过测试。下一步将一个真实 Codex Hook/Executor 主路径接入 Gateway、Action Journal 与 Trace；其权限、副作用恢复和平台负向测试通过后，才进入固定 Workflow Kernel。

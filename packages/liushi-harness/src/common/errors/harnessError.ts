@@ -30,6 +30,8 @@ export enum HarnessErrorCode {
   ActionConflict = "action_conflict",
   /** Action Journal 已开始写入但结果未知，禁止自动重试。 */
   ActionJournalCommitOutcomeUnknown = "action_journal_commit_outcome_unknown",
+  /** Command Handler 已执行但 Receipt 无法可靠落盘，禁止自动重试。 */
+  CommandGatewayCommitOutcomeUnknown = "command_gateway_commit_outcome_unknown",
 }
 
 /** Harness 跨层返回的可分类错误。 */

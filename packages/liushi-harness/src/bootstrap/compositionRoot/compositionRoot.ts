@@ -1,4 +1,5 @@
 import {
+  ApplicationCommandGateway,
   CheckRuntimeHealthUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
@@ -21,6 +22,7 @@ import {
   ExclusiveFileLockManager,
   FileParentDirectoryDurability,
   FileActionJournalRepository,
+  FileCommandReservationStore,
   FileTraceObservationStore,
   FileRuntimeHealthAdapter,
   FileSnapshotStore,
@@ -63,6 +65,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     lockManager,
     parentDirectoryDurability,
   });
+  const commandReservationStore = new FileCommandReservationStore(options.storeRoot, {
+    lockManager,
+    parentDirectoryDurability,
+  });
   const traceObservationStore = new FileTraceObservationStore(options.storeRoot, { lockManager });
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
@@ -70,6 +76,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const projectConfigParser = new StructuredProjectConfigParserAdapter();
 
   return {
+    applicationCommandGateway: new ApplicationCommandGateway(commandReservationStore, delay),
     checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
     compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
     createTask: new CreateTaskUseCase(taskRepository, clock, taskIdGenerator),

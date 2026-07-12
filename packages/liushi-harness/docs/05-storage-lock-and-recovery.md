@@ -13,7 +13,7 @@
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** Task Event、Snapshot、Lock、Replay、Event Commit Unknown，Action Journal 的严格 Schema、独立 Lock、`actions.jsonl`、Hash Chain、幂等追加、跨实例重放与恢复查询，以及可丢失 Trace 的独立 Lock、`traces.jsonl` 和容错查询已落地；自动恢复命令、实时 Trace 生命周期和与 Executor/Hook 的接入尚未实现。
+**状态：部分实现。** Task Event、Snapshot、Lock、Replay、Event Commit Unknown，Action Journal 的严格 Schema、独立 Lock、`actions.jsonl`、Hash Chain、幂等追加、跨实例重放与恢复查询，可丢失 Trace 的独立 Lock、`traces.jsonl` 和容错查询，以及 Command Gateway 的原子 Reservation、跨进程幂等和未知态保护已落地；自动恢复命令、实时 Trace 生命周期和与 Executor/Hook 的接入尚未实现。
 
 ## 2. 存储分区
 
