@@ -123,4 +123,6 @@ corepack pnpm@10.34.1 --filter liushi-harness build
 
 ## Release History
 
+版本化验证命令的运行边界与恢复限制见 [版本化验证命令](./docs/engineering/versionedVerificationCommand.md)。
+
 用户可感知变化由 Changesets 维护在 [CHANGELOG.md](./CHANGELOG.md)。

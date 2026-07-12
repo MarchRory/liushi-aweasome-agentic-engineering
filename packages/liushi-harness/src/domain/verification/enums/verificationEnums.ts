@@ -62,6 +62,12 @@ export enum VerificationFailureKind {
   WorktreeUnavailable = "worktree_unavailable",
   /** Worktree HEAD、Target 或 Base Revision 与 Plan 不一致。 */
   RevisionMismatch = "revision_mismatch",
+  /** Verification 开始前 Worktree 包含未提交变化。 */
+  WorktreeDirty = "worktree_dirty",
+  /** Verification Check 修改了 Worktree 内容或 HEAD。 */
+  WorktreeModified = "worktree_modified",
+  /** Worktree 当前 Branch 与 Plan 不一致。 */
+  BranchMismatch = "branch_mismatch",
   /** Mock 或执行器没有为该 Check 提供结果。 */
   Unconfigured = "unconfigured",
 }

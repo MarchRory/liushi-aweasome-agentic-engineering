@@ -51,6 +51,8 @@ export interface VerificationPlan {
   repositoryId: RepositoryId;
   /** Plan 绑定的 Worktree 稳定标识。 */
   worktreeId: string;
+  /** Plan 期望的 Git Branch 名称。 */
+  expectedBranchName: string;
   /** Verification 依赖的 Base Revision。 */
   baseRevision: string;
   /** Verification 应观察的 Target Revision。 */

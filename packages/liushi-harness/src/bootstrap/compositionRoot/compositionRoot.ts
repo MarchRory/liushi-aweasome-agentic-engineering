@@ -14,6 +14,7 @@ import {
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
   RunVerificationUseCase,
+  RunAndPersistVerificationUseCase,
   AcquireRepositoryLockUseCase,
   JournaledActionRunner,
   ListTraceObservationsUseCase,
@@ -30,6 +31,9 @@ import {
   RequirementWorkflowCommandHandler,
   WorktreeProvisionCommandHandler,
   WorktreeProvisionCommandService,
+  VerificationActionExecutor,
+  VerificationCommandHandler,
+  VerificationCommandService,
   WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
@@ -156,6 +160,27 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     (options.verificationExecutionMode === VerificationExecutionMode.LocalCommand
       ? new NodeVerificationExecutorAdapter(commandRunner, clock)
       : new MockVerificationExecutorAdapter(clock));
+  const verificationRunner = new RunVerificationUseCase(verificationExecutor, digest, clock);
+  const runAndPersistVerification = new RunAndPersistVerificationUseCase(
+    verificationRunner,
+    evidenceBundleStore,
+  );
+  const codingTaskCommandHandler = new CodingTaskCommandHandler(
+    codingTaskRepository,
+    clock,
+    eventIdGenerator,
+    codingTaskAuthorizationResolver,
+  );
+  const verificationCommandHandler = new VerificationCommandHandler(
+    codingTaskRepository,
+    codingTaskAuthorizationResolver,
+    repositoryLock,
+    journaledActionRunner,
+    new VerificationActionExecutor(runAndPersistVerification),
+    evidenceBundleStore,
+    codingTaskCommandHandler,
+    digest,
+  );
 
   return {
     applicationCommandGateway,
@@ -207,15 +232,15 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     ),
     codingTaskCommands: new CodingTaskCommandService(
       applicationCommandGateway,
-      new CodingTaskCommandHandler(
-        codingTaskRepository,
-        clock,
-        eventIdGenerator,
-        codingTaskAuthorizationResolver,
-      ),
+      codingTaskCommandHandler,
     ),
     inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
-    runVerification: new RunVerificationUseCase(verificationExecutor, digest, clock),
+    runVerification: verificationRunner,
+    runAndPersistVerification,
+    verificationCommands: new VerificationCommandService(
+      applicationCommandGateway,
+      verificationCommandHandler,
+    ),
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
     journaledActionRunner,
     worktreeProvisionCommands: new WorktreeProvisionCommandService(

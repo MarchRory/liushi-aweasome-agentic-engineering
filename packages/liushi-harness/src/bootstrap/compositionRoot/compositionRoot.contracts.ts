@@ -12,6 +12,8 @@ import type {
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
   RunVerificationUseCase,
+  RunAndPersistVerificationUseCase,
+  VerificationCommandService,
   AcquireRepositoryLockUseCase,
   JournaledActionRunner,
   ListRecoverableActionsUseCase,
@@ -91,6 +93,10 @@ export interface HarnessApplication {
   inspectWorktree: InspectWorktreeUseCase;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
   runVerification: RunVerificationUseCase;
+  /** 执行 Verification 并强一致提交 EvidenceBundle。 */
+  runAndPersistVerification: RunAndPersistVerificationUseCase;
+  /** 运行并接纳 CodingTask Verification 的版本化入口。 */
+  verificationCommands: VerificationCommandService;
   /** 获取 Repository 级排他 Lock；不执行 Worktree 创建或代码写入。 */
   acquireRepositoryLock: AcquireRepositoryLockUseCase;
   /** 以 Action 执行锁和持久化 Journal 闭合副作用。 */

@@ -18,18 +18,19 @@ import {
   type VerificationExecutionResult,
 } from "#domain/verification/index.js";
 import type { CommandRunResult, CommandRunner } from "#infrastructure/system/index.js";
-import { isWithinRoot, sameResolvedPath } from "#infrastructure/worktree/path/index.js";
+import { isWithinRoot } from "#infrastructure/worktree/path/index.js";
 
 import { MAX_VERIFICATION_OUTPUT_BYTES } from "../constants/index.js";
+import { verifyRevisionBinding, verifyWorktreeStability } from "../guard/index.js";
 
-/** 使用 shell=false 子进程执行已确认 Verification Check 的真实 Adapter。 */
+/** 使用非 Shell 子进程执行已确认的验证检查。 */
 export class NodeVerificationExecutorAdapter implements VerificationExecutorPort {
   public constructor(
     private readonly runner: CommandRunner,
     private readonly clock: Clock,
   ) {}
 
-  /** 在真实 Worktree containment 和环境白名单边界内执行一个 Check。 */
+  /** 在真实工作树和环境白名单边界内执行一个检查。 */
   public async execute(
     input: VerificationExecutionRequest,
   ): Promise<Result<VerificationExecutionResult, HarnessError>> {
@@ -52,23 +53,40 @@ export class NodeVerificationExecutorAdapter implements VerificationExecutorPort
       input.worktreeRoot,
       input.plan.baseRevision,
       input.plan.targetRevision,
+      input.plan.expectedBranchName,
       input.check.timeoutMs,
     );
     if (revisionFailure !== undefined) {
       return success(blocked(startedAt, this.clock.now().toISOString(), revisionFailure));
     }
 
-    const environment = selectEnvironment(input.check.command.allowedEnvironmentKeys);
     const result = await this.runner.run({
       executable: input.check.command.executable,
       args: input.check.command.args,
       cwd: workingDirectory,
       timeoutMs: input.check.timeoutMs,
-      environment,
+      environment: selectEnvironment(input.check.command.allowedEnvironmentKeys),
       maxOutputBytes: MAX_VERIFICATION_OUTPUT_BYTES,
     });
     const completedAt = this.clock.now().toISOString();
     if (result.status === ResultStatus.Failure) return result;
+    const stabilityFailure = await verifyWorktreeStability(
+      this.runner,
+      input.worktreeRoot,
+      input.plan.targetRevision,
+      input.check.timeoutMs,
+    );
+    if (stabilityFailure !== undefined) {
+      return success({
+        status: VerificationStatus.Blocked,
+        exitCode: result.value.exitCode,
+        stdout: result.value.stdout,
+        stderr: result.value.stderr,
+        failureKind: stabilityFailure,
+        startedAt,
+        completedAt,
+      });
+    }
     return success(projectResult(result.value, startedAt, completedAt));
   }
 }
@@ -83,8 +101,7 @@ async function resolveWorkingDirectory(
     const candidate = resolve(root, ...relativeDirectory.split("/").filter(Boolean));
     if (!isWithinRoot(root, candidate)) return undefined;
     const actual = await realpath(candidate);
-    if (!(await lstat(actual)).isDirectory() || !isWithinRoot(root, actual)) return undefined;
-    return actual;
+    return (await lstat(actual)).isDirectory() && isWithinRoot(root, actual) ? actual : undefined;
   } catch {
     return undefined;
   }
@@ -105,17 +122,18 @@ function projectResult(
   completedAt: string,
 ): VerificationExecutionResult {
   if (result.launchError !== undefined) {
+    const failureKind =
+      result.launchError === "timeout"
+        ? VerificationFailureKind.TimedOut
+        : result.launchError === "output_limit"
+          ? VerificationFailureKind.OutputLimit
+          : VerificationFailureKind.Unavailable;
     return {
       status: VerificationStatus.Blocked,
       exitCode: null,
       stdout: result.stdout,
       stderr: result.stderr,
-      failureKind:
-        result.launchError === "timeout"
-          ? VerificationFailureKind.TimedOut
-          : result.launchError === "output_limit"
-            ? VerificationFailureKind.OutputLimit
-            : VerificationFailureKind.Unavailable,
+      failureKind,
       startedAt,
       completedAt,
     };
@@ -139,74 +157,6 @@ function projectResult(
     startedAt,
     completedAt,
   };
-}
-
-async function verifyRevisionBinding(
-  runner: CommandRunner,
-  worktreeRoot: string,
-  baseRevision: string,
-  targetRevision: string,
-  timeoutMs: number,
-): Promise<VerificationFailureKind | undefined> {
-  const commands: readonly {
-    readonly args: readonly string[];
-    readonly failureKind: VerificationFailureKind;
-  }[] = [
-    {
-      args: ["rev-parse", "--show-toplevel"],
-      failureKind: VerificationFailureKind.WorktreeUnavailable,
-    },
-    {
-      args: ["rev-parse", "--verify", "HEAD"],
-      failureKind: VerificationFailureKind.WorktreeUnavailable,
-    },
-    {
-      args: ["rev-parse", "--verify", `${targetRevision}^{commit}`],
-      failureKind: VerificationFailureKind.RevisionMismatch,
-    },
-    {
-      args: ["rev-parse", "--verify", `${baseRevision}^{commit}`],
-      failureKind: VerificationFailureKind.RevisionMismatch,
-    },
-  ];
-  const outputs: string[] = [];
-  for (const command of commands) {
-    const result = await runner.run({
-      executable: "git",
-      args: command.args,
-      cwd: worktreeRoot,
-      timeoutMs,
-      maxOutputBytes: 65_536,
-    });
-    if (
-      result.status === ResultStatus.Failure ||
-      result.value.exitCode !== 0 ||
-      result.value.launchError !== undefined
-    ) {
-      return command.failureKind;
-    }
-    outputs.push(result.value.stdout.trim());
-  }
-  const [actualRoot, headRevision, targetCommit, baseCommit] = outputs;
-  if (actualRoot === undefined || !sameResolvedPath(actualRoot, worktreeRoot)) {
-    return VerificationFailureKind.WorktreeUnavailable;
-  }
-  if (headRevision !== targetCommit) return VerificationFailureKind.RevisionMismatch;
-  const ancestor = await runner.run({
-    executable: "git",
-    args: ["merge-base", "--is-ancestor", baseCommit ?? "", targetCommit ?? ""],
-    cwd: worktreeRoot,
-    timeoutMs,
-    maxOutputBytes: 65_536,
-  });
-  if (
-    ancestor.status === ResultStatus.Failure ||
-    ancestor.value.launchError !== undefined ||
-    ancestor.value.exitCode !== 0
-  ) {
-    return VerificationFailureKind.RevisionMismatch;
-  }
-  return undefined;
 }
 
 function blocked(

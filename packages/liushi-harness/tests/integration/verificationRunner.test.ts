@@ -1,13 +1,19 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { RunVerificationUseCase } from "../../src/application/useCases/runVerification/index.js";
 import { ResultStatus } from "../../src/common/index.js";
 import type { VerificationExecutorPort } from "../../src/application/ports/verification/index.js";
-import { VerificationExecutionMode, createHarnessApplication } from "../../src/index.js";
+import {
+  EvidenceBundleWriteDisposition,
+  VerificationExecutionMode,
+  createHarnessApplication,
+  parseCodingTaskId,
+  parseWorkspaceId,
+} from "../../src/index.js";
 import {
   VerificationKind,
   VerificationRequirement,
@@ -21,6 +27,7 @@ import {
   type MockVerificationOutcome,
 } from "../../src/infrastructure/verification/index.js";
 import { NodeCommandRunnerAdapter } from "../../src/infrastructure/system/index.js";
+import { resolveCodingTaskStorePaths } from "../../src/infrastructure/index.js";
 import { FixedClock } from "../support/runtime/index.js";
 
 const WORKTREE_ROOT = "C:\\verification-worktree";
@@ -53,6 +60,7 @@ function createPlan(
     planId: "plan-1",
     repositoryId,
     worktreeId: "worktree-1",
+    expectedBranchName: "main",
     baseRevision: "base-revision",
     targetRevision: "target-revision",
     checks,
@@ -187,6 +195,44 @@ describe("Run Verification Use Case", () => {
     }
   });
 
+  it("执行后强一致持久化 EvidenceBundle 并支持跨实例读取", async () => {
+    const storeRoot = await mkdtemp(join(tmpdir(), "liushi-verification-persist-"));
+    try {
+      const workspaceId = unwrapResult(parseWorkspaceId("verification-workspace"));
+      const codingTaskId = unwrapResult(parseCodingTaskId("verification-coding-task"));
+      const paths = resolveCodingTaskStorePaths(storeRoot, workspaceId, codingTaskId);
+      await mkdir(dirname(paths.eventsFile), { recursive: true });
+      await writeFile(paths.eventsFile, "coding-task-anchor\n", "utf8");
+      const locator = { workspaceId, codingTaskId, verificationRunId: "run-persisted" };
+      const result = await createHarnessApplication({
+        storeRoot,
+        clock: new FixedClock(FIXED_TIME),
+      }).runAndPersistVerification.execute({
+        locator,
+        verificationRunId: "run-persisted",
+        plan: createPlan(),
+        worktreeRoot: WORKTREE_ROOT,
+      });
+      const loaded = await createHarnessApplication({ storeRoot }).evidenceBundleStore.load(
+        locator,
+      );
+
+      expect(result).toMatchObject({
+        status: ResultStatus.Success,
+        value: {
+          bundle: { status: VerificationStatus.Blocked },
+          persistence: { disposition: EvidenceBundleWriteDisposition.Persisted },
+        },
+      });
+      expect(loaded).toMatchObject({
+        status: ResultStatus.Success,
+        value: { verificationRunId: "run-persisted", status: VerificationStatus.Blocked },
+      });
+    } finally {
+      await rm(storeRoot, { recursive: true, force: true });
+    }
+  });
+
   it("显式 LocalCommand 模式执行真实命令并只保留输出摘要", async () => {
     const worktreeRoot = await mkdtemp(join(tmpdir(), "liushi-verification-command-"));
     const storeRoot = await mkdtemp(join(tmpdir(), "liushi-verification-store-"));
@@ -284,6 +330,56 @@ describe("Run Verification Use Case", () => {
       ]);
     }
   });
+
+  it("拒绝验证未提交变化，并阻断会修改 Worktree 的 Check", async () => {
+    const dirtyRoot = await mkdtemp(join(tmpdir(), "liushi-verification-dirty-"));
+    const modifyingRoot = await mkdtemp(join(tmpdir(), "liushi-verification-modifying-"));
+    const storeRoot = await mkdtemp(join(tmpdir(), "liushi-verification-stability-store-"));
+    try {
+      const dirtyRevision = await initializeGit(dirtyRoot);
+      const modifyingRevision = await initializeGit(modifyingRoot);
+      await writeFile(join(dirtyRoot, "uncommitted.txt"), "dirty\n", "utf8");
+      const application = createHarnessApplication({
+        storeRoot,
+        clock: new FixedClock(FIXED_TIME),
+        verificationExecutionMode: VerificationExecutionMode.LocalCommand,
+      });
+      const dirty = await application.runVerification.execute({
+        verificationRunId: "run-dirty",
+        plan: createLocalCommandPlan(["-e", "process.exit(0)"], dirtyRevision),
+        worktreeRoot: dirtyRoot,
+      });
+      const modified = await application.runVerification.execute({
+        verificationRunId: "run-modified",
+        plan: createLocalCommandPlan(
+          ["-e", "require('fs').writeFileSync('generated.txt', 'changed')"],
+          modifyingRevision,
+        ),
+        worktreeRoot: modifyingRoot,
+      });
+
+      expect(dirty).toMatchObject({
+        status: ResultStatus.Success,
+        value: {
+          status: VerificationStatus.Blocked,
+          checks: [{ failureKind: "worktree_dirty" }],
+        },
+      });
+      expect(modified).toMatchObject({
+        status: ResultStatus.Success,
+        value: {
+          status: VerificationStatus.Blocked,
+          checks: [{ failureKind: "worktree_modified" }],
+        },
+      });
+    } finally {
+      await Promise.all([
+        rm(dirtyRoot, { recursive: true, force: true }),
+        rm(modifyingRoot, { recursive: true, force: true }),
+        rm(storeRoot, { recursive: true, force: true }),
+      ]);
+    }
+  });
 });
 
 function createLocalCommandPlan(args: readonly string[], revision: string): VerificationPlan {
@@ -335,4 +431,11 @@ async function runGit(cwd: string, args: readonly string[]): Promise<string> {
   if (result.status === ResultStatus.Failure) throw result.error;
   if (result.value.exitCode !== 0) throw new Error(`Git command failed: ${args[0] ?? "unknown"}`);
   return result.value.stdout.trim();
+}
+
+function unwrapResult<T>(result: { status: ResultStatus; value?: T; error?: Error }): T {
+  if (result.status !== ResultStatus.Success || result.value === undefined) {
+    throw new Error(result.error?.message ?? "测试标识解析失败。");
+  }
+  return result.value;
 }

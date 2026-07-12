@@ -35,10 +35,12 @@ export function validateVerificationPlan(input: unknown): Result<VerificationPla
 
   const planId = readIdentifier(input["planId"]);
   const worktreeId = readIdentifier(input["worktreeId"]);
+  const expectedBranchName = readRevision(input["expectedBranchName"]);
   const baseRevision = readRevision(input["baseRevision"]);
   const targetRevision = readRevision(input["targetRevision"]);
   if (planId === undefined) return failure(invalid("planId"));
   if (worktreeId === undefined) return failure(invalid("worktreeId"));
+  if (expectedBranchName === undefined) return failure(invalid("expectedBranchName"));
   if (baseRevision === undefined) return failure(invalid("baseRevision"));
   if (targetRevision === undefined) return failure(invalid("targetRevision"));
   if (!Array.isArray(input["checks"]) || input["checks"].length === 0) {
@@ -67,6 +69,7 @@ export function validateVerificationPlan(input: unknown): Result<VerificationPla
     planId,
     repositoryId: repositoryId.value,
     worktreeId,
+    expectedBranchName,
     baseRevision,
     targetRevision,
     checks,

@@ -16,6 +16,7 @@ function createPlan(overrides: Record<string, unknown> = {}): Record<string, unk
     planId: "plan-1",
     repositoryId: "verification-repository",
     worktreeId: "worktree-1",
+    expectedBranchName: "main",
     baseRevision: "base-revision",
     targetRevision: "target-revision",
     checks: [
