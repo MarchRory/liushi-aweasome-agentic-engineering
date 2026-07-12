@@ -13,7 +13,7 @@ Hooks 将 Harness 的确定性规则接入执行器生命周期；Agent Runtime 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。PreAction 会从权威 Task Replay 重算 PlanRisk Write Set、风险等级、G4 和 G2 Human Approval；PostAction 会写入 Action Journal 并记录可丢失 Trace。Codex `apply_patch` 的 PreToolUse/PostToolUse Adapter、绑定 Store、原生 CLI Wrapper 和 `hooks.json` 投影已经实现并通过 Fixture 集成测试；真实受信任项目的 Hook 启用仍需 Human 执行和验收。其他平台 Projection、Hook 安装、其他生命周期 Handler、Agent Role Runtime 和 Human Battle Runtime 尚未实现。
+**状态：部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。PreAction 会从权威 Task Replay 重算 PlanRisk Write Set、风险等级、G4 和 G2 Human Approval；PostAction 会写入 Action Journal 并记录可丢失 Trace。Codex `apply_patch` 的 PreToolUse/PostToolUse Adapter、绑定 Store、原生 CLI Wrapper、`hooks.json` 投影和只读 Capability Probe 已实现并通过 Fixture 集成测试；真实受信任项目的 Hook 启用仍需 Human 执行和验收。其他平台 Projection、Hook 安装、其他生命周期 Handler、Agent Role Runtime 和 Human Battle Runtime 尚未实现。
 
 Workflow、Cell、Agent、Skill、Executor 与 Hook 的职责边界已经在 [21 需求生命周期 Workflow Runtime](./21-requirement-workflow-runtime.md) 中建立；本章后续只定义 Hook 映射和 Agent Runtime，不拥有 Workflow 状态。
 

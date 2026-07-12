@@ -49,6 +49,7 @@ describe("CLI doctor 与 help E2E", () => {
         expect.stringContaining("hook bind"),
         expect.stringContaining("hook config"),
         expect.stringContaining("hook handle"),
+        expect.stringContaining("hook probe"),
       ]);
     });
   });

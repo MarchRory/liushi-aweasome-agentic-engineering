@@ -16,7 +16,7 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 **状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。适配器已通过单元测试、架构测试和真实 Task/PlanRisk Fixture 集成测试，但尚未在用户受信任的 Codex 项目中执行安装和端到端 Smoke Test，因此发布口径仍为“代码已验证，平台生产启用待 Human 验证”。
 
-当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`.codex/hooks.json` 的写入、信任和撤销由 Human 执行。Capability Probe、安装协议、Role Invocation Runtime、Claude-compatible/CatPaw Adapter 仍未实现。
+当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`.codex/hooks.json` 的写入、信任和撤销由 Human 执行。只读 `hook probe` 已实现静态版本/帮助探测，但不能替代真实受信任项目 Smoke；安装协议、Role Invocation Runtime、Claude-compatible/CatPaw Adapter 仍未实现。
 
 ## 2. Adapter 边界
 
@@ -132,9 +132,10 @@ Hooks 只运行 `command` Handler，并统一调用 `liushi-harness hook handle 
 liushi-harness hook config --executor codex > .codex/hooks.json
 liushi-harness hook bind --root <repository-root> --workspace <workspace-id> --task <task-ulid> --artifact <plan-risk-artifact-ulid> --artifact-digest <sha256:digest> --actor-id <human-id>
 liushi-harness hook handle --executor codex
+liushi-harness hook probe --executor codex --json
 ```
 
-第一条命令只生成待审阅内容，重定向和项目受信任配置由 Human 确认；第二条命令只绑定已审批的 PlanRisk；第三条命令是平台 Hook 的原生 stdin/stdout 入口，不使用 CLI JSON Envelope。
+前三条命令分别生成配置、绑定已审批的 PlanRisk 和处理平台原生 Hook；最后一条只执行 `codex --version`/`codex --help` 静态探测并输出 JSON Envelope，不写入项目、不启动模型。配置重定向、项目受信任和真实 Hook Smoke 仍由 Human 确认。
 
 参考：[Codex Skills](https://learn.chatgpt.com/docs/customization/overview#skills)、[Codex Hooks](https://learn.chatgpt.com/docs/hooks)、[Codex Plugin Structure](https://learn.chatgpt.com/docs/build-plugins#plugin-structure)。
 

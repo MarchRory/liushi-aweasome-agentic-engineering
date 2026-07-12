@@ -205,6 +205,14 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
       executor: parseHookExecutor(requireValue(collected, CliOptionName.Executor)),
     };
   }
+  if (isExactCommand(collected.positionals, ["hook", "probe"])) {
+    validateAllowedOptions(collected, new Set([CliOptionName.Json, CliOptionName.Executor]));
+    return {
+      command: CliCommand.HookProbe,
+      outputFormat,
+      executor: parseHookExecutor(requireValue(collected, CliOptionName.Executor)),
+    };
+  }
   if (isExactCommand(collected.positionals, ["hook", "handle"])) {
     validateAllowedOptions(collected, new Set([CliOptionName.Store, CliOptionName.Executor]));
     return {

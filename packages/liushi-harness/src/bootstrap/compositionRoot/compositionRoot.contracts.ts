@@ -12,6 +12,7 @@ import type {
   ListRecoverableActionsUseCase,
   ListTraceObservationsUseCase,
   ProposeArtifactUseCase,
+  ProbeCodexCapabilitiesUseCase,
   RecordApprovalUseCase,
   RecordActionIntentUseCase,
   RecordActionObservationUseCase,
@@ -30,6 +31,8 @@ export interface HarnessApplication {
   handleHook: CanonicalHookDispatcher;
   /** Codex PreToolUse/PostToolUse 平台适配器。 */
   handleCodexHook: CodexHookHandler;
+  /** Codex 执行器只读能力探测。 */
+  probeCodexCapabilities: ProbeCodexCapabilitiesUseCase;
   /** 将人工确认的 Task/PlanRisk 绑定到执行器工作区。 */
   bindHookWorkspace: BindHookWorkspaceUseCase;
   /** Runtime Store 健康检查。 */

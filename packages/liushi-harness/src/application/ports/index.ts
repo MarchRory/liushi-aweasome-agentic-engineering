@@ -1,6 +1,7 @@
 export * from "./actionJournalRepository/index.js";
 export * from "./commandReservationStore/index.js";
 export type * from "./runtimeHealth/index.js";
+export * from "./capabilityProbe/index.js";
 export type * from "./taskEventQuery/index.js";
 export * from "./taskRepository/index.js";
 export type * from "./traceObservationStore/index.js";

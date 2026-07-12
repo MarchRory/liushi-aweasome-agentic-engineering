@@ -27,6 +27,7 @@ describe("composition root", () => {
     });
 
     expect([...concreteAdapterClassNames].sort()).toEqual([
+      "CodexCapabilityProbeAdapter",
       "CodexHookAdapter",
       "ExclusiveFileLockManager",
       "FileActionJournalRepository",
@@ -37,6 +38,7 @@ describe("composition root", () => {
       "FileSnapshotStore",
       "FileTaskRepository",
       "FileTraceObservationStore",
+      "NodeCommandRunnerAdapter",
       "NodeHookInputReaderAdapter",
       "NodeJsonDocumentReaderAdapter",
       "NodeProjectFileSystemAdapter",

@@ -36,4 +36,5 @@ export const CLI_USAGE_LINES: readonly string[] = [
   "liushi-harness hook bind --root <path> --workspace <id> --task <ulid> --artifact <ulid> --artifact-digest <sha256> [--actor-id <id>] [--store <path>] [--json]",
   "liushi-harness hook config --executor codex",
   "liushi-harness hook handle --executor codex [--store <path>]",
+  "liushi-harness hook probe --executor codex [--json]",
 ];

@@ -19,6 +19,14 @@ Human 在接入前必须确认：
 
 ## 3. 生成并审阅配置
 
+接入前先执行只读能力探测：
+
+```powershell
+liushi-harness hook probe --executor codex --json
+```
+
+Probe 只执行 `codex --version` 和 `codex --help`，不启动模型、不读取凭据、不写入项目。报告中的 `verified` 仅表示静态命令证据，`productionVerified` 当前固定为 `false`；找不到、Access Denied、超时或未知版本必须按未验证处理。
+
 在目标仓库或公共层根目录执行：
 
 ```powershell
@@ -98,10 +106,11 @@ liushi-harness hook handle --executor codex
 - Codex `apply_patch` PreToolUse/PostToolUse Adapter 已通过单元、架构和 Task/PlanRisk Fixture 集成测试。
 - Binding、Digest、Write Set、G2/G4、R4、Action Journal 和 Trace 由 Harness Core 确定性校验。
 - `hook config` 是只读配置投影，`hook handle` 是原生 stdin/stdout Wrapper。
+- `hook probe` 是只读、版本化的静态能力报告，不把静态证据升级为生产支持。
 
 当前不能声明：
 
 - 已完成所有 Codex 工具的完整拦截或完整安全隔离。
-- 已完成 Claude-compatible、CatPaw、Capability Probe 或自动安装。
+- 已完成 Claude-compatible、CatPaw、真实 Host Smoke、Capability Probe 的动态验证或自动安装。
 - 已在所有企业多仓、公共层和受信任项目环境中完成端到端验证。
 - Hook 已经替代 Human 审批、Git/CI 校验或业务代码评审。

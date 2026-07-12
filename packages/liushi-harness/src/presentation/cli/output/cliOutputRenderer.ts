@@ -56,6 +56,12 @@ export function writeSuccess<T>(
       );
       return;
     }
+    if (command === CliCommand.HookProbe) {
+      dependencies.writer.stdout(
+        `Codex probe: version=${scalarString(data["version"])} overall=${scalarString(data["overallStatus"])} productionVerified=${scalarString(data["productionVerified"])} commandHandler=${findingStatus(data["commandHandler"])} preToolUse=${findingStatus(data["preToolUse"])} postToolUse=${findingStatus(data["postToolUse"])} nativeStdin=${findingStatus(data["nativeStdin"])}.\n`,
+      );
+      return;
+    }
     if (command === CliCommand.ArtifactPropose) {
       const artifact = data["artifact"];
       const gateEvaluation = data["gateEvaluation"];
@@ -230,6 +236,16 @@ function writeProjectProfileBundleSummary(dependencies: RunCliDependencies, data
 
 function countEntries(value: unknown): number {
   return Array.isArray(value) ? value.length : 0;
+}
+
+function findingStatus(value: unknown): string {
+  return isRecord(value) ? scalarString(value["status"]) : "unknown";
+}
+
+function scalarString(value: unknown): string {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+    ? String(value)
+    : "unknown";
 }
 
 export { CLI_EXIT_CODE_SUCCESS, CLI_EXIT_CODE_UNEXPECTED };

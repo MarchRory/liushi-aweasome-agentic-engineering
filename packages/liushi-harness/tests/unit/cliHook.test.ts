@@ -8,6 +8,12 @@ import {
   success,
 } from "../../src/common/index.js";
 import {
+  CapabilityProbeExecutor,
+  CapabilityProbeStatus,
+  CodexCapabilityName,
+  CodexProbeCommand,
+} from "../../src/application/index.js";
+import {
   CliCommand,
   CliOutputFormat,
   NodeJsonDocumentReaderAdapter,
@@ -36,6 +42,7 @@ describe("CLI Hook wrapper", () => {
       "--json",
     ]);
     const config = parseCliArguments(["hook", "config", "--executor", "codex"]);
+    const probe = parseCliArguments(["hook", "probe", "--executor", "codex", "--json"]);
     const handle = parseCliArguments(["hook", "handle", "--executor", "codex"]);
     const invalidFormat = parseCliArguments(["hook", "handle", "--executor", "codex", "--json"]);
 
@@ -51,6 +58,10 @@ describe("CLI Hook wrapper", () => {
       status: ResultStatus.Success,
       value: { command: CliCommand.HookConfig, outputFormat: CliOutputFormat.Human },
     });
+    expect(probe).toMatchObject({
+      status: ResultStatus.Success,
+      value: { command: CliCommand.HookProbe, outputFormat: CliOutputFormat.Json },
+    });
     expect(invalidFormat).toMatchObject({
       status: ResultStatus.Failure,
       error: { code: HarnessErrorCode.InvalidInput, details: { option: "--json" } },
@@ -63,6 +74,22 @@ describe("CLI Hook wrapper", () => {
     expect(output.exitCode).toBe(0);
     expect(JSON.parse(output.stdout)).toEqual({ hooks: {} });
     expect(output.stdout).not.toContain('"status"');
+    expect(output.stderr).toBe("");
+  });
+
+  it("hook probe 使用 CLI JSON Envelope 返回只读能力报告", async () => {
+    const output = await runProbeCommand();
+
+    expect(output.exitCode).toBe(0);
+    expect(JSON.parse(output.stdout)).toMatchObject({
+      status: "success",
+      command: CliCommand.HookProbe,
+      data: {
+        executor: CapabilityProbeExecutor.Codex,
+        overallStatus: CapabilityProbeStatus.Unverified,
+        productionVerified: false,
+      },
+    });
     expect(output.stderr).toBe("");
   });
 
@@ -153,5 +180,61 @@ async function runConfigCommand(): Promise<{ exitCode: number; stdout: string; s
   };
 
   const exitCode = await runCli(["hook", "config", "--executor", "codex"], dependencies);
+  return { exitCode, stdout, stderr };
+}
+
+async function runProbeCommand(): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  let stdout = "";
+  let stderr = "";
+  const application = {
+    probeCodexCapabilities: {
+      execute: () =>
+        Promise.resolve(
+          success({
+            schemaVersion: "1.0.0",
+            executor: CapabilityProbeExecutor.Codex,
+            executable: "codex",
+            overallStatus: CapabilityProbeStatus.Unverified,
+            commandHandler: {
+              capability: CodexCapabilityName.CommandHandler,
+              status: CapabilityProbeStatus.Unverified,
+              evidence: "test",
+            },
+            preToolUse: {
+              capability: CodexCapabilityName.PreToolUse,
+              status: CapabilityProbeStatus.Unverified,
+              evidence: "test",
+            },
+            postToolUse: {
+              capability: CodexCapabilityName.PostToolUse,
+              status: CapabilityProbeStatus.Unverified,
+              evidence: "test",
+            },
+            nativeStdin: {
+              capability: CodexCapabilityName.NativeStdin,
+              status: CapabilityProbeStatus.Unverified,
+              evidence: "test",
+            },
+            productionVerified: false,
+            commands: [CodexProbeCommand.Version, CodexProbeCommand.Help],
+          }),
+        ),
+    },
+  } as unknown as CliApplication;
+  const dependencies: RunCliDependencies = {
+    defaultStoreRoot: ".runtime",
+    applicationFactory: { create: () => application },
+    writer: {
+      stdout: (value) => {
+        stdout += value;
+      },
+      stderr: (value) => {
+        stderr += value;
+      },
+    },
+    jsonDocumentReader: new NodeJsonDocumentReaderAdapter(),
+  };
+
+  const exitCode = await runCli(["hook", "probe", "--executor", "codex", "--json"], dependencies);
   return { exitCode, stdout, stderr };
 }

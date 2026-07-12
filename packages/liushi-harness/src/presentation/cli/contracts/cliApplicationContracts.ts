@@ -6,6 +6,7 @@ import type {
   CreateTaskUseCase,
   GetTaskStatusUseCase,
   ProposeArtifactUseCase,
+  ProbeCodexCapabilitiesUseCase,
   RecordApprovalUseCase,
   ResolveRulesUseCase,
   ScanProjectUseCase,
@@ -29,6 +30,8 @@ export interface CliApplication {
   bindHookWorkspace: BindHookWorkspaceUseCase;
   /** Codex Hook 平台处理器。 */
   handleCodexHook: CodexHookHandler;
+  /** Codex 执行器只读能力探测。 */
+  probeCodexCapabilities: ProbeCodexCapabilitiesUseCase;
   /** Task 创建 Use Case。 */
   createTask: CreateTaskUseCase;
   /** Task 状态查询 Use Case。 */

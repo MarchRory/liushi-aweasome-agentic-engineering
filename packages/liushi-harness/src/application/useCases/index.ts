@@ -14,3 +14,4 @@ export * from "./recordApproval/index.js";
 export * from "./resolveRules/index.js";
 export * from "./scanProject/index.js";
 export * from "./bindHookWorkspace/index.js";
+export * from "./probeCodexCapabilities/index.js";

@@ -17,7 +17,12 @@ import {
   type TaskCreateCliCommand,
   type TaskStatusCliCommand,
 } from "../contracts/index.js";
-import { executeHookBind, executeHookConfig, executeHookHandle } from "./commands/index.js";
+import {
+  executeHookBind,
+  executeHookConfig,
+  executeHookHandle,
+  executeHookProbe,
+} from "./commands/index.js";
 import {
   CLI_EXIT_CODE_SUCCESS,
   mapErrorExitCode,
@@ -100,6 +105,8 @@ async function executeCommand(
       return executeHookBind(command, createApplication(command, dependencies), dependencies);
     case CliCommand.HookConfig:
       return executeHookConfig(command, dependencies);
+    case CliCommand.HookProbe:
+      return executeHookProbe(command, createApplication(command, dependencies), dependencies);
     case CliCommand.HookHandle:
       return executeHookHandle(command, createApplication(command, dependencies), dependencies);
   }

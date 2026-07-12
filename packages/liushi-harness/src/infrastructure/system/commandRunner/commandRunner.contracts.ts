@@ -1,0 +1,29 @@
+import type { HarnessError, Result } from "#common/index.js";
+
+/** 只读外部命令请求。 */
+export interface CommandRunRequest {
+  /** 可执行文件名。 */
+  executable: string;
+  /** 命令参数。 */
+  args: readonly string[];
+  /** 超时毫秒数。 */
+  timeoutMs: number;
+}
+
+/** 外部命令的结构化完成结果。 */
+export interface CommandRunResult {
+  /** 进程退出码，启动失败时为空。 */
+  exitCode: number | null;
+  /** 标准输出。 */
+  stdout: string;
+  /** 标准错误。 */
+  stderr: string;
+  /** 启动或超时错误的稳定诊断。 */
+  launchError?: string;
+}
+
+/** Node 外部命令执行端口。 */
+export interface CommandRunner {
+  /** 以 shell=false 运行一次外部命令。 */
+  run(request: CommandRunRequest): Promise<Result<CommandRunResult, HarnessError>>;
+}

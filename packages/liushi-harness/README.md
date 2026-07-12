@@ -40,6 +40,7 @@
 - PostAction 会将结果确定性写入 Action Journal，并记录可丢失 Trace；失败或结果未知进入 Human 处理，只有证据证明 `not_applied` 才允许受控重试。
 - Codex `apply_patch` Hook Adapter 已支持 PreToolUse/PostToolUse、确定性 Action ID、输入冲突检测、Workspace Binding 和 Action Journal/Trace 因果链。
 - `hook config --executor codex` 可只读生成受审阅的 `hooks.json` 投影，`hook handle --executor codex` 提供 Codex 原生 stdin/stdout Wrapper；配置文件写入和项目受信任由 Human 控制。
+- `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出和静态 Hook 能力；找不到、Access Denied、超时或未知版本均不会被标记为生产支持。
 
 现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Workflow Aggregate/Reducer、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
@@ -85,9 +86,12 @@ liushi-harness project scan --file .\project-scan-manifest.json --json
 liushi-harness profile compile --workspace <workspace-id> --task <task-ulid> --artifact <proposal-artifact-ulid> --report .\project-discovery-report.json --json
 liushi-harness hook config --executor codex > .codex/hooks.json
 liushi-harness hook bind --root <repository-root> --workspace <workspace-id> --task <task-ulid> --artifact <plan-risk-artifact-ulid> --artifact-digest <sha256:digest> --actor-id <human-id>
+liushi-harness hook probe --executor codex --json
 ```
 
 `hook config` 只向 stdout 输出配置，不自动创建或覆盖 `.codex/hooks.json`；重定向、审阅和项目受信任必须由 Human 执行。`hook bind` 只接受精确的、已通过 G4 的 PlanRisk Digest，涉及历史业务逻辑时还必须通过 G2；R4 始终拒绝。`hook handle` 由 Codex Hook 通过 stdin 调用，输出平台原生 JSON，不使用 CLI JSON Envelope。
+
+`hook probe` 只运行 `codex --version` 和 `codex --help`，输出能力报告，不启动模型、不读取凭据、不写入项目；它不能替代真实受信任项目的 Hook Smoke/Negative Test。
 
 `rules resolve` 是报告型命令，不扫描或修改项目，也不激活 Candidate Rule。可执行 Bundle 返回 JSON `status=success` 和退出码 `0`；不可执行 Bundle 仍将完整诊断写入 stdout，但返回 JSON `status=blocked` 和退出码 `4`，从进程边界阻断后续流水线。
 

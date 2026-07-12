@@ -7,6 +7,7 @@ import {
   type HookBindCliCommand,
   type HookConfigCliCommand,
   type HookHandleCliCommand,
+  type HookProbeCliCommand,
   type RunCliDependencies,
 } from "../../contracts/index.js";
 import { mapErrorExitCode, writeFailure, writeSuccess } from "../../output/index.js";
@@ -51,6 +52,30 @@ export function executeHookConfig(
     );
   }
   dependencies.writer.stdout(`${JSON.stringify(dependencies.hookConfigProjector.project())}\n`);
+  return CLI_EXIT_CODE_SUCCESS;
+}
+
+/** 执行只读 Codex 能力探测，不修改项目或 Runtime Store。 */
+export async function executeHookProbe(
+  command: HookProbeCliCommand,
+  application: CliApplication,
+  dependencies: RunCliDependencies,
+): Promise<number> {
+  if (command.executor !== HookExecutorKind.Codex) {
+    writeFailure(
+      dependencies,
+      command.outputFormat,
+      command.command,
+      new HarnessError(HarnessErrorCode.InvalidInput, "Hook executor is not implemented."),
+    );
+    return CLI_EXIT_CODE_INVALID_INPUT;
+  }
+  const result = await application.probeCodexCapabilities.execute();
+  if (result.status === ResultStatus.Failure) {
+    writeFailure(dependencies, command.outputFormat, command.command, result.error);
+    return mapErrorExitCode(result.error.code);
+  }
+  writeSuccess(dependencies, command.outputFormat, command.command, result.value);
   return CLI_EXIT_CODE_SUCCESS;
 }
 

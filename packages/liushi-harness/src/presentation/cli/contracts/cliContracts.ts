@@ -29,6 +29,8 @@ export enum CliCommand {
   HookHandle = "hook.handle",
   /** 输出供 Human 审阅后写入的 Codex hooks.json 投影。 */
   HookConfig = "hook.config",
+  /** 只读探测 Codex 执行器能力。 */
+  HookProbe = "hook.probe",
 }
 
 /** CLI 接受的 Human Approval 决策值。 */
@@ -200,6 +202,14 @@ export interface HookConfigCliCommand extends BaseCliCommand {
   executor: HookExecutorKind;
 }
 
+/** Codex Hook 能力探测命令。 */
+export interface HookProbeCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  command: CliCommand.HookProbe;
+  /** 当前支持的执行器。 */
+  executor: HookExecutorKind;
+}
+
 /** CLI Parser 成功后允许进入执行阶段的命令。 */
 export type ParsedCliCommand =
   | HelpCliCommand
@@ -213,7 +223,8 @@ export type ParsedCliCommand =
   | ProfileCompileCliCommand
   | HookBindCliCommand
   | HookHandleCliCommand
-  | HookConfigCliCommand;
+  | HookConfigCliCommand
+  | HookProbeCliCommand;
 
 /** CLI JSON 失败信息。 */
 export interface CliErrorPayload {

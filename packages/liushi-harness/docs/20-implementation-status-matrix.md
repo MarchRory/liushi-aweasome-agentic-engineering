@@ -19,13 +19,13 @@
 | --------------------------- | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | 06 代码库组织               | 已完成   | `implemented` | 分层、循环依赖、目录、命名、Barrel、行数、TSDoc、中文注释、ESLint、Prettier、TS7/TS6 和 Changesets 门禁                         | 目标目录中的未来模块不计为能力                                                                  |
 | 07 Workspace 与多仓         | 已完成   | `partial`     | 多仓身份、只读扫描、依赖歧义、Profile Proposal、G8 和 Profile Bundle                                                            | WorkspaceGraph Registry、Read/Write Set、Repository Lock、Worktree 和跨仓 Saga                  |
-| 08 Executor Adapter         | 已完成   | `partial`     | Codex Hook Binding、PreToolUse/PostToolUse Adapter、原生 CLI Wrapper、只读 `hooks.json` 投影和 Fixture 集成测试                 | 真实受信任项目 Smoke、Capability Probe、安装协议、Claude/CatPaw Adapter、Role Invocation        |
+| 08 Executor Adapter         | 已完成   | `partial`     | Codex Probe、Hook Binding、Pre/Post Adapter、CLI Wrapper、`hooks.json` 投影和 Fixture 测试                                      | 真实项目 Smoke、安装协议、Claude/CatPaw Adapter、Role Invocation                                |
 | 09 Hooks 与 Agent Runtime   | 已完成   | `partial`     | Canonical Pre/PostAction、Codex `apply_patch` Projection/Wrapper、PlanRisk/Human Gate 授权、Dispatcher、Action Journal 与 Trace | 其他平台 Projection、自动安装、其他生命周期、Role Runtime 和 Human Battle                       |
 | 10 模型路由与 Eval          | 已完成   | `designed`    | 无产品运行时能力                                                                                                                | Model Registry、Router、升级、Eval Dataset 和成本策略                                           |
 | 11 Skills 与 Connectors     | 已完成   | `designed`    | Scanner、CLI 和 Digest 可供未来复用                                                                                             | Skill Registry/Runner、MCP、Wiki、Issue、Obsidian、认证和写入 Gate                              |
 | 12 Verification 与 Evidence | 已完成   | `partial`     | Evidence 基础类型、项目自身测试门禁、Artifact/Gate/Profile 来源摘要                                                             | VerificationPlan、Command Runner、EvidenceBundle、影响面、Flaky、G5 和多仓验证                  |
 | 13 Learning 与 Knowledge    | 已完成   | `designed`    | 无产品运行时能力                                                                                                                | Candidate Store、Eval、Promotion、Retrieval、Curator 和 Skill 改进                              |
-| 14 生产 SOP                 | 已完成   | `partial`     | npm 安装、Doctor、Task、Artifact、Approval、Rule、Scanner 和 Profile Compile                                                    | 自动 Task Delivery、Executor、Workflow、验证、Memory、Learning 和长期治理命令                   |
+| 14 生产 SOP                 | 已完成   | `partial`     | npm、Doctor、Task、Artifact、Approval、Rule、Scanner、Profile Compile、Codex Probe                                              | 自动 Task Delivery、Executor、Workflow、验证、Memory、Learning 和长期治理命令                   |
 | 15 交付路线                 | 已完成   | `implemented` | 能力门、决策门、完成门和真实项目验证口径                                                                                        | Workflow 后的切片顺序等待对齐                                                                   |
 | 16 Rules 与代码合规         | 已完成   | `partial`     | Rule Schema、Catalog、Resolver、Scanner Candidate、G8 Profile Promotion                                                         | Validator Execution、ComplianceReport、Rule Exception、Pattern/Mechanism Registry 和编码期执行  |
 | 17 Instruction Projection   | 已完成   | `designed`    | Rule/Profile 前置基础已具备                                                                                                     | Canonical Instruction、Resolution、Managed Merge Proposal 和三平台 Projection                   |
@@ -53,6 +53,7 @@
 - 执行器无关的 Canonical Action Hook 契约与 Dispatcher，并通过 PlanRisk Write Set、风险等级和精确 Human Approval 授权文件动作。
 - PreAction Intent、PostAction Observation/Resolution 与完成态 Trace 的统一因果链。
 - Codex `apply_patch` 的 Hook Workspace Binding、PreToolUse/PostToolUse Adapter、原生 stdin/stdout Wrapper 和确定性 `hooks.json` 配置投影。
+- Codex 静态 Capability Probe：版本、帮助输出、命令处理器和 Hook/Native stdin 声明的版本化报告；不可执行或未知版本时 fail closed。
 
 当前 npm 包不提供：
 
@@ -103,4 +104,4 @@ flowchart LR
 
 ## 7. 下一实现门
 
-Workflow 产品与技术方案已经对齐，S0 的持久化 Command Gateway、因果标识、Revision/Context、Failure Taxonomy、Golden Replay、`outcomeUnknown`、Timeline、Action Journal、完成态 Trace 和 Canonical Action Hook Core 已通过测试。Codex `apply_patch` 的输入 Adapter、Binding、配置投影和 CLI Wrapper 已完成 Fixture 验证；下一门是由 Human 在受信任真实项目中审阅配置、执行 Hook Smoke/Negative Test，再决定是否进入固定 Workflow Kernel。Claude-compatible/CatPaw、自动安装和完整 Capability Probe 不在本次 Feature 内。
+Workflow 产品与技术方案已经对齐，S0 的持久化 Command Gateway、因果标识、Revision/Context、Failure Taxonomy、Golden Replay、`outcomeUnknown`、Timeline、Action Journal、完成态 Trace 和 Canonical Action Hook Core 已通过测试。Codex `apply_patch` 的输入 Adapter、Binding、配置投影、CLI Wrapper 和静态 Capability Probe 已完成 Fixture 验证；下一门是由 Human 在受信任真实项目中审阅配置、执行 Hook Smoke/Negative Test，再决定是否进入固定 Workflow Kernel。Claude-compatible/CatPaw、自动安装和 Role Invocation 仍未实现。
