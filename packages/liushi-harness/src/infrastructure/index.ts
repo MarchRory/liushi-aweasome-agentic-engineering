@@ -9,3 +9,4 @@ export * from "./worktreeProvisioner/index.js";
 export * from "./verification/index.js";
 export * from "./repositoryLock/index.js";
 export * from "./actionExecutionLock/index.js";
+export * from "./fileMutation/index.js";

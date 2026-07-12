@@ -19,3 +19,4 @@ export type * from "./repositoryLock/index.js";
 export type * from "./actionExecutionLock/index.js";
 export * from "./worktreeProvisioner/index.js";
 export * from "./evidenceBundleStore/index.js";
+export * from "./fileMutation/index.js";

@@ -44,6 +44,7 @@ describe("composition root", () => {
       "FileWorkflowRepository",
       "MockVerificationExecutorAdapter",
       "NodeCommandRunnerAdapter",
+      "NodeFileMutationExecutorAdapter",
       "NodeHookInputReaderAdapter",
       "NodeJsonDocumentReaderAdapter",
       "NodeProjectFileSystemAdapter",

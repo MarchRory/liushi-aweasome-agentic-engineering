@@ -14,6 +14,7 @@ import type {
   RunVerificationUseCase,
   RunAndPersistVerificationUseCase,
   VerificationCommandService,
+  ImplementationCommandService,
   AcquireRepositoryLockUseCase,
   JournaledActionRunner,
   ListRecoverableActionsUseCase,
@@ -97,6 +98,8 @@ export interface HarnessApplication {
   runAndPersistVerification: RunAndPersistVerificationUseCase;
   /** 运行并接纳 CodingTask Verification 的版本化入口。 */
   verificationCommands: VerificationCommandService;
+  /** 在 Write Set、仓库锁和 Journal 边界内应用文件变更。 */
+  implementationCommands: ImplementationCommandService;
   /** 获取 Repository 级排他 Lock；不执行 Worktree 创建或代码写入。 */
   acquireRepositoryLock: AcquireRepositoryLockUseCase;
   /** 以 Action 执行锁和持久化 Journal 闭合副作用。 */

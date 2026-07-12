@@ -34,6 +34,8 @@ import {
   VerificationActionExecutor,
   VerificationCommandHandler,
   VerificationCommandService,
+  ImplementationCommandHandler,
+  ImplementationCommandService,
   WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
@@ -57,6 +59,7 @@ import {
   NodeWorktreeProvisionerAdapter,
   MockVerificationExecutorAdapter,
   NodeVerificationExecutorAdapter,
+  NodeFileMutationExecutorAdapter,
   NodeRepositoryLockAdapter,
   FileActionExecutionLockAdapter,
   NodeCommandRunnerAdapter,
@@ -181,6 +184,14 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     codingTaskCommandHandler,
     digest,
   );
+  const implementationCommandHandler = new ImplementationCommandHandler(
+    codingTaskRepository,
+    codingTaskAuthorizationResolver,
+    repositoryLock,
+    journaledActionRunner,
+    new NodeFileMutationExecutorAdapter(worktreeInspector, digest),
+    digest,
+  );
 
   return {
     applicationCommandGateway,
@@ -240,6 +251,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     verificationCommands: new VerificationCommandService(
       applicationCommandGateway,
       verificationCommandHandler,
+    ),
+    implementationCommands: new ImplementationCommandService(
+      applicationCommandGateway,
+      implementationCommandHandler,
     ),
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
     journaledActionRunner,

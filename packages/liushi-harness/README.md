@@ -125,4 +125,6 @@ corepack pnpm@10.34.1 --filter liushi-harness build
 
 版本化验证命令的运行边界与恢复限制见 [版本化验证命令](./docs/engineering/versionedVerificationCommand.md)。
 
+Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件写入](./docs/engineering/controlledFileMutation.md)。
+
 用户可感知变化由 Changesets 维护在 [CHANGELOG.md](./CHANGELOG.md)。
