@@ -1,16 +1,5 @@
-import type {
-  CheckRuntimeHealthUseCase,
-  CompileProjectProfileUseCase,
-  CreateTaskUseCase,
-  GetTaskStatusUseCase,
-  ProposeArtifactUseCase,
-  RecordApprovalUseCase,
-  ResolveRulesUseCase,
-  ScanProjectUseCase,
-} from "#application/index.js";
+import type { HookExecutorKind } from "#application/index.js";
 import type { HarnessErrorCode } from "#common/index.js";
-
-import type { JsonDocumentReader } from "../input/index.js";
 
 /** CLI 支持的规范命令标识。 */
 export enum CliCommand {
@@ -34,6 +23,12 @@ export enum CliCommand {
   ProjectScan = "project.scan",
   /** 将已批准的 ProjectProfileProposal 编译为完整 Bundle。 */
   ProfileCompile = "profile.compile",
+  /** 将人工确认的 Task/PlanRisk 绑定到执行器工作区。 */
+  HookBind = "hook.bind",
+  /** 处理执行器通过 Stdin 传入的一次 Hook。 */
+  HookHandle = "hook.handle",
+  /** 输出供 Human 审阅后写入的 Codex hooks.json 投影。 */
+  HookConfig = "hook.config",
 }
 
 /** CLI 接受的 Human Approval 决策值。 */
@@ -171,6 +166,40 @@ export interface ProfileCompileCliCommand extends BaseCliCommand {
   reportFilePath: string;
 }
 
+/** Hook Workspace Binding 命令。 */
+export interface HookBindCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  command: CliCommand.HookBind;
+  /** 仓库或公共层绝对根目录。 */
+  workspaceRoot: string;
+  /** Harness Workspace 标识。 */
+  workspaceId: string;
+  /** 绑定的 Task 标识。 */
+  taskId: string;
+  /** 精确 PlanRisk Artifact 标识。 */
+  artifactId: string;
+  /** 精确 PlanRisk Artifact Digest。 */
+  artifactDigest: string;
+  /** 允许执行文件动作的 Actor ID。 */
+  actorId: string;
+}
+
+/** Codex Hook Handle 命令。 */
+export interface HookHandleCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  command: CliCommand.HookHandle;
+  /** 当前支持的执行器。 */
+  executor: HookExecutorKind;
+}
+
+/** Codex Hook 配置投影命令。 */
+export interface HookConfigCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  command: CliCommand.HookConfig;
+  /** 当前支持的执行器。 */
+  executor: HookExecutorKind;
+}
+
 /** CLI Parser 成功后允许进入执行阶段的命令。 */
 export type ParsedCliCommand =
   | HelpCliCommand
@@ -181,50 +210,10 @@ export type ParsedCliCommand =
   | ApprovalDecideCliCommand
   | RulesResolveCliCommand
   | ProjectScanCliCommand
-  | ProfileCompileCliCommand;
-
-/** CLI 可调用的 Application Use Cases。 */
-export interface CliApplication {
-  /** Runtime 健康检查 Use Case。 */
-  checkRuntimeHealth: CheckRuntimeHealthUseCase;
-  /** Project Profile 编译 Use Case。 */
-  compileProjectProfile: CompileProjectProfileUseCase;
-  /** Task 创建 Use Case。 */
-  createTask: CreateTaskUseCase;
-  /** Task 状态查询 Use Case。 */
-  getTaskStatus: GetTaskStatusUseCase;
-  /** Artifact 提交 Use Case。 */
-  proposeArtifact: ProposeArtifactUseCase;
-  /** Human Approval 记录 Use Case。 */
-  recordApproval: RecordApprovalUseCase;
-  /** 确定性 Rule Resolution Use Case。 */
-  resolveRules: ResolveRulesUseCase;
-  /** 显式多仓只读 Project Discovery Use Case。 */
-  scanProject: ScanProjectUseCase;
-}
-/** 按 Store Root 创建 Use Cases 的工厂。 */
-export interface CliApplicationFactory {
-  /** 为一次命令创建无全局可变状态的 Application。 */
-  create(storeRoot: string): CliApplication;
-}
-/** CLI 标准输出和错误输出边界。 */
-export interface CliWriter {
-  /** 写入标准输出。 */
-  stdout(value: string): void;
-  /** 写入标准错误。 */
-  stderr(value: string): void;
-}
-/** 运行 CLI 所需的外部依赖。 */
-export interface RunCliDependencies {
-  /** 没有 `--store` 时使用的 Runtime Store。 */
-  defaultStoreRoot: string;
-  /** 唯一 Composition Root 提供的 Application Factory。 */
-  applicationFactory: CliApplicationFactory;
-  /** 可替换的输出边界。 */
-  writer: CliWriter;
-  /** 受大小限制的 JSON 文档读取边界。 */
-  jsonDocumentReader: JsonDocumentReader;
-}
+  | ProfileCompileCliCommand
+  | HookBindCliCommand
+  | HookHandleCliCommand
+  | HookConfigCliCommand;
 
 /** CLI JSON 失败信息。 */
 export interface CliErrorPayload {

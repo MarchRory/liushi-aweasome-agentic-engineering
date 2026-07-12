@@ -8,3 +8,4 @@ export type * from "./artifactDigest/index.js";
 export type * from "./contentDigest/index.js";
 export * from "./projectConfigParser/index.js";
 export * from "./projectFileSystem/index.js";
+export type * from "./hookBindingStore/index.js";

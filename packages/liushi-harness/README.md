@@ -38,8 +38,10 @@
 - Application Command Gateway 已提供原子 Reservation、独立 Lock、跨进程幂等和稳定 Receipt；并发重复请求只执行一次 Handler，Pending 或 Receipt 提交失败固定返回 `outcome_unknown`。
 - Canonical Action Hook Core 已提供严格 PreAction/PostAction 契约、Command/Payload 摘要绑定和 fail-closed Dispatcher；PreAction 只允许 PlanRisk Write Set 内的文件动作，R2/R3 必须绑定 G4 Human Approval，历史业务逻辑变更必须绑定 G2 Human Approval，R4 始终禁止。
 - PostAction 会将结果确定性写入 Action Journal，并记录可丢失 Trace；失败或结果未知进入 Human 处理，只有证据证明 `not_applied` 才允许受控重试。
+- Codex `apply_patch` Hook Adapter 已支持 PreToolUse/PostToolUse、确定性 Action ID、输入冲突检测、Workspace Binding 和 Action Journal/Trace 因果链。
+- `hook config --executor codex` 可只读生成受审阅的 `hooks.json` 投影，`hook handle --executor codex` 提供 Codex 原生 stdin/stdout Wrapper；配置文件写入和项目受信任由 Human 控制。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex/Claude-compatible/CatPaw 平台 Hook Projection 与安装、实时 Span 生命周期与 OTel Exporter、Workflow Aggregate/Reducer、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Workflow Aggregate/Reducer、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 ## Documents
 
@@ -66,6 +68,7 @@
 - [19 Agent Registry 与平台配置生成](./docs/19-agent-registry-and-platform-rendering.md)
 - [20 文档与实现状态矩阵](./docs/20-implementation-status-matrix.md)
 - [21 需求生命周期 Workflow 产品与技术方案](./docs/21-requirement-workflow-runtime.md)
+- [22 Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)
 
 ## CLI
 
@@ -80,7 +83,11 @@ liushi-harness approval decide --workspace <workspace-id> --task <task-ulid> --r
 liushi-harness rules resolve --catalog .\ruleCatalog.json --context .\ruleContext.json --json
 liushi-harness project scan --file .\project-scan-manifest.json --json
 liushi-harness profile compile --workspace <workspace-id> --task <task-ulid> --artifact <proposal-artifact-ulid> --report .\project-discovery-report.json --json
+liushi-harness hook config --executor codex > .codex/hooks.json
+liushi-harness hook bind --root <repository-root> --workspace <workspace-id> --task <task-ulid> --artifact <plan-risk-artifact-ulid> --artifact-digest <sha256:digest> --actor-id <human-id>
 ```
+
+`hook config` 只向 stdout 输出配置，不自动创建或覆盖 `.codex/hooks.json`；重定向、审阅和项目受信任必须由 Human 执行。`hook bind` 只接受精确的、已通过 G4 的 PlanRisk Digest，涉及历史业务逻辑时还必须通过 G2；R4 始终拒绝。`hook handle` 由 Codex Hook 通过 stdin 调用，输出平台原生 JSON，不使用 CLI JSON Envelope。
 
 `rules resolve` 是报告型命令，不扫描或修改项目，也不激活 Candidate Rule。可执行 Bundle 返回 JSON `status=success` 和退出码 `0`；不可执行 Bundle 仍将完整诊断写入 stdout，但返回 JSON `status=blocked` 和退出码 `4`，从进程边界阻断后续流水线。
 

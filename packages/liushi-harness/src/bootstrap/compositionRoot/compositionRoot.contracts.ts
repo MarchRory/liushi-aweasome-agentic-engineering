@@ -1,6 +1,8 @@
 import type {
   ApplicationCommandGateway,
+  BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
+  CodexHookHandler,
   CheckRuntimeHealthUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
@@ -26,6 +28,10 @@ export interface HarnessApplication {
   applicationCommandGateway: ApplicationCommandGateway;
   /** 规范化 Action Hook 调度器。 */
   handleHook: CanonicalHookDispatcher;
+  /** Codex PreToolUse/PostToolUse 平台适配器。 */
+  handleCodexHook: CodexHookHandler;
+  /** 将人工确认的 Task/PlanRisk 绑定到执行器工作区。 */
+  bindHookWorkspace: BindHookWorkspaceUseCase;
   /** Runtime Store 健康检查。 */
   checkRuntimeHealth: CheckRuntimeHealthUseCase;
   /** 将已获 G8 批准的 ProjectProfileProposal 编译为 Profile Bundle。 */

@@ -40,6 +40,7 @@ Status: Implementation-aware Architecture Baseline
 | [15 能力门驱动的交付路线](./15-delivery-roadmap.md)                             | 当前能力、决策门、完成门与真实项目验证                |
 | [20 文档与实现状态矩阵](./20-implementation-status-matrix.md)                   | 06-19 状态、产品边界、依赖与文档完成门                |
 | [21 需求生命周期 Workflow 产品与技术方案](./21-requirement-workflow-runtime.md) | Workflow、Command、CodingTask、Studio 与多仓 PR-ready |
+| [22 Codex Hook 生产接入 SOP](./22-codex-hook-production-sop.md)                 | 配置审阅、PlanRisk 绑定、Smoke、失败处理与回滚        |
 
 ## 评审规则
 

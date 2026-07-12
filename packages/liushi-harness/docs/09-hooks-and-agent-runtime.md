@@ -13,7 +13,7 @@ Hooks 将 Harness 的确定性规则接入执行器生命周期；Agent Runtime 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。PreAction 会从权威 Task Replay 重算 PlanRisk Write Set、风险等级、G4 和 G2 Human Approval；PostAction 会写入 Action Journal 并记录可丢失 Trace。平台 Hook Projection、CLI Wrapper、Hook 安装、其他生命周期 Handler、Agent Role Runtime 和 Human Battle Runtime 尚未实现，因此不能宣称任何 Codex、Claude-compatible 或 CatPaw Hook 已生效。
+**状态：部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。PreAction 会从权威 Task Replay 重算 PlanRisk Write Set、风险等级、G4 和 G2 Human Approval；PostAction 会写入 Action Journal 并记录可丢失 Trace。Codex `apply_patch` 的 PreToolUse/PostToolUse Adapter、绑定 Store、原生 CLI Wrapper 和 `hooks.json` 投影已经实现并通过 Fixture 集成测试；真实受信任项目的 Hook 启用仍需 Human 执行和验收。其他平台 Projection、Hook 安装、其他生命周期 Handler、Agent Role Runtime 和 Human Battle Runtime 尚未实现。
 
 Workflow、Cell、Agent、Skill、Executor 与 Hook 的职责边界已经在 [21 需求生命周期 Workflow Runtime](./21-requirement-workflow-runtime.md) 中建立；本章后续只定义 Hook 映射和 Agent Runtime，不拥有 Workflow 状态。
 
@@ -64,7 +64,7 @@ Canonical Event 不追求覆盖所有平台事件，只包含 Harness 有稳定�
 目标平台 Hook 最终执行：
 
 ```text
-liushi-harness hook handle --event <canonical-event> --executor <adapter-id>
+liushi-harness hook handle --executor codex
 ```
 
 输入通过 Stdin JSON 提供，输出使用版本化 JSON Schema。Hook Wrapper 只负责：
@@ -75,7 +75,9 @@ liushi-harness hook handle --event <canonical-event> --executor <adapter-id>
 
 Wrapper 不读取或修改 Store，不包含风险正则和业务规则。Rule Resolution 和 Compliance 由 CLI Core 执行，Wrapper 只传递 Canonical Input 和 Decision。
 
-当前实现只开放 Library Composition Root 的 `handleHook.execute(commandEnvelope)`，上述 CLI 命令与平台 Wrapper 尚未交付。
+当前实现提供三个明确边界：`hook bind` 将精确的已审批 PlanRisk 绑定到仓库或公共层根目录，`hook config --executor codex` 只向 stdout 输出可审阅的 `hooks.json`，`hook handle --executor codex` 从 stdin 读取 Codex 原生 Hook JSON 并只向 stdout 输出平台原生响应。配置文件写入、项目受信任和撤销由 Human 控制，Wrapper 不自动修改项目文件。
+
+当前 Adapter 仅覆盖 `apply_patch`，并使用 Codex 的 `command` Handler。Codex 官方文档说明 PreToolUse 对部分工具的拦截能力仍有限，PostToolUse 也不能撤销已经发生的副作用，因此 Hook 不是完整安全边界；CLI、Sandbox、Git 和 CI 必须继续复用同一 Policy Engine。[Codex Hooks](https://learn.chatgpt.com/docs/hooks)
 
 ## 4. 平台事件映射
 

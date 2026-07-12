@@ -1,4 +1,10 @@
-import { NodeJsonDocumentReaderAdapter, runCli, type CliWriter } from "#presentation/index.js";
+import {
+  NodeHookInputReaderAdapter,
+  NodeJsonDocumentReaderAdapter,
+  runCli,
+  type CliWriter,
+} from "#presentation/index.js";
+import { createCodexHookProjection } from "#infrastructure/index.js";
 import { createHarnessApplication } from "../compositionRoot/index.js";
 import { resolveHarnessRuntimeConfig } from "../runtimeConfig/index.js";
 
@@ -23,5 +29,7 @@ export async function runCliBootstrap(args: readonly string[]): Promise<number> 
     },
     writer,
     jsonDocumentReader: new NodeJsonDocumentReaderAdapter(),
+    hookInputReader: new NodeHookInputReaderAdapter(),
+    hookConfigProjector: { project: () => createCodexHookProjection() },
   });
 }

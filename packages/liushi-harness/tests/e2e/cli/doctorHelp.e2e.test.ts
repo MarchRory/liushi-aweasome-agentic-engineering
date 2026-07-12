@@ -46,6 +46,9 @@ describe("CLI doctor 与 help E2E", () => {
         expect.stringContaining("rules resolve"),
         expect.stringContaining("project scan"),
         expect.stringContaining("profile compile"),
+        expect.stringContaining("hook bind"),
+        expect.stringContaining("hook config"),
+        expect.stringContaining("hook handle"),
       ]);
     });
   });

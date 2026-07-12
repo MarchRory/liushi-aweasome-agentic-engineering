@@ -1,6 +1,7 @@
 import {
   ApplicationCommandGateway,
   ActionHookAuthorizationPolicy,
+  BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
   CheckRuntimeHealthUseCase,
   CompileProjectProfileUseCase,
@@ -25,6 +26,8 @@ import {
   FileParentDirectoryDurability,
   FileActionJournalRepository,
   FileCommandReservationStore,
+  FileHookBindingStore,
+  CodexHookAdapter,
   FileTraceObservationStore,
   FileRuntimeHealthAdapter,
   FileSnapshotStore,
@@ -77,21 +80,35 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const projectFileSystem = new NodeProjectFileSystemAdapter();
   const projectConfigParser = new StructuredProjectConfigParserAdapter();
   const applicationCommandGateway = new ApplicationCommandGateway(commandReservationStore, delay);
+  const hookBindingStore = new FileHookBindingStore(options.storeRoot, {
+    lockManager,
+    parentDirectoryDurability,
+  });
   const hookAuthorizationPolicy = new ActionHookAuthorizationPolicy(taskRepository);
+  const canonicalHookDispatcher = new CanonicalHookDispatcher(
+    applicationCommandGateway,
+    hookAuthorizationPolicy,
+    actionJournalRepository,
+    traceObservationStore,
+    digest,
+  );
 
   return {
     applicationCommandGateway,
+    bindHookWorkspace: new BindHookWorkspaceUseCase(taskRepository, hookBindingStore, clock),
     checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
     compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
     createTask: new CreateTaskUseCase(taskRepository, clock, taskIdGenerator),
     getTaskStatus: new GetTaskStatusUseCase(taskRepository),
     getTaskTimeline: new GetTaskTimelineUseCase(taskRepository),
-    handleHook: new CanonicalHookDispatcher(
-      applicationCommandGateway,
-      hookAuthorizationPolicy,
+    handleHook: canonicalHookDispatcher,
+    handleCodexHook: new CodexHookAdapter(
+      canonicalHookDispatcher,
+      hookBindingStore,
       actionJournalRepository,
-      traceObservationStore,
+      taskRepository,
       digest,
+      clock,
     ),
     getActionJournal: new GetActionJournalUseCase(actionJournalRepository),
     listRecoverableActions: new ListRecoverableActionsUseCase(actionJournalRepository),

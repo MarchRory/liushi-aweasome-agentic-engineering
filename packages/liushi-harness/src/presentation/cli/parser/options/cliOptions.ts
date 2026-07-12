@@ -12,6 +12,8 @@ export enum CliOptionName {
   Store = "--store",
   /** 指定 Workspace ID。 */
   Workspace = "--workspace",
+  /** 指定 Hook 绑定的工作区根目录。 */
+  Root = "--root",
   /** 指定 Task ID。 */
   Task = "--task",
   /** 指定 Task 来源。 */
@@ -22,6 +24,8 @@ export enum CliOptionName {
   File = "--file",
   /** 指定已批准的 ProjectProfileProposal Artifact ID。 */
   Artifact = "--artifact",
+  /** 指定已批准的 PlanRisk Artifact Digest。 */
+  ArtifactDigest = "--artifact-digest",
   /** 指定 Project Discovery Report JSON 文件。 */
   Report = "--report",
   /** 指定 DecisionRequest ID。 */
@@ -38,6 +42,8 @@ export enum CliOptionName {
   Catalog = "--catalog",
   /** 指定 Rule Resolution Context JSON 文件。 */
   Context = "--context",
+  /** 指定 Hook 执行器实现。 */
+  Executor = "--executor",
 }
 
 const CLI_OPTION_BY_NAME = new Map<string, CliOptionName>(

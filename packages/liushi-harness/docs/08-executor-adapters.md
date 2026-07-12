@@ -14,7 +14,9 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 ### 1.1 当前实现状态
 
-**状态：设计完成，尚未实现。** 当前 npm 包没有 Codex、Claude-compatible 或 CatPaw Executor Adapter，也没有 Capability Probe、安装协议或 Role Invocation Runtime。现有 CLI 只能执行 Harness 自身的确定性命令。开工前依赖稳定的 Workflow/Run Contract、Permission Contract 和 Managed File Merge Proposal；具体先后顺序需在 Workflow 对齐后确认。
+**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。适配器已通过单元测试、架构测试和真实 Task/PlanRisk Fixture 集成测试，但尚未在用户受信任的 Codex 项目中执行安装和端到端 Smoke Test，因此发布口径仍为“代码已验证，平台生产启用待 Human 验证”。
+
+当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`.codex/hooks.json` 的写入、信任和撤销由 Human 执行。Capability Probe、安装协议、Role Invocation Runtime、Claude-compatible/CatPaw Adapter 仍未实现。
 
 ## 2. Adapter 边界
 
@@ -122,7 +124,17 @@ Codex 路径优先使用原生能力：
 - 外部系统通过 MCP/Connector 暴露。
 - Subagent、Model、Permission、Instruction Discovery 和 Memory 控制能力通过运行时 Probe 记录。
 
-Hooks 只运行 `command` Handler，并统一调用 `liushi-harness hook handle`。任何 Hook 未覆盖的安全边界由 CLI、Sandbox 和 CI 再次执行。
+Hooks 只运行 `command` Handler，并统一调用 `liushi-harness hook handle --executor codex`。当前配置投影使用 `^apply_patch$` Matcher，同时注册 `PreToolUse` 与 `PostToolUse`。任何 Hook 未覆盖的安全边界由 CLI、Sandbox 和 CI 再次执行。
+
+当前可用的 Codex 接入命令：
+
+```powershell
+liushi-harness hook config --executor codex > .codex/hooks.json
+liushi-harness hook bind --root <repository-root> --workspace <workspace-id> --task <task-ulid> --artifact <plan-risk-artifact-ulid> --artifact-digest <sha256:digest> --actor-id <human-id>
+liushi-harness hook handle --executor codex
+```
+
+第一条命令只生成待审阅内容，重定向和项目受信任配置由 Human 确认；第二条命令只绑定已审批的 PlanRisk；第三条命令是平台 Hook 的原生 stdin/stdout 入口，不使用 CLI JSON Envelope。
 
 参考：[Codex Skills](https://learn.chatgpt.com/docs/customization/overview#skills)、[Codex Hooks](https://learn.chatgpt.com/docs/hooks)、[Codex Plugin Structure](https://learn.chatgpt.com/docs/build-plugins#plugin-structure)。
 

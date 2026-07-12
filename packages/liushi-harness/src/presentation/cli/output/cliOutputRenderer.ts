@@ -50,6 +50,12 @@ export function writeSuccess<T>(
     return;
   }
   if (isRecord(data)) {
+    if (command === CliCommand.HookBind) {
+      dependencies.writer.stdout(
+        `Hook binding ${String(data["workspaceRoot"])}: workspace=${String(data["workspaceId"])} task=${String(data["taskId"])} planRisk=${String(data["planRiskArtifactId"])}.\n`,
+      );
+      return;
+    }
     if (command === CliCommand.ArtifactPropose) {
       const artifact = data["artifact"];
       const gateEvaluation = data["gateEvaluation"];

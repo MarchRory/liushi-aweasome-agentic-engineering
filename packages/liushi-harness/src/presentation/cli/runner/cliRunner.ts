@@ -17,6 +17,7 @@ import {
   type TaskCreateCliCommand,
   type TaskStatusCliCommand,
 } from "../contracts/index.js";
+import { executeHookBind, executeHookConfig, executeHookHandle } from "./commands/index.js";
 import {
   CLI_EXIT_CODE_SUCCESS,
   mapErrorExitCode,
@@ -24,7 +25,11 @@ import {
   writeFailure,
   writeSuccess,
 } from "../output/index.js";
-import { CLI_EXIT_CODE_CONFLICT, CLI_USAGE_LINES } from "../constants/index.js";
+import {
+  CLI_EXIT_CODE_CONFLICT,
+  CLI_EXIT_CODE_INVALID_INPUT,
+  CLI_USAGE_LINES,
+} from "../constants/index.js";
 
 /** 解析并执行一次 CLI 调用，返回稳定退出码。 */
 export async function runCli(
@@ -49,6 +54,13 @@ export async function runCli(
       error instanceof HarnessError
         ? error
         : new HarnessError(HarnessErrorCode.IoFailure, "CLI execution failed.", {}, error);
+    if (
+      parsed.value.command === CliCommand.HookHandle ||
+      parsed.value.command === CliCommand.HookConfig
+    ) {
+      dependencies.writer.stderr(`${harnessError.message}\n`);
+      return CLI_EXIT_CODE_INVALID_INPUT;
+    }
     writeFailure(dependencies, parsed.value.outputFormat, parsed.value.command, harnessError);
     return mapErrorExitCode(harnessError.code);
   }
@@ -84,6 +96,12 @@ async function executeCommand(
       return executeProjectScan(command, createApplication(command, dependencies), dependencies);
     case CliCommand.ProfileCompile:
       return executeProfileCompile(command, createApplication(command, dependencies), dependencies);
+    case CliCommand.HookBind:
+      return executeHookBind(command, createApplication(command, dependencies), dependencies);
+    case CliCommand.HookConfig:
+      return executeHookConfig(command, dependencies);
+    case CliCommand.HookHandle:
+      return executeHookHandle(command, createApplication(command, dependencies), dependencies);
   }
 }
 

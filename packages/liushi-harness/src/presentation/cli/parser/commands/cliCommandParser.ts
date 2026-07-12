@@ -1,4 +1,5 @@
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
+import { HookExecutorKind } from "#application/index.js";
 
 import { DEFAULT_CLI_ACTOR_ID } from "../../constants/index.js";
 import { CliCommand, CliOutputFormat, type ParsedCliCommand } from "../../contracts/index.js";
@@ -170,9 +171,69 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
       reportFilePath: requireValue(collected, CliOptionName.Report),
     };
   }
+  if (isExactCommand(collected.positionals, ["hook", "bind"])) {
+    validateAllowedOptions(
+      collected,
+      new Set([
+        CliOptionName.Json,
+        CliOptionName.Store,
+        CliOptionName.Root,
+        CliOptionName.Workspace,
+        CliOptionName.Task,
+        CliOptionName.Artifact,
+        CliOptionName.ArtifactDigest,
+        CliOptionName.ActorId,
+      ]),
+    );
+    return {
+      command: CliCommand.HookBind,
+      outputFormat,
+      ...(storeRoot === undefined ? {} : { storeRoot }),
+      workspaceRoot: requireValue(collected, CliOptionName.Root),
+      workspaceId: requireValue(collected, CliOptionName.Workspace),
+      taskId: requireValue(collected, CliOptionName.Task),
+      artifactId: requireValue(collected, CliOptionName.Artifact),
+      artifactDigest: requireValue(collected, CliOptionName.ArtifactDigest),
+      actorId: collected.values.get(CliOptionName.ActorId) ?? DEFAULT_CLI_ACTOR_ID,
+    };
+  }
+  if (isExactCommand(collected.positionals, ["hook", "config"])) {
+    validateAllowedOptions(collected, new Set([CliOptionName.Executor]));
+    return {
+      command: CliCommand.HookConfig,
+      outputFormat: CliOutputFormat.Human,
+      executor: parseHookExecutor(requireValue(collected, CliOptionName.Executor)),
+    };
+  }
+  if (isExactCommand(collected.positionals, ["hook", "handle"])) {
+    validateAllowedOptions(collected, new Set([CliOptionName.Store, CliOptionName.Executor]));
+    return {
+      command: CliCommand.HookHandle,
+      outputFormat: CliOutputFormat.Human,
+      ...(storeRoot === undefined ? {} : { storeRoot }),
+      executor: parseHookExecutor(requireValue(collected, CliOptionName.Executor)),
+    };
+  }
   throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported CLI command.", {
     command: collected.positionals.join(" "),
   });
+}
+
+function parseHookExecutor(value: string): HookExecutorKind {
+  const executor = Object.values(HookExecutorKind).find(
+    (candidate) => candidate === (value as HookExecutorKind),
+  );
+  if (executor === undefined) {
+    throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported hook executor.", {
+      executor: value,
+    });
+  }
+  if (executor !== HookExecutorKind.Codex) {
+    throw new HarnessError(HarnessErrorCode.InvalidInput, "Hook executor is not implemented.", {
+      executor,
+    });
+  }
+  return executor;
 }
 
 function validateAllowedOptions(
