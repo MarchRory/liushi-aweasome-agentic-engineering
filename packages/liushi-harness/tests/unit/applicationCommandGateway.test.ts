@@ -87,6 +87,41 @@ describe("Application Command Gateway", () => {
     });
   });
 
+  it("Receipt 首次提交遇到未知态时只重试 Completion，不重复 Handler", async () => {
+    let handlerCalls = 0;
+    let completionCalls = 0;
+    const store: CommandReservationStore = {
+      reserve: () =>
+        Promise.resolve(success({ disposition: CommandReservationDisposition.Acquired })),
+      complete: (_command, receipt) => {
+        completionCalls += 1;
+        return Promise.resolve(
+          completionCalls === 1
+            ? failure(
+                new HarnessError(
+                  HarnessErrorCode.CommandGatewayCommitOutcomeUnknown,
+                  "receipt lock unavailable",
+                ),
+              )
+            : success(receipt),
+        );
+      },
+    };
+    const result = await new ApplicationCommandGateway(store, immediateDelay).execute(command(), {
+      execute: () => {
+        handlerCalls += 1;
+        return Promise.resolve(success({ committedVersion: 3 }));
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Success,
+      value: { status: CommandStatus.Committed, committedVersion: 3 },
+    });
+    expect(handlerCalls).toBe(1);
+    expect(completionCalls).toBe(2);
+  });
+
   it("将确定性版本冲突映射为 Conflict Receipt", async () => {
     const handler: CommandHandler = {
       execute: () =>

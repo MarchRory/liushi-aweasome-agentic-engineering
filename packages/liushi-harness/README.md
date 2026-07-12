@@ -36,8 +36,10 @@
 - Action Journal 已提供严格 Intent、Observation、Resolution、独立 Action Lock、`actions.jsonl` Hash Chain、跨实例重放与恢复查询；只有明确 `not_applied` 才允许重试，`outcome_unknown` 必须等待 Human。
 - Trace Observation 已提供版本化完成态 Span、W3C/OTel 标识、模型 Token/成本、Tool Call、因果关联、Best-effort 本地写入和 Tracker 查询；Trace 丢失或损坏不参与 Event Replay，也不改变业务结果。
 - Application Command Gateway 已提供原子 Reservation、独立 Lock、跨进程幂等和稳定 Receipt；并发重复请求只执行一次 Handler，Pending 或 Receipt 提交失败固定返回 `outcome_unknown`。
+- Canonical Action Hook Core 已提供严格 PreAction/PostAction 契约、Command/Payload 摘要绑定和 fail-closed Dispatcher；PreAction 只允许 PlanRisk Write Set 内的文件动作，R2/R3 必须绑定 G4 Human Approval，历史业务逻辑变更必须绑定 G2 Human Approval，R4 始终禁止。
+- PostAction 会将结果确定性写入 Action Journal，并记录可丢失 Trace；失败或结果未知进入 Human 处理，只有证据证明 `not_applied` 才允许受控重试。
 
-现有 CLI 写命令向 Application Command Gateway 的迁移、Action Journal/Trace 与 Hook/Executor 的接入、实时 Span 生命周期与 OTel Exporter、Workflow Aggregate/Reducer、Agent Runtime、Canonical Hooks、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex/Claude-compatible/CatPaw 平台 Hook Projection 与安装、实时 Span 生命周期与 OTel Exporter、Workflow Aggregate/Reducer、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 ## Documents
 

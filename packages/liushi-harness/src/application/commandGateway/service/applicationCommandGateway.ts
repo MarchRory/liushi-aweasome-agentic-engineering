@@ -75,7 +75,7 @@ export class ApplicationCommandGateway {
       );
     }
 
-    const completed = await this.store.complete(command, receipt);
+    const completed = await this.complete(command, receipt);
     return completed.status === ResultStatus.Success
       ? completed
       : success(outcomeUnknownReceipt(command, completed.error.message));
@@ -94,6 +94,21 @@ export class ApplicationCommandGateway {
       reservation = await this.store.reserve(command);
     }
     return reservation;
+  }
+
+  private async complete(command: CommandEnvelope, receipt: CommandReceipt) {
+    let completed = await this.store.complete(command, receipt);
+    for (let attempt = 0; attempt < COMMAND_RESERVATION_CONFLICT_ATTEMPTS; attempt += 1) {
+      if (
+        completed.status === ResultStatus.Success ||
+        completed.error.code !== HarnessErrorCode.CommandGatewayCommitOutcomeUnknown
+      ) {
+        return completed;
+      }
+      await this.delay.wait(COMMAND_RESERVATION_CONFLICT_DELAY_MS);
+      completed = await this.store.complete(command, receipt);
+    }
+    return completed;
   }
 }
 

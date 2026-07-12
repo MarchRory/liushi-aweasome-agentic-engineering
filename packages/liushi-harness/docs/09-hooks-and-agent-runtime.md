@@ -13,7 +13,7 @@ Hooks 将 Harness 的确定性规则接入执行器生命周期；Agent Runtime 
 
 ### 1.1 当前实现状态
 
-**状态：设计完成，尚未实现。** 当前代码没有 Canonical Hook Event、Hook Dispatcher、Agent Role Runtime、Human Battle Runtime 或平台 Hook Projection。已经实现的 Gate/Approval Core 可作为未来 Hook Handler 的确定性决策后端，但不能据此宣称任何 Codex 或 Claude Hook 已生效。该章与 Workflow Core 强相关，需在下一轮对齐中明确两者边界。
+**状态：部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。PreAction 会从权威 Task Replay 重算 PlanRisk Write Set、风险等级、G4 和 G2 Human Approval；PostAction 会写入 Action Journal 并记录可丢失 Trace。平台 Hook Projection、CLI Wrapper、Hook 安装、其他生命周期 Handler、Agent Role Runtime 和 Human Battle Runtime 尚未实现，因此不能宣称任何 Codex、Claude-compatible 或 CatPaw Hook 已生效。
 
 Workflow、Cell、Agent、Skill、Executor 与 Hook 的职责边界已经在 [21 需求生命周期 Workflow Runtime](./21-requirement-workflow-runtime.md) 中建立；本章后续只定义 Hook 映射和 Agent Runtime，不拥有 Workflow 状态。
 
@@ -61,7 +61,7 @@ Canonical Event 不追求覆盖所有平台事件，只包含 Harness 有稳定�
 
 ## 3. Hook Command
 
-所有平台 Hook 最终执行：
+目标平台 Hook 最终执行：
 
 ```text
 liushi-harness hook handle --event <canonical-event> --executor <adapter-id>
@@ -74,6 +74,8 @@ liushi-harness hook handle --event <canonical-event> --executor <adapter-id>
 - 调用 CLI 并将 HookDecision 映射回平台响应。
 
 Wrapper 不读取或修改 Store，不包含风险正则和业务规则。Rule Resolution 和 Compliance 由 CLI Core 执行，Wrapper 只传递 Canonical Input 和 Decision。
+
+当前实现只开放 Library Composition Root 的 `handleHook.execute(commandEnvelope)`，上述 CLI 命令与平台 Wrapper 尚未交付。
 
 ## 4. 平台事件映射
 

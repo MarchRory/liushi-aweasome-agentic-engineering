@@ -1,5 +1,6 @@
 import type {
   ApplicationCommandGateway,
+  CanonicalHookDispatcher,
   CheckRuntimeHealthUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
@@ -23,6 +24,8 @@ import type { Clock, Delay, IdGenerator } from "#common/index.js";
 export interface HarnessApplication {
   /** 所有版本化写入口复用的持久化 Command Gateway。 */
   applicationCommandGateway: ApplicationCommandGateway;
+  /** 规范化 Action Hook 调度器。 */
+  handleHook: CanonicalHookDispatcher;
   /** Runtime Store 健康检查。 */
   checkRuntimeHealth: CheckRuntimeHealthUseCase;
   /** 将已获 G8 批准的 ProjectProfileProposal 编译为 Profile Bundle。 */

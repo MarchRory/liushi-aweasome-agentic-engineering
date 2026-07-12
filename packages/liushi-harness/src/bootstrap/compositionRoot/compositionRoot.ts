@@ -1,5 +1,7 @@
 import {
   ApplicationCommandGateway,
+  ActionHookAuthorizationPolicy,
+  CanonicalHookDispatcher,
   CheckRuntimeHealthUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
@@ -74,14 +76,23 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const digest = new Rfc8785Sha256DigestAdapter();
   const projectFileSystem = new NodeProjectFileSystemAdapter();
   const projectConfigParser = new StructuredProjectConfigParserAdapter();
+  const applicationCommandGateway = new ApplicationCommandGateway(commandReservationStore, delay);
+  const hookAuthorizationPolicy = new ActionHookAuthorizationPolicy(taskRepository);
 
   return {
-    applicationCommandGateway: new ApplicationCommandGateway(commandReservationStore, delay),
+    applicationCommandGateway,
     checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
     compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
     createTask: new CreateTaskUseCase(taskRepository, clock, taskIdGenerator),
     getTaskStatus: new GetTaskStatusUseCase(taskRepository),
     getTaskTimeline: new GetTaskTimelineUseCase(taskRepository),
+    handleHook: new CanonicalHookDispatcher(
+      applicationCommandGateway,
+      hookAuthorizationPolicy,
+      actionJournalRepository,
+      traceObservationStore,
+      digest,
+    ),
     getActionJournal: new GetActionJournalUseCase(actionJournalRepository),
     listRecoverableActions: new ListRecoverableActionsUseCase(actionJournalRepository),
     listTraceObservations: new ListTraceObservationsUseCase(traceObservationStore),
