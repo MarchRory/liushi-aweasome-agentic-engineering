@@ -28,6 +28,12 @@ export const WORKFLOW_AGGREGATE_SCHEMA_VERSION = "1.0.0";
 /** Workflow V2 Semantic Event 的持久化 Schema Version。 */
 export const WORKFLOW_EVENT_SCHEMA_VERSION = "1.0.0";
 
+/** CodingTask Aggregate 的持久化 Schema Version。 */
+export const CODING_TASK_AGGREGATE_SCHEMA_VERSION = "1.0.0";
+
+/** CodingTask Semantic Event 的持久化 Schema Version。 */
+export const CODING_TASK_EVENT_SCHEMA_VERSION = "1.0.0";
+
 /** 当前 Rule Definition Schema Version。 */
 export const RULE_SCHEMA_VERSION = "1.0.0";
 
