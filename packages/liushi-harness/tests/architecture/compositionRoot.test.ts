@@ -30,6 +30,7 @@ describe("composition root", () => {
       "CodexCapabilityProbeAdapter",
       "CodexHookAdapter",
       "ExclusiveFileLockManager",
+      "FileActionExecutionLockAdapter",
       "FileActionJournalRepository",
       "FileCodingTaskRepository",
       "FileCommandReservationStore",

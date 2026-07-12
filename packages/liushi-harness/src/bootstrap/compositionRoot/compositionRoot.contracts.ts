@@ -13,6 +13,7 @@ import type {
   InspectWorktreeUseCase,
   RunVerificationUseCase,
   AcquireRepositoryLockUseCase,
+  JournaledActionRunner,
   ListRecoverableActionsUseCase,
   ListTraceObservationsUseCase,
   ProposeArtifactUseCase,
@@ -86,6 +87,8 @@ export interface HarnessApplication {
   runVerification: RunVerificationUseCase;
   /** 获取 Repository 级排他 Lock；不执行 Worktree 创建或代码写入。 */
   acquireRepositoryLock: AcquireRepositoryLockUseCase;
+  /** 以 Action 执行锁和持久化 Journal 闭合副作用。 */
+  journaledActionRunner: JournaledActionRunner;
 }
 
 /** 创建 Harness Application 的可注入依赖。 */

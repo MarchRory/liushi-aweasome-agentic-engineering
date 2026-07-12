@@ -15,6 +15,7 @@ import {
   InspectWorktreeUseCase,
   RunVerificationUseCase,
   AcquireRepositoryLockUseCase,
+  JournaledActionRunner,
   ListTraceObservationsUseCase,
   ListRecoverableActionsUseCase,
   ProposeArtifactUseCase,
@@ -48,6 +49,7 @@ import {
   NodeWorktreeInspectorAdapter,
   MockVerificationExecutorAdapter,
   NodeRepositoryLockAdapter,
+  FileActionExecutionLockAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
   StructuredProjectConfigParserAdapter,
@@ -192,6 +194,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
         clock,
         repositoryLockIdGenerator,
       ),
+    ),
+    journaledActionRunner: new JournaledActionRunner(
+      actionJournalRepository,
+      clock,
+      new FileActionExecutionLockAdapter(options.storeRoot, lockManager),
     ),
   };
 }

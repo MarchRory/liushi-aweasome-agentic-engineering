@@ -34,6 +34,7 @@
 - Event Log 写入或 `fsync` 失败返回独立的未知结果错误与退出码，禁止调用方自动重试。
 - `getTaskTimeline` 通过独立只读 Port 从权威 Event Replay 生成版本化 Tracker DTO，不暴露 Store 路径、原始 Payload 或 Aggregate 内部结构。
 - Action Journal 已提供严格 Intent、Observation、Resolution、独立 Action Lock、`actions.jsonl` Hash Chain、跨实例重放与恢复查询；只有明确 `not_applied` 才允许重试，`outcome_unknown` 必须等待 Human。
+- `JournaledActionRunner` 已提供 Action 级跨进程执行锁和 Intent-first 副作用协议：新 Intent 或 `retry_permitted` 才调用 Executor，已完成 Action 幂等复用，`intent_recorded` 不自动重放，已有 Observation 可以确定性补写 Resolution，执行后 Journal 无法闭合固定返回 `action_journal_commit_outcome_unknown`。
 - Trace Observation 已提供版本化完成态 Span、W3C/OTel 标识、模型 Token/成本、Tool Call、因果关联、Best-effort 本地写入和 Tracker 查询；Trace 丢失或损坏不参与 Event Replay，也不改变业务结果。
 - Application Command Gateway 已提供原子 Reservation、独立 Lock、跨进程幂等和稳定 Receipt；并发重复请求只执行一次 Handler，Pending 或 Receipt 提交失败固定返回 `outcome_unknown`。
 - Canonical Action Hook Core 已提供严格 PreAction/PostAction 契约、Command/Payload 摘要绑定和 fail-closed Dispatcher；PreAction 只允许 PlanRisk Write Set 内的文件动作，R2/R3 必须绑定 G4 Human Approval，历史业务逻辑变更必须绑定 G2 Human Approval，R4 始终禁止。

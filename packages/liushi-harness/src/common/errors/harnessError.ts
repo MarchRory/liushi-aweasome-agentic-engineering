@@ -38,6 +38,8 @@ export enum HarnessErrorCode {
   ActionConflict = "action_conflict",
   /** Action Journal 已开始写入但结果未知，禁止自动重试。 */
   ActionJournalCommitOutcomeUnknown = "action_journal_commit_outcome_unknown",
+  /** Action 执行锁释放失败，必须恢复 Lock 后再决定后续动作。 */
+  ActionExecutionLockReleaseUnknown = "action_execution_lock_release_unknown",
   /** Command Handler 已执行但 Receipt 无法可靠落盘，禁止自动重试。 */
   CommandGatewayCommitOutcomeUnknown = "command_gateway_commit_outcome_unknown",
 }
