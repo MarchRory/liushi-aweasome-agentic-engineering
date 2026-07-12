@@ -41,6 +41,7 @@
 - Codex `apply_patch` Hook Adapter 已支持 PreToolUse/PostToolUse、确定性 Action ID、输入冲突检测、Workspace Binding 和 Action Journal/Trace 因果链。
 - `hook config --executor codex` 可只读生成受审阅的 `hooks.json` 投影，`hook handle --executor codex` 提供 Codex 原生 stdin/stdout Wrapper；配置文件写入和项目受信任由 Human 控制。
 - `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出和静态 Hook 能力；找不到、Access Denied、超时或未知版本均不会被标记为生产支持。
+- Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；Aggregate、Store 和运行时 Command 仍未实现。
 
 现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Workflow Aggregate/Reducer、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors、多仓写入编排和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
