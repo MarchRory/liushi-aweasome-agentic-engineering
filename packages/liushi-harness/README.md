@@ -152,3 +152,5 @@ Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件�
 发布物验证边界与 CI/Release Gate 见 [npm Tarball 干净安装 Smoke](./docs/engineering/packageTarballSmoke.md)。
 
 固定公开项目的 CLI 正路径、证据字段与 HTT 边界见 [固定公开项目 CodingTask Cell Smoke](./docs/engineering/publicProjectSmoke.md)。
+
+真实 Codex Host 验收的默认只读准备阶段见 [Codex Host Smoke Prepare](./docs/engineering/codexHostSmokePrepare.md)。

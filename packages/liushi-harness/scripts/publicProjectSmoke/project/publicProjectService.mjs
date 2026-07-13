@@ -12,7 +12,11 @@ import {
 export async function clonePublicProject(temporaryRoot) {
   const repositoryRoot = join(temporaryRoot, "repository");
   const source = process.env.LIUSHI_PUBLIC_SMOKE_REPOSITORY ?? PUBLIC_REPOSITORY_URL;
-  runProcess("git", ["clone", "--no-checkout", source, repositoryRoot], { cwd: temporaryRoot });
+  runProcess("git", ["clone", "--no-checkout", source, repositoryRoot], {
+    cwd: temporaryRoot,
+    timeout: 300_000,
+    maxBuffer: 1024 * 1024,
+  });
   runGit(repositoryRoot, ["config", "core.autocrlf", "false"]);
   runGit(repositoryRoot, ["checkout", "--detach", PUBLIC_REPOSITORY_REVISION]);
   runGit(repositoryRoot, ["config", "user.name", "liushi-public-smoke"]);
@@ -63,13 +67,18 @@ export function inspectCompletedWorktree(input) {
 }
 
 export function runGit(cwd, args) {
-  return runProcess("git", args, { cwd, timeout: 60_000 }).stdout.trim();
+  return runProcess("git", args, {
+    cwd,
+    timeout: 60_000,
+    maxBuffer: 1024 * 1024,
+  }).stdout.trim();
 }
 
 function runPnpm(cwd, args, timeout) {
   return runProcess(process.execPath, [resolveCorepackCliPath(), PUBLIC_PACKAGE_MANAGER, ...args], {
     cwd,
     timeout,
+    maxBuffer: 1024 * 1024,
   });
 }
 

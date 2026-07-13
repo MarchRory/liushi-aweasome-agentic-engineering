@@ -45,7 +45,8 @@ export async function createHarnessConsumer(packageRoot, temporaryRoot) {
 }
 
 export async function establishGateProtocol(input) {
-  const created = runHarness(input.consumerRoot, [
+  const runEnvelope = input.runEnvelope ?? runHarnessEnvelope;
+  const created = runEnvelope(input.consumerRoot, [
     "task",
     "create",
     "--workspace",
@@ -62,7 +63,7 @@ export async function establishGateProtocol(input) {
 
   const requirementFile = join(input.storeRoot, "requirementContract.json");
   await writeFile(requirementFile, JSON.stringify(requirementProposal()));
-  const requirement = runHarness(
+  const requirement = runEnvelope(
     input.consumerRoot,
     proposalArgs(sourceTaskId, requirementFile, input.storeRoot),
   );
@@ -72,11 +73,12 @@ export async function establishGateProtocol(input) {
     sourceTaskId,
     requirement.data?.decisionRequest,
     "public-smoke-requirement-approval",
+    runEnvelope,
   );
 
   const planFile = join(input.storeRoot, "planRisk.json");
   await writeFile(planFile, JSON.stringify(planRiskProposal()));
-  const plan = runHarness(
+  const plan = runEnvelope(
     input.consumerRoot,
     proposalArgs(sourceTaskId, planFile, input.storeRoot),
   );
@@ -88,6 +90,7 @@ export async function establishGateProtocol(input) {
     sourceTaskId,
     plan.data?.decisionRequest,
     "public-smoke-plan-risk-approval",
+    runEnvelope,
   );
   const gateEvaluation = planApproval.data?.gateEvaluation;
   if (gateEvaluation?.result !== "allow") throw new Error("G4 自动化模拟审批未形成 allow。");
@@ -116,7 +119,7 @@ export async function establishGateProtocol(input) {
 }
 
 export function runCellWithCli(input) {
-  return runHarness(input.consumerRoot, [
+  return runHarnessEnvelope(input.consumerRoot, [
     "cell",
     "run",
     "--file",
@@ -153,10 +156,10 @@ function proposalArgs(taskId, file, storeRoot) {
   ];
 }
 
-function approveDecision(consumerRoot, storeRoot, taskId, request, idempotencyKey) {
+function approveDecision(consumerRoot, storeRoot, taskId, request, idempotencyKey, runEnvelope) {
   const requestId = requireString(request?.decisionRequestId, "DecisionRequest ID");
   const digest = requireString(request?.digest, "DecisionRequest Digest");
-  return runHarness(consumerRoot, [
+  return runEnvelope(consumerRoot, [
     "approval",
     "decide",
     "--workspace",
@@ -181,17 +184,31 @@ function approveDecision(consumerRoot, storeRoot, taskId, request, idempotencyKe
   ]);
 }
 
-function runHarness(consumerRoot, args) {
-  const result = runNpm(["exec", "--offline", "--", "liushi-harness", ...args], consumerRoot);
-  if (result.stderr.trim().length > 0) throw new Error("liushi-harness CLI 意外写入 stderr。");
-  const envelope = JSON.parse(result.stdout);
+export function runHarnessEnvelope(consumerRoot, args) {
+  const envelope = runHarnessJson(consumerRoot, args);
   if (envelope.status !== "success")
     throw new Error(`liushi-harness CLI 返回 ${String(envelope.status)}。`);
   return envelope;
 }
 
+export function runHarnessNativeJson(consumerRoot, args) {
+  return runHarnessJson(consumerRoot, args);
+}
+
+function runHarnessJson(consumerRoot, args) {
+  const result = runNpm(["exec", "--offline", "--", "liushi-harness", ...args], consumerRoot);
+  if (result.stderr.trim().length > 0) {
+    throw new Error("liushi-harness CLI 意外写入 stderr。");
+  }
+  return JSON.parse(result.stdout);
+}
+
 function runNpm(args, cwd) {
-  return runProcess(process.execPath, [resolveNpmCliPath(), ...args], { cwd, timeout: 300_000 });
+  return runProcess(process.execPath, [resolveNpmCliPath(), ...args], {
+    cwd,
+    timeout: 300_000,
+    maxBuffer: 1024 * 1024,
+  });
 }
 
 function parseSingleJson(stdout, label) {
