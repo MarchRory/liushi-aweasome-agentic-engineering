@@ -123,6 +123,8 @@ corepack pnpm@10.34.1 --filter liushi-harness build
 
 ## Release History
 
+依赖复用、核心自持语义与候选组件边界见 [Build vs Reuse 决策](./docs/engineering/buildVsReuse.md)。
+
 版本化验证命令的运行边界与恢复限制见 [版本化验证命令](./docs/engineering/versionedVerificationCommand.md)。
 
 Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件写入](./docs/engineering/controlledFileMutation.md)。
