@@ -3,3 +3,4 @@ dist/
 coverage/
 pnpm-lock.yaml
 generated/
+packages/liushi-harness/docs/evidence/**/*.json

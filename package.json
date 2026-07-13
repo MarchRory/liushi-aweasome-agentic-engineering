@@ -20,6 +20,7 @@
     "prepare": "husky",
     "release": "pnpm build && pnpm --filter liushi-harness smoke:package && changeset publish",
     "smoke:package": "pnpm --filter liushi-harness build && pnpm --filter liushi-harness smoke:package",
+    "smoke:public-project": "pnpm --filter liushi-harness smoke:public-project",
     "test": "pnpm --recursive --if-present test",
     "typecheck": "pnpm --recursive --if-present typecheck",
     "changeset": "changeset",

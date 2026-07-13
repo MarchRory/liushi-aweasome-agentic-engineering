@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "liushi.public-project-smoke.evidence.v2",
+  "status": "passed",
+  "generatedAt": "2026-07-13T20:50:41.923Z",
+  "repository": {
+    "repositoryId": "unjs-defu",
+    "url": "https://github.com/unjs/defu.git",
+    "revision": "82632b66f5914e9946edce300e10633a3d5c0cb7",
+    "packageManager": "pnpm@10.33.4"
+  },
+  "package": {
+    "name": "liushi-harness",
+    "version": "0.0.0",
+    "artifact": {
+      "fileName": "liushi-harness-0.0.0.tgz",
+      "sha256": "sha256:03cf2c9f9a77f2ffa45fd4ac2ed0df036080d908f6a60093841230bc26fd8174",
+      "npmIntegrity": "sha512-ueGfS3p7p46NEa2ym9K8GNZuMW0o8xS1iXny+NCRR8M542IURmjhVydMSbEz19hdvxfEwRs3DJWfIyVcvvSO3g==",
+      "npmShasum": "0b8722ca14dc4b8c35733ff5bb31b6b2f23a09d2",
+      "size": 827280,
+      "unpackedSize": 3950746,
+      "entryCount": 67
+    }
+  },
+  "executionEnvironment": {
+    "nodeVersion": "v20.19.5",
+    "platform": "win32",
+    "architecture": "x64"
+  },
+  "gateProtocol": {
+    "actorId": "smoke-human",
+    "mode": "automated_simulation",
+    "simulatedApprovalCount": 2,
+    "statement": "自动化模拟审批仅证明 Gate 协议，不代表真实 Human 审批。"
+  },
+  "cell": {
+    "status": "review_ready",
+    "baseRevision": "82632b66f5914e9946edce300e10633a3d5c0cb7",
+    "headRevision": "8c160f38dc4ea850ea4a968495ce3fd22ed74b13",
+    "repositoryId": "unjs-defu",
+    "writeSet": ["test/utils.test.ts"],
+    "evidenceStatus": "passed",
+    "evidenceBundleDigest": "sha256:c866ed727dc3ae9237cbae9cb33e72d02dc5975a784223d19e09101f18c9ecdb",
+    "prReadyArtifactDigest": "sha256:f69978a483047f73cc58cc26e090281d84e31fa354db13d89202254c6534984b"
+  },
+  "checks": [
+    {
+      "checkId": "baseline-install",
+      "status": "passed"
+    },
+    {
+      "checkId": "baseline-test",
+      "status": "passed"
+    },
+    {
+      "checkId": "worktree-offline-install",
+      "requirement": "required",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "checkId": "worktree-test",
+      "requirement": "required",
+      "status": "passed",
+      "exitCode": 0
+    }
+  ],
+  "idempotency": {
+    "sameManifest": true,
+    "sameStore": true,
+    "separateCliProcesses": true,
+    "deeplyEqual": true
+  },
+  "worktree": {
+    "managed": true,
+    "commitCount": 1,
+    "changedPaths": ["test/utils.test.ts"],
+    "clean": true,
+    "finalContentDigest": "sha256:2b4a818106ae7283731d71616ede746e70be8e4d81c359d6700bb450312b4dee"
+  },
+  "metrics": {
+    "machineDurationMs": 17622,
+    "humanTouchTime": {
+      "status": "not_measured",
+      "reason": "本 Smoke 的审批由自动化模拟，未建立真实 Human 计时区间。"
+    },
+    "simulatedApprovalCount": 2
+  },
+  "temporaryRootRetained": false
+}

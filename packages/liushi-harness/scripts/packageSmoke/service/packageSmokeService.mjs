@@ -10,7 +10,7 @@ import {
   REQUIRED_PACKAGE_FILES,
   TEMP_DIRECTORY_PREFIX,
 } from "../constants/index.mjs";
-import { resolveNpmCliPath, runProcess } from "../utils/index.mjs";
+import { resolveNpmCliPath, runProcess } from "../../common/process/index.mjs";
 
 export async function runPackageSmoke(packageRoot) {
   const temporaryRoot = await mkdtemp(join(tmpdir(), TEMP_DIRECTORY_PREFIX));

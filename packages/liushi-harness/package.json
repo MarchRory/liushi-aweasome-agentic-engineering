@@ -78,6 +78,7 @@
     "test:integration": "vitest run tests/integration",
     "test:unit": "vitest run tests/unit",
     "smoke:package": "node scripts/packageSmoke/index.mjs",
+    "smoke:public-project": "pnpm build && node scripts/publicProjectSmoke/index.mjs",
     "typecheck": "tsc --noEmit",
     "typecheck:ts6": "tsc6 --noEmit"
   },

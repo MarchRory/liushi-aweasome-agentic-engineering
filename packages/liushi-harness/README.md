@@ -51,8 +51,9 @@
 - `assessWorktreeProvisionRecovery` 与 `worktreeProvisionRecoveryCommands` 已提供未知 Managed Worktree Provision 的只读现场评估和 Human 摘要确认；只在路径、Registry、分支与 Worktree 后置条件可证明时闭合为 `recovered` 或 `retry_permitted`，不执行清理、重建或自动重试。
 - 未闭合 Worktree Provision Guard 已在同一 Repository Lock 内覆盖 Provision、受控文件变更、Implementation Submission 和 Verification；未知或等待 Human 的 Provision 会在新 Intent 与任何执行副作用前 fail closed，只有同一 `retry_permitted` Action 可以重试 Provision。
 - `cell run` 已将 CodingTask 创建、Worktree Provision、Attempt、一个或多个受控文件变更、Checkpoint Submission、Verification 与单仓 `PRReadyArtifact` 装配串成可跨进程恢复的单一编码 Cell；生产 CLI 强制要求 Workspace、Repository、绝对 Repository Root 和 Verification Mode，并在任何副作用前精确校验 Manifest 绑定。只有权威 Store 中的 `passed` Evidence、当前 Human Gate 重算和来源 Artifact 绑定全部通过后才返回 `review_ready`。
+- 固定公开项目 Smoke 已从真实 npm Tarball 独立安装启动生产 CLI，在 `unjs/defu@82632b66` 完成预编排单文件 Mutation 的 G1/G4 Gate 协议、受管 Worktree、单一 Checkpoint、离线安装、完整测试、Passed Evidence、PRReadyArtifact 与跨进程幂等复用。该结果不代表 Agent 已能自主理解需求或生成代码。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实 Host Hook 正负路径与企业项目安装、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
@@ -115,7 +116,7 @@ liushi-harness hook probe --executor codex --json
 
 `profile compile` 是 G8 后的确定性编译命令，不会自行扫描仓库。标准链路是：保存 `project scan --json` 的 `data` 为 Report，Human 基于该 Report 创建并提交 `ProjectProfileProposal`，批准返回的 G8 DecisionRequest，然后用同一 Report 和 Proposal Artifact ID 编译。Report、Proposal、Approval、Workspace、Task 或 Revision 任一漂移都会 fail closed；旧 Revision 的 Approval 不能复用。
 
-`cell run` 的 `--workspace`、`--repository`、`--root` 和 `--verification-mode` 均为必填。生产 Bootstrap 只在显式传入 `local_command` 时启用本地命令；`fail_closed_mock` 不执行本地命令。Manifest 的 Create Workspace/Repository 以及 Provision、全部 Implementation、Submission Repository Root 必须与 CLI 绑定精确一致；Verification Worktree Root 必须等于从绑定 Repository Root 和受管 `worktreeBinding.relativePath` 推导的唯一规范路径。缺少绑定或任一不匹配都会在任何服务调用前 fail closed。Manifest 自报授权仍不能替代权威 Human Gate 重算。当前代码与真实 Git E2E 已覆盖该链路，但不代表公开项目 Smoke 已完成。
+`cell run` 的 `--workspace`、`--repository`、`--root` 和 `--verification-mode` 均为必填。生产 Bootstrap 只在显式传入 `local_command` 时启用本地命令；`fail_closed_mock` 不执行本地命令。Manifest 的 Create Workspace/Repository 以及 Provision、全部 Implementation、Submission Repository Root 必须与 CLI 绑定精确一致；Verification Worktree Root 必须等于从绑定 Repository Root 和受管 `worktreeBinding.relativePath` 推导的唯一规范路径。缺少绑定或任一不匹配都会在任何服务调用前 fail closed。Manifest 自报授权仍不能替代权威 Human Gate 重算。固定公开项目 Smoke 只覆盖外部预编排 Mutation 的 CLI 正路径，不代表真实 Human 决策、Agent 自主编码、Codex Host Hook 或企业项目接入已经完成。
 
 默认 Runtime Store 为 `~/.liushi-harness`。可以通过 `LIUSHI_HARNESS_HOME` 或单次命令的 `--store <path>` 覆盖。
 
@@ -129,6 +130,7 @@ corepack pnpm@10.34.1 --filter liushi-harness typecheck:ts6
 corepack pnpm@10.34.1 --filter liushi-harness test
 corepack pnpm@10.34.1 --filter liushi-harness build
 corepack pnpm@10.34.1 smoke:package
+corepack pnpm@10.34.1 smoke:public-project
 ```
 
 源码按 `Domain -> Application -> Infrastructure/Presentation -> Bootstrap` 分层。每个业务模块与 Adapter 使用独立目录，内部职责拆分后仅通过模块根 `index.ts` 暴露公共 API；架构测试会拒绝越层依赖、循环依赖、深层导入、非法 I/O、非 lower camelCase 命名和缺失 TSDoc。
@@ -148,3 +150,5 @@ Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件�
 用户可感知变化由 Changesets 维护在 [CHANGELOG.md](./CHANGELOG.md)。
 
 发布物验证边界与 CI/Release Gate 见 [npm Tarball 干净安装 Smoke](./docs/engineering/packageTarballSmoke.md)。
+
+固定公开项目的 CLI 正路径、证据字段与 HTT 边界见 [固定公开项目 CodingTask Cell Smoke](./docs/engineering/publicProjectSmoke.md)。
