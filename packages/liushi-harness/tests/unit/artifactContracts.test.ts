@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ResultStatus } from "../../src/common/index.js";
+import { PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION, ResultStatus } from "../../src/common/index.js";
 import {
   ArtifactStatus,
   ArtifactType,
@@ -13,6 +13,11 @@ import { parseApprovalId, parseDecisionRequestId } from "../../src/domain/approv
 import { ClaimClassification, EvidenceKind } from "../../src/domain/evidence/index.js";
 import { GateId, RiskLevel } from "../../src/domain/gate/index.js";
 import { RepositoryRole } from "../../src/domain/projectDiscovery/index.js";
+import {
+  VerificationKind,
+  VerificationRequirement,
+  VerificationSelectionMode,
+} from "../../src/domain/verification/index.js";
 
 const validDigest = `sha256:${"a".repeat(64)}`;
 
@@ -144,6 +149,8 @@ describe("Artifact proposal contracts", () => {
 
   it.each([
     ["unknown top-level field", { unexpected: true }],
+    ["missing payload schemaVersion", { payload: { schemaVersion: undefined } }],
+    ["old payload schemaVersion", { payload: { schemaVersion: "1.0.0" } }],
     [
       "duplicate repository",
       {
@@ -204,6 +211,93 @@ describe("Artifact proposal contracts", () => {
             {
               ...createRepositorySelection("repo-a"),
               confirmedRole: RepositoryRole.Unknown,
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "missing verification checks",
+      {
+        payload: {
+          repositorySelections: [
+            { ...createRepositorySelection("repo-a"), verificationChecks: undefined },
+          ],
+        },
+      },
+    ],
+    [
+      "unknown verification check field",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              verificationChecks: [{ ...createVerificationCheck(), unexpected: true }],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "unordered verification checks",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              verificationChecks: [
+                { ...createVerificationCheck(), checkId: "project.z" },
+                { ...createVerificationCheck(), checkId: "project.a" },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "duplicate verification checks",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              verificationChecks: [createVerificationCheck(), createVerificationCheck()],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "invalid verification selection mode and path glob",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              verificationChecks: [
+                {
+                  ...createVerificationCheck(),
+                  requirement: VerificationRequirement.Conditional,
+                  selectionMode: VerificationSelectionMode.ChangedPaths,
+                  pathGlobs: ["../src/**"],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "invalid verification validator",
+      {
+        payload: {
+          repositorySelections: [
+            {
+              ...createRepositorySelection("repo-a"),
+              verificationChecks: [
+                { ...createVerificationCheck(), validatorIds: ["Invalid Validator"] },
+              ],
             },
           ],
         },
@@ -312,6 +406,7 @@ function createProjectProfileProposal() {
     artifactType: ArtifactType.ProjectProfileProposal,
     status: ArtifactStatus.Proposed,
     payload: {
+      schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
       discoveryReportDigest: validDigest,
       workspaceGraphRevision: "graph-rev-1",
       repositorySelections: [createRepositorySelection("repo-a")],
@@ -329,6 +424,25 @@ function createRepositorySelection(repositoryId: string) {
     rejectedRuleIds: ["rule-b"],
     acceptedMechanismCandidateIds: ["mechanism-a"],
     rejectedMechanismCandidateIds: ["mechanism-b"],
+    verificationChecks: [createVerificationCheck()],
+  };
+}
+
+function createVerificationCheck() {
+  return {
+    checkId: "project.typecheck",
+    kind: VerificationKind.Typecheck,
+    requirement: VerificationRequirement.Required,
+    command: {
+      executable: "corepack",
+      args: ["pnpm", "typecheck"],
+      workingDirectory: "",
+      allowedEnvironmentKeys: ["CI", "PATH"],
+    },
+    timeoutMs: 120_000,
+    retryable: false,
+    selectionMode: VerificationSelectionMode.Always,
+    validatorIds: ["typescript.typecheck"],
   };
 }
 

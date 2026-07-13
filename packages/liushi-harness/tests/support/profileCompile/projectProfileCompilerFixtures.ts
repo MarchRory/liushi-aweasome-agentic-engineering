@@ -1,6 +1,7 @@
 import {
   PROJECT_DISCOVERY_REPORT_SCHEMA_VERSION,
   PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION,
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
   RULE_SCHEMA_VERSION,
   ResultStatus,
   type ContentDigest,
@@ -29,6 +30,12 @@ import {
   type RuleDefinition,
 } from "../../../src/domain/rule/index.js";
 import { parseTaskId } from "../../../src/domain/task/index.js";
+import {
+  VerificationKind,
+  VerificationRequirement,
+  VerificationSelectionMode,
+  type ProjectVerificationCheck,
+} from "../../../src/domain/verification/index.js";
 import { parseRepositoryId, parseWorkspaceId } from "../../../src/domain/workspace/index.js";
 import { Rfc8785Sha256DigestAdapter } from "../../../src/infrastructure/index.js";
 import { createRule, DIGEST } from "../rule/index.js";
@@ -97,6 +104,7 @@ export function createCompilerProposal(
   order: readonly ProjectProfileCandidate[] = report.profileCandidates,
 ): ProjectProfileProposalPayload {
   return {
+    schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
     discoveryReportDigest: report.digest,
     workspaceGraphRevision: report.workspaceGraphRevision,
     repositorySelections: order.map((candidate) => ({
@@ -108,8 +116,30 @@ export function createCompilerProposal(
       rejectedRuleIds: [],
       acceptedMechanismCandidateIds: candidate.mechanismCandidates.map((item) => item.candidateId),
       rejectedMechanismCandidateIds: [],
+      verificationChecks: createCompilerVerificationChecks(),
     })),
   };
+}
+
+/** 创建按 Check ID 排序的 G8 验证检查。 */
+export function createCompilerVerificationChecks(): readonly ProjectVerificationCheck[] {
+  return [
+    {
+      checkId: "project.typecheck",
+      kind: VerificationKind.Typecheck,
+      requirement: VerificationRequirement.Required,
+      command: {
+        executable: "corepack",
+        args: ["pnpm", "typecheck"],
+        workingDirectory: "",
+        allowedEnvironmentKeys: ["CI", "PATH"],
+      },
+      timeoutMs: 120_000,
+      retryable: false,
+      selectionMode: VerificationSelectionMode.Always,
+      validatorIds: ["typescript.typecheck"],
+    },
+  ];
 }
 
 /** 使用测试摘要端口重算值的摘要。 */

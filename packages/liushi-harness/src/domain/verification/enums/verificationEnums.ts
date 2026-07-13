@@ -34,6 +34,60 @@ export enum VerificationRequirement {
   Advisory = "advisory",
 }
 
+/** Project Verification Check 的影响面选择方式。 */
+export enum VerificationSelectionMode {
+  /** 不依赖变更影响面，始终进入候选执行集合。 */
+  Always = "always",
+  /** 由变更路径或关联 Rule Validator 决定是否进入执行集合。 */
+  ChangedPaths = "changed_paths",
+}
+
+/** 单个 Project Verification Check 的选择状态。 */
+export enum VerificationCheckSelectionStatus {
+  /** 当前影响面要求执行该 Check。 */
+  Selected = "selected",
+  /** 已有充分信息证明当前影响面不需要该 Check。 */
+  Excluded = "excluded",
+}
+
+/** 单个 Project Verification Check 的稳定选择原因。 */
+export enum VerificationCheckSelectionReason {
+  /** Required Check 无条件进入执行集合。 */
+  Required = "required",
+  /** Check 被配置为始终执行。 */
+  Always = "always",
+  /** 变更路径命中了 Check 的 Path Glob。 */
+  PathGlobMatched = "path_glob_matched",
+  /** Applicable Rule 的 Validator 映射命中了 Check。 */
+  RuleValidatorMatched = "rule_validator_matched",
+  /** 路径与 Rule Validator 同时命中了 Check。 */
+  PathGlobAndRuleValidatorMatched = "path_glob_and_rule_validator_matched",
+  /** 输入不足以证明安全排除，因而保守选择。 */
+  Conservative = "conservative",
+  /** 路径和 Rule Validator 均未证明该 Check 受影响。 */
+  NotImpacted = "not_impacted",
+}
+
+/** Verification 影响面选择结果是否可以继续使用。 */
+export enum VerificationImpactSelectionStatus {
+  /** 选择结果满足全部 fail-closed 不变量。 */
+  Ready = "ready",
+  /** 选择结果缺少必要映射或配置，不能继续使用。 */
+  Blocked = "blocked",
+}
+
+/** Verification 影响面选择器的稳定诊断代码。 */
+export enum VerificationImpactDiagnosticCode {
+  /** 当前项目没有任何已确认 Verification Check。 */
+  VerificationChecksMissing = "verification_checks_missing",
+  /** Changed Path 不是规范 Repository 相对路径。 */
+  ChangedPathInvalid = "changed_path_invalid",
+  /** Rule Bundle Target 未完整覆盖 Changed Paths。 */
+  RuleTargetCoverageIncomplete = "rule_target_coverage_incomplete",
+  /** Applicable Blocking Rule 的 Validator 没有任何 Check 映射。 */
+  BlockingRuleValidatorUnmapped = "blocking_rule_validator_unmapped",
+}
+
 /** 一次 Verification Execution 或 Evidence Bundle 的最终状态。 */
 export enum VerificationStatus {
   /** 检查成功且结果适用于当前 Revision。 */

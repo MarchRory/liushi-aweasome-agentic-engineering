@@ -11,6 +11,7 @@ import {
   type ProjectDiscoveryReport,
   type ProjectProfileCandidate,
 } from "#domain/projectDiscovery/index.js";
+import { validateProjectVerificationChecks } from "#domain/verification/index.js";
 
 import type {
   CompiledRepositoryProfile,
@@ -107,6 +108,9 @@ function compileRepositoryProfile(
   provenance: ProjectProfileCompilerProvenance,
   digestPort: ProjectProfileDigestPort,
 ): Result<CompiledRepositoryProfile, HarnessError> {
+  const verificationChecks = validateProjectVerificationChecks(selection.verificationChecks);
+  if (verificationChecks.status === ResultStatus.Failure) return verificationChecks;
+
   const rulePartition = validatePartition(
     candidate.ruleCandidates.map((rule) => rule.ruleId),
     selection.acceptedRuleIds,
@@ -144,6 +148,7 @@ function compileRepositoryProfile(
     acceptedMechanisms: candidate.mechanismCandidates.filter((mechanism) =>
       acceptedMechanismIds.has(mechanism.candidateId),
     ),
+    verificationChecks: verificationChecks.value,
     sourceRefs: {
       discoveryReportDigest: report.digest,
       profileCandidateDigest: candidate.digest,

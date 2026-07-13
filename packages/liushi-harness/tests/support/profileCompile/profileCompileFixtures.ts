@@ -1,6 +1,7 @@
 import {
   PROJECT_DISCOVERY_REPORT_SCHEMA_VERSION,
   PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION,
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
   RULE_SCHEMA_VERSION,
   ArtifactStatus,
   ArtifactType,
@@ -14,6 +15,9 @@ import {
   RuleStatus,
   RuleScopeLevel,
   RuleSourceKind,
+  VerificationKind,
+  VerificationRequirement,
+  VerificationSelectionMode,
   createArchitectureMechanismCandidateDigestInput,
   createHarnessApplication,
   createProjectDiscoveryReportDigestInput,
@@ -195,6 +199,7 @@ function projectProfileProposal(report: ProjectDiscoveryReport): ProjectProfileP
     artifactType: ArtifactType.ProjectProfileProposal,
     status: ArtifactStatus.Proposed,
     payload: {
+      schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
       discoveryReportDigest: report.digest,
       workspaceGraphRevision: report.workspaceGraphRevision,
       repositorySelections: [
@@ -207,6 +212,23 @@ function projectProfileProposal(report: ProjectDiscoveryReport): ProjectProfileP
           rejectedRuleIds: [],
           acceptedMechanismCandidateIds: ["mechanism.repo-a"],
           rejectedMechanismCandidateIds: [],
+          verificationChecks: [
+            {
+              checkId: "project.typecheck",
+              kind: VerificationKind.Typecheck,
+              requirement: VerificationRequirement.Required,
+              command: {
+                executable: "corepack",
+                args: ["pnpm", "typecheck"],
+                workingDirectory: "",
+                allowedEnvironmentKeys: ["CI", "PATH"],
+              },
+              timeoutMs: 120_000,
+              retryable: false,
+              selectionMode: VerificationSelectionMode.Always,
+              validatorIds: ["typescript.typecheck"],
+            },
+          ],
         },
       ],
     },

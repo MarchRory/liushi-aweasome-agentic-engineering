@@ -52,14 +52,14 @@ export const PROJECT_DISCOVERY_REPORT_SCHEMA_VERSION = "1.0.0";
 /** 当前 Project Profile Candidate Schema Version。 */
 export const PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION = "1.0.0";
 
-/** 当前 Project Profile Proposal Schema Version。 */
-export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "1.0.0";
+/** 当前 Project Profile Proposal Schema 版本。 */
+export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "2.0.0";
 
-/** 当前 Architecture Mechanism Candidate Schema Version。 */
-/** 当前 Project Profile Schema Version。 */
-export const PROJECT_PROFILE_SCHEMA_VERSION = "1.0.0";
+/** 当前 Project Profile Schema 版本。 */
+export const PROJECT_PROFILE_SCHEMA_VERSION = "2.0.0";
 
-/** 当前 Project Profile Bundle Schema Version。 */
-export const PROJECT_PROFILE_BUNDLE_SCHEMA_VERSION = "1.0.0";
+/** 当前 Project Profile Bundle Schema 版本。 */
+export const PROJECT_PROFILE_BUNDLE_SCHEMA_VERSION = "2.0.0";
 
+/** 当前 Architecture Mechanism Candidate Schema 版本。 */
 export const ARCHITECTURE_MECHANISM_CANDIDATE_SCHEMA_VERSION = "1.0.0";

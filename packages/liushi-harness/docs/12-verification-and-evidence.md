@@ -15,7 +15,7 @@ Harness 不能以 Agent 声称“完成”作为交付依据。Verification 层�
 
 ### 1.1 当前实现状态
 
-**状态：验证协议、证据装配、显式本地执行和强一致存储部分实现，生产恢复编排尚未实现。** 当前已实现 `VerificationPlan`、`RunVerificationUseCase`、Local Command Adapter 和 `FileEvidenceBundleStore`。Local Command 模式校验 Git Root、Base/Target/HEAD，以 `shell=false` 执行并限制工作目录、环境、超时和输出。Bundle Store 重新校验结构、摘要、Revision、时间和聚合状态，支持幂等写入和篡改阻断。尚未实现版本化 Verification Command/Journal 恢复、影响面、重试/Flaky、G5 Waiver、独立 Verifier 和多仓编排。
+**状态：验证协议、证据装配、显式本地执行、版本化命令和单仓确定性影响面已实现，完整生产恢复编排尚未实现。** 当前已实现 `VerificationPlan`、`RunVerificationUseCase`、Local Command Adapter、`FileEvidenceBundleStore`、版本化 `VerificationCommandService` 和 `SelectVerificationPlanUseCase`。Local Command 模式校验 Git Root、Base/Target/HEAD，以 `shell=false` 执行并限制工作目录、环境、超时和输出。Bundle Store 重新校验结构、摘要、Revision、时间和聚合状态，支持幂等写入和篡改阻断。尚未实现 Import Graph、高级 Test Mapping、重试/Flaky、G5 Waiver、独立 Verifier 和多仓影响传播。
 
 ## 2. Verification Kind
 
@@ -87,6 +87,9 @@ PlanRisk 为每个 Check 声明：
 ### 3.1 当前已实现的协议切片
 
 - `VerificationPlan` 绑定 Repository、Worktree、Base Revision、Target Revision 和按 `checkId` 排序的 Check 集合。
+- `ProjectProfileProposal` v2 在不可豁免 G8 下确认完整 Check 命令、Requirement、Selection Mode、Path Glob 和 Validator 映射；Compiler 将其写入 Profile 与 Digest，不从 script 名猜测命令。
+- `SelectVerificationPlanUseCase` 重算 Profile、Catalog 和 Rule Bundle 摘要，从 CodingTask 最新 `ImplementationSubmitted` 读取 `targetRevision` 与 `changedPaths`，调用方不能自报第二份 Revision、Path 或 Target ID。
+- Required Check 永远选择；Rule Target 覆盖不完整或 Blocking Validator 缺少 Check 映射时返回带完整 Trace 的 `blocked`，不生成 Plan。
 - `VerificationCommandSpec` 只描述可执行文件、参数、相对工作目录和允许的环境变量名；校验器拒绝路径穿越、绝对工作目录、控制字符和不安全环境变量名，真实执行器仍必须使用非 Shell 参数数组。
 - `RunVerificationUseCase` 串行调用 `VerificationExecutorPort`，把执行异常和非法结果转换为 `Blocked`，并按 Required/Conditional/Advisory 聚合整体状态。
 - `EvidenceBundle` 保存 Plan Digest、Check 状态、失败分类、时间、退出码、输出 Digest 和可定位的 `EvidenceRef`，不保存原始 stdout/stderr。
@@ -116,7 +119,7 @@ PlanRisk 为每个 Check 声明：
 
 ## 5. 影响面选择
 
-低风险 Task 可以先运行受影响检查，但 Review-ready 前必须满足 ProjectProfile 定义的 Required Set。
+低风险 Task 可以先运行受影响检查，但 Review-ready 前必须满足 ProjectProfile 定义的 Required Set。当前实现使用 G8 Profile Path Glob、Applicable Rule Validator 映射和 Rule Resolution Target 生成单仓计划；无法证明 Target 覆盖完整时关闭式阻断。
 
 Test Selection 使用：
 
@@ -126,7 +129,7 @@ Test Selection 使用：
 - 历史失败和 CODEOWNERS。
 - Public Contract 与 Shared Infra 标记。
 
-AI 可以建议影响面，确定性 Selector 生成最终列表。无法证明某 Test 无关时不自动排除。
+AI 可以建议影响面，确定性 Selector 生成最终列表。当前尚未实现 Import Graph、Workspace Dependency、历史失败和 CODEOWNERS 传播，因此不能据此缩小范围；无法证明某 Test 无关时不自动排除。
 
 ## 6. Command Runner
 

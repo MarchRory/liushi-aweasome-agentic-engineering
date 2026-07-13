@@ -5,8 +5,11 @@ import {
   VerificationFailureKind,
   VerificationKind,
   VerificationRequirement,
+  VerificationSelectionMode,
   VerificationStatus,
   validateEvidenceBundle,
+  validateProjectVerificationChecks,
+  validateVerificationCheck,
   validateVerificationPlan,
 } from "../../src/domain/verification/index.js";
 
@@ -108,6 +111,107 @@ describe("Verification Plan validation", () => {
     const result = validateVerificationPlan(createPlan(overrides));
 
     expect(result.status).toBe(ResultStatus.Failure);
+  });
+});
+
+describe("Project Verification Check validation", () => {
+  const projectCheck = {
+    ...(createPlan()["checks"] as Record<string, unknown>[])[0],
+    selectionMode: VerificationSelectionMode.Always,
+    validatorIds: ["validator.build"],
+  };
+
+  it("公开并复用单个 VerificationCheck 校验", () => {
+    expect(validateVerificationCheck(projectCheck).status).toBe(ResultStatus.Success);
+  });
+
+  it("接受按稳定顺序声明的项目 Check", () => {
+    const result = validateProjectVerificationChecks([
+      projectCheck,
+      {
+        ...projectCheck,
+        checkId: "lint",
+        kind: VerificationKind.Lint,
+        requirement: VerificationRequirement.Conditional,
+        selectionMode: VerificationSelectionMode.ChangedPaths,
+        pathGlobs: ["src/**/*.ts"],
+        validatorIds: ["validator.lint"],
+      },
+    ]);
+
+    expect(result.status).toBe(ResultStatus.Success);
+  });
+
+  it.each([
+    ["拒绝空 Check 集合", []],
+    [
+      "拒绝缺少 Required Check",
+      [
+        {
+          ...projectCheck,
+          requirement: VerificationRequirement.Conditional,
+          selectionMode: VerificationSelectionMode.ChangedPaths,
+          pathGlobs: ["src/**/*.ts"],
+        },
+      ],
+    ],
+    ["拒绝重复 Check ID", [projectCheck, projectCheck]],
+    [
+      "拒绝未按 Check ID 排序",
+      [
+        { ...projectCheck, checkId: "z-check" },
+        { ...projectCheck, checkId: "a-check" },
+      ],
+    ],
+    [
+      "拒绝未排序 Validator ID",
+      [{ ...projectCheck, validatorIds: ["validator.z", "validator.a"] }],
+    ],
+    [
+      "拒绝重复 Path Glob",
+      [
+        {
+          ...projectCheck,
+          requirement: VerificationRequirement.Conditional,
+          selectionMode: VerificationSelectionMode.ChangedPaths,
+          pathGlobs: ["src/**/*.ts", "src/**/*.ts"],
+        },
+      ],
+    ],
+    [
+      "拒绝非法 Path Glob",
+      [
+        {
+          ...projectCheck,
+          requirement: VerificationRequirement.Conditional,
+          selectionMode: VerificationSelectionMode.ChangedPaths,
+          pathGlobs: ["../src/**/*.ts"],
+        },
+      ],
+    ],
+    [
+      "拒绝 Required 使用 changed_paths",
+      [
+        {
+          ...projectCheck,
+          selectionMode: VerificationSelectionMode.ChangedPaths,
+          pathGlobs: ["src/**/*.ts"],
+        },
+      ],
+    ],
+    ["拒绝 always 声明 Path Glob", [{ ...projectCheck, pathGlobs: ["src/**/*.ts"] }]],
+    [
+      "拒绝 changed_paths 缺少 Path Glob",
+      [
+        {
+          ...projectCheck,
+          requirement: VerificationRequirement.Conditional,
+          selectionMode: VerificationSelectionMode.ChangedPaths,
+        },
+      ],
+    ],
+  ])("%s", (_caseName, checks) => {
+    expect(validateProjectVerificationChecks(checks).status).toBe(ResultStatus.Failure);
   });
 });
 

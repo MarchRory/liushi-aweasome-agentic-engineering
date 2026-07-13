@@ -208,9 +208,10 @@ CLI Commit Protocol：
 - 绑定精确 `ProjectDiscoveryReport` Digest 与 Workspace Graph Revision。
 - 为每个 Repository 确认 Role、Repository Revision 和 Profile Candidate Digest。
 - 将全部 Rule Candidate 与 Architecture Mechanism Candidate 分入 accepted 或 rejected，禁止遗漏、重复或未知 ID。
+- 使用版本化 Payload 为每个 Repository 确认完整 Verification Check、命令、Requirement、Selection Mode、Path Glob 和 Validator 映射。
 - 进入不可豁免的 G8；Approval 绑定 Workspace、Task、Proposal Artifact ID、Revision 和 Digest。
 
-`profile compile` 只读取最新且精确批准的 Proposal，重新计算所有来源 Digest 后生成 ProjectProfile Bundle。任何 Report、Proposal 或 Approval 漂移都必须失败，不能沿用旧 Revision Approval。
+`profile compile` 只读取最新且精确批准的 Proposal，重新计算所有来源 Digest 后生成 ProjectProfile Bundle。Compiler 不从 package script 名推断验证命令；任何 Report、Proposal 或 Approval 漂移都必须失败，不能沿用旧 Revision Approval。
 
 ### 5.3 RequirementContract
 

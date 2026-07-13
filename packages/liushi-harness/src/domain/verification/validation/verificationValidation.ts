@@ -49,7 +49,7 @@ export function validateVerificationPlan(input: unknown): Result<VerificationPla
 
   const checks: VerificationCheck[] = [];
   for (const [index, candidate] of input["checks"].entries()) {
-    const parsed = parseCheck(candidate, `checks[${index}]`);
+    const parsed = parseVerificationCheck(candidate, `checks[${index}]`);
     if (parsed.status === ResultStatus.Failure) return parsed;
     checks.push(parsed.value);
   }
@@ -76,7 +76,15 @@ export function validateVerificationPlan(input: unknown): Result<VerificationPla
   });
 }
 
-function parseCheck(input: unknown, field: string): Result<VerificationCheck, HarnessError> {
+/** 校验单个 Verification Check，并复用 Plan 使用的同一组不变量。 */
+export function validateVerificationCheck(input: unknown): Result<VerificationCheck, HarnessError> {
+  return parseVerificationCheck(input, "check");
+}
+
+function parseVerificationCheck(
+  input: unknown,
+  field: string,
+): Result<VerificationCheck, HarnessError> {
   if (!isRecord(input)) return failure(invalid(field));
   const checkId = readIdentifier(input["checkId"]);
   if (checkId === undefined) return failure(invalid(`${field}.checkId`));

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   APPROVAL_RECORD_SCHEMA_VERSION,
   ARTIFACT_SCHEMA_VERSION,
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
   ActorKind,
   ResultStatus,
 } from "../../src/common/index.js";
@@ -32,6 +33,11 @@ import {
 } from "../../src/domain/gate/index.js";
 import { RepositoryRole } from "../../src/domain/projectDiscovery/index.js";
 import { parseTaskId } from "../../src/domain/task/index.js";
+import {
+  VerificationKind,
+  VerificationRequirement,
+  VerificationSelectionMode,
+} from "../../src/domain/verification/index.js";
 import { parseRepositoryId, parseWorkspaceId } from "../../src/domain/workspace/index.js";
 
 const ARTIFACT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -245,6 +251,7 @@ function createProjectProfileProposalArtifact(): ProjectProfileProposalArtifact 
     createdBy: { kind: ActorKind.Agent, actorId: "profile-promoter" },
     digest: parseDigest(ARTIFACT_DIGEST),
     payload: {
+      schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
       discoveryReportDigest: parseDigest(OTHER_DIGEST),
       workspaceGraphRevision: "graph-rev-1",
       repositorySelections: [
@@ -257,6 +264,23 @@ function createProjectProfileProposalArtifact(): ProjectProfileProposalArtifact 
           rejectedRuleIds: ["rule-b"],
           acceptedMechanismCandidateIds: ["mechanism-a"],
           rejectedMechanismCandidateIds: ["mechanism-b"],
+          verificationChecks: [
+            {
+              checkId: "project.typecheck",
+              kind: VerificationKind.Typecheck,
+              requirement: VerificationRequirement.Required,
+              command: {
+                executable: "corepack",
+                args: ["pnpm", "typecheck"],
+                workingDirectory: "",
+                allowedEnvironmentKeys: ["CI", "PATH"],
+              },
+              timeoutMs: 120_000,
+              retryable: false,
+              selectionMode: VerificationSelectionMode.Always,
+              validatorIds: ["typescript.typecheck"],
+            },
+          ],
         },
       ],
     },

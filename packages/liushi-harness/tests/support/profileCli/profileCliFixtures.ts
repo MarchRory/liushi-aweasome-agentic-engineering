@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
   RuleScopeLevel,
   createProjectDiscoveryReportDigestInput,
   createProjectProfileCandidateDigestInput,
@@ -83,6 +84,7 @@ function createProfileProposal(report: ProjectDiscoveryReport): object {
     artifactType: "project_profile_proposal",
     status: "proposed",
     payload: {
+      schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
       discoveryReportDigest: report.digest,
       workspaceGraphRevision: report.workspaceGraphRevision,
       repositorySelections: [
@@ -97,6 +99,23 @@ function createProfileProposal(report: ProjectDiscoveryReport): object {
             (mechanism) => mechanism.candidateId,
           ),
           rejectedMechanismCandidateIds: [],
+          verificationChecks: [
+            {
+              checkId: "project.typecheck",
+              kind: "typecheck",
+              requirement: "required",
+              command: {
+                executable: "corepack",
+                args: ["pnpm", "typecheck"],
+                workingDirectory: "",
+                allowedEnvironmentKeys: ["CI", "PATH"],
+              },
+              timeoutMs: 120000,
+              retryable: false,
+              selectionMode: "always",
+              validatorIds: ["typescript.typecheck"],
+            },
+          ],
         },
       ],
     },

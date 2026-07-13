@@ -44,6 +44,9 @@ export function createProjectProfileDigestInput(
     acceptedMechanisms: [...profile.acceptedMechanisms].sort((a, b) =>
       compare(mechanismIdentity(a), mechanismIdentity(b)),
     ),
+    verificationChecks: profile.verificationChecks
+      .map(normalizeVerificationCheck)
+      .sort((a, b) => compare(a.checkId, b.checkId)),
     sourceRefs: {
       discoveryReportDigest: profile.sourceRefs.discoveryReportDigest,
       profileCandidateDigest: profile.sourceRefs.profileCandidateDigest,
@@ -106,6 +109,27 @@ function compilerIdentity(fact: ProjectProfile["facts"]["compilerConfigs"][numbe
 
 function mechanismIdentity(mechanism: ProjectProfile["acceptedMechanisms"][number]): string {
   return `${mechanism.candidateId}:${mechanism.repositoryId}:${mechanism.kind}:${mechanism.relativePath}:${mechanism.confidence}:${mechanism.rationale}:${mechanism.digest}`;
+}
+
+function normalizeVerificationCheck(
+  check: ProjectProfile["verificationChecks"][number],
+): ProjectProfile["verificationChecks"][number] {
+  return {
+    checkId: check.checkId,
+    kind: check.kind,
+    requirement: check.requirement,
+    command: {
+      executable: check.command.executable,
+      args: [...check.command.args],
+      workingDirectory: check.command.workingDirectory,
+      allowedEnvironmentKeys: [...check.command.allowedEnvironmentKeys].sort(compare),
+    },
+    timeoutMs: check.timeoutMs,
+    retryable: check.retryable,
+    selectionMode: check.selectionMode,
+    ...(check.pathGlobs === undefined ? {} : { pathGlobs: [...check.pathGlobs].sort(compare) }),
+    validatorIds: [...check.validatorIds].sort(compare),
+  };
 }
 
 function compare(left: string, right: string): number {

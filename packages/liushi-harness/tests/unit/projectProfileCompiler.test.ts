@@ -13,6 +13,11 @@ import {
 } from "../../src/domain/projectProfile/index.js";
 import { RuleStatus, createRuleDigestInput } from "../../src/domain/rule/index.js";
 import { parseTaskId } from "../../src/domain/task/index.js";
+import {
+  VerificationKind,
+  VerificationRequirement,
+  VerificationSelectionMode,
+} from "../../src/domain/verification/index.js";
 import { parseRepositoryId, parseWorkspaceId } from "../../src/domain/workspace/index.js";
 import {
   compilerDigestPort as digestPort,
@@ -23,6 +28,7 @@ import {
   createCompilerCandidate as createCandidate,
   createCompilerProposal as createProposal,
   createCompilerReport as createReport,
+  createCompilerVerificationChecks,
   unwrap,
   withCompilerDigest as withDigest,
 } from "../support/profileCompile/index.js";
@@ -54,6 +60,9 @@ describe("Project profile compiler", () => {
       );
       expect(result.value.profiles[0]?.sourceRefs.approvalId).toBe(provenance.approvalId);
       expect(result.value.profiles[0]?.confirmedRole).toBe(RepositoryRole.Application);
+      expect(result.value.profiles[0]?.verificationChecks).toEqual(
+        createCompilerVerificationChecks(),
+      );
       expect(result.value.ruleCatalog.rules.map((rule) => rule.status)).toEqual([
         RuleStatus.Active,
       ]);
@@ -230,6 +239,36 @@ describe("Project profile compiler", () => {
     expect(result.status).toBe(ResultStatus.Failure);
   });
 
+  it("fails closed when a caller bypasses the Artifact parser with invalid checks", () => {
+    const report = createReport([createCandidate(repoA)]);
+    const proposal = createProposal(report);
+    const requiredCheck = proposal.repositorySelections[0]!.verificationChecks[0]!;
+    const result = compileProjectProfileBundle(
+      {
+        discoveryReport: report,
+        proposalPayload: {
+          ...proposal,
+          repositorySelections: [
+            {
+              ...proposal.repositorySelections[0]!,
+              verificationChecks: [
+                {
+                  ...requiredCheck,
+                  selectionMode: VerificationSelectionMode.ChangedPaths,
+                  pathGlobs: ["src/**"],
+                },
+              ],
+            },
+          ],
+        },
+        provenance: { ...provenance, revision: 1 },
+      },
+      digestPort,
+    );
+
+    expect(result.status).toBe(ResultStatus.Failure);
+  });
+
   it("changes profile and bundle digests when any new profile contract field changes", () => {
     const report = createReport([createCandidate(repoA)]);
     const result = compileProjectProfileBundle(
@@ -303,7 +342,73 @@ describe("Project profile compiler", () => {
         if (changedTaskDigest.status === ResultStatus.Success) {
           expect(changedTaskDigest.value).not.toBe(baselineBundleDigest.value);
         }
+
+        const baseCheck = profile.verificationChecks[0]!;
+        const checkMutations = [
+          {
+            ...baseCheck,
+            command: { ...baseCheck.command, args: ["pnpm", "typecheck", "--pretty=false"] },
+          },
+          { ...baseCheck, validatorIds: ["validator.changed"] },
+          {
+            ...baseCheck,
+            requirement: VerificationRequirement.Conditional,
+            selectionMode: VerificationSelectionMode.ChangedPaths,
+            pathGlobs: ["src/**"],
+          },
+        ];
+        for (const check of checkMutations) {
+          const changed = digestPort.calculate(
+            createProjectProfileDigestInput({ ...profile, verificationChecks: [check] }),
+          );
+          expect(changed.status).toBe(ResultStatus.Success);
+          if (changed.status === ResultStatus.Success) {
+            expect(changed.value).not.toBe(baselineProfileDigest.value);
+          }
+        }
       }
+    }
+  });
+
+  it("normalizes Verification Check collection ordering in the Profile digest", () => {
+    const report = createReport([createCandidate(repoA)]);
+    const result = compileProjectProfileBundle(
+      {
+        discoveryReport: report,
+        proposalPayload: createProposal(report),
+        provenance: { ...provenance, revision: 1 },
+      },
+      digestPort,
+    );
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Success) {
+      const profile = result.value.profiles[0]!;
+      const required = profile.verificationChecks[0]!;
+      const conditional = {
+        ...required,
+        checkId: "project.unit",
+        kind: VerificationKind.UnitTest,
+        requirement: VerificationRequirement.Conditional,
+        selectionMode: VerificationSelectionMode.ChangedPaths,
+        pathGlobs: ["src/**"],
+        validatorIds: ["test.unit"],
+      };
+      const forward = digestPort.calculate(
+        createProjectProfileDigestInput({
+          ...profile,
+          verificationChecks: [required, conditional],
+        }),
+      );
+      const reversed = digestPort.calculate(
+        createProjectProfileDigestInput({
+          ...profile,
+          verificationChecks: [conditional, required],
+        }),
+      );
+
+      expect(forward.status).toBe(ResultStatus.Success);
+      expect(reversed).toEqual(forward);
     }
   });
 });

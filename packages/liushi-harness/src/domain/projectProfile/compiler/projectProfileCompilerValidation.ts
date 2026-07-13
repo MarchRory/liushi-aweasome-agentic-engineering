@@ -1,4 +1,10 @@
-import { ResultStatus, success, type HarnessError, type Result } from "#common/index.js";
+import {
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
+  ResultStatus,
+  success,
+  type HarnessError,
+  type Result,
+} from "#common/index.js";
 import type { ProjectProfileProposalPayload } from "#domain/artifact/index.js";
 import {
   createArchitectureMechanismCandidateDigestInput,
@@ -34,6 +40,9 @@ export function validateReport(
   provenance: ProjectProfileCompilerProvenance,
   digestPort: ProjectProfileDigestPort,
 ): Result<void, HarnessError> {
+  if (proposal.schemaVersion !== PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION) {
+    return fail("Project profile proposal schema version is unsupported.");
+  }
   if (report.workspaceId !== provenance.workspaceId) {
     return fail("Compiler provenance workspace does not match the report.");
   }

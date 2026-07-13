@@ -27,6 +27,7 @@ import {
   RecordActionResolutionUseCase,
   RecordTraceObservationUseCase,
   ResolveRulesUseCase,
+  SelectVerificationPlanUseCase,
   ScanProjectUseCase,
   RequirementWorkflowCommandHandler,
   WorktreeProvisionCommandHandler,
@@ -253,6 +254,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     recordActionResolution: new RecordActionResolutionUseCase(actionJournalRepository),
     recordTraceObservation: new RecordTraceObservationUseCase(traceObservationStore),
     resolveRules: new ResolveRulesUseCase(digest),
+    selectVerificationPlan: new SelectVerificationPlanUseCase(digest),
     scanProject: new ScanProjectUseCase(projectFileSystem, projectConfigParser, digest),
     workflowCommands: new WorkflowCommandService(
       applicationCommandGateway,

@@ -12,6 +12,7 @@ import {
   GateEvaluationResult,
   GateId,
   HarnessErrorCode,
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
   RepositoryRole,
   ResultStatus,
   RiskLevel,
@@ -739,6 +740,7 @@ function projectProfileProposal() {
     artifactType: ArtifactType.ProjectProfileProposal,
     status: ArtifactStatus.Proposed,
     payload: {
+      schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
       discoveryReportDigest:
         "sha256:1111111111111111111111111111111111111111111111111111111111111111",
       workspaceGraphRevision: "graph-rev-1",
@@ -753,6 +755,23 @@ function projectProfileProposal() {
           rejectedRuleIds: ["rule-b"],
           acceptedMechanismCandidateIds: ["mechanism-a"],
           rejectedMechanismCandidateIds: ["mechanism-b"],
+          verificationChecks: [
+            {
+              checkId: "project.typecheck",
+              kind: "typecheck",
+              requirement: "required",
+              command: {
+                executable: "corepack",
+                args: ["pnpm", "typecheck"],
+                workingDirectory: "",
+                allowedEnvironmentKeys: ["CI", "PATH"],
+              },
+              timeoutMs: 120000,
+              retryable: false,
+              selectionMode: "always",
+              validatorIds: ["typescript.typecheck"],
+            },
+          ],
         },
       ],
     },

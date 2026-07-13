@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ResultStatus } from "../../src/common/index.js";
+import { PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION, ResultStatus } from "../../src/common/index.js";
 import { ArtifactStatus, ArtifactType } from "../../src/domain/artifact/index.js";
 import { RepositoryRole } from "../../src/domain/projectDiscovery/index.js";
 import { Rfc8785Sha256DigestAdapter, canonicalizeJson } from "../../src/infrastructure/index.js";
@@ -39,10 +39,12 @@ describe("RFC 8785 Artifact Digest", () => {
             profileCandidateDigest: validDigest,
             repositoryRevision: "repo-rev-1",
             repositoryId: "repo-a",
+            verificationChecks: [createVerificationCheck()],
           },
         ],
         workspaceGraphRevision: "graph-rev-1",
         discoveryReportDigest: validDigest,
+        schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
       },
       status: ArtifactStatus.Proposed,
       artifactType: ArtifactType.ProjectProfileProposal,
@@ -52,6 +54,32 @@ describe("RFC 8785 Artifact Digest", () => {
     expect(second.status).toBe(ResultStatus.Success);
     if (first.status === ResultStatus.Success && second.status === ResultStatus.Success) {
       expect(first.value).toBe(second.value);
+    }
+  });
+
+  it("changes ProjectProfileProposal digest when command, path or validator changes", () => {
+    const adapter = new Rfc8785Sha256DigestAdapter();
+    const payload = createProjectProfilePayload();
+    const check = payload.repositorySelections[0]!.verificationChecks[0]!;
+    const baseline = adapter.calculate(payload);
+    const mutations = [
+      { ...check, command: { ...check.command, args: ["pnpm", "lint", "--strict"] } },
+      { ...check, pathGlobs: ["tests/**"] },
+      { ...check, validatorIds: ["eslint.strict"] },
+    ];
+
+    expect(baseline.status).toBe(ResultStatus.Success);
+    for (const mutation of mutations) {
+      const changed = adapter.calculate({
+        ...payload,
+        repositorySelections: [
+          { ...payload.repositorySelections[0]!, verificationChecks: [mutation] },
+        ],
+      });
+      expect(changed.status).toBe(ResultStatus.Success);
+      if (baseline.status === ResultStatus.Success && changed.status === ResultStatus.Success) {
+        expect(changed.value).not.toBe(baseline.value);
+      }
     }
   });
 
@@ -87,6 +115,7 @@ const validDigest = `sha256:${"a".repeat(64)}`;
 
 function createProjectProfilePayload() {
   return {
+    schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
     discoveryReportDigest: validDigest,
     workspaceGraphRevision: "graph-rev-1",
     repositorySelections: [
@@ -99,7 +128,27 @@ function createProjectProfilePayload() {
         rejectedRuleIds: ["rule-b"],
         acceptedMechanismCandidateIds: ["mechanism-a"],
         rejectedMechanismCandidateIds: ["mechanism-b"],
+        verificationChecks: [createVerificationCheck()],
       },
     ],
+  };
+}
+
+function createVerificationCheck() {
+  return {
+    checkId: "project.lint",
+    kind: "lint",
+    requirement: "conditional",
+    command: {
+      executable: "corepack",
+      args: ["pnpm", "lint"],
+      workingDirectory: "",
+      allowedEnvironmentKeys: ["CI", "PATH"],
+    },
+    timeoutMs: 120_000,
+    retryable: false,
+    selectionMode: "changed_paths",
+    pathGlobs: ["src/**"],
+    validatorIds: ["eslint.lint"],
   };
 }

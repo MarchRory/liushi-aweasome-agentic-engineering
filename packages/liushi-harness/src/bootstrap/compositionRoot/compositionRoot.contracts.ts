@@ -28,6 +28,7 @@ import type {
   RecordActionResolutionUseCase,
   RecordTraceObservationUseCase,
   ResolveRulesUseCase,
+  SelectVerificationPlanUseCase,
   ScanProjectUseCase,
   WorkflowCommandService,
   WorktreeProvisionCommandService,
@@ -88,6 +89,8 @@ export interface HarnessApplication {
   recordTraceObservation: RecordTraceObservationUseCase;
   /** 确定性 Rule Catalog 解析。 */
   resolveRules: ResolveRulesUseCase;
+  /** 从已批准 Profile、实现结果与 Rule Bundle 生成 Verification Plan。 */
+  selectVerificationPlan: SelectVerificationPlanUseCase;
   /** 显式多仓只读 Project Discovery。 */
   scanProject: ScanProjectUseCase;
   /** RequirementWorkflow 的版本化写入入口。 */

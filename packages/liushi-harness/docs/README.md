@@ -59,3 +59,4 @@ Status: Implementation-aware Architecture Baseline
 工程规范：
 
 - [Commit、版本与 Changelog](./engineering/commit-and-release.md)
+- [Verification 影响面选择](./engineering/verificationImpactSelection.md)

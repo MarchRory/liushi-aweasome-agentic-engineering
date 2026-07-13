@@ -1,7 +1,13 @@
 import { z } from "zod";
 
-import { ResultStatus, parseContentDigest, type ContentDigest } from "#common/index.js";
+import {
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
+  ResultStatus,
+  parseContentDigest,
+  type ContentDigest,
+} from "#common/index.js";
 import { RepositoryRole } from "#domain/projectDiscovery/index.js";
+import { validateProjectVerificationChecks } from "#domain/verification/index.js";
 import { parseRepositoryId } from "#domain/workspace/index.js";
 
 import { MAX_ARTIFACT_LIST_ITEMS, MAX_ARTIFACT_TEXT_LENGTH } from "../constants/index.js";
@@ -40,6 +46,15 @@ const stableIdArraySchema = z
     assertStrictlyIncreasing(items, context, "IDs must be unique and sorted.");
   });
 
+const projectVerificationChecksSchema = z.unknown().transform((value, context) => {
+  const validated = validateProjectVerificationChecks(value);
+  if (validated.status === ResultStatus.Failure) {
+    context.addIssue({ code: "custom", message: validated.error.message });
+    return z.NEVER;
+  }
+  return validated.value;
+});
+
 const repositorySelectionSchema = z
   .object({
     repositoryId: repositoryIdSchema,
@@ -50,6 +65,7 @@ const repositorySelectionSchema = z
     rejectedRuleIds: stableIdArraySchema,
     acceptedMechanismCandidateIds: stableIdArraySchema,
     rejectedMechanismCandidateIds: stableIdArraySchema,
+    verificationChecks: projectVerificationChecksSchema,
   })
   .strict()
   .superRefine((selection, context) => {
@@ -71,6 +87,7 @@ const repositorySelectionSchema = z
 
 export const projectProfileProposalPayloadSchema = z
   .object({
+    schemaVersion: z.literal(PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION),
     discoveryReportDigest: contentDigestSchema,
     workspaceGraphRevision: nonBlank(MAX_ARTIFACT_TEXT_LENGTH),
     repositorySelections: z
@@ -86,11 +103,12 @@ export const projectProfileProposalPayloadSchema = z
   })
   .strict();
 
-/** 灏?Project Profile Proposal Payload Schema 杈撳嚭鏄犲皠涓洪鍩熷绾︺€?*/
+/** 将已校验的 Project Profile Proposal Payload 映射为领域契约。 */
 export function mapProjectProfileProposalPayload(
   payload: z.infer<typeof projectProfileProposalPayloadSchema>,
 ): ProjectProfileProposalPayload {
   return {
+    schemaVersion: payload.schemaVersion,
     discoveryReportDigest: payload.discoveryReportDigest,
     workspaceGraphRevision: payload.workspaceGraphRevision,
     repositorySelections: payload.repositorySelections.map((selection) => ({
@@ -102,6 +120,7 @@ export function mapProjectProfileProposalPayload(
       rejectedRuleIds: selection.rejectedRuleIds,
       acceptedMechanismCandidateIds: selection.acceptedMechanismCandidateIds,
       rejectedMechanismCandidateIds: selection.rejectedMechanismCandidateIds,
+      verificationChecks: selection.verificationChecks,
     })),
   };
 }

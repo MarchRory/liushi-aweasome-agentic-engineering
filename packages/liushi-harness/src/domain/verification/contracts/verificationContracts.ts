@@ -1,11 +1,17 @@
 import type { ContentDigest } from "#common/index.js";
 import type { EvidenceRef } from "#domain/evidence/index.js";
+import type { ApplicableRuleEntry, RuleResolutionTarget } from "#domain/rule/index.js";
 import type { RepositoryId } from "#domain/workspace/index.js";
 
 import type {
+  VerificationCheckSelectionReason,
+  VerificationCheckSelectionStatus,
   VerificationFailureKind,
+  VerificationImpactDiagnosticCode,
+  VerificationImpactSelectionStatus,
   VerificationKind,
   VerificationRequirement,
+  VerificationSelectionMode,
   VerificationStatus,
 } from "../enums/index.js";
 import type {
@@ -39,6 +45,68 @@ export interface VerificationCheck {
   timeoutMs: number;
   /** 是否允许由上层策略在失败后执行一次受控重试。 */
   retryable: boolean;
+}
+
+/** 经 Human/G8 确认并可用于项目影响面选择的 Verification Check。 */
+export interface ProjectVerificationCheck extends VerificationCheck {
+  /** Check 的封闭影响面选择方式。 */
+  selectionMode: VerificationSelectionMode;
+  /** Changed Paths 模式使用的规范 Repository 相对 Glob。 */
+  pathGlobs?: readonly string[];
+  /** 可触发该 Check 的 Rule Validator Registry ID。 */
+  validatorIds: readonly string[];
+}
+
+/** Verification 影响面选择器的完整纯函数输入。 */
+export interface VerificationImpactSelectorInput {
+  /** 当前选择所绑定的 Repository。 */
+  repositoryId: RepositoryId;
+  /** 当前变更涉及的 Repository 相对路径。 */
+  changedPaths: readonly string[];
+  /** 经 Human/G8 确认的项目 Check 集合。 */
+  checks: readonly ProjectVerificationCheck[];
+  /** 当前上下文适用的 Rule 集合。 */
+  applicableRules: readonly ApplicableRuleEntry[];
+  /** Rule Bundle 绑定的完整显式目标集合。 */
+  ruleTargets: readonly RuleResolutionTarget[];
+}
+
+/** 单个候选 Check 的确定性影响面判定。 */
+export interface VerificationImpactCheckSelection {
+  /** 被判定的项目 Check。 */
+  check: ProjectVerificationCheck;
+  /** 该 Check 被选择或排除。 */
+  status: VerificationCheckSelectionStatus;
+  /** 该判定的稳定原因。 */
+  reason: VerificationCheckSelectionReason;
+  /** 实际命中且按稳定顺序排列的变更路径。 */
+  matchedPaths: readonly string[];
+  /** 通过 Validator 映射贡献选择结果的 Rule ID。 */
+  contributingRuleIds: readonly string[];
+}
+
+/** Verification 影响面选择器的 fail-closed 诊断。 */
+export interface VerificationImpactDiagnostic {
+  /** 稳定机器诊断代码。 */
+  code: VerificationImpactDiagnosticCode;
+  /** 诊断关联的 Rule ID；项目级诊断不存在该字段。 */
+  ruleId?: string;
+  /** 诊断关联且按稳定顺序排列的 Validator ID。 */
+  validatorIds: readonly string[];
+  /** 诊断关联且按稳定顺序排列的 Repository 相对路径。 */
+  paths?: readonly string[];
+  /** 面向审计的稳定说明。 */
+  message: string;
+}
+
+/** 尚未生成命令、Digest 或 VerificationPlan 的纯影响面选择结果。 */
+export interface VerificationImpactSelection {
+  /** 结果是否满足继续规划所需的不变量。 */
+  status: VerificationImpactSelectionStatus;
+  /** 每个候选 Check 的判定，按 Check ID 稳定排序。 */
+  checks: readonly VerificationImpactCheckSelection[];
+  /** 按稳定身份排序的 fail-closed 诊断。 */
+  diagnostics: readonly VerificationImpactDiagnostic[];
 }
 
 /** 一个绑定 Repository、Worktree 和 Revision 的确定性 Verification Plan。 */

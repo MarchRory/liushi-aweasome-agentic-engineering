@@ -1,58 +1,63 @@
-import type { ContentDigest } from "#common/index.js";
+import type { ContentDigest, PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION } from "#common/index.js";
 import type { RepositoryRole } from "#domain/projectDiscovery/index.js";
+import type { ProjectVerificationCheck } from "#domain/verification/index.js";
 import type { RepositoryId } from "#domain/workspace/index.js";
 
 import type { ArtifactStatus, ArtifactType } from "../enums/index.js";
 import type { ArtifactEnvelope } from "./artifactEnvelopeContracts.js";
 
-/** Project Profile Proposal 涓厑璁?Human 纭鐨?Repository 瑙掕壊銆?*/
+/** Project Profile Proposal 中由 Human 确认的仓库角色。 */
 export type ProjectProfileConfirmedRole = Exclude<RepositoryRole, RepositoryRole.Unknown>;
 
-/** Human Profile Proposal 瀵瑰崟涓?Repository 鐨勫彲楠岃瘉閫夋嫨銆?*/
+/** Human 对单个仓库作出的 Project Profile 选择。 */
 export interface ProjectProfileRepositorySelection {
-  /** 琚‘璁ょ殑 Repository 绋冲畾 ID銆?*/
+  /** 目标仓库 ID。 */
   repositoryId: RepositoryId;
-  /** Repository Profile Candidate 缁戝畾鐨勬簮鐮佷慨璁€?*/
+  /** 选择所绑定的仓库版本。 */
   repositoryRevision: string;
-  /** 琚?Human 瀹￠槄鐨?Project Profile Candidate Digest銆?*/
+  /** Human 审核的 Project Profile Candidate 摘要。 */
   profileCandidateDigest: ContentDigest;
-  /** Human 纭鐨?Repository 瑙掕壊锛屼笉鍏佽 Unknown銆?*/
+  /** Human 确认的仓库角色，不允许 Unknown。 */
   confirmedRole: ProjectProfileConfirmedRole;
-  /** Human 鎺ュ彈鐨?Rule Candidate ID锛屾寜瀛楀吀搴忕ǔ瀹氭帓鍒椼€?*/
+  /** Human 接受的 Rule Candidate ID。 */
   acceptedRuleIds: readonly string[];
-  /** Human 鎷掔粷鐨?Rule Candidate ID锛屾寜瀛楀吀搴忕ǔ瀹氭帓鍒椼€?*/
+  /** Human 拒绝的 Rule Candidate ID。 */
   rejectedRuleIds: readonly string[];
-  /** Human 鎺ュ彈鐨?Architecture Mechanism Candidate ID锛屾寜瀛楀吀搴忕ǔ瀹氭帓鍒椼€?*/
+  /** Human 接受的 Architecture Mechanism Candidate ID。 */
   acceptedMechanismCandidateIds: readonly string[];
-  /** Human 鎷掔粷鐨?Architecture Mechanism Candidate ID锛屾寜瀛楀吀搴忕ǔ瀹氭帓鍒椼€?*/
+  /** Human 拒绝的 Architecture Mechanism Candidate ID。 */
   rejectedMechanismCandidateIds: readonly string[];
+  /** Human/G8 确认的项目验证检查。 */
+  verificationChecks: readonly ProjectVerificationCheck[];
 }
 
-/** Human Profile Proposal 鐨?Artifact Payload銆?*/
+/** Human 确认的 Project Profile Proposal Payload。 */
 export interface ProjectProfileProposalPayload {
-  /** Human 瀹￠槄鎵€缁戝畾鐨?Project Discovery Report Digest銆?*/
+  /** Payload Schema 版本。 */
+  schemaVersion: typeof PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION;
+  /** Human 审核的 Project Discovery Report 摘要。 */
   discoveryReportDigest: ContentDigest;
-  /** Human 瀹￠槄鎵€缁戝畾鐨?Workspace Graph Revision銆?*/
+  /** Human 审核的 Workspace Graph 版本。 */
   workspaceGraphRevision: string;
-  /** 鎸?Repository ID 绋冲畾鎺掑垪鐨?Profile 閫夋嫨闆嗗悎銆?*/
+  /** 按仓库 ID 排序的 Profile 选择。 */
   repositorySelections: readonly ProjectProfileRepositorySelection[];
 }
 
-/** 宸叉彁浜ょ殑 Project Profile Proposal Artifact銆?*/
+/** 持久化的 Project Profile Proposal Artifact。 */
 export type ProjectProfileProposalArtifact = ArtifactEnvelope<
   ArtifactType.ProjectProfileProposal,
   ProjectProfileProposalPayload
 >;
 
-/** Project Profile Proposal 杈撳叆銆?*/
+/** 待持久化的 Project Profile Proposal。 */
 export interface ProjectProfileProposal {
-  /** Proposal 鐨?Artifact 绫诲瀷 discriminator銆?*/
+  /** Artifact 类型判别字段。 */
   artifactType: ArtifactType.ProjectProfileProposal;
-  /** Proposal 鍒濆鐘舵€侊紝浠呭厑璁?Proposed銆?*/
+  /** Proposal 只能处于 Proposed 状态。 */
   status: ArtifactStatus.Proposed;
-  /** Human Profile Proposal 鐨勪弗鏍?Payload銆?*/
+  /** Human 确认的 Payload。 */
   payload: ProjectProfileProposalPayload;
 }
 
-/** 璁＄畻 Project Profile Proposal Digest 鏃舵帓闄?digest 瀛楁鐨勮鑼冭緭鍏ャ€?*/
+/** 排除自引用 digest 的 Project Profile Proposal 摘要输入。 */
 export type ProjectProfileProposalDigestInput = Omit<ProjectProfileProposalArtifact, "digest">;
