@@ -47,3 +47,6 @@ jobs:
 
       - name: Build packages
         run: pnpm build
+
+      - name: Run package tarball smoke
+        run: pnpm --filter liushi-harness smoke:package

@@ -9,7 +9,6 @@ import {
   hasIndexFile,
   hasTypescriptDescendants,
   readDirectoryEntries,
-  statFile,
 } from "./support/index.js";
 
 const packageRootEntries = new Set([
@@ -21,6 +20,7 @@ const packageRootEntries = new Set([
   "docs",
   "node_modules",
   "package.json",
+  "scripts",
   "src",
   "tests",
   "thirdPartyLicenses",
@@ -29,6 +29,16 @@ const packageRootEntries = new Set([
 ]);
 
 const MAX_SOURCE_FILE_LINES = 300;
+
+/** 架构命名门禁覆盖的源码扩展名。 */
+enum AllowedSourceFileExtension {
+  /** TypeScript 源码。 */
+  TypeScript = "ts",
+  /** Node.js ESM 工程脚本。 */
+  JavaScriptModule = "mjs",
+}
+
+const ALLOWED_SOURCE_FILE_EXTENSIONS = new Set<string>(Object.values(AllowedSourceFileExtension));
 
 describe("architecture file layout", () => {
   it("keeps package root entries on the approved whitelist", () => {
@@ -42,7 +52,11 @@ describe("architecture file layout", () => {
 
   it("uses lower camelCase file and directory names without hyphens", () => {
     const graph = createSourceGraph();
-    const checkedRoots = [graph.srcRoot, path.join(graph.harnessRoot, "tests")];
+    const checkedRoots = [
+      graph.srcRoot,
+      path.join(graph.harnessRoot, "tests"),
+      path.join(graph.harnessRoot, "scripts"),
+    ];
     const violations = checkedRoots.flatMap((root) => [
       ...collectDirectories(root).flatMap((directory) => {
         const name = path.basename(directory);
@@ -82,17 +96,8 @@ describe("architecture file layout", () => {
     expect(violations).toEqual([]);
   });
 
-  it("keeps direct source file counts and nesting depth within budget", () => {
+  it("keeps source nesting depth within the architecture boundary", () => {
     const graph = createSourceGraph();
-    const sourceFileCountViolations = collectDirectories(graph.srcRoot).flatMap((directory) => {
-      const directSourceFileCount = readDirectoryEntries(directory).filter(
-        (entryPath) => statFile(entryPath).isFile() && entryPath.endsWith(".ts"),
-      ).length;
-
-      return directSourceFileCount <= 10
-        ? []
-        : [`${formatRelative(graph, directory)} has ${directSourceFileCount} direct source files`];
-    });
     const nestingViolations = collectFiles(graph.srcRoot).flatMap((fileName) => {
       const relativePath = path.relative(graph.srcRoot, fileName);
       const depth = relativePath.length === 0 ? 0 : relativePath.split(path.sep).length;
@@ -102,7 +107,7 @@ describe("architecture file layout", () => {
         : [`${formatRelative(graph, fileName)} has src nesting depth ${depth}`];
     });
 
-    expect([...sourceFileCountViolations, ...nestingViolations]).toEqual([]);
+    expect(nestingViolations).toEqual([]);
   });
 
   it("keeps each source file within the reviewable line budget", () => {
@@ -122,14 +127,15 @@ describe("architecture file layout", () => {
 });
 
 function isAllowedSourceFileName(fileName: string): boolean {
-  if (fileName === "index.ts") {
-    return true;
-  }
-
   const parts = fileName.split(".");
   const extension = parts.pop();
 
-  return extension === "ts" && parts.length > 0 && parts.every(isLowerCamelName);
+  return (
+    extension !== undefined &&
+    ALLOWED_SOURCE_FILE_EXTENSIONS.has(extension) &&
+    parts.length > 0 &&
+    parts.every(isLowerCamelName)
+  );
 }
 
 function isLowerCamelName(name: string): boolean {

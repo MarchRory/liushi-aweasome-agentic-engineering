@@ -63,3 +63,4 @@ Status: Implementation-aware Architecture Baseline
 - [Worktree Provision 未知状态恢复](./engineering/worktreeProvisionRecovery.md)
 - [CodingTask 纵向 Cell](./engineering/codingTaskCell.md)
 - [PRReadyArtifact 权威装配](./engineering/prReadyArtifact.md)
+- [npm Tarball 干净安装 Smoke](./engineering/packageTarballSmoke.md)

@@ -335,13 +335,12 @@ export enum TaskPhase {
 
 预算用于发现职责扩散，不用于机械拆文件：
 
-| 指标                   | Warning | Error |
-| ---------------------- | ------: | ----: |
-| 单个源码文件有效行数   |     300 |   500 |
-| 单个函数有效行数       |      60 |   100 |
-| 圈复杂度               |      12 |    20 |
-| 同一目录直接源码文件数 |      10 |    15 |
-| `src` 下相对嵌套深度   |       5 |     7 |
+| 指标                 | Warning | Error |
+| -------------------- | ------: | ----: |
+| 单个源码文件有效行数 |     300 |   500 |
+| 单个函数有效行数     |      60 |   100 |
+| 圈复杂度             |      12 |    20 |
+| `src` 下相对嵌套深度 |       5 |     7 |
 
 Generated Schema、Migration、测试 Fixture 和声明表可以通过显式 Allowlist 例外。例外必须说明为何保持单文件比拆分更清晰，不能通过关闭全局规则绕过。
 
@@ -365,7 +364,7 @@ Generated Schema、Migration、测试 Fixture 和声明表可以通过显式 All
 3. `modulePublicApi.test.ts`：禁止跨模块深层导入。
 4. `ioBoundary.test.ts`：禁止 Domain/Application 使用 Node I/O、环境变量和 Console。
 5. `commonBoundary.test.ts`：Common 导出白名单和反向依赖检查。
-6. `fileLayout.test.ts`：根目录白名单、命名、目录文件预算和 300 行源码预算。
+6. `fileLayout.test.ts`：根目录白名单、源码与脚本命名、嵌套边界和 300 行源码预算；不设置仓库、目录或模块文件数上限。
 7. `compositionRoot.test.ts`：只有 Bootstrap 可以构造具体 Adapter。
 8. `generatedDrift.test.ts`：Schema 生成结果必须与源码一致。
 9. `documentedTypes.test.ts`：导出类型、枚举及枚举成员必须包含有效 TSDoc。

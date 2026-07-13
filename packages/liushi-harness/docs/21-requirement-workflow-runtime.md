@@ -272,6 +272,8 @@ Snapshot 只是缓存；版本不兼容时从 Event 重建。Event 迁移写入�
 
 切片不绑定日历期限。可以并行实现无冲突的基础能力，但不能绕过进入门和完成门。
 
+S3 已通过 Windows 本地 Tarball 干净安装 Smoke，并将同一脚本接入 Windows/Ubuntu CI 与 Release Gate。该证据只关闭发布物安装、ESM/CJS、双 CLI Bin、Doctor 和许可证门，不关闭表中的公开项目 Smoke；后者仍要求真实 Hook 正负路径、受控需求闭环和 Human Touch Time 证据。
+
 ## 12.1 S3 CodingTask 实现修订
 
 当前 `CodingTask` 已具备可恢复的 File Store、严格 Schema/Hash Replay、Versioned Command Gateway/Service 和默认 Task-backed Authorization Policy。该 Policy 会回读上游 Task 的 PlanRisk、Business Logic Artifact、Approval 和 Write Set，未通过 Human Gate 或发生 Write Set 漂移时拒绝创建。受控文件变更、Git Checkpoint、Attempt 收口和 Verification Command 均复用 Repository Lock 与 Action Journal；Git/Event 无法形成 ACID 事务时固定进入 Human 恢复。未知 Worktree Provision 可以由 Human 先读取脱敏 Assessment，再提交绑定精确 Digest 的 Reconcile Command；该过程只读 Git 现场并追加原 Journal。Passed Evidence 之后，PRReadyArtifact 装配器只接受 Store Locator，重新读取 CodingTask、Evidence 和来源 Task，并再次执行权威授权解析；调用方不能注入 Revision、Evidence 或风险结论。

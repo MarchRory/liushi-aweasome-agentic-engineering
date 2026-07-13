@@ -28,6 +28,7 @@
 - `profile compile` 只接受最新且已获 G8 精确批准的 Proposal；它重新校验 Report、Candidate、Rule、Mechanism、Workspace、Task、Revision 和 Digest 后，确定性生成 ProjectProfile Bundle 与 Active ProjectRuleCatalog。
 - Event、Snapshot、Hash、Schema 或 Lock 异常时 fail closed，不自动猜测或修复。
 - ESM/CJS Library 入口，以及 `liushi-harness`、`lh` 两个 CLI Bin。
+- 发布物门禁会真实生成 tarball，在 Workspace 外通过 npm 干净安装，并验证 ESM、CJS、两个 CLI Bin、Doctor、License 和必要发布文件。
 - 版本化 Application Command Envelope/Receipt 契约，包含因果标识、期望版本、幂等键和 `outcome_unknown`。
 - Workflow S0 提供 EffectiveRevisionSet、InputBindingSet、ContextManifest、信任通道和失败分类的确定性校验。
 - V1 Golden Replay Fixture 已冻结 Requirement 提交、审批、拒绝后新 Revision 和 Snapshot 重建语义。
@@ -124,6 +125,7 @@ corepack pnpm@10.34.1 --filter liushi-harness typecheck
 corepack pnpm@10.34.1 --filter liushi-harness typecheck:ts6
 corepack pnpm@10.34.1 --filter liushi-harness test
 corepack pnpm@10.34.1 --filter liushi-harness build
+corepack pnpm@10.34.1 smoke:package
 ```
 
 源码按 `Domain -> Application -> Infrastructure/Presentation -> Bootstrap` 分层。每个业务模块与 Adapter 使用独立目录，内部职责拆分后仅通过模块根 `index.ts` 暴露公共 API；架构测试会拒绝越层依赖、循环依赖、深层导入、非法 I/O、非 lower camelCase 命名和缺失 TSDoc。
@@ -141,3 +143,5 @@ G8 Check、权威 Revision/Changed Paths 与 Rule Target 驱动的计划选择�
 Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件写入](./docs/engineering/controlledFileMutation.md)。
 
 用户可感知变化由 Changesets 维护在 [CHANGELOG.md](./CHANGELOG.md)。
+
+发布物验证边界与 CI/Release Gate 见 [npm Tarball 干净安装 Smoke](./docs/engineering/packageTarballSmoke.md)。

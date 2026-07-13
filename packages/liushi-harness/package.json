@@ -71,12 +71,13 @@
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "lint": "eslint src tests --no-error-on-unmatched-pattern",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1",
     "test:architecture": "vitest run tests/architecture",
     "test:contract": "vitest run tests/contract",
     "test:e2e": "vitest run tests/e2e",
     "test:integration": "vitest run tests/integration",
     "test:unit": "vitest run tests/unit",
+    "smoke:package": "node scripts/packageSmoke/index.mjs",
     "typecheck": "tsc --noEmit",
     "typecheck:ts6": "tsc6 --noEmit"
   },
