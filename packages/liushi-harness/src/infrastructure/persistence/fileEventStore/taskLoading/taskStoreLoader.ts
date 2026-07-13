@@ -2,6 +2,7 @@ import { HarnessError, HarnessErrorCode } from "#common/index.js";
 
 import type { TaskStorePaths } from "../contracts/index.js";
 import {
+  ACTION_EXECUTION_LOCKS_DIRECTORY_NAME,
   TASK_EVENTS_FILE_NAME,
   TASK_ACTIONS_FILE_NAME,
   TASK_ACTIONS_LOCK_FILE_NAME,
@@ -30,7 +31,8 @@ export async function loadTaskStore(
         entry !== TASK_ACTIONS_FILE_NAME &&
         entry !== TASK_ACTIONS_LOCK_FILE_NAME &&
         entry !== TASK_TRACES_FILE_NAME &&
-        entry !== TASK_TRACES_LOCK_FILE_NAME,
+        entry !== TASK_TRACES_LOCK_FILE_NAME &&
+        entry !== ACTION_EXECUTION_LOCKS_DIRECTORY_NAME,
     )
     .sort();
   if (unexpectedEntries.length > 0) {

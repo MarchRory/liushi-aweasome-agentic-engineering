@@ -19,6 +19,9 @@ export const TASK_ACTIONS_FILE_NAME = "actions.jsonl";
 /** Task 内可丢失 Trace Observation 的 JSONL 文件名。 */
 export const TASK_TRACES_FILE_NAME = "traces.jsonl";
 
+/** Task 内 Action 执行锁的 Runtime 目录名。 */
+export const ACTION_EXECUTION_LOCKS_DIRECTORY_NAME = "actionExecutionLocks";
+
 /** Task 排他 Lock 文件名。 */
 export const TASK_LOCK_FILE_NAME = ".task.lock";
 

@@ -2,6 +2,7 @@ import { HarnessError, HarnessErrorCode } from "#common/index.js";
 
 import type { TaskStorePaths } from "../contracts/index.js";
 import {
+  ACTION_EXECUTION_LOCKS_DIRECTORY_NAME,
   TASK_EVENTS_FILE_NAME,
   TASK_ACTIONS_FILE_NAME,
   TASK_ACTIONS_LOCK_FILE_NAME,
@@ -74,7 +75,8 @@ async function classifyExistingTaskStore(paths: TaskStorePaths): Promise<Harness
       entry !== TASK_EVENTS_FILE_NAME &&
       entry !== TASK_SNAPSHOT_FILE_NAME &&
       entry !== TASK_ACTIONS_FILE_NAME &&
-      entry !== TASK_TRACES_FILE_NAME,
+      entry !== TASK_TRACES_FILE_NAME &&
+      entry !== ACTION_EXECUTION_LOCKS_DIRECTORY_NAME,
   );
   if (unknownEntries.length > 0 || entries.length === 0) {
     return new HarnessError(

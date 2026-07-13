@@ -11,12 +11,17 @@ import {
   TaskPhase,
   TaskRunState,
   createHarnessApplication,
+  parseTaskId,
+  parseWorkspaceId,
 } from "../../src/index.js";
 import {
   FixedClock,
   FixedSequenceIdGenerator,
   TemporaryRuntimeStore,
 } from "../support/runtime/index.js";
+import { ACTION_EXECUTION_LOCKS_DIRECTORY_NAME } from "../../src/infrastructure/persistence/fileEventStore/constants/index.js";
+import { assertNewTaskStore } from "../../src/infrastructure/persistence/fileEventStore/taskCreation/taskCreationGuards.js";
+import { resolveTaskStorePaths } from "../../src/infrastructure/persistence/fileEventStore/taskStore/index.js";
 
 const TASK_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const EVENT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
@@ -122,6 +127,42 @@ describe("Task runtime 持久化纵向切片", () => {
       expect(status.value.phase).toBe(TaskPhase.Context);
     }
     await expect(stat(snapshotFile(storeRoot))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("Action 执行锁目录存在时仍可重启加载 Task", async () => {
+    const storeRoot = await makeStoreRoot("liushi-task-action-lock-directory-");
+    await createTask(storeRoot);
+    await mkdir(actionExecutionLocksDirectory(storeRoot));
+
+    const status = await createHarnessApplication({ storeRoot }).getTaskStatus.execute({
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+    });
+
+    expect(status.status).toBe(ResultStatus.Success);
+  });
+
+  it("空 Action 执行锁目录表示既有 Runtime，但新 Task 守卫仍拒绝复用", async () => {
+    const storeRoot = await makeStoreRoot("liushi-task-empty-action-lock-directory-");
+    await mkdir(actionExecutionLocksDirectory(storeRoot), { recursive: true });
+    const paths = resolveTaskStorePaths(
+      storeRoot,
+      parseWorkspace(WORKSPACE_ID),
+      parseTask(TASK_ID),
+    );
+
+    await expect(assertNewTaskStore(paths)).rejects.toMatchObject({
+      code: HarnessErrorCode.CorruptStore,
+    });
+
+    const result = await makeApp(storeRoot).createTask.execute({
+      workspaceId: WORKSPACE_ID,
+      actor: ACTOR,
+    });
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.code).toBe(HarnessErrorCode.TaskAlreadyExists);
+    }
   });
 
   it.each([
@@ -265,6 +306,22 @@ describe("Task runtime 持久化纵向切片", () => {
     }
     await expect(readFile(unknownFile, "utf8")).resolves.toBe(UNKNOWN_TASK_ENTRY_CONTENT);
   });
+
+  it("status 遇到其他未知目录时仍 fail closed", async () => {
+    const storeRoot = await makeStoreRoot("liushi-task-status-unknown-directory-");
+    await createTask(storeRoot);
+    await mkdir(resolve(taskDirectory(storeRoot), "foreignRuntime"));
+
+    const status = await createHarnessApplication({ storeRoot }).getTaskStatus.execute({
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+    });
+
+    expect(status.status).toBe(ResultStatus.Failure);
+    if (status.status === ResultStatus.Failure) {
+      expect(status.error.code).toBe(HarnessErrorCode.CorruptStore);
+    }
+  });
 });
 
 async function makeStoreRoot(prefix: string): Promise<string> {
@@ -303,6 +360,22 @@ function snapshotFile(storeRoot: string): string {
 
 function lockFile(storeRoot: string): string {
   return resolve(taskDirectory(storeRoot), ".task.lock");
+}
+
+function actionExecutionLocksDirectory(storeRoot: string): string {
+  return resolve(taskDirectory(storeRoot), ACTION_EXECUTION_LOCKS_DIRECTORY_NAME);
+}
+
+function parseTask(value: string) {
+  const result = parseTaskId(value);
+  if (result.status === ResultStatus.Failure) throw result.error;
+  return result.value;
+}
+
+function parseWorkspace(value: string) {
+  const result = parseWorkspaceId(value);
+  if (result.status === ResultStatus.Failure) throw result.error;
+  return result.value;
 }
 
 async function writeUnknownTaskEntry(storeRoot: string): Promise<string> {
