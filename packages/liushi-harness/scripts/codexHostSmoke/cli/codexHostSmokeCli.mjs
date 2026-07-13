@@ -9,8 +9,9 @@ export function parseCodexHostSmokeArguments(args) {
   if (args[0] !== PREPARE_COMMAND) {
     throw new Error("Codex Host Smoke 仅支持 prepare 命令。");
   }
+  const optionStartIndex = args[1] === "--" ? 2 : 1;
   const values = new Map();
-  for (let index = 1; index < args.length; index += 2) {
+  for (let index = optionStartIndex; index < args.length; index += 2) {
     const option = args[index];
     const value = args[index + 1];
     if (!ALLOWED_OPTIONS.has(option)) {

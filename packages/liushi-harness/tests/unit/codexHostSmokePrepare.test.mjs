@@ -29,11 +29,18 @@ describe("Codex Host Smoke Prepare", () => {
     const root = resolve("host-smoke-root");
     const codex = resolve("codex.exe");
 
-    expect(parseCodexHostSmokeArguments(["prepare", "--root", root, "--codex", codex])).toEqual({
+    const expected = {
       command: "prepare",
       root,
       codexExecutable: codex,
-    });
+    };
+
+    expect(parseCodexHostSmokeArguments(["prepare", "--root", root, "--codex", codex])).toEqual(
+      expected,
+    );
+    expect(
+      parseCodexHostSmokeArguments(["prepare", "--", "--root", root, "--codex", codex]),
+    ).toEqual(expected);
 
     for (const args of [
       ["execute", "--root", root, "--codex", codex],
@@ -41,6 +48,7 @@ describe("Codex Host Smoke Prepare", () => {
       ["prepare", "--root", root, "--codex", "relative"],
       ["prepare", "--root", root, "--codex", codex, "--unknown", "value"],
       ["prepare", "--root", root, "--root", root, "--codex", codex],
+      ["prepare", "--", "--", "--root", root, "--codex", codex],
       ["prepare", "--root", `${root}\0`, "--codex", codex],
     ]) {
       expect(() => parseCodexHostSmokeArguments(args)).toThrow();
