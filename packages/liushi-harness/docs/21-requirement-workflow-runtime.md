@@ -272,7 +272,7 @@ Snapshot 只是缓存；版本不兼容时从 Event 重建。Event 迁移写入�
 
 切片不绑定日历期限。可以并行实现无冲突的基础能力，但不能绕过进入门和完成门。
 
-S3 已通过 Windows 本地 Tarball 干净安装 Smoke，并将同一脚本接入 Windows/Ubuntu CI 与 Release Gate。该证据只关闭发布物安装、ESM/CJS、双 CLI Bin、Doctor 和许可证门，不关闭表中的公开项目 Smoke；后者仍要求真实 Hook 正负路径、受控需求闭环和 Human Touch Time 证据。
+S3 已通过 Windows 本地 Tarball 干净安装 Smoke，并将同一脚本接入 Windows/Ubuntu CI 与 Release Gate。该证据只关闭发布物安装、ESM/CJS、双 CLI Bin、Doctor 和许可证门，不关闭表中的公开项目 Smoke；后者必须先完成受控 Cell 真实闭环，再在同一项目验证 Codex Host Hook 正负路径。Human Touch Time 只在存在真实 Human 计时区间时形成证据。
 
 ## 12.1 S3 CodingTask 实现修订
 

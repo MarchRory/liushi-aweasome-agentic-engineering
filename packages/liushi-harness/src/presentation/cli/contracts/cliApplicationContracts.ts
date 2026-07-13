@@ -14,6 +14,25 @@ import type {
 } from "#application/index.js";
 
 import type { HookInputReader, JsonDocumentReader } from "../input/index.js";
+import type { CliVerificationMode } from "../enums/index.js";
+
+/** CLI 启动期可信 Repository 绑定。 */
+export interface CliRepositoryBinding {
+  /** Harness Workspace 标识。 */
+  readonly workspaceId: string;
+  /** 单一写入 Repository 标识。 */
+  readonly repositoryId: string;
+  /** Repository 规范绝对根目录。 */
+  readonly repositoryRoot: string;
+}
+
+/** 一次 CLI Application 创建所需的可选启动配置。 */
+export interface CliApplicationStartupConfig {
+  /** Cell 命令使用的可信单仓绑定。 */
+  readonly repositoryBinding: CliRepositoryBinding;
+  /** Cell 命令显式选择的 Verification 模式。 */
+  readonly verificationMode: CliVerificationMode;
+}
 
 /** 生成只读、可序列化的执行器配置投影。 */
 export interface HookConfigProjector {
@@ -52,7 +71,7 @@ export interface CliApplication {
 /** 按 Store Root 创建 Use Cases 的工厂。 */
 export interface CliApplicationFactory {
   /** 为一次命令创建无全局可变状态的 Application。 */
-  create(storeRoot: string): CliApplication;
+  create(storeRoot: string, startupConfig?: CliApplicationStartupConfig): CliApplication;
 }
 
 /** CLI 标准输出和错误输出边界。 */

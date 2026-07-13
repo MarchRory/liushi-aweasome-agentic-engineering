@@ -13,3 +13,4 @@ export * from "./fileMutation/index.js";
 export * from "./gitCheckpoint/index.js";
 export * from "./repositoryRootResolver/index.js";
 export * from "./worktreeProvisionRecovery/index.js";
+export * from "./codingTaskCellRuntimePath/index.js";

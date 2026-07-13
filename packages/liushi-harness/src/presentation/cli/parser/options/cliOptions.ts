@@ -1,6 +1,10 @@
+import { isAbsolute, resolve } from "node:path";
+
+import { HookExecutorKind } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
 
 import { CliApprovalDecision } from "../../contracts/index.js";
+import { CliVerificationMode } from "../../enums/index.js";
 
 /** CLI 支持的长选项。 */
 export enum CliOptionName {
@@ -14,6 +18,10 @@ export enum CliOptionName {
   Workspace = "--workspace",
   /** 指定 Hook 绑定的工作区根目录。 */
   Root = "--root",
+  /** 指定单一写入 Repository ID。 */
+  Repository = "--repository",
+  /** 指定 Cell Verification 执行模式。 */
+  VerificationMode = "--verification-mode",
   /** 指定 Task ID。 */
   Task = "--task",
   /** 指定 Task 来源。 */
@@ -54,6 +62,10 @@ const CLI_APPROVAL_DECISION_BY_NAME = new Map<string, CliApprovalDecision>(
   Object.values(CliApprovalDecision).map((decision) => [decision, decision]),
 );
 
+const CLI_VERIFICATION_MODE_BY_NAME = new Map<string, CliVerificationMode>(
+  Object.values(CliVerificationMode).map((mode) => [mode, mode]),
+);
+
 /** 将外部长选项字符串解析为封闭 CliOptionName。 */
 export function parseCliOptionName(value: string): CliOptionName {
   const option = CLI_OPTION_BY_NAME.get(value);
@@ -79,6 +91,43 @@ export function parseCliApprovalDecision(value: string): CliApprovalDecision {
     });
   }
   return decision;
+}
+
+/** 将外部 Verification 模式解析为封闭 CliVerificationMode。 */
+export function parseCliVerificationMode(value: string): CliVerificationMode {
+  const mode = CLI_VERIFICATION_MODE_BY_NAME.get(value);
+  if (mode === undefined) {
+    throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported verification mode.", {
+      verificationMode: value,
+    });
+  }
+  return mode;
+}
+
+/** 校验 CLI 路径为绝对路径并返回规范形式。 */
+export function parseAbsolutePath(value: string, option: CliOptionName): string {
+  if (!isAbsolute(value)) {
+    throw createInvalidCliOptionError(option, "Option must be an absolute path.");
+  }
+  return resolve(value);
+}
+
+/** 将外部 Hook Executor 解析为当前已实现的封闭值。 */
+export function parseHookExecutor(value: string): HookExecutorKind {
+  const executor = Object.values(HookExecutorKind).find(
+    (candidate) => candidate === (value as HookExecutorKind),
+  );
+  if (executor === undefined) {
+    throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported hook executor.", {
+      executor: value,
+    });
+  }
+  if (executor !== HookExecutorKind.Codex) {
+    throw new HarnessError(HarnessErrorCode.InvalidInput, "Hook executor is not implemented.", {
+      executor,
+    });
+  }
+  return executor;
 }
 
 /** 创建带稳定 Option 诊断字段的 InvalidInput Error。 */

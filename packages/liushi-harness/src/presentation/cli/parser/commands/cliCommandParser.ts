@@ -1,5 +1,4 @@
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
-import { HookExecutorKind } from "#application/index.js";
 
 import { DEFAULT_CLI_ACTOR_ID } from "../../constants/index.js";
 import { CliCommand, CliOutputFormat, type ParsedCliCommand } from "../../contracts/index.js";
@@ -7,7 +6,10 @@ import type { CollectedCliArguments } from "../collection/index.js";
 import {
   CliOptionName,
   createInvalidCliOptionError,
+  parseAbsolutePath,
   parseCliApprovalDecision,
+  parseCliVerificationMode,
+  parseHookExecutor,
 } from "../options/index.js";
 
 /** 将已收集参数映射为唯一受支持的语义命令。 */
@@ -174,13 +176,30 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
   if (isExactCommand(collected.positionals, ["cell", "run"])) {
     validateAllowedOptions(
       collected,
-      new Set([CliOptionName.Json, CliOptionName.Store, CliOptionName.File]),
+      new Set([
+        CliOptionName.Json,
+        CliOptionName.Store,
+        CliOptionName.File,
+        CliOptionName.Workspace,
+        CliOptionName.Repository,
+        CliOptionName.Root,
+        CliOptionName.VerificationMode,
+      ]),
     );
     return {
       command: CliCommand.CellRun,
       outputFormat,
       ...(storeRoot === undefined ? {} : { storeRoot }),
       filePath: requireValue(collected, CliOptionName.File),
+      workspaceId: requireValue(collected, CliOptionName.Workspace),
+      repositoryId: requireValue(collected, CliOptionName.Repository),
+      repositoryRoot: parseAbsolutePath(
+        requireValue(collected, CliOptionName.Root),
+        CliOptionName.Root,
+      ),
+      verificationMode: parseCliVerificationMode(
+        requireValue(collected, CliOptionName.VerificationMode),
+      ),
     };
   }
   if (isExactCommand(collected.positionals, ["hook", "bind"])) {
@@ -237,23 +256,6 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
   throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported CLI command.", {
     command: collected.positionals.join(" "),
   });
-}
-
-function parseHookExecutor(value: string): HookExecutorKind {
-  const executor = Object.values(HookExecutorKind).find(
-    (candidate) => candidate === (value as HookExecutorKind),
-  );
-  if (executor === undefined) {
-    throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported hook executor.", {
-      executor: value,
-    });
-  }
-  if (executor !== HookExecutorKind.Codex) {
-    throw new HarnessError(HarnessErrorCode.InvalidInput, "Hook executor is not implemented.", {
-      executor,
-    });
-  }
-  return executor;
 }
 
 function validateAllowedOptions(

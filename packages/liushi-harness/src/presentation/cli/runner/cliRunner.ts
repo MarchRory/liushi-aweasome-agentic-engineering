@@ -119,7 +119,18 @@ function createApplication(
   command: ParsedCliCommand,
   dependencies: RunCliDependencies,
 ): CliApplication {
-  return dependencies.applicationFactory.create(command.storeRoot ?? dependencies.defaultStoreRoot);
+  const storeRoot = command.storeRoot ?? dependencies.defaultStoreRoot;
+  if (command.command !== CliCommand.CellRun) {
+    return dependencies.applicationFactory.create(storeRoot);
+  }
+  return dependencies.applicationFactory.create(storeRoot, {
+    repositoryBinding: {
+      workspaceId: command.workspaceId,
+      repositoryId: command.repositoryId,
+      repositoryRoot: command.repositoryRoot,
+    },
+    verificationMode: command.verificationMode,
+  });
 }
 
 async function executeDoctor(

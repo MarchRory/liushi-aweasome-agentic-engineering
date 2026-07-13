@@ -50,7 +50,7 @@
 - `selectVerificationPlan` 已从 G8 Profile Check、CodingTask 最新实现 Revision/Changed Paths 和 Ready ApplicableRuleBundle 生成单仓确定性 Plan；调用方不能自报第二份 Revision、Path 或 Target ID。
 - `assessWorktreeProvisionRecovery` 与 `worktreeProvisionRecoveryCommands` 已提供未知 Managed Worktree Provision 的只读现场评估和 Human 摘要确认；只在路径、Registry、分支与 Worktree 后置条件可证明时闭合为 `recovered` 或 `retry_permitted`，不执行清理、重建或自动重试。
 - 未闭合 Worktree Provision Guard 已在同一 Repository Lock 内覆盖 Provision、受控文件变更、Implementation Submission 和 Verification；未知或等待 Human 的 Provision 会在新 Intent 与任何执行副作用前 fail closed，只有同一 `retry_permitted` Action 可以重试 Provision。
-- `cell run --file <manifest>` 已将 CodingTask 创建、Worktree Provision、Attempt、一个或多个受控文件变更、Checkpoint Submission、Verification 与单仓 `PRReadyArtifact` 装配串成可跨进程恢复的单一编码 Cell；只有权威 Store 中的 `passed` Evidence、当前 Human Gate 重算和来源 Artifact 绑定全部通过后才返回 `review_ready`，非成功 Receipt 会停止且不调用后续阶段。
+- `cell run` 已将 CodingTask 创建、Worktree Provision、Attempt、一个或多个受控文件变更、Checkpoint Submission、Verification 与单仓 `PRReadyArtifact` 装配串成可跨进程恢复的单一编码 Cell；生产 CLI 强制要求 Workspace、Repository、绝对 Repository Root 和 Verification Mode，并在任何副作用前精确校验 Manifest 绑定。只有权威 Store 中的 `passed` Evidence、当前 Human Gate 重算和来源 Artifact 绑定全部通过后才返回 `review_ready`。
 
 现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
@@ -99,6 +99,7 @@ liushi-harness approval decide --workspace <workspace-id> --task <task-ulid> --r
 liushi-harness rules resolve --catalog .\ruleCatalog.json --context .\ruleContext.json --json
 liushi-harness project scan --file .\project-scan-manifest.json --json
 liushi-harness profile compile --workspace <workspace-id> --task <task-ulid> --artifact <proposal-artifact-ulid> --report .\project-discovery-report.json --json
+liushi-harness cell run --file .\codingTaskCell.json --workspace <workspace-id> --repository <repository-id> --root <absolute-repository-root> --verification-mode <fail_closed_mock|local_command> --json
 liushi-harness hook config --executor codex > .codex/hooks.json
 liushi-harness hook bind --root <repository-root> --workspace <workspace-id> --task <task-ulid> --artifact <plan-risk-artifact-ulid> --artifact-digest <sha256:digest> --actor-id <human-id>
 liushi-harness hook probe --executor codex --json
@@ -113,6 +114,8 @@ liushi-harness hook probe --executor codex --json
 `project scan` 也是报告型命令。manifest 必须显式列出每个只读仓库的 `repositoryId`、`localRoot` 和 `repositoryRevision`，不接受预算字段。Scanner 全量遍历普通目录和文件并读取全部被分类的配置文件；规模本身不影响完整性。`localRoot` 仅用于本机 FileSystem Adapter，不进入报告和 digest。扫描完成且没有阻断诊断时返回 JSON `status=success` 和退出码 `0`；任何 `incomplete` 报告返回 JSON `status=blocked` 和退出码 `4`，后续必须 Human Review。即使扫描 `complete` 并返回退出码 `0`，`profilePromotionStatus` 仍为 `HumanReviewRequired`，不能视为已批准 Profile Promotion。超时和取消属于运行时编排问题，当前切片没有把它们建模为领域 Profile 状态。
 
 `profile compile` 是 G8 后的确定性编译命令，不会自行扫描仓库。标准链路是：保存 `project scan --json` 的 `data` 为 Report，Human 基于该 Report 创建并提交 `ProjectProfileProposal`，批准返回的 G8 DecisionRequest，然后用同一 Report 和 Proposal Artifact ID 编译。Report、Proposal、Approval、Workspace、Task 或 Revision 任一漂移都会 fail closed；旧 Revision 的 Approval 不能复用。
+
+`cell run` 的 `--workspace`、`--repository`、`--root` 和 `--verification-mode` 均为必填。生产 Bootstrap 只在显式传入 `local_command` 时启用本地命令；`fail_closed_mock` 不执行本地命令。Manifest 的 Create Workspace/Repository 以及 Provision、全部 Implementation、Submission Repository Root 必须与 CLI 绑定精确一致；Verification Worktree Root 必须等于从绑定 Repository Root 和受管 `worktreeBinding.relativePath` 推导的唯一规范路径。缺少绑定或任一不匹配都会在任何服务调用前 fail closed。Manifest 自报授权仍不能替代权威 Human Gate 重算。当前代码与真实 Git E2E 已覆盖该链路，但不代表公开项目 Smoke 已完成。
 
 默认 Runtime Store 为 `~/.liushi-harness`。可以通过 `LIUSHI_HARNESS_HOME` 或单次命令的 `--store <path>` 覆盖。
 

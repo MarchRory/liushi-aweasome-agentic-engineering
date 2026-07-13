@@ -1,6 +1,8 @@
 import type { HookExecutorKind } from "#application/index.js";
 import type { HarnessErrorCode } from "#common/index.js";
 
+import type { CliVerificationMode } from "../enums/index.js";
+
 /** CLI 支持的规范命令标识。 */
 export enum CliCommand {
   /** 尚未成功解析命令。 */
@@ -176,6 +178,14 @@ export interface CellRunCliCommand extends BaseCliCommand {
   command: CliCommand.CellRun;
   /** CodingTask Cell Manifest JSON 文件路径。 */
   filePath: string;
+  /** 可信 CLI Workspace 绑定。 */
+  workspaceId: string;
+  /** 可信 CLI Repository 绑定。 */
+  repositoryId: string;
+  /** 可信 CLI Repository 绝对根目录。 */
+  repositoryRoot: string;
+  /** 显式 Verification 执行模式。 */
+  verificationMode: CliVerificationMode;
 }
 
 /** Hook Workspace Binding 命令。 */

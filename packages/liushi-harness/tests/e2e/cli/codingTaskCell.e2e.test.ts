@@ -33,6 +33,7 @@ import {
   type GateEvaluation,
   type PlanRiskArtifact,
 } from "../../../src/index.js";
+import { createProductionCliApplicationFactory } from "../../../src/bootstrap/cli/index.js";
 import {
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
@@ -456,12 +457,26 @@ async function runCell(setup: CellSetup) {
     stderr: (value) => stderr.push(value),
   };
   const exitCode = await runCli(
-    ["cell", "run", "--file", setup.manifestFile, "--store", setup.storeRoot, "--json"],
+    [
+      "cell",
+      "run",
+      "--file",
+      setup.manifestFile,
+      "--workspace",
+      workspaceId,
+      "--repository",
+      "repo-1",
+      "--root",
+      setup.repositoryRoot,
+      "--verification-mode",
+      "local_command",
+      "--store",
+      setup.storeRoot,
+      "--json",
+    ],
     {
       defaultStoreRoot: setup.storeRoot,
-      applicationFactory: {
-        create: (root) => createApplication(root, setup.repositoryRoot),
-      },
+      applicationFactory: createProductionCliApplicationFactory(),
       writer,
       jsonDocumentReader: new NodeJsonDocumentReaderAdapter(),
     },

@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -34,6 +36,7 @@ import {
   success,
   type AssemblePrReadyArtifactUseCase,
   type CodingTaskCommandService,
+  type CodingTaskCellRuntimeBinding,
   type CodingTaskCellVerificationBindingService,
   type CommandEnvelope,
   type CommandReceipt,
@@ -45,9 +48,16 @@ import {
   type VerificationCommandService,
   type WorktreeProvisionCommandService,
 } from "../../src/index.js";
-import { Rfc8785Sha256DigestAdapter } from "../../src/infrastructure/index.js";
+import {
+  NodeCodingTaskCellRuntimePathAdapter,
+  Rfc8785Sha256DigestAdapter,
+} from "../../src/infrastructure/index.js";
 
 const digest = new Rfc8785Sha256DigestAdapter();
+const repositoryRoot = resolve("repository");
+const otherRepositoryRoot = resolve("other-repository");
+const worktreeRoot = resolve(repositoryRoot, "worktrees", "task");
+const otherWorktreeRoot = resolve(repositoryRoot, "worktrees", "other-task");
 
 describe("CodingTask Cell Service", () => {
   it("按固定顺序执行多个 Implementation 并返回 ReviewReady", async () => {
@@ -206,6 +216,154 @@ describe("CodingTask Cell Service", () => {
     expect(setup.calls).toEqual([]);
   });
 
+  it.each([
+    {
+      name: "create workspace",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        manifest.createCommand.payload = {
+          ...(manifest.createCommand.payload as Record<string, unknown>),
+          workspaceId: "other",
+        };
+        refreshCreateDigest(manifest);
+      },
+      stage: CodingTaskCellStage.Create,
+    },
+    {
+      name: "create repository",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        manifest.createCommand.payload = {
+          ...(manifest.createCommand.payload as Record<string, unknown>),
+          repositoryId: "repository-other",
+        };
+        refreshCreateDigest(manifest);
+      },
+      stage: CodingTaskCellStage.Create,
+    },
+    {
+      name: "provision root",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        manifest.provision.runtime.repositoryRoot = otherRepositoryRoot;
+      },
+      stage: CodingTaskCellStage.Provision,
+    },
+    {
+      name: "non-first implementation root",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        manifest.implementations[1]!.runtime.repositoryRoot = otherRepositoryRoot;
+      },
+      stage: CodingTaskCellStage.Implementation,
+    },
+    {
+      name: "submission root",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        manifest.submission.runtime.repositoryRoot = otherRepositoryRoot;
+      },
+      stage: CodingTaskCellStage.Submission,
+    },
+    {
+      name: "verification worktree root",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        manifest.verification.runtime.worktreeRoot = otherWorktreeRoot;
+      },
+      stage: CodingTaskCellStage.Verification,
+    },
+  ])("CLI binding 与 $name 不匹配时在任何副作用前拒绝", async ({ mutate, stage }) => {
+    const setup = createSetup();
+    const manifest = createManifest();
+    mutate(manifest);
+
+    const result = await setup.service.execute(manifest);
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.code).toBe(HarnessErrorCode.OperationForbidden);
+      expect(result.error.details["stage"]).toBe(stage);
+    }
+    expectNoServiceCalls(setup);
+  });
+
+  it.each([
+    {
+      name: "Create payload digest 不匹配",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        manifest.createCommand.requestDigest = unwrapDigest(`sha256:${"f".repeat(64)}`);
+      },
+    },
+    {
+      name: "Create payload 无效",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        manifest.createCommand.payload = { workspaceId: "workspace-1" };
+        refreshCreateDigest(manifest);
+      },
+    },
+    {
+      name: "Create payload 声明非受管 Worktree",
+      mutate: (manifest: ReturnType<typeof createManifest>) => {
+        const payload = manifest.createCommand.payload as {
+          worktreeBinding: { managed: boolean };
+        };
+        payload.worktreeBinding.managed = false;
+        refreshCreateDigest(manifest);
+      },
+    },
+  ])("$name 时在任何副作用前拒绝", async ({ mutate }) => {
+    const setup = createSetup();
+    const manifest = createManifest();
+    mutate(manifest);
+
+    const result = await setup.service.execute(manifest);
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.details["stage"]).toBe(CodingTaskCellStage.Create);
+    }
+    expectNoServiceCalls(setup);
+  });
+
+  it("未配置 Runtime Binding 时在任何副作用前拒绝", async () => {
+    const setup = createSetup({ omitRuntimeBinding: true });
+
+    const result = await setup.service.execute(createManifest());
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.code).toBe(HarnessErrorCode.OperationForbidden);
+      expect(result.error.details["stage"]).toBe(CodingTaskCellStage.Create);
+    }
+    expectNoServiceCalls(setup);
+  });
+
+  it("Runtime Binding 使用非规范 Repository Root 时在任何副作用前拒绝", async () => {
+    const setup = createSetup({
+      runtimeBinding: {
+        workspaceId: "workspace-1",
+        repositoryId: "repository-1",
+        repositoryRoot: "relative-repository",
+      },
+    });
+
+    const result = await setup.service.execute(createManifest());
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.code).toBe(HarnessErrorCode.InvalidInput);
+      expect(result.error.details["stage"]).toBe(CodingTaskCellStage.Create);
+    }
+    expectNoServiceCalls(setup);
+  });
+
+  it("正确 CLI binding 保持完整 Cell 执行顺序", async () => {
+    const setup = createSetup();
+
+    const result = await setup.service.execute(createManifest());
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Success,
+      value: { status: CodingTaskCellStatus.ReviewReady },
+    });
+    expect(setup.calls.at(0)).toBe("create");
+  });
+
   it("Binder 失败停在 VerificationBinding 且不调用 Verification", async () => {
     const setup = createSetup({
       bindingFailure: new HarnessError(
@@ -240,6 +398,8 @@ interface SetupOptions {
   readonly evidenceStatus?: VerificationStatus;
   readonly prReadyFailure?: HarnessError;
   readonly bindingFailure?: HarnessError;
+  readonly omitRuntimeBinding?: boolean;
+  readonly runtimeBinding?: CodingTaskCellRuntimeBinding;
 }
 
 function createSetup(options: SetupOptions = {}) {
@@ -315,8 +475,32 @@ function createSetup(options: SetupOptions = {}) {
       { load: loadEvidence } as unknown as EvidenceBundleStore,
       { execute: assemblePrReady } as unknown as AssemblePrReadyArtifactUseCase,
       digest,
+      new NodeCodingTaskCellRuntimePathAdapter(),
+      options.omitRuntimeBinding === true
+        ? undefined
+        : (options.runtimeBinding ?? {
+            workspaceId: "workspace-1",
+            repositoryId: "repository-1",
+            repositoryRoot,
+          }),
     ),
+    serviceMocks: [
+      executeCodingTask,
+      executeProvision,
+      executeImplementation,
+      executeSubmission,
+      bindVerification,
+      executeVerification,
+      loadEvidence,
+      assemblePrReady,
+    ],
   };
+}
+
+function expectNoServiceCalls(setup: ReturnType<typeof createSetup>): void {
+  for (const serviceMock of setup.serviceMocks) {
+    expect(serviceMock).not.toHaveBeenCalled();
+  }
 }
 
 function receipt(
@@ -396,10 +580,33 @@ function createManifest() {
   const verificationPayloadValue = verificationPayload();
   return {
     schemaVersion: CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION,
-    createCommand: command("create", CodingTaskCommandType.Create, aggregateId, correlationId),
+    createCommand: command("create", CodingTaskCommandType.Create, aggregateId, correlationId, {
+      workspaceId: "workspace-1",
+      sourceTaskId: "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+      repositoryId: "repository-1",
+      baseRevision: "base-revision-1",
+      worktreeBinding: {
+        worktreeId: "worktree-1",
+        relativePath: "worktrees/task",
+        branchName: "feature/cell",
+        managed: true,
+      },
+      writeSet: ["src/index.ts"],
+      inputBindingSet: { bindings: [] },
+      executionAuthorization: {
+        planRisk: {
+          artifactId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          artifactDigest: `sha256:${"1".repeat(64)}`,
+          result: GateEvaluationResult.Allow,
+          requiredGates: [],
+          satisfiedApprovalIds: [],
+        },
+        historicalLogicChange: false,
+      },
+    }),
     provision: {
       command: command("provision", WORKTREE_PROVISION_COMMAND_TYPE, aggregateId, correlationId),
-      runtime: { repositoryRoot: "C:\\repository" },
+      runtime: { repositoryRoot },
     },
     startAttemptCommand: command(
       "start",
@@ -414,7 +621,7 @@ function createManifest() {
         aggregateId,
         correlationId,
       ),
-      runtime: { repositoryRoot: "C:\\repository" },
+      runtime: { repositoryRoot },
     })),
     submission: {
       command: command(
@@ -423,7 +630,7 @@ function createManifest() {
         aggregateId,
         correlationId,
       ),
-      runtime: { repositoryRoot: "C:\\repository" },
+      runtime: { repositoryRoot },
     },
     verification: {
       command: command(
@@ -434,9 +641,15 @@ function createManifest() {
         verificationPayloadValue,
       ),
       binding: CodingTaskCellRevisionBinding.LatestImplementationCheckpoint,
-      runtime: { worktreeRoot: "C:\\repository\\worktrees\\task" },
+      runtime: { worktreeRoot },
     },
   };
+}
+
+function refreshCreateDigest(manifest: ReturnType<typeof createManifest>): void {
+  manifest.createCommand.requestDigest = unwrapDigest(
+    calculateDigest(manifest.createCommand.payload),
+  );
 }
 
 function verificationPayload() {

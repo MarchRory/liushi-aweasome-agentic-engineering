@@ -8,6 +8,8 @@ import {
   VerificationCommandService,
   type ApplicationCommandGateway,
   type CodingTaskCommandHandler,
+  type CodingTaskCellRuntimeBinding,
+  type CodingTaskCellRuntimePathPort,
   type ImplementationCommandHandler,
   type ImplementationSubmissionHandler,
   type VerificationCommandHandler,
@@ -45,6 +47,10 @@ export interface CodingTaskCellApplicationFactoryInput {
   readonly codingTaskAuthorizationResolver: CodingTaskExecutionAuthorizationResolver;
   /** 所有交付摘要复用的规范 Content Digest Port。 */
   readonly digest: ContentDigestPort;
+  /** 可选启动期可信单仓运行时绑定。 */
+  readonly runtimeBinding?: CodingTaskCellRuntimeBinding;
+  /** 隔离宿主路径语义的 Cell Runtime Path 端口。 */
+  readonly runtimePath: CodingTaskCellRuntimePathPort;
 }
 
 /** Composition Root 对外暴露的 CodingTask Cell 命令入口。 */
@@ -106,6 +112,8 @@ export function createCodingTaskCellApplication(
       input.evidenceBundleStore,
       assemblePrReadyArtifact,
       input.digest,
+      input.runtimePath,
+      input.runtimeBinding,
     ),
   };
 }

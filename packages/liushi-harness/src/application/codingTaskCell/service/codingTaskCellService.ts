@@ -13,7 +13,14 @@ import {
   type VerificationCommandService,
 } from "#application/verificationCommand/index.js";
 import type { WorktreeProvisionCommandService } from "#application/worktreeProvisioning/index.js";
-import { HarnessError, ResultStatus, failure, success, type Result } from "#common/index.js";
+import {
+  HarnessError,
+  HarnessErrorCode,
+  ResultStatus,
+  failure,
+  success,
+  type Result,
+} from "#common/index.js";
 import { parseCodingTaskId } from "#domain/codingTask/index.js";
 import type { PrReadyArtifact } from "#domain/repositoryDelivery/index.js";
 import { VerificationStatus, type EvidenceBundle } from "#domain/verification/index.js";
@@ -24,6 +31,11 @@ import {
   type CodingTaskCellStageReceipt,
 } from "../contracts/index.js";
 import { CodingTaskCellStage, CodingTaskCellStatus } from "../enums/index.js";
+import {
+  validateCodingTaskCellRuntimeBinding,
+  type CodingTaskCellRuntimeBinding,
+  type CodingTaskCellRuntimePathPort,
+} from "../runtimeBinding/index.js";
 import { parseCodingTaskCellManifest } from "../validation/index.js";
 import type { CodingTaskCellVerificationBindingService } from "../verificationBinding/index.js";
 
@@ -39,6 +51,8 @@ export class CodingTaskCellService {
     private readonly evidenceBundleStore: EvidenceBundleStore,
     private readonly assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase,
     private readonly digest: ContentDigestPort,
+    private readonly runtimePath: CodingTaskCellRuntimePathPort,
+    private readonly runtimeBinding?: CodingTaskCellRuntimeBinding,
   ) {}
 
   /** 按冻结顺序执行 Cell；任何非确定完成状态都会立即停止。 */
@@ -46,6 +60,22 @@ export class CodingTaskCellService {
     const parsed = parseCodingTaskCellManifest(input, this.digest);
     if (parsed.status === ResultStatus.Failure) return parsed;
     const manifest = parsed.value;
+    if (this.runtimeBinding === undefined) {
+      return failure(
+        new HarnessError(
+          HarnessErrorCode.OperationForbidden,
+          "CodingTask Cell 执行缺少可信 Runtime Binding。",
+          { stage: CodingTaskCellStage.Create },
+        ),
+      );
+    }
+    const binding = validateCodingTaskCellRuntimeBinding(
+      manifest,
+      this.runtimeBinding,
+      this.digest,
+      this.runtimePath,
+    );
+    if (binding.status === ResultStatus.Failure) return binding;
     const receipts: CodingTaskCellStageReceipt[] = [];
 
     let stopped = await executeStage(CodingTaskCellStage.Create, receipts, () =>

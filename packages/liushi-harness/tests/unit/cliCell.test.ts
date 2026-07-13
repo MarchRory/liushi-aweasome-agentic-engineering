@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -9,6 +11,7 @@ import {
   CLI_EXIT_CODE_CONFLICT,
   CliCommand,
   CliResponseStatus,
+  CliVerificationMode,
   runCli,
   type CliApplication,
   type RunCliDependencies,
@@ -18,10 +21,7 @@ describe("CodingTask Cell CLI", () => {
   it("ReviewReady 使用 JSON success 与 exit 0", async () => {
     const setup = createSetup(CodingTaskCellStatus.ReviewReady);
 
-    const exitCode = await runCli(
-      ["cell", "run", "--file", "cell.json", "--json"],
-      setup.dependencies,
-    );
+    const exitCode = await runCli(cellArgs(), setup.dependencies);
 
     expect(exitCode).toBe(0);
     expect(setup.stderr).toBe("");
@@ -34,6 +34,14 @@ describe("CodingTask Cell CLI", () => {
         receipts: [],
       },
     });
+    expect(setup.createApplication).toHaveBeenCalledWith(".runtime", {
+      repositoryBinding: {
+        workspaceId: "workspace-1",
+        repositoryId: "repository-1",
+        repositoryRoot: resolve("repository"),
+      },
+      verificationMode: CliVerificationMode.FailClosedMock,
+    });
   });
 
   it.each([CodingTaskCellStatus.Blocked, CodingTaskCellStatus.OutcomeUnknown])(
@@ -41,10 +49,7 @@ describe("CodingTask Cell CLI", () => {
     async (status) => {
       const setup = createSetup(status);
 
-      const exitCode = await runCli(
-        ["cell", "run", "--file", "cell.json", "--json"],
-        setup.dependencies,
-      );
+      const exitCode = await runCli(cellArgs(), setup.dependencies);
 
       expect(exitCode).toBe(CLI_EXIT_CODE_CONFLICT);
       expect(setup.stderr).toBe("");
@@ -76,9 +81,10 @@ function createSetup(status: CodingTaskCellStatus) {
   const application = {
     runCodingTaskCell: { execute },
   } as unknown as CliApplication;
+  const createApplication = vi.fn(() => application);
   const dependencies: RunCliDependencies = {
     defaultStoreRoot: ".runtime",
-    applicationFactory: { create: () => application },
+    applicationFactory: { create: createApplication },
     writer: {
       stdout: (value) => {
         stdout += value;
@@ -91,6 +97,7 @@ function createSetup(status: CodingTaskCellStatus) {
   };
   return {
     dependencies,
+    createApplication,
     get stdout() {
       return stdout;
     },
@@ -98,4 +105,22 @@ function createSetup(status: CodingTaskCellStatus) {
       return stderr;
     },
   };
+}
+
+function cellArgs(): string[] {
+  return [
+    "cell",
+    "run",
+    "--file",
+    "cell.json",
+    "--workspace",
+    "workspace-1",
+    "--repository",
+    "repository-1",
+    "--root",
+    resolve("repository"),
+    "--verification-mode",
+    CliVerificationMode.FailClosedMock,
+    "--json",
+  ];
 }

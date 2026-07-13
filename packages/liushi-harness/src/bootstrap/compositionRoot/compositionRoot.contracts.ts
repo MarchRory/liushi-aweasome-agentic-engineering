@@ -2,6 +2,7 @@ import type {
   ApplicationCommandGateway,
   AssemblePrReadyArtifactUseCase,
   CodingTaskCellService,
+  CodingTaskCellRuntimeBinding,
   CodingTaskCommandService,
   BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
@@ -157,4 +158,6 @@ export interface HarnessApplicationOptions {
   repositoryLockIdGenerator?: IdGenerator;
   /** 可注入的可信 Repository Root Resolver；默认使用无绑定的 fail-closed 静态实现。 */
   repositoryRootResolver?: RepositoryRootResolverPort;
+  /** 可选 Cell 启动期可信运行时绑定；嵌入式调用未提供时保持兼容。 */
+  codingTaskCellRuntimeBinding?: CodingTaskCellRuntimeBinding;
 }

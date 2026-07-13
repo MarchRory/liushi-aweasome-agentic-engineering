@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { ResultStatus } from "../../src/common/index.js";
@@ -5,6 +7,7 @@ import {
   CLI_USAGE_LINES,
   CliCommand,
   CliOutputFormat,
+  CliVerificationMode,
   parseCliArguments,
 } from "../../src/presentation/index.js";
 
@@ -13,8 +16,25 @@ const ARTIFACT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB0";
 
 describe("CLI argument parser", () => {
   it("严格解析 cell run 的 file、store 与 JSON 选项", () => {
+    const repositoryRoot = resolve("repository");
     expect(
-      parseCliArguments(["cell", "run", "--file", "cell.json", "--store", ".runtime", "--json"]),
+      parseCliArguments([
+        "cell",
+        "run",
+        "--file",
+        "cell.json",
+        "--workspace",
+        "workspace-1",
+        "--repository",
+        "repository-1",
+        "--root",
+        repositoryRoot,
+        "--verification-mode",
+        "local_command",
+        "--store",
+        ".runtime",
+        "--json",
+      ]),
     ).toEqual({
       status: ResultStatus.Success,
       value: {
@@ -22,6 +42,10 @@ describe("CLI argument parser", () => {
         outputFormat: CliOutputFormat.Json,
         storeRoot: ".runtime",
         filePath: "cell.json",
+        workspaceId: "workspace-1",
+        repositoryId: "repository-1",
+        repositoryRoot,
+        verificationMode: CliVerificationMode.LocalCommand,
       },
     });
   });
@@ -30,9 +54,75 @@ describe("CLI argument parser", () => {
     expect(parseCliArguments(["cell", "run"]).status).toBe(ResultStatus.Failure);
   });
 
+  it.each(["--workspace", "--repository", "--root", "--verification-mode"])(
+    "cell run 缺少 %s 时 fail closed",
+    (missingOption) => {
+      const options = new Map([
+        ["--workspace", "workspace-1"],
+        ["--repository", "repository-1"],
+        ["--root", resolve("repository")],
+        ["--verification-mode", "fail_closed_mock"],
+      ]);
+      options.delete(missingOption);
+      const args = ["cell", "run", "--file", "cell.json"];
+      for (const [option, value] of options) args.push(option, value);
+
+      const result = parseCliArguments(args);
+
+      expect(result.status).toBe(ResultStatus.Failure);
+      if (result.status === ResultStatus.Failure) {
+        expect(result.error.details).toEqual({ option: missingOption });
+      }
+    },
+  );
+
+  it("cell run 拒绝未知 verification mode", () => {
+    const result = parseCliArguments([
+      "cell",
+      "run",
+      "--file",
+      "cell.json",
+      "--workspace",
+      "workspace-1",
+      "--repository",
+      "repository-1",
+      "--root",
+      resolve("repository"),
+      "--verification-mode",
+      "automatic",
+    ]);
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.details).toEqual({ verificationMode: "automatic" });
+    }
+  });
+
+  it("cell run 拒绝非绝对 root", () => {
+    const result = parseCliArguments([
+      "cell",
+      "run",
+      "--file",
+      "cell.json",
+      "--workspace",
+      "workspace-1",
+      "--repository",
+      "repository-1",
+      "--root",
+      "repository",
+      "--verification-mode",
+      "fail_closed_mock",
+    ]);
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.details).toEqual({ option: "--root" });
+    }
+  });
+
   it("Help 包含单一 Cell 命令入口", () => {
     expect(CLI_USAGE_LINES).toContain(
-      "liushi-harness cell run --file <manifest.json> [--store <path>] [--json]",
+      "liushi-harness cell run --file <manifest.json> --workspace <id> --repository <id> --root <absolute-path> --verification-mode <fail_closed_mock|local_command> [--store <path>] [--json]",
     );
   });
 

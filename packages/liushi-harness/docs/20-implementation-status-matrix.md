@@ -42,7 +42,7 @@
 - 默认 Composition Root 通过上游 Task Replay 重算 PlanRisk、Business Logic G2、Approval 和 Write Set；调用方提交的 `ExecutionAuthorization` 只作为引用，不能绕过 Human Gate。
 - 候选事件的非法状态返回 `InvalidStateTransition`；已提交日志的非法状态仍按 `CorruptStore` 处理。
 - `WorktreeInspectorPort` 通过 `shell=false` 的 Git Command Runner 只读读取真实 Worktree，检查 Root containment、分支、Base Revision、完整状态和 Write Set 越界；异常只返回稳定诊断码，不泄露本机路径或命令输出。
-- `VerificationPlan`、`VerificationExecutorPort` 和 `RunVerificationUseCase` 已定义验证边界；EvidenceBundle 绑定 Plan/Revision/Digest。默认 Mock 不执行命令；显式 Local Command 模式验证 Git Revision 并限制工作目录、环境、超时和输出。
+- `VerificationPlan`、`VerificationExecutorPort` 和 `RunVerificationUseCase` 已定义验证边界；EvidenceBundle 绑定 Plan/Revision/Digest。默认 Mock 不执行命令；生产 CLI 只有显式 `local_command` 才启用本地执行，并验证 Git Revision、工作目录、环境、超时和输出。
 - `RepositoryLockPort`、`AcquireRepositoryLockUseCase` 和 `NodeRepositoryLockAdapter` 已提供 Workspace/Repository 互斥；锁竞争错误不返回本机路径，Lock 句柄释放不执行任何 Git 或文件业务写入。
 - `JournaledActionRunner` 已提供 Action 级跨进程执行锁、Intent-first 执行、完成态复用、`intent_recorded` 禁止自动重放、`retry_permitted` 受控重试、已有 Observation 的 Resolution 恢复，以及执行后 Journal 闭合失败的 `action_journal_commit_outcome_unknown`。
 - `WorktreeProvisionCommandService` 已将 Runtime Root 摘要、CodingTask 权威授权、Repository Lock、Action Journal、真实 Git 创建和 Inspector 后置条件串成版本化写链路；未知结果必须由 Human 恢复检查。
@@ -52,6 +52,7 @@
 - `SelectVerificationPlanUseCase` 已从 G8 Profile、CodingTask 最新 ImplementationSubmitted 和 Ready Rule Bundle 生成单仓确定性 Plan；Rule Target 覆盖或 Blocking Validator 映射不完整时关闭式阻断。
 - `ImplementationSubmissionService` 已通过启动期可信 Repository Root、Managed Worktree 与原生 Git 创建单一 Checkpoint，以 `ImplementationSubmitted` 收口 Attempt；Git/Event 非 ACID 中间态只能由 Human 检查和接纳。
 - `FileEvidenceBundleStore` 已提供不可变 Bundle 持久化、跨实例读取、同 Run 幂等/冲突、Domain 重校验、Digest 重算和提交未知态。
+- `cell run` 已要求 Workspace、Repository、绝对 Repository Root 和 Verification Mode；生产 Bootstrap 将绑定映射到静态 Root Resolver 与 Composition Root，并在任何副作用前校验 Manifest Create 身份、全部 Repository Runtime Root 和受管 Verification Worktree Root。Application 可以在不配置绑定时为其他命令创建，但 Cell 执行入口必须关闭式拒绝无绑定调用；Human Gate 保持权威重算。
 
 因此，表格中 CodingTask Store/Command 的旧描述以本节为准；Worktree 清理/重建、Import Graph、重试/Flaky、Waiver、多仓影响传播、真实项目生产验证和 Studio 仍未实现。
 
@@ -88,6 +89,7 @@
 - 版本化 Verification Command：在 Repository Lock 与 Action Journal 内运行验证、持久化 EvidenceBundle 并接纳 CodingTask Verification 结果。
 - Profile-backed Verification 影响面：由 G8 Check、权威 Changed Paths、Rule Target 和 Validator 映射生成单仓 Plan 与完整 Selection Trace。
 - PRReadyArtifact 权威装配：只接受 Evidence Locator，从强一致 Store 读取 Passed Evidence，重算 Task-backed Human Gate，并绑定 Base/Head、Diff Digest、InputBindingSet、Verification、剩余风险和回滚方案。
+- 生产 CodingTask Cell CLI：显式单仓 Runtime Binding、封闭 Verification Mode、启动期 Composition Root 映射和副作用前 fail-closed 一致性校验。
 
 当前 npm 包不提供：
 
@@ -138,4 +140,4 @@ flowchart LR
 
 ## 7. 下一实现门
 
-Workflow 产品与技术方案已经对齐，持久化 Command Gateway、Revision/Context、Golden Replay、Timeline、Action Journal、JournaledActionRunner、Trace、Canonical Hook Core、Workflow Kernel 和 CodingTask Domain Core 已通过测试。Codex `apply_patch` Adapter、Binding、配置投影、CLI Wrapper 和静态 Probe 已完成 Fixture 验证；CodingTask Store/Command、单一纵向 CodingTask CLI Cell、Managed Worktree Provision/Inspector、未知 Provision Human 对账与下游 Guard、Repository Lock、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted、Checkpoint 后权威绑定 Verification Target Revision、版本化 Verification Command/EvidenceBundle、G8 Profile-backed 单仓影响面、fail-closed Mock、显式 Local Command Runner 和单仓 PRReadyArtifact 已完成。真实 Git E2E 已通过默认 Human Gate 与 PR-ready 装配；Windows 本地已通过真实 tarball 的 npm 干净安装 Smoke，Windows/Ubuntu CI 与 Release Gate 已接入同一脚本。下一步只在受信任或公开项目完成 Hook 正负路径、受控需求闭环与 Human Touch Time 采集。Human-gated Worktree 清理与显式重建保持后续运维能力。Claude-compatible/CatPaw、自动安装和 Role Invocation 仍未实现。
+Workflow 产品与技术方案已经对齐，持久化 Command Gateway、Revision/Context、Golden Replay、Timeline、Action Journal、JournaledActionRunner、Trace、Canonical Hook Core、Workflow Kernel 和 CodingTask Domain Core 已通过测试。Codex `apply_patch` Adapter、Binding、配置投影、CLI Wrapper 和静态 Probe 已完成 Fixture 验证；CodingTask Store/Command、显式可信单仓绑定的生产 CodingTask CLI Cell、Managed Worktree Provision/Inspector、未知 Provision Human 对账与下游 Guard、Repository Lock、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted、Checkpoint 后权威绑定 Verification Target Revision、版本化 Verification Command/EvidenceBundle、G8 Profile-backed 单仓影响面、fail-closed Mock、显式 Local Command Runner 和单仓 PRReadyArtifact 已完成。真实 Git E2E 已通过生产 Bootstrap Local Command 映射、默认 Human Gate 与 PR-ready 装配；Windows 本地已通过真实 tarball 的 npm 干净安装 Smoke，Windows/Ubuntu CI 与 Release Gate 已接入同一脚本。下一步必须先在固定公开项目完成受控 Cell 闭环，再在同一项目验证 Codex Host Hook 正负路径；当前不得声称公开项目 Smoke 已完成。Human Touch Time 仅在存在真实 Human 计时区间时采集。Human-gated Worktree 清理与显式重建保持后续运维能力。Claude-compatible/CatPaw、自动安装和 Role Invocation 仍未实现。

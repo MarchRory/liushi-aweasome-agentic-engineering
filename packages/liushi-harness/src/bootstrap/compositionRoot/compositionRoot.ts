@@ -67,6 +67,7 @@ import {
   SystemDelayAdapter,
   SystemClock,
   UlidGenerator,
+  NodeCodingTaskCellRuntimePathAdapter,
 } from "#infrastructure/index.js";
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
 import { VerificationExecutionMode } from "./enums/index.js";
@@ -231,6 +232,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     taskRepository,
     codingTaskAuthorizationResolver,
     digest,
+    runtimePath: new NodeCodingTaskCellRuntimePathAdapter(),
+    ...(options.codingTaskCellRuntimeBinding === undefined
+      ? {}
+      : { runtimeBinding: options.codingTaskCellRuntimeBinding }),
   });
   return {
     applicationCommandGateway,

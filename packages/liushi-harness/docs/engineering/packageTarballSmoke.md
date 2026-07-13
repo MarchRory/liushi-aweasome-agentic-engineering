@@ -35,4 +35,4 @@ GitHub Actions 的 Windows 与 Ubuntu Quality Matrix 在 Build 后执行同一 P
 
 全量 Vitest 门禁固定使用单 Worker。真实 Git、文件 Lock 和临时目录测试在 Windows 并行执行时可能因资源竞争超过默认 5 秒并留下清理冲突；单 Worker 保持同一测试语义并消除该非确定性，不通过扩大超时掩盖失败。
 
-该检查只证明发布物在干净 consumer 中可安装和启动，不证明 Codex Hook 已在真实受信任项目生效，也不证明完整 CodingTask Cell 达到了生产目标。真实项目 Hook 正负路径、受控需求闭环和 Human Touch Time 必须作为独立证据完成。
+该检查只证明发布物在干净 consumer 中可安装和启动，不证明完整 CodingTask Cell 达到了生产目标，也不证明 Codex Hook 已在真实受信任项目生效。下一道门必须先在固定真实项目完成受控 Cell 闭环，再在同一项目验证 Codex Host Hook 正负路径；Human Touch Time 只在存在真实 Human 计时区间时记录。
