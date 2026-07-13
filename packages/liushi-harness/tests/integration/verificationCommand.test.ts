@@ -2,13 +2,15 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ActionJournalStatus,
   ActorKind,
   CodingTaskAttemptOutcome,
+  CodingTaskCommandHandler,
   CodingTaskCommandType,
+  CommandErrorCode,
   CommandStatus,
   FailureTaxonomy,
   ResultStatus,
@@ -20,7 +22,11 @@ import {
   createHarnessApplication,
   parseCodingTaskId,
   parseWorkspaceId,
+  type CodingTaskCommandPayload,
+  type CommandEnvelope,
+  type VerificationExecutorPort,
 } from "../../src/index.js";
+import { codingTaskImplementationSubmissionCapability } from "../../src/application/codingTask/internal/index.js";
 import {
   ExclusiveFileLockManager,
   FileCodingTaskRepository,
@@ -28,7 +34,11 @@ import {
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
 } from "../../src/infrastructure/index.js";
-import { TemporaryRuntimeStore } from "../support/runtime/index.js";
+import {
+  FixedClock,
+  FixedSequenceIdGenerator,
+  TemporaryRuntimeStore,
+} from "../support/runtime/index.js";
 
 const runtimeStores = new TemporaryRuntimeStore();
 const repositories: string[] = [];
@@ -72,7 +82,7 @@ describe("Verification Command 纵向闭环", () => {
 
     expect(first).toMatchObject({
       status: ResultStatus.Success,
-      value: { status: CommandStatus.Committed, committedVersion: 5 },
+      value: { status: CommandStatus.Committed, committedVersion: 4 },
     });
     expect(duplicate).toEqual(first);
     expect(evidence).toMatchObject({
@@ -83,7 +93,7 @@ describe("Verification Command 纵向闭环", () => {
       status: ResultStatus.Success,
       value: { status: ActionJournalStatus.Committed },
     });
-    expect(aggregate).toMatchObject({ phase: "verification", runState: "completed", version: 5 });
+    expect(aggregate).toMatchObject({ phase: "verification", runState: "completed", version: 4 });
   });
 
   it("明确 Check 失败按已确认分类返回 Implementation 修复", async () => {
@@ -96,9 +106,9 @@ describe("Verification Command 纵向闭环", () => {
 
     expect(result).toMatchObject({
       status: ResultStatus.Success,
-      value: { status: CommandStatus.Committed, committedVersion: 5 },
+      value: { status: CommandStatus.Committed, committedVersion: 4 },
     });
-    expect(aggregate).toMatchObject({ phase: "implementation", runState: "active", version: 5 });
+    expect(aggregate).toMatchObject({ phase: "implementation", runState: "active", version: 4 });
   });
 
   it("Runtime Root Digest 不匹配时在 Reservation 和命令执行前拒绝", async () => {
@@ -119,6 +129,71 @@ describe("Verification Command 纵向闭环", () => {
     });
     expect(evidence.status).toBe(ResultStatus.Failure);
   });
+
+  it.each(["错误", "陈旧"])(
+    "%s targetRevision 在 Executor 和 Journal 副作用前被拒绝",
+    async (revisionKind) => {
+      const execute = vi.fn<VerificationExecutorPort["execute"]>();
+      const setup = await createSetup(
+        `liushi-verification-command-revision-${revisionKind.length}-`,
+        {
+          verificationExecutor: { execute },
+        },
+      );
+      const targetRevision =
+        revisionKind === "陈旧" ? setup.baseRevision : "f".repeat(setup.targetRevision.length);
+
+      const result = await setup.application.verificationCommands.execute(
+        verificationCommand(setup, ["-e", "process.exit(0)"], targetRevision),
+        { worktreeRoot: setup.worktreeRoot },
+      );
+      const journal = await setup.application.getActionJournal.execute({
+        workspaceId,
+        taskId: sourceTaskId,
+        actionId,
+      });
+
+      expect(result).toMatchObject({
+        status: ResultStatus.Success,
+        value: {
+          status: CommandStatus.Rejected,
+          errorCode: CommandErrorCode.InvalidPayload,
+        },
+      });
+      expect(execute).not.toHaveBeenCalled();
+      expect(journal.status).toBe(ResultStatus.Failure);
+      expect((await loadCodingTask(setup.storeRoot)).version).toBe(setup.expectedVersion);
+    },
+  );
+
+  it("Attempt 缺少 targetRevision 时关闭式拒绝且不产生 Executor 或 Journal 副作用", async () => {
+    const execute = vi.fn<VerificationExecutorPort["execute"]>();
+    const setup = await createSetup("liushi-verification-command-missing-revision-", {
+      verificationExecutor: { execute },
+      omitAttemptTargetRevision: true,
+    });
+
+    const result = await setup.application.verificationCommands.execute(
+      verificationCommand(setup, ["-e", "process.exit(0)"], setup.baseRevision),
+      { worktreeRoot: setup.worktreeRoot },
+    );
+    const journal = await setup.application.getActionJournal.execute({
+      workspaceId,
+      taskId: sourceTaskId,
+      actionId,
+    });
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        status: CommandStatus.Rejected,
+        errorCode: CommandErrorCode.InvalidPayload,
+      },
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect(journal.status).toBe(ResultStatus.Failure);
+    expect((await loadCodingTask(setup.storeRoot)).version).toBe(setup.expectedVersion);
+  });
 });
 
 /** 版本化验证命令集成测试所需的真实运行环境。 */
@@ -127,11 +202,19 @@ interface Setup {
   readonly repositoryRoot: string;
   readonly worktreeRoot: string;
   readonly baseRevision: string;
+  readonly targetRevision: string;
+  readonly expectedVersion: number;
   readonly application: ReturnType<typeof createApplication>;
 }
 
+/** 验证命令测试环境的可选依赖与异常状态。 */
+interface SetupOptions {
+  readonly verificationExecutor?: VerificationExecutorPort;
+  readonly omitAttemptTargetRevision?: boolean;
+}
+
 /** 创建具备真实仓库、受管工作树和持久化存储的测试环境。 */
-async function createSetup(prefix: string): Promise<Setup> {
+async function createSetup(prefix: string, options: SetupOptions = {}): Promise<Setup> {
   const storeRoot = await runtimeStores.create(prefix);
   const repositoryRoot = await mkdtemp(join(tmpdir(), "liushi-verification-command-repo-"));
   repositories.push(repositoryRoot);
@@ -158,21 +241,48 @@ async function createSetup(prefix: string): Promise<Setup> {
     worktreeRoot,
     baseRevision,
   ]);
-  const application = createApplication(storeRoot);
+  await writeFile(join(worktreeRoot, "src", "index.ts"), "export const value = 2;\n");
+  await runGit(worktreeRoot, ["add", "src/index.ts"]);
+  await runGit(worktreeRoot, [
+    "-c",
+    "user.name=liushi-test",
+    "-c",
+    "user.email=liushi-test@example.com",
+    "commit",
+    "-m",
+    "target",
+  ]);
+  const targetRevision = await runGit(worktreeRoot, ["rev-parse", "HEAD"]);
+  const application = createApplication(storeRoot, options.verificationExecutor);
   await application.createTask.execute({
     workspaceId,
     source: "verification-command-integration",
     actor: { kind: ActorKind.Human, actorId: "human" },
   });
-  await createAndAdvanceCodingTask(application, baseRevision);
-  return { storeRoot, repositoryRoot, worktreeRoot, baseRevision, application };
+  const expectedVersion = await createAndAdvanceCodingTask(
+    application,
+    storeRoot,
+    baseRevision,
+    targetRevision,
+    options.omitAttemptTargetRevision ?? false,
+  );
+  return {
+    storeRoot,
+    repositoryRoot,
+    worktreeRoot,
+    baseRevision,
+    targetRevision,
+    expectedVersion,
+    application,
+  };
 }
 
-function createApplication(storeRoot: string) {
+function createApplication(storeRoot: string, verificationExecutor?: VerificationExecutorPort) {
   return createHarnessApplication({
     storeRoot,
     taskIdGenerator: { next: () => sourceTaskId },
     verificationExecutionMode: VerificationExecutionMode.LocalCommand,
+    ...(verificationExecutor === undefined ? {} : { verificationExecutor }),
     codingTaskAuthorizationResolver: {
       resolve: ({ requested }) =>
         Promise.resolve({ status: ResultStatus.Success, value: requested }),
@@ -182,8 +292,11 @@ function createApplication(storeRoot: string) {
 
 async function createAndAdvanceCodingTask(
   application: ReturnType<typeof createApplication>,
+  storeRoot: string,
   baseRevision: string,
-): Promise<void> {
+  targetRevision: string,
+  omitAttemptTargetRevision: boolean,
+): Promise<number> {
   await application.codingTaskCommands.execute(
     codingCommand(CodingTaskCommandType.Create, "verification-create", 0, {
       workspaceId,
@@ -216,6 +329,32 @@ async function createAndAdvanceCodingTask(
       attemptNumber: 1,
     }),
   );
+  if (!omitAttemptTargetRevision) {
+    const repository = new FileCodingTaskRepository(storeRoot, {
+      lockManager: new ExclusiveFileLockManager(),
+      parentDirectoryDurability: new FileParentDirectoryDurability(),
+    });
+    const handler = new CodingTaskCommandHandler(
+      repository,
+      new FixedClock(submittedAt),
+      new FixedSequenceIdGenerator(["01ARZ3NDEKTSV4RRFFQ69G5FC5"]),
+      {
+        resolve: ({ requested }) =>
+          Promise.resolve({ status: ResultStatus.Success, value: requested }),
+      },
+    );
+    const submitted = await handler.executeImplementationSubmission(
+      codingCommand(CodingTaskCommandType.SubmitImplementation, "verification-submit", 2, {
+        workspaceId,
+        attemptNumber: 1,
+        targetRevision,
+        changedPaths: ["src/index.ts"],
+      }) as CommandEnvelope<CodingTaskCommandPayload>,
+      codingTaskImplementationSubmissionCapability,
+    );
+    if (submitted.status === ResultStatus.Failure) throw submitted.error;
+    return 3;
+  }
   await application.codingTaskCommands.execute(
     codingCommand(CodingTaskCommandType.FinishAttempt, "verification-finish", 2, {
       workspaceId,
@@ -229,9 +368,14 @@ async function createAndAdvanceCodingTask(
       attemptNumber: 1,
     }),
   );
+  return 4;
 }
 
-function verificationCommand(setup: Setup, args: readonly string[]) {
+function verificationCommand(
+  setup: Setup,
+  args: readonly string[],
+  targetRevision = setup.targetRevision,
+) {
   const pathKey = Object.keys(process.env).find((key) => key.toUpperCase() === "PATH");
   if (pathKey === undefined) throw new Error("测试环境缺少 PATH。");
   const payload = {
@@ -247,7 +391,7 @@ function verificationCommand(setup: Setup, args: readonly string[]) {
       worktreeId: "worktree-1",
       expectedBranchName: "feature/verification-command",
       baseRevision: setup.baseRevision,
-      targetRevision: setup.baseRevision,
+      targetRevision,
       checks: [
         {
           checkId: "command",
@@ -272,7 +416,7 @@ function verificationCommand(setup: Setup, args: readonly string[]) {
     commandType: VERIFICATION_RUN_COMMAND_TYPE,
     aggregateType: "coding_task",
     aggregateId: codingTaskId,
-    expectedVersion: 4,
+    expectedVersion: setup.expectedVersion,
     idempotencyKey: "verification-run-command-1",
     requestDigest: unwrap(digest.calculate(payload)),
     actor: { kind: ActorKind.Agent, actorId: "agent" },

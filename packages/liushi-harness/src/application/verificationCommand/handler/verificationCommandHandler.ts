@@ -31,8 +31,6 @@ import {
   type ActionIntentRecord,
 } from "#domain/actionJournal/index.js";
 import {
-  CodingTaskPhase,
-  CodingTaskRunState,
   CodingTaskVerificationOutcome,
   parseCodingTaskId,
   type CodingTaskAggregate,
@@ -49,6 +47,7 @@ import type {
 import type { VerificationActionExecutor } from "../executor/index.js";
 import {
   parseRunVerificationPayload,
+  validateVerificationAggregate,
   validateVerificationRuntime,
   type ValidatedRunVerificationPayload,
 } from "../validation/index.js";
@@ -97,7 +96,7 @@ export class VerificationCommandHandler {
     if (aggregate.version !== command.expectedVersion) {
       return failure(codingTaskVersionConflict(command.expectedVersion, aggregate.version));
     }
-    const executable = validateAggregate(aggregate, envelope.value);
+    const executable = validateVerificationAggregate(aggregate, envelope.value);
     if (executable.status === ResultStatus.Failure) return executable;
     const authorized = await this.authorizationResolver.resolve({
       sourceTaskId: aggregate.sourceTaskId,
@@ -253,30 +252,6 @@ export class VerificationCommandHandler {
       recordedAt: command.submittedAt,
     });
   }
-}
-
-function validateAggregate(
-  aggregate: CodingTaskAggregate,
-  payload: ValidatedRunVerificationPayload,
-): Result<void, HarnessError> {
-  const attempt = aggregate.attempts.at(-1);
-  if (
-    aggregate.phase !== CodingTaskPhase.Verification ||
-    aggregate.runState !== CodingTaskRunState.Active ||
-    attempt?.number !== payload.attemptNumber ||
-    aggregate.repositoryId !== payload.plan.repositoryId ||
-    aggregate.worktreeBinding.worktreeId !== payload.plan.worktreeId ||
-    aggregate.worktreeBinding.branchName !== payload.plan.expectedBranchName ||
-    aggregate.baseRevision !== payload.plan.baseRevision
-  ) {
-    return failure(
-      new HarnessError(
-        HarnessErrorCode.InvalidStateTransition,
-        "CodingTask 与 Verification Plan 不兼容。",
-      ),
-    );
-  }
-  return success(undefined);
 }
 
 function projectFinishPayload(payload: ValidatedRunVerificationPayload, bundle: EvidenceBundle) {

@@ -10,6 +10,11 @@ import {
   type Result,
 } from "#common/index.js";
 import { parseActionId, type ActionId } from "#domain/actionJournal/index.js";
+import {
+  CodingTaskPhase,
+  CodingTaskRunState,
+  type CodingTaskAggregate,
+} from "#domain/codingTask/index.js";
 import { validateVerificationPlan } from "#domain/verification/index.js";
 import { parseWorkspaceId, type WorkspaceId } from "#domain/workspace/index.js";
 import { FailureTaxonomy } from "#domain/workflow/index.js";
@@ -91,6 +96,33 @@ export function validateVerificationRuntime(
     return failure(invalid("worktreeRoot"));
   }
   return success({ worktreeRoot: input.worktreeRoot });
+}
+
+/** 校验 CodingTask 当前尝试与 Verification Plan 的完整修订绑定。 */
+export function validateVerificationAggregate(
+  aggregate: CodingTaskAggregate,
+  payload: ValidatedRunVerificationPayload,
+): Result<void, HarnessError> {
+  const attempt = aggregate.attempts.at(-1);
+  if (
+    aggregate.phase !== CodingTaskPhase.Verification ||
+    aggregate.runState !== CodingTaskRunState.Active ||
+    attempt?.number !== payload.attemptNumber ||
+    aggregate.repositoryId !== payload.plan.repositoryId ||
+    aggregate.worktreeBinding.worktreeId !== payload.plan.worktreeId ||
+    aggregate.worktreeBinding.branchName !== payload.plan.expectedBranchName ||
+    aggregate.baseRevision !== payload.plan.baseRevision ||
+    attempt?.targetRevision === undefined ||
+    attempt.targetRevision !== payload.plan.targetRevision
+  ) {
+    return failure(
+      new HarnessError(
+        HarnessErrorCode.InvalidStateTransition,
+        "CodingTask 与 Verification Plan 不兼容。",
+      ),
+    );
+  }
+  return success(undefined);
 }
 
 function isAbsolutePath(value: string): boolean {
