@@ -1,4 +1,5 @@
 import type { CommandEnvelope, CommandReceipt } from "#application/command/index.js";
+import type { PrReadyArtifact } from "#domain/repositoryDelivery/index.js";
 import type { EvidenceBundle } from "#domain/verification/index.js";
 
 import type { CodingTaskCellStage, CodingTaskCellStatus } from "../enums/index.js";
@@ -71,4 +72,6 @@ export interface CodingTaskCellReport {
   readonly receipts: readonly CodingTaskCellStageReceipt[];
   /** Verification 完成后强一致读取的 EvidenceBundle。 */
   readonly evidenceBundle?: EvidenceBundle;
+  /** 全部权威绑定闭合后生成的 PR-ready Repository Delivery Artifact。 */
+  readonly prReadyArtifact?: PrReadyArtifact;
 }

@@ -18,4 +18,5 @@ export * from "./probeCodexCapabilities/index.js";
 export * from "./inspectWorktree/index.js";
 export * from "./runVerification/index.js";
 export * from "./acquireRepositoryLock/index.js";
+export * from "./assemblePrReadyArtifact/index.js";
 export * from "./selectVerificationPlan/index.js";

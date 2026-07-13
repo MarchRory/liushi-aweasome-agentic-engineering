@@ -62,3 +62,4 @@ Status: Implementation-aware Architecture Baseline
 - [Verification 影响面选择](./engineering/verificationImpactSelection.md)
 - [Worktree Provision 未知状态恢复](./engineering/worktreeProvisionRecovery.md)
 - [CodingTask 纵向 Cell](./engineering/codingTaskCell.md)
+- [PRReadyArtifact 权威装配](./engineering/prReadyArtifact.md)

@@ -14,6 +14,8 @@ export enum CodingTaskCellStage {
   Verification = "verification",
   /** 强一致读取最终 EvidenceBundle。 */
   Evidence = "evidence",
+  /** 从权威 CodingTask、Task Artifact 与 Evidence 组装 PR-ready Artifact。 */
+  PrReady = "pr_ready",
 }
 
 /** CodingTask Cell 的封闭业务结果。 */

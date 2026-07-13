@@ -6,15 +6,21 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION,
+  ApprovalDecision,
   ActorKind,
+  ArtifactStatus,
+  ArtifactType,
   CodingTaskCellStage,
   CodingTaskCellStatus,
   CodingTaskCommandType,
+  DependencyAssessmentStatus,
   FailureTaxonomy,
   FileMutationKind,
+  GateEvaluationResult,
   IMPLEMENTATION_APPLY_COMMAND_TYPE,
   IMPLEMENTATION_SUBMIT_COMMAND_TYPE,
   ResultStatus,
+  RiskLevel,
   VERIFICATION_RUN_COMMAND_TYPE,
   VerificationExecutionMode,
   VerificationKind,
@@ -22,6 +28,9 @@ import {
   VerificationStatus,
   WORKTREE_PROVISION_COMMAND_TYPE,
   createHarnessApplication,
+  type CodingTaskExecutionAuthorization,
+  type GateEvaluation,
+  type PlanRiskArtifact,
 } from "../../../src/index.js";
 import {
   NodeCommandRunnerAdapter,
@@ -46,6 +55,12 @@ const submittedAt = "2026-07-14T00:00:00.000Z";
 const fixedGitDate = "2026-07-14T00:00:00Z";
 const originalAuthorDate = process.env["GIT_AUTHOR_DATE"];
 const originalCommitterDate = process.env["GIT_COMMITTER_DATE"];
+const writeSet = ["src/index.ts"] as const;
+const remainingRisks = [
+  { description: "实现可能改变导出行为。", mitigation: "运行本地验证并人工审查差异。" },
+] as const;
+const riskOperations = [{ target: "src/index.ts", reason: "修改仓库中的公开实现。" }] as const;
+const rollbackPlan = ["回退 CodingTask 生成的单一 checkpoint。"] as const;
 
 afterEach(async () => {
   restoreEnvironment("GIT_AUTHOR_DATE", originalAuthorDate);
@@ -74,6 +89,23 @@ describe("CodingTask Cell CLI E2E", () => {
       data: {
         status: CodingTaskCellStatus.ReviewReady,
         evidenceBundle: { status: VerificationStatus.Passed },
+        prReadyArtifact: {
+          workspaceId,
+          repositoryId: "repo-1",
+          codingTaskId,
+          sourceTaskId,
+          baseRevision: setup.baseRevision,
+          headRevision: setup.targetRevision,
+          writeSet,
+          verification: { status: VerificationStatus.Passed },
+          remainingRisks,
+          riskOperations,
+          rollbackPlan,
+          dependencyAssessment: {
+            status: DependencyAssessmentStatus.NotAssessed,
+            changes: [],
+          },
+        },
         receipts: [
           { stage: CodingTaskCellStage.Create },
           { stage: CodingTaskCellStage.Provision },
@@ -93,7 +125,7 @@ describe("CodingTask Cell CLI E2E", () => {
       "export const value = 2;\n",
     );
     expect(await readFile(setup.verificationCounter, "utf8")).toBe("1");
-  });
+  }, 20_000);
 });
 
 /** Cell CLI 真实运行所需的临时仓库与持久化路径。 */
@@ -124,15 +156,6 @@ async function createSetup(): Promise<CellSetup> {
   const targetRevision = await predictCheckpoint(repositoryRoot, baseRevision);
   const worktreeRoot = join(repositoryRoot, "worktrees", "cell");
   const verificationCounter = join(storeRoot, "verification-count.txt");
-  const manifestFile = join(storeRoot, "codingTaskCell.json");
-  const manifest = createManifest({
-    repositoryRoot,
-    worktreeRoot,
-    baseRevision,
-    targetRevision,
-    verificationCounter,
-  });
-  await writeFile(manifestFile, JSON.stringify(manifest), "utf8");
   const application = createApplication(storeRoot, repositoryRoot);
   const sourceTask = await application.createTask.execute({
     workspaceId,
@@ -140,6 +163,65 @@ async function createSetup(): Promise<CellSetup> {
     actor: { kind: ActorKind.Human, actorId: "human" },
   });
   if (sourceTask.status === ResultStatus.Failure) throw sourceTask.error;
+  const requirement = await application.proposeArtifact.execute({
+    workspaceId,
+    taskId: sourceTaskId,
+    actor: { kind: ActorKind.Human, actorId: "human" },
+    proposal: requirementProposal(),
+  });
+  if (
+    requirement.status === ResultStatus.Failure ||
+    requirement.value.decisionRequest === undefined
+  ) {
+    throw new Error("RequirementContract 必须产生 G1 DecisionRequest。");
+  }
+  const requirementApproval = await application.recordApproval.execute({
+    workspaceId,
+    taskId: sourceTaskId,
+    decisionRequestId: requirement.value.decisionRequest.decisionRequestId,
+    decisionRequestDigest: requirement.value.decisionRequest.digest,
+    idempotencyKey: "coding-task-cell-approve-requirement",
+    actor: { kind: ActorKind.Human, actorId: "human" },
+    decision: ApprovalDecision.Approved,
+  });
+  if (requirementApproval.status === ResultStatus.Failure) throw requirementApproval.error;
+  const plan = await application.proposeArtifact.execute({
+    workspaceId,
+    taskId: sourceTaskId,
+    actor: { kind: ActorKind.Human, actorId: "human" },
+    proposal: planRiskProposal(),
+  });
+  if (plan.status === ResultStatus.Failure) throw plan.error;
+  if (
+    plan.value.decisionRequest === undefined ||
+    plan.value.artifact.artifactType !== ArtifactType.PlanRisk
+  ) {
+    throw new Error("R2 PlanRisk 必须产生 G4 DecisionRequest。");
+  }
+  const planApproval = await application.recordApproval.execute({
+    workspaceId,
+    taskId: sourceTaskId,
+    decisionRequestId: plan.value.decisionRequest.decisionRequestId,
+    decisionRequestDigest: plan.value.decisionRequest.digest,
+    idempotencyKey: "coding-task-cell-approve-plan-risk",
+    actor: { kind: ActorKind.Human, actorId: "human" },
+    decision: ApprovalDecision.Approved,
+  });
+  if (planApproval.status === ResultStatus.Failure) throw planApproval.error;
+  const executionAuthorization = createExecutionAuthorization(
+    plan.value.artifact,
+    planApproval.value.gateEvaluation,
+  );
+  const manifestFile = join(storeRoot, "codingTaskCell.json");
+  const manifest = createManifest({
+    repositoryRoot,
+    worktreeRoot,
+    baseRevision,
+    targetRevision,
+    verificationCounter,
+    executionAuthorization,
+  });
+  await writeFile(manifestFile, JSON.stringify(manifest), "utf8");
   return {
     storeRoot,
     repositoryRoot,
@@ -157,6 +239,7 @@ function createManifest(input: {
   readonly baseRevision: string;
   readonly targetRevision: string;
   readonly verificationCounter: string;
+  readonly executionAuthorization: CodingTaskExecutionAuthorization;
 }) {
   const binding = {
     worktreeId: "cell-worktree",
@@ -170,18 +253,9 @@ function createManifest(input: {
     repositoryId: "repo-1",
     baseRevision: input.baseRevision,
     worktreeBinding: binding,
-    writeSet: ["src/index.ts"],
+    writeSet,
     inputBindingSet: { bindings: [] },
-    executionAuthorization: {
-      planRisk: {
-        artifactId: "01ARZ3NDEKTSV4RRFFQ69G5FAW",
-        artifactDigest: `sha256:${"1".repeat(64)}`,
-        result: "allow",
-        requiredGates: [],
-        satisfiedApprovalIds: [],
-      },
-      historicalLogicChange: false,
-    },
+    executionAuthorization: input.executionAuthorization,
   };
   const provisionPayload = rootPayload("01ARZ3NDEKTSV4RRFFQ69G5FC2", input.repositoryRoot);
   const implementationPayload = {
@@ -311,14 +385,78 @@ function createApplication(storeRoot: string, repositoryRoot: string) {
     storeRoot,
     taskIdGenerator: { next: () => sourceTaskId },
     verificationExecutionMode: VerificationExecutionMode.LocalCommand,
-    codingTaskAuthorizationResolver: {
-      resolve: ({ requested }) =>
-        Promise.resolve({ status: ResultStatus.Success, value: requested }),
-    },
     repositoryRootResolver: new StaticRepositoryRootResolverAdapter([
       { workspaceId, repositoryId: "repo-1", repositoryRoot },
     ]),
   });
+}
+
+/** 构造触发 G1 Human Gate 的 RequirementContract Proposal。 */
+function requirementProposal() {
+  return {
+    artifactType: ArtifactType.RequirementContract,
+    status: ArtifactStatus.Proposed,
+    payload: {
+      problem: "修改示例导出并形成可审查交付物。",
+      goals: ["通过 CodingTask Cell 完成受控实现。"],
+      nonGoals: ["自动创建 PR。"],
+      observableBehaviors: ["src/index.ts 的导出值变为 2。"],
+      acceptanceCriteria: ["验证通过并生成 PRReadyArtifact。"],
+      includedScopes: ["src/index.ts"],
+      forbiddenScopes: ["其他文件"],
+      repositories: ["repo-1"],
+      edgeCases: ["重复执行同一 manifest"],
+      compatibilityConstraints: ["保持单一 checkpoint"],
+      evidence: [],
+      claims: [],
+      unknowns: [],
+      humanAnswers: [],
+    },
+  };
+}
+
+/** 构造需要 G4 Human Gate 的 R2 PlanRisk Proposal。 */
+function planRiskProposal() {
+  return {
+    artifactType: ArtifactType.PlanRisk,
+    status: ArtifactStatus.Proposed,
+    payload: {
+      steps: [{ order: 1, action: "修改 src/index.ts。" }],
+      readSet: writeSet,
+      writeSet,
+      risks: remainingRisks,
+      riskLevel: RiskLevel.R2,
+      historicalLogicChange: false,
+      riskOperations,
+      testPlan: ["运行 LocalCommand Verification。"],
+      rollbackPlan,
+      requiredGates: [],
+    },
+  };
+}
+
+/** 仅把真实 PlanRisk Artifact 与批准后的 GateEvaluation 映射为命令绑定。 */
+function createExecutionAuthorization(
+  planRisk: PlanRiskArtifact,
+  evaluation: GateEvaluation,
+): CodingTaskExecutionAuthorization {
+  if (
+    evaluation.result !== GateEvaluationResult.Allow ||
+    evaluation.artifactId !== planRisk.artifactId ||
+    evaluation.artifactDigest !== planRisk.digest
+  ) {
+    throw new Error("PlanRisk 批准结果未精确绑定当前 Artifact。");
+  }
+  return {
+    planRisk: {
+      artifactId: planRisk.artifactId,
+      artifactDigest: planRisk.digest,
+      result: evaluation.result,
+      requiredGates: evaluation.requiredGates,
+      satisfiedApprovalIds: evaluation.satisfiedApprovals,
+    },
+    historicalLogicChange: false,
+  };
 }
 
 async function predictCheckpoint(repositoryRoot: string, baseRevision: string): Promise<string> {

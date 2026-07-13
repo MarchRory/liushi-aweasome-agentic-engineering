@@ -7,11 +7,15 @@ import {
   CodingTaskCellStatus,
   CodingTaskCommandType,
   CommandStatus,
+  DependencyAssessmentStatus,
   FailureTaxonomy,
+  GateEvaluationResult,
   HarnessError,
   HarnessErrorCode,
   IMPLEMENTATION_APPLY_COMMAND_TYPE,
   IMPLEMENTATION_SUBMIT_COMMAND_TYPE,
+  PR_READY_ARTIFACT_SCHEMA_VERSION,
+  RepositoryDeliveryArtifactType,
   ResultStatus,
   VERIFICATION_PLAN_SCHEMA_VERSION,
   VERIFICATION_RUN_COMMAND_TYPE,
@@ -20,7 +24,14 @@ import {
   VerificationStatus,
   WORKTREE_PROVISION_COMMAND_TYPE,
   failure,
+  parseArtifactId,
+  parseCodingTaskId,
+  parseContentDigest,
+  parseRepositoryId,
+  parseTaskId,
+  parseWorkspaceId,
   success,
+  type AssemblePrReadyArtifactUseCase,
   type CodingTaskCommandService,
   type CommandEnvelope,
   type CommandReceipt,
@@ -28,6 +39,7 @@ import {
   type EvidenceBundleStore,
   type ImplementationCommandService,
   type ImplementationSubmissionService,
+  type PrReadyArtifact,
   type VerificationCommandService,
   type WorktreeProvisionCommandService,
 } from "../../src/index.js";
@@ -51,6 +63,7 @@ describe("CodingTask Cell Service", () => {
         CodingTaskCellStage.Verification,
       ]);
       expect(result.value.evidenceBundle?.status).toBe(VerificationStatus.Passed);
+      expect(result.value.prReadyArtifact).toBe(setup.prReadyArtifact);
     }
     expect(setup.calls).toEqual([
       "create",
@@ -61,6 +74,7 @@ describe("CodingTask Cell Service", () => {
       "submission",
       "verification",
       "evidence",
+      "pr_ready",
     ]);
   });
 
@@ -82,6 +96,7 @@ describe("CodingTask Cell Service", () => {
       "submission",
       "verification",
       "evidence",
+      "pr_ready",
     ]);
   });
 
@@ -117,7 +132,9 @@ describe("CodingTask Cell Service", () => {
         expect(result.value.status).toBe(CodingTaskCellStatus.Blocked);
         expect(result.value.stoppedStage).toBe(CodingTaskCellStage.Evidence);
         expect(result.value.evidenceBundle?.status).toBe(status);
+        expect(result.value.prReadyArtifact).toBeUndefined();
       }
+      expect(setup.assemblePrReady).not.toHaveBeenCalled();
     },
   );
 
@@ -145,6 +162,31 @@ describe("CodingTask Cell Service", () => {
     }
     expect(setup.calls).toEqual(["create", "provision"]);
   });
+
+  it("PR-ready 装配失败保留错误并停在 PrReady 阶段", async () => {
+    const cause = new Error("artifact root cause");
+    const setup = createSetup({
+      prReadyFailure: new HarnessError(
+        HarnessErrorCode.OperationForbidden,
+        "授权 Artifact 不匹配。",
+        { artifactId: "plan-risk-1" },
+        cause,
+      ),
+    });
+
+    const result = await setup.service.execute(createManifest());
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.code).toBe(HarnessErrorCode.OperationForbidden);
+      expect(result.error.details).toEqual({
+        artifactId: "plan-risk-1",
+        stage: CodingTaskCellStage.PrReady,
+      });
+      expect(result.error.cause).toBe(cause);
+    }
+    expect(setup.calls.at(-1)).toBe("pr_ready");
+  });
 });
 
 /** Cell Service 假依赖的可选阶段结果。 */
@@ -152,6 +194,7 @@ interface SetupOptions {
   readonly provisionStatus?: CommandStatus;
   readonly provisionFailure?: HarnessError;
   readonly evidenceStatus?: VerificationStatus;
+  readonly prReadyFailure?: HarnessError;
 }
 
 function createSetup(options: SetupOptions = {}) {
@@ -183,8 +226,19 @@ function createSetup(options: SetupOptions = {}) {
     calls.push("evidence");
     return Promise.resolve(success(evidence(options.evidenceStatus ?? VerificationStatus.Passed)));
   });
+  const prReadyArtifact = createPrReadyArtifact();
+  const assemblePrReady = vi.fn(() => {
+    calls.push("pr_ready");
+    return Promise.resolve(
+      options.prReadyFailure === undefined
+        ? success(prReadyArtifact)
+        : failure(options.prReadyFailure),
+    );
+  });
   return {
     calls,
+    assemblePrReady,
+    prReadyArtifact,
     service: new CodingTaskCellService(
       { execute: executeCodingTask } as unknown as CodingTaskCommandService,
       { execute: executeProvision } as unknown as WorktreeProvisionCommandService,
@@ -192,6 +246,7 @@ function createSetup(options: SetupOptions = {}) {
       { execute: executeSubmission } as unknown as ImplementationSubmissionService,
       { execute: executeVerification } as unknown as VerificationCommandService,
       { load: loadEvidence } as unknown as EvidenceBundleStore,
+      { execute: assemblePrReady } as unknown as AssemblePrReadyArtifactUseCase,
     ),
   };
 }
@@ -211,6 +266,60 @@ function receipt(
 
 function evidence(status: VerificationStatus): EvidenceBundle {
   return { status } as EvidenceBundle;
+}
+
+function createPrReadyArtifact(): PrReadyArtifact {
+  const digest = unwrap(parseContentDigest(`sha256:${"c".repeat(64)}`));
+  return {
+    artifactId: "pr-ready:test",
+    artifactDigest: digest,
+    schemaVersion: PR_READY_ARTIFACT_SCHEMA_VERSION,
+    artifactType: RepositoryDeliveryArtifactType.PrReady,
+    workspaceId: unwrap(parseWorkspaceId("workspace-1")),
+    repositoryId: unwrap(parseRepositoryId("repository-1")),
+    codingTaskId: unwrap(parseCodingTaskId("coding-task-cell-1")),
+    sourceTaskId: unwrap(parseTaskId("01ARZ3NDEKTSV4RRFFQ69G5FB2")),
+    baseRevision: "base-revision-1",
+    headRevision: "target-revision-1",
+    worktreeId: "worktree-1",
+    branchName: "feature/cell",
+    writeSet: ["src/index.ts"],
+    changedPaths: ["src/index.ts"],
+    diffDigest: digest,
+    inputBindingSet: { bindings: [] },
+    verification: {
+      verificationRunId: "verification-run-1",
+      planId: "plan-1",
+      planDigest: digest,
+      evidenceBundleDigest: digest,
+      status: VerificationStatus.Passed,
+    },
+    authorization: {
+      planRisk: {
+        artifactId: unwrap(parseArtifactId("01ARZ3NDEKTSV4RRFFQ69G5FAV")),
+        artifactDigest: digest,
+        result: GateEvaluationResult.Allow,
+        requiredGates: [],
+        satisfiedApprovalIds: [],
+      },
+      historicalLogicChange: false,
+    },
+    remainingRisks: [],
+    riskOperations: [],
+    rollbackPlan: [],
+    dependencyAssessment: {
+      status: DependencyAssessmentStatus.NotAssessed,
+      changes: [],
+    },
+    assembledAt: "2026-07-14T00:00:00.000Z",
+  };
+}
+
+function unwrap<T>(result: { status: ResultStatus; value?: T; error?: Error }): T {
+  if (result.status !== ResultStatus.Success || result.value === undefined) {
+    throw new Error(result.error?.message ?? "测试值解析失败。");
+  }
+  return result.value;
 }
 
 function createManifest() {

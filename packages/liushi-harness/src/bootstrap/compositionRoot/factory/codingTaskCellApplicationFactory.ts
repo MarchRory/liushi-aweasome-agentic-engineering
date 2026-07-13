@@ -1,4 +1,5 @@
 import {
+  AssemblePrReadyArtifactUseCase,
   CodingTaskCellService,
   CodingTaskCommandService,
   ImplementationCommandService,
@@ -11,7 +12,13 @@ import {
   type VerificationCommandHandler,
   type WorktreeProvisionCommandService,
 } from "#application/index.js";
-import type { EvidenceBundleStore } from "#application/ports/index.js";
+import type {
+  CodingTaskExecutionAuthorizationResolver,
+  CodingTaskRepository,
+  ContentDigestPort,
+  EvidenceBundleStore,
+  TaskRepository,
+} from "#application/ports/index.js";
 
 /** CodingTask Cell 及其公开命令服务的装配输入。 */
 export interface CodingTaskCellApplicationFactoryInput {
@@ -29,6 +36,14 @@ export interface CodingTaskCellApplicationFactoryInput {
   readonly verificationCommandHandler: VerificationCommandHandler;
   /** 强一致 EvidenceBundle Store。 */
   readonly evidenceBundleStore: EvidenceBundleStore;
+  /** CodingTask Aggregate 的权威 Repository。 */
+  readonly codingTaskRepository: CodingTaskRepository;
+  /** 来源 Task 与 Human Gate Artifact 的权威 Repository。 */
+  readonly taskRepository: TaskRepository;
+  /** 从当前 Task Approval 与 Write Set 重算 CodingTask 授权。 */
+  readonly codingTaskAuthorizationResolver: CodingTaskExecutionAuthorizationResolver;
+  /** 所有交付摘要复用的规范 Content Digest Port。 */
+  readonly digest: ContentDigestPort;
 }
 
 /** Composition Root 对外暴露的 CodingTask Cell 命令入口。 */
@@ -43,6 +58,8 @@ export interface CodingTaskCellApplicationFactoryOutput {
   readonly verificationCommands: VerificationCommandService;
   /** 单一纵向 CodingTask Cell。 */
   readonly runCodingTaskCell: CodingTaskCellService;
+  /** 从权威 Store 组装 PR-ready Repository Delivery Artifact。 */
+  readonly assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase;
 }
 
 /** 在 Bootstrap 层复用同一组命令服务构造 CodingTask Cell。 */
@@ -65,11 +82,19 @@ export function createCodingTaskCellApplication(
     input.applicationCommandGateway,
     input.verificationCommandHandler,
   );
+  const assemblePrReadyArtifact = new AssemblePrReadyArtifactUseCase(
+    input.codingTaskRepository,
+    input.taskRepository,
+    input.codingTaskAuthorizationResolver,
+    input.evidenceBundleStore,
+    input.digest,
+  );
   return {
     codingTaskCommands,
     implementationCommands,
     implementationSubmissions,
     verificationCommands,
+    assemblePrReadyArtifact,
     runCodingTaskCell: new CodingTaskCellService(
       codingTaskCommands,
       input.worktreeProvisionCommands,
@@ -77,6 +102,7 @@ export function createCodingTaskCellApplication(
       implementationSubmissions,
       verificationCommands,
       input.evidenceBundleStore,
+      assemblePrReadyArtifact,
     ),
   };
 }

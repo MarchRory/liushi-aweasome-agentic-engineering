@@ -227,6 +227,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     implementationSubmissionHandler,
     verificationCommandHandler,
     evidenceBundleStore,
+    codingTaskRepository,
+    taskRepository,
+    codingTaskAuthorizationResolver,
+    digest,
   });
   return {
     applicationCommandGateway,

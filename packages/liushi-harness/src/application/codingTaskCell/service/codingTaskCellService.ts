@@ -7,6 +7,7 @@ import {
 import type { ImplementationCommandService } from "#application/implementationCommand/index.js";
 import type { ImplementationSubmissionService } from "#application/implementationSubmission/index.js";
 import type { EvidenceBundleStore } from "#application/ports/index.js";
+import type { AssemblePrReadyArtifactUseCase } from "#application/useCases/assemblePrReadyArtifact/index.js";
 import {
   parseRunVerificationPayload,
   type VerificationCommandService,
@@ -14,6 +15,7 @@ import {
 import type { WorktreeProvisionCommandService } from "#application/worktreeProvisioning/index.js";
 import { HarnessError, ResultStatus, failure, success, type Result } from "#common/index.js";
 import { parseCodingTaskId } from "#domain/codingTask/index.js";
+import type { PrReadyArtifact } from "#domain/repositoryDelivery/index.js";
 import { VerificationStatus, type EvidenceBundle } from "#domain/verification/index.js";
 
 import {
@@ -33,6 +35,7 @@ export class CodingTaskCellService {
     private readonly implementationSubmissions: ImplementationSubmissionService,
     private readonly verificationCommands: VerificationCommandService,
     private readonly evidenceBundleStore: EvidenceBundleStore,
+    private readonly assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase,
   ) {}
 
   /** 按冻结顺序执行 Cell；任何非确定完成状态都会立即停止。 */
@@ -96,7 +99,14 @@ export class CodingTaskCellService {
     if (evidence.status === ResultStatus.Failure) {
       return failure(withStage(evidence.error, CodingTaskCellStage.Evidence));
     }
-    return success(createEvidenceReport(receipts, evidence.value));
+    if (evidence.value.status !== VerificationStatus.Passed) {
+      return success(createBlockedEvidenceReport(receipts, evidence.value));
+    }
+    const prReadyArtifact = await this.assemblePrReadyArtifact.execute(locator.value);
+    if (prReadyArtifact.status === ResultStatus.Failure) {
+      return failure(withStage(prReadyArtifact.error, CodingTaskCellStage.PrReady));
+    }
+    return success(createReviewReadyReport(receipts, evidence.value, prReadyArtifact.value));
   }
 }
 
@@ -137,24 +147,31 @@ function createEvidenceLocator(command: CommandEnvelope) {
   });
 }
 
-function createEvidenceReport(
+function createBlockedEvidenceReport(
   receipts: readonly CodingTaskCellStageReceipt[],
   evidenceBundle: EvidenceBundle,
 ): CodingTaskCellReport {
-  return evidenceBundle.status === VerificationStatus.Passed
-    ? {
-        schemaVersion: CODING_TASK_CELL_REPORT_SCHEMA_VERSION,
-        status: CodingTaskCellStatus.ReviewReady,
-        receipts,
-        evidenceBundle,
-      }
-    : {
-        schemaVersion: CODING_TASK_CELL_REPORT_SCHEMA_VERSION,
-        status: CodingTaskCellStatus.Blocked,
-        stoppedStage: CodingTaskCellStage.Evidence,
-        receipts,
-        evidenceBundle,
-      };
+  return {
+    schemaVersion: CODING_TASK_CELL_REPORT_SCHEMA_VERSION,
+    status: CodingTaskCellStatus.Blocked,
+    stoppedStage: CodingTaskCellStage.Evidence,
+    receipts,
+    evidenceBundle,
+  };
+}
+
+function createReviewReadyReport(
+  receipts: readonly CodingTaskCellStageReceipt[],
+  evidenceBundle: EvidenceBundle,
+  prReadyArtifact: PrReadyArtifact,
+): CodingTaskCellReport {
+  return {
+    schemaVersion: CODING_TASK_CELL_REPORT_SCHEMA_VERSION,
+    status: CodingTaskCellStatus.ReviewReady,
+    receipts,
+    evidenceBundle,
+    prReadyArtifact,
+  };
 }
 
 function createStoppedReport(

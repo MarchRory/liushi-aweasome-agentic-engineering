@@ -25,6 +25,13 @@ describe("CodingTask Cell Manifest 校验", () => {
     ["版本错误", (manifest: Record<string, unknown>) => ({ ...manifest, schemaVersion: "v2" })],
     ["顶层多余字段", (manifest: Record<string, unknown>) => ({ ...manifest, extra: true })],
     [
+      "调用方注入 EvidenceBundle",
+      (manifest: Record<string, unknown>) => ({
+        ...manifest,
+        evidenceBundle: { status: "passed" },
+      }),
+    ],
+    [
       "nested step 多余字段",
       (manifest: Record<string, unknown>) => ({
         ...manifest,
