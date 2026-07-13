@@ -22,3 +22,4 @@ export * from "./evidenceBundleStore/index.js";
 export * from "./fileMutation/index.js";
 export type * from "./gitCheckpoint/index.js";
 export * from "./repositoryRootResolver/index.js";
+export * from "./worktreeProvisionRecoveryInspector/index.js";

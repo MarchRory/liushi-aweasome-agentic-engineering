@@ -30,8 +30,6 @@ import {
   SelectVerificationPlanUseCase,
   ScanProjectUseCase,
   RequirementWorkflowCommandHandler,
-  WorktreeProvisionCommandHandler,
-  WorktreeProvisionCommandService,
   VerificationActionExecutor,
   VerificationCommandHandler,
   VerificationCommandService,
@@ -59,7 +57,6 @@ import {
   FileCodingTaskRepository,
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
-  NodeWorktreeProvisionerAdapter,
   MockVerificationExecutorAdapter,
   NodeVerificationExecutorAdapter,
   NodeFileMutationExecutorAdapter,
@@ -77,6 +74,7 @@ import {
 
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
 import { VerificationExecutionMode } from "./enums/index.js";
+import { createWorktreeApplication } from "./factory/index.js";
 
 /** 唯一 Composition Root，负责构造具体 Adapter 和 Use Case。 */
 export function createHarnessApplication(options: HarnessApplicationOptions): HarnessApplication {
@@ -155,16 +153,26 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     clock,
     repositoryLockIdGenerator,
   );
+  const actionExecutionLock = new FileActionExecutionLockAdapter(options.storeRoot, lockManager);
   const journaledActionRunner = new JournaledActionRunner(
     actionJournalRepository,
     clock,
-    new FileActionExecutionLockAdapter(options.storeRoot, lockManager),
+    actionExecutionLock,
   );
-  const worktreeProvisioner = new NodeWorktreeProvisionerAdapter(
+  const worktreeApplication = createWorktreeApplication({
+    applicationCommandGateway,
+    codingTaskRepository,
+    codingTaskAuthorizationResolver,
+    actionJournalRepository,
+    repositoryRootResolver,
+    repositoryLock,
+    actionExecutionLock,
+    journaledActionRunner,
     commandRunner,
     worktreeInspector,
     digest,
-  );
+    clock,
+  });
   const verificationExecutor =
     options.verificationExecutor ??
     (options.verificationExecutionMode === VerificationExecutionMode.LocalCommand
@@ -281,16 +289,6 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     ),
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
     journaledActionRunner,
-    worktreeProvisionCommands: new WorktreeProvisionCommandService(
-      applicationCommandGateway,
-      new WorktreeProvisionCommandHandler(
-        codingTaskRepository,
-        codingTaskAuthorizationResolver,
-        repositoryLock,
-        journaledActionRunner,
-        worktreeProvisioner,
-        digest,
-      ),
-    ),
+    ...worktreeApplication,
   };
 }

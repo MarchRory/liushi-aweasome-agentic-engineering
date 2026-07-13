@@ -58,6 +58,7 @@ describe("composition root", () => {
       "NodeRepositoryLockAdapter",
       "NodeVerificationExecutorAdapter",
       "NodeWorktreeInspectorAdapter",
+      "NodeWorktreeProvisionRecoveryInspectorAdapter",
       "NodeWorktreeProvisionerAdapter",
       "Rfc8785Sha256DigestAdapter",
       "StaticRepositoryRootResolverAdapter",

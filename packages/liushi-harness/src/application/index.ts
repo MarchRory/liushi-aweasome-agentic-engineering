@@ -12,5 +12,6 @@ export * from "./workflow/index.js";
 export * from "./codingTask/index.js";
 export * from "./actionExecution/index.js";
 export * from "./worktreeProvisioning/index.js";
+export * from "./worktreeProvisionRecovery/index.js";
 export * from "./verificationExecution/index.js";
 export * from "./verificationCommand/index.js";

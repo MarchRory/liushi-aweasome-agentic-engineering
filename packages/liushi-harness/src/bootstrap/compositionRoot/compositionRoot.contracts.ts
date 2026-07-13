@@ -32,6 +32,8 @@ import type {
   ScanProjectUseCase,
   WorkflowCommandService,
   WorktreeProvisionCommandService,
+  AssessWorktreeProvisionRecoveryUseCase,
+  WorktreeProvisionRecoveryCommandService,
 } from "#application/index.js";
 import type {
   CodingTaskExecutionAuthorizationResolver,
@@ -115,6 +117,10 @@ export interface HarnessApplication {
   journaledActionRunner: JournaledActionRunner;
   /** 创建并验证 Managed Worktree 的版本化命令入口。 */
   worktreeProvisionCommands: WorktreeProvisionCommandService;
+  /** 只读评估未知 Worktree Provision Action 的真实现场。 */
+  assessWorktreeProvisionRecovery: AssessWorktreeProvisionRecoveryUseCase;
+  /** 由 Human 绑定评估摘要后闭合未知 Worktree Provision Action。 */
+  worktreeProvisionRecoveryCommands: WorktreeProvisionRecoveryCommandService;
 }
 
 /** 创建 Harness Application 的可注入依赖。 */

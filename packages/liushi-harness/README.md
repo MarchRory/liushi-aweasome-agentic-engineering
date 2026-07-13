@@ -47,12 +47,13 @@
 - `implementationCommands` 已在权威授权、Write Set、Repository Lock 与 Action Journal 边界内提供受控文件变更；`implementationSubmissions` 使用可信 Repository Root 和原生 Git 创建单一 Checkpoint，以 `ImplementationSubmitted` 收口 Attempt，并对 Git/Event 非 ACID 中间态提供 Human 恢复入口。
 - `verificationCommands` 已提供版本化 Verification 执行与 EvidenceBundle 接纳；VerificationPlan、显式 Local Command Runner 和强一致 EvidenceBundle Store 已落地，默认执行模式仍为 fail-closed Mock。
 - `selectVerificationPlan` 已从 G8 Profile Check、CodingTask 最新实现 Revision/Changed Paths 和 Ready ApplicableRuleBundle 生成单仓确定性 Plan；调用方不能自报第二份 Revision、Path 或 Target ID。
+- `assessWorktreeProvisionRecovery` 与 `worktreeProvisionRecoveryCommands` 已提供未知 Managed Worktree Provision 的只读现场评估和 Human 摘要确认；只在路径、Registry、分支与 Worktree 后置条件可证明时闭合为 `recovered` 或 `retry_permitted`，不执行清理、重建或自动重试。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Cell Runtime、未闭合 Worktree Journal 的全局下游写阻断、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
-本轮仍未提供 Worktree 清理/重建、跨仓 Saga、Import Graph、多仓 Verification 影响传播、重试/Flaky、Waiver、完整 Workflow Runtime、Skills/Memory/Connectors 或 Studio；现有实现不会自主生成代码、创建 PR、推送、合并、发布或部署；Local Command Runner 必须显式启用，默认 Mock 未配置 Check 固定返回 `Blocked`。
+本轮仍未提供未闭合 Worktree Journal 的全局下游写阻断、Worktree 清理/重建、跨仓 Saga、Import Graph、多仓 Verification 影响传播、重试/Flaky、Waiver、完整 Workflow Runtime、Skills/Memory/Connectors 或 Studio；现有实现不会自主生成代码、创建 PR、推送、合并、发布或部署；Local Command Runner 必须显式启用，默认 Mock 未配置 Check 固定返回 `Blocked`。
 
 ## Documents
 
@@ -80,6 +81,7 @@
 - [20 文档与实现状态矩阵](./docs/20-implementation-status-matrix.md)
 - [21 需求生命周期 Workflow 产品与技术方案](./docs/21-requirement-workflow-runtime.md)
 - [22 Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)
+- [Worktree Provision 未知状态恢复](./docs/engineering/worktreeProvisionRecovery.md)
 
 ## CLI
 
