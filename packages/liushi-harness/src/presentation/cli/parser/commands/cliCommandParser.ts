@@ -171,6 +171,18 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
       reportFilePath: requireValue(collected, CliOptionName.Report),
     };
   }
+  if (isExactCommand(collected.positionals, ["cell", "run"])) {
+    validateAllowedOptions(
+      collected,
+      new Set([CliOptionName.Json, CliOptionName.Store, CliOptionName.File]),
+    );
+    return {
+      command: CliCommand.CellRun,
+      outputFormat,
+      ...(storeRoot === undefined ? {} : { storeRoot }),
+      filePath: requireValue(collected, CliOptionName.File),
+    };
+  }
   if (isExactCommand(collected.positionals, ["hook", "bind"])) {
     validateAllowedOptions(
       collected,

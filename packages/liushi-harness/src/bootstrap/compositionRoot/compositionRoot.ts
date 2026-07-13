@@ -1,7 +1,6 @@
 import {
   ApplicationCommandGateway,
   CodingTaskCommandHandler,
-  CodingTaskCommandService,
   TaskBackedCodingTaskAuthorizationPolicy,
   ActionHookAuthorizationPolicy,
   BindHookWorkspaceUseCase,
@@ -32,11 +31,8 @@ import {
   RequirementWorkflowCommandHandler,
   VerificationActionExecutor,
   VerificationCommandHandler,
-  VerificationCommandService,
   ImplementationCommandHandler,
-  ImplementationCommandService,
   ImplementationSubmissionHandler,
-  ImplementationSubmissionService,
   UnresolvedWorktreeProvisionGuard,
   WorkflowCommandService,
 } from "#application/index.js";
@@ -74,7 +70,7 @@ import {
 } from "#infrastructure/index.js";
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
 import { VerificationExecutionMode } from "./enums/index.js";
-import { createWorktreeApplication } from "./factory/index.js";
+import { createCodingTaskCellApplication, createWorktreeApplication } from "./factory/index.js";
 /** 唯一 Composition Root，负责构造具体 Adapter 和 Use Case。 */
 export function createHarnessApplication(options: HarnessApplicationOptions): HarnessApplication {
   if (options.storeRoot.trim().length === 0) {
@@ -223,6 +219,15 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     digest,
     unresolvedProvisionGuard,
   );
+  const codingTaskCellApplication = createCodingTaskCellApplication({
+    applicationCommandGateway,
+    codingTaskCommandHandler,
+    worktreeProvisionCommands: worktreeApplication.worktreeProvisionCommands,
+    implementationCommandHandler,
+    implementationSubmissionHandler,
+    verificationCommandHandler,
+    evidenceBundleStore,
+  });
   return {
     applicationCommandGateway,
     evidenceBundleStore,
@@ -273,27 +278,12 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       applicationCommandGateway,
       new RequirementWorkflowCommandHandler(workflowRepository, clock, eventIdGenerator),
     ),
-    codingTaskCommands: new CodingTaskCommandService(
-      applicationCommandGateway,
-      codingTaskCommandHandler,
-    ),
     inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
     runVerification: verificationRunner,
     runAndPersistVerification,
-    verificationCommands: new VerificationCommandService(
-      applicationCommandGateway,
-      verificationCommandHandler,
-    ),
-    implementationCommands: new ImplementationCommandService(
-      applicationCommandGateway,
-      implementationCommandHandler,
-    ),
-    implementationSubmissions: new ImplementationSubmissionService(
-      applicationCommandGateway,
-      implementationSubmissionHandler,
-    ),
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
     journaledActionRunner,
+    ...codingTaskCellApplication,
     ...worktreeApplication,
   };
 }

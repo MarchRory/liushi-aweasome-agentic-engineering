@@ -1,5 +1,6 @@
 import type {
   ApplicationCommandGateway,
+  CodingTaskCellService,
   CodingTaskCommandService,
   BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
@@ -99,6 +100,8 @@ export interface HarnessApplication {
   workflowCommands: WorkflowCommandService;
   /** CodingTask 的版本化写入入口。 */
   codingTaskCommands: CodingTaskCommandService;
+  /** 串行执行编码阶段的单一 CodingTask Cell。 */
+  runCodingTaskCell: CodingTaskCellService;
   /** 只读检查 CodingTask 工作树、基线和 Write Set。 */
   inspectWorktree: InspectWorktreeUseCase;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */

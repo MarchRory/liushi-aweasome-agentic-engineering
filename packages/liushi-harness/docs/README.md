@@ -61,3 +61,4 @@ Status: Implementation-aware Architecture Baseline
 - [Commit、版本与 Changelog](./engineering/commit-and-release.md)
 - [Verification 影响面选择](./engineering/verificationImpactSelection.md)
 - [Worktree Provision 未知状态恢复](./engineering/worktreeProvisionRecovery.md)
+- [CodingTask 纵向 Cell](./engineering/codingTaskCell.md)

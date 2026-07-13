@@ -98,6 +98,10 @@ export function writeSuccess<T>(
       writeProjectProfileBundleSummary(dependencies, data);
       return;
     }
+    if (command === CliCommand.CellRun) {
+      writeCodingTaskCellSummary(dependencies, data);
+      return;
+    }
     const taskId = String(data["taskId"]);
     const workspaceId = String(data["workspaceId"]);
     if (command === CliCommand.TaskCreate) {
@@ -134,6 +138,10 @@ export function writeBlocked<T>(
   }
   if (command === CliCommand.ProjectScan) {
     writeProjectDiscoverySummary(dependencies, data);
+    return;
+  }
+  if (command === CliCommand.CellRun) {
+    writeCodingTaskCellSummary(dependencies, data);
   }
 }
 
@@ -240,6 +248,14 @@ function writeProjectProfileBundleSummary(dependencies: RunCliDependencies, data
   const ruleCatalog = data["ruleCatalog"];
   dependencies.writer.stdout(
     `Project profile bundle ${String(data["digest"])}: workspace=${String(data["workspaceId"])} graphRevision=${String(data["workspaceGraphRevision"])} revision=${String(data["revision"])} profiles=${countEntries(data["profiles"])} rules=${isRecord(ruleCatalog) ? countEntries(ruleCatalog["rules"]) : 0}.\n`,
+  );
+}
+
+function writeCodingTaskCellSummary(dependencies: RunCliDependencies, data: unknown): void {
+  if (!isRecord(data)) return;
+  const stoppedStage = data["stoppedStage"];
+  dependencies.writer.stdout(
+    `CodingTask cell: status=${scalarString(data["status"])} stoppedStage=${stoppedStage === undefined ? "none" : scalarString(stoppedStage)} receipts=${countEntries(data["receipts"])}.\n`,
   );
 }
 

@@ -23,6 +23,8 @@ export enum CliCommand {
   ProjectScan = "project.scan",
   /** 将已批准的 ProjectProfileProposal 编译为完整 Bundle。 */
   ProfileCompile = "profile.compile",
+  /** 串行执行已获 Human Gate 授权的 CodingTask 编码 Cell。 */
+  CellRun = "cell.run",
   /** 将人工确认的 Task/PlanRisk 绑定到执行器工作区。 */
   HookBind = "hook.bind",
   /** 处理执行器通过 Stdin 传入的一次 Hook。 */
@@ -168,6 +170,14 @@ export interface ProfileCompileCliCommand extends BaseCliCommand {
   reportFilePath: string;
 }
 
+/** CodingTask Cell Run 命令。 */
+export interface CellRunCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  command: CliCommand.CellRun;
+  /** CodingTask Cell Manifest JSON 文件路径。 */
+  filePath: string;
+}
+
 /** Hook Workspace Binding 命令。 */
 export interface HookBindCliCommand extends BaseCliCommand {
   /** 规范命令标识。 */
@@ -221,6 +231,7 @@ export type ParsedCliCommand =
   | RulesResolveCliCommand
   | ProjectScanCliCommand
   | ProfileCompileCliCommand
+  | CellRunCliCommand
   | HookBindCliCommand
   | HookHandleCliCommand
   | HookConfigCliCommand

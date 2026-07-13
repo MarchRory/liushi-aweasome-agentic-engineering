@@ -1,5 +1,6 @@
 import type {
   BindHookWorkspaceUseCase,
+  CodingTaskCellService,
   CheckRuntimeHealthUseCase,
   CodexHookHandler,
   CompileProjectProfileUseCase,
@@ -22,6 +23,8 @@ export interface HookConfigProjector {
 
 /** CLI 可调用的 Application Use Cases。 */
 export interface CliApplication {
+  /** 串行 CodingTask Cell。 */
+  runCodingTaskCell: CodingTaskCellService;
   /** Runtime 健康检查 Use Case。 */
   checkRuntimeHealth: CheckRuntimeHealthUseCase;
   /** Project Profile 编译 Use Case。 */

@@ -49,8 +49,9 @@
 - `selectVerificationPlan` 已从 G8 Profile Check、CodingTask 最新实现 Revision/Changed Paths 和 Ready ApplicableRuleBundle 生成单仓确定性 Plan；调用方不能自报第二份 Revision、Path 或 Target ID。
 - `assessWorktreeProvisionRecovery` 与 `worktreeProvisionRecoveryCommands` 已提供未知 Managed Worktree Provision 的只读现场评估和 Human 摘要确认；只在路径、Registry、分支与 Worktree 后置条件可证明时闭合为 `recovered` 或 `retry_permitted`，不执行清理、重建或自动重试。
 - 未闭合 Worktree Provision Guard 已在同一 Repository Lock 内覆盖 Provision、受控文件变更、Implementation Submission 和 Verification；未知或等待 Human 的 Provision 会在新 Intent 与任何执行副作用前 fail closed，只有同一 `retry_permitted` Action 可以重试 Provision。
+- `cell run --file <manifest>` 已将 CodingTask 创建、Worktree Provision、Attempt、一个或多个受控文件变更、Checkpoint Submission 与 Verification 串成可跨进程恢复的单一编码 Cell；只有 `passed` Evidence 返回 `review_ready`，非成功 Receipt 会停止且不调用后续阶段。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
