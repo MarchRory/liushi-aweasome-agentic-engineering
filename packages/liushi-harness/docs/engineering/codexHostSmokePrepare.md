@@ -29,6 +29,16 @@ corepack pnpm@10.23.0 smoke:codex-host:prepare -- `
 
 `--model` 必须由 Human 显式选择并进入 Activation Digest。上例使用当前旗舰 `gpt-5.6-sol`；Host Smoke 的任务很窄，Activation Plan 固定使用 `low` reasoning effort 控制成本。[OpenAI Model guidance](https://developers.openai.com/api/docs/guides/latest-model)
 
+Human 批准前必须使用 Manifest 中的精确 Digest 执行只读复核：
+
+```powershell
+corepack pnpm@10.23.0 smoke:codex-host:verify -- `
+  --manifest C:\path\to\control\prepareManifest.json `
+  --activation-digest sha256:<digest>
+```
+
+`verify` 不写文件、不执行模型；它会关闭式校验 Manifest、Activation Plan、候选 Hook 配置、Codex 版本、Worktree 状态，以及 Hook 配置、Binding 和 Host 证据仍未出现。
+
 ## 准备链路
 
 1. 固定 Clone `unjs/defu` 并运行 Frozen Install 与完整 Baseline Test。

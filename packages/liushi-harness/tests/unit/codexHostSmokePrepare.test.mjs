@@ -16,6 +16,7 @@ import {
   runCodexHostSmokeCommand,
 } from "../../scripts/codexHostSmoke/policy/index.mjs";
 import { prepareCodexHostSmoke } from "../../scripts/codexHostSmoke/service/index.mjs";
+import { verifyCodexHostSmoke } from "../../scripts/codexHostSmoke/verification/index.mjs";
 
 const temporaryRoots = [];
 
@@ -64,6 +65,41 @@ describe("Codex Host Smoke Prepare", () => {
       ["prepare", ...options.slice(0, 1), "relative", ...options.slice(2)],
       ["prepare", ...options.slice(0, 7), "unsafe model", ...options.slice(8)],
       ["prepare", ...options.slice(0, 9), "actor\0", ...options.slice(10)],
+    ]) {
+      expect(() => parseCodexHostSmokeArguments(args)).toThrow();
+    }
+  });
+
+  it("严格解析 Verify Manifest 和 Activation Digest", () => {
+    const manifestPath = resolve("prepareManifest.json");
+    const activationDigest = `sha256:${"a".repeat(64)}`;
+    const expected = { command: "verify", manifestPath, activationDigest };
+
+    expect(
+      parseCodexHostSmokeArguments([
+        "verify",
+        "--manifest",
+        manifestPath,
+        "--activation-digest",
+        activationDigest,
+      ]),
+    ).toEqual(expected);
+    expect(
+      parseCodexHostSmokeArguments([
+        "verify",
+        "--",
+        "--manifest",
+        manifestPath,
+        "--activation-digest",
+        activationDigest,
+      ]),
+    ).toEqual(expected);
+
+    for (const args of [
+      ["verify", "--manifest", "relative", "--activation-digest", activationDigest],
+      ["verify", "--manifest", manifestPath],
+      ["verify", "--manifest", manifestPath, "--activation-digest", "sha256:ABC"],
+      ["verify", "--manifest", manifestPath, "--manifest", manifestPath],
     ]) {
       expect(() => parseCodexHostSmokeArguments(args)).toThrow();
     }
@@ -193,6 +229,47 @@ describe("Codex Host Smoke Prepare", () => {
     await expect(prepareCodexHostSmoke(fixture.input, fixture.dependencies)).rejects.toThrow();
 
     expect(await readFile(marker, "utf8")).toBe("keep");
+  });
+
+  it("只读 Verify 接受未漂移 Packet，并拒绝候选 Hook 漂移", async () => {
+    const fixture = await createServiceFixture();
+    const prepared = await prepareCodexHostSmoke(fixture.input, fixture.dependencies);
+    const manifest = JSON.parse(await readFile(prepared.manifestPath, "utf8"));
+    const verificationDependencies = {
+      inspectWorktree: (root) => ({
+        root,
+        headRevision: manifest.worktree.headRevision,
+        clean: true,
+        detached: true,
+      }),
+      inspectCodexVersion: () => `codex-cli ${manifest.codexProbe.version}`,
+    };
+
+    const verified = await verifyCodexHostSmoke(
+      {
+        manifestPath: prepared.manifestPath,
+        activationDigest: prepared.activationDigest,
+      },
+      verificationDependencies,
+    );
+    expect(verified).toMatchObject({
+      schemaVersion: "liushi.codex-host-smoke.verification.v1",
+      status: "verified",
+      activationDigest: prepared.activationDigest,
+    });
+
+    const candidate = JSON.parse(await readFile(manifest.candidateHookConfig.path, "utf8"));
+    candidate.drift = true;
+    await writeFile(manifest.candidateHookConfig.path, JSON.stringify(candidate), "utf8");
+    await expect(
+      verifyCodexHostSmoke(
+        {
+          manifestPath: prepared.manifestPath,
+          activationDigest: prepared.activationDigest,
+        },
+        verificationDependencies,
+      ),
+    ).rejects.toThrow("Candidate Hook Config");
   });
 
   it("Codex executable 不存在时不创建 root", async () => {

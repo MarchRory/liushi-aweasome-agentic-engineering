@@ -1,19 +1,22 @@
 import { isAbsolute, resolve } from "node:path";
 
 const PREPARE_COMMAND = "prepare";
+const VERIFY_COMMAND = "verify";
 const ROOT_OPTION = "--root";
 const CODEX_OPTION = "--codex";
 const CODEX_HOME_OPTION = "--codex-home";
 const MODEL_OPTION = "--model";
 const ACTOR_ID_OPTION = "--actor-id";
+const MANIFEST_OPTION = "--manifest";
+const ACTIVATION_DIGEST_OPTION = "--activation-digest";
 const PATH_OPTIONS = new Set([ROOT_OPTION, CODEX_OPTION, CODEX_HOME_OPTION]);
 const TEXT_OPTIONS = new Set([MODEL_OPTION, ACTOR_ID_OPTION]);
 const ALLOWED_OPTIONS = new Set([...PATH_OPTIONS, ...TEXT_OPTIONS]);
 
 export function parseCodexHostSmokeArguments(args) {
-  if (args[0] !== PREPARE_COMMAND) {
-    throw new Error("Codex Host Smoke 仅支持 prepare 命令。");
-  }
+  if (args[0] === VERIFY_COMMAND) return parseVerifyArguments(args);
+  if (args[0] !== PREPARE_COMMAND)
+    throw new Error("Codex Host Smoke 仅支持 prepare 或 verify 命令。");
   const optionStartIndex = args[1] === "--" ? 2 : 1;
   const values = new Map();
   for (let index = optionStartIndex; index < args.length; index += 2) {
@@ -50,6 +53,46 @@ export function parseCodexHostSmokeArguments(args) {
     throw new Error("prepare 必须同时提供 --root、--codex、--codex-home、--model 和 --actor-id。");
   }
   return { command: PREPARE_COMMAND, root, codexExecutable, codexHome, model, actorId };
+}
+
+function parseVerifyArguments(args) {
+  const optionStartIndex = args[1] === "--" ? 2 : 1;
+  const values = collectOptions(
+    args,
+    optionStartIndex,
+    new Set([MANIFEST_OPTION, ACTIVATION_DIGEST_OPTION]),
+  );
+  const manifestPath = values.get(MANIFEST_OPTION);
+  const activationDigest = values.get(ACTIVATION_DIGEST_OPTION);
+  if (manifestPath === undefined || activationDigest === undefined) {
+    throw new Error("verify 必须同时提供 --manifest 和 --activation-digest。");
+  }
+  const normalizedDigest = activationDigest.trim();
+  if (!/^sha256:[a-f0-9]{64}$/u.test(normalizedDigest)) {
+    throw new Error("--activation-digest 必须是小写 SHA-256 Digest。");
+  }
+  return {
+    command: VERIFY_COMMAND,
+    manifestPath: normalizeAbsolutePath(manifestPath, MANIFEST_OPTION),
+    activationDigest: normalizedDigest,
+  };
+}
+
+function collectOptions(args, optionStartIndex, allowedOptions) {
+  const values = new Map();
+  for (let index = optionStartIndex; index < args.length; index += 2) {
+    const option = args[index];
+    const value = args[index + 1];
+    if (!allowedOptions.has(option)) {
+      throw new Error(`未知 Codex Host Smoke 选项：${String(option)}。`);
+    }
+    if (values.has(option)) throw new Error(`Codex Host Smoke 选项不能重复：${option}。`);
+    if (value === undefined || value.startsWith("--")) {
+      throw new Error(`Codex Host Smoke 选项缺少值：${option}。`);
+    }
+    values.set(option, value);
+  }
+  return values;
 }
 
 function normalizeAbsolutePath(value, option) {
