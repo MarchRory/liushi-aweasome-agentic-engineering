@@ -119,6 +119,27 @@ const finishAttemptSchema = z
     failureTaxonomy: z.enum(FailureTaxonomy).optional(),
   })
   .strict();
+const changedPath = nonBlank.refine((value) => {
+  if (
+    value.startsWith("/") ||
+    /^[A-Za-z]:/.test(value) ||
+    value.includes("\\") ||
+    /[<>:"|?*\u0000]/.test(value)
+  ) {
+    return false;
+  }
+  return value
+    .split("/")
+    .every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
+}, "必须是规范的相对 POSIX 路径。");
+const submitImplementationSchema = z
+  .object({
+    workspaceId,
+    attemptNumber: positiveInteger,
+    targetRevision: nonBlank,
+    changedPaths: z.array(changedPath).min(1),
+  })
+  .strict();
 const requestVerificationSchema = z
   .object({ workspaceId, attemptNumber: positiveInteger })
   .strict();
@@ -181,6 +202,8 @@ function schemaForCommand(type: CodingTaskCommandType) {
       return startSchema;
     case CodingTaskCommandType.FinishAttempt:
       return finishAttemptSchema;
+    case CodingTaskCommandType.SubmitImplementation:
+      return submitImplementationSchema;
     case CodingTaskCommandType.RequestVerification:
       return requestVerificationSchema;
     case CodingTaskCommandType.FinishVerification:

@@ -6,6 +6,8 @@ export enum CodingTaskEventType {
   AttemptStarted = "attempt_started",
   /** 完成一次实现尝试。 */
   AttemptFinished = "attempt_finished",
+  /** 原子提交实现结果并进入验证阶段。 */
+  ImplementationSubmitted = "implementation_submitted",
   /** 请求进入验证阶段。 */
   VerificationRequested = "verification_requested",
   /** 接纳一次 Verification 结果。 */

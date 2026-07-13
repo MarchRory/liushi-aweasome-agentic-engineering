@@ -20,6 +20,7 @@ import {
   applyVerificationFinished,
   applyVerificationRequested,
 } from "./codingTaskAttemptReducer.js";
+import { applyImplementationSubmitted } from "./codingTaskImplementationReducer.js";
 import { applyHumanControl, applyHumanResolution } from "./codingTaskHumanReducer.js";
 import { corrupt } from "./codingTaskReducerErrors.js";
 
@@ -72,6 +73,8 @@ export function applyCodingTaskEvent(
       return applyAttemptStarted(aggregate, event);
     case CodingTaskEventType.AttemptFinished:
       return applyAttemptFinished(aggregate, event);
+    case CodingTaskEventType.ImplementationSubmitted:
+      return applyImplementationSubmitted(aggregate, event);
     case CodingTaskEventType.VerificationRequested:
       return applyVerificationRequested(aggregate, event);
     case CodingTaskEventType.VerificationFinished:

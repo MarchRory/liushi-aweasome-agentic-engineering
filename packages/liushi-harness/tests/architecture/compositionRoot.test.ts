@@ -1,4 +1,10 @@
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
+
+import type { RepositoryRootResolverPort } from "../../src/application/ports/index.js";
+import { createHarnessApplication } from "../../src/bootstrap/index.js";
+import { HarnessErrorCode, ResultStatus, success } from "../../src/common/index.js";
 
 import {
   ArchitectureLayer,
@@ -45,6 +51,7 @@ describe("composition root", () => {
       "MockVerificationExecutorAdapter",
       "NodeCommandRunnerAdapter",
       "NodeFileMutationExecutorAdapter",
+      "NodeGitCheckpointAdapter",
       "NodeHookInputReaderAdapter",
       "NodeJsonDocumentReaderAdapter",
       "NodeProjectFileSystemAdapter",
@@ -53,6 +60,7 @@ describe("composition root", () => {
       "NodeWorktreeInspectorAdapter",
       "NodeWorktreeProvisionerAdapter",
       "Rfc8785Sha256DigestAdapter",
+      "StaticRepositoryRootResolverAdapter",
       "StructuredProjectConfigParserAdapter",
       "SystemClock",
       "SystemDelayAdapter",
@@ -70,5 +78,32 @@ describe("composition root", () => {
     );
 
     expect(owners).toEqual(["src/bootstrap/compositionRoot/compositionRoot.ts"]);
+  });
+
+  it("默认装配无绑定的 fail-closed Repository Root Resolver", async () => {
+    const application = createHarnessApplication({ storeRoot: resolve(".tmp", "store") });
+
+    const result = await application.repositoryRootResolver.resolve({
+      workspaceId: "workspace-a",
+      repositoryId: "repository-a",
+    });
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.code).toBe(HarnessErrorCode.OperationForbidden);
+    }
+  });
+
+  it("保留调用方注入的 Repository Root Resolver", () => {
+    const repositoryRootResolver: RepositoryRootResolverPort = {
+      resolve: () => Promise.resolve(success({ repositoryRoot: resolve("repository") })),
+    };
+
+    const application = createHarnessApplication({
+      storeRoot: resolve(".tmp", "store"),
+      repositoryRootResolver,
+    });
+
+    expect(application.repositoryRootResolver).toBe(repositoryRootResolver);
   });
 });

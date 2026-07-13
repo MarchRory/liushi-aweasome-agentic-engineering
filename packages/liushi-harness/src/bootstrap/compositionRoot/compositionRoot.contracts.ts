@@ -15,6 +15,7 @@ import type {
   RunAndPersistVerificationUseCase,
   VerificationCommandService,
   ImplementationCommandService,
+  ImplementationSubmissionService,
   AcquireRepositoryLockUseCase,
   JournaledActionRunner,
   ListRecoverableActionsUseCase,
@@ -34,6 +35,7 @@ import type {
 import type {
   CodingTaskExecutionAuthorizationResolver,
   EvidenceBundleStore,
+  RepositoryRootResolverPort,
   VerificationExecutorPort,
 } from "#application/ports/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
@@ -46,6 +48,8 @@ export interface HarnessApplication {
   applicationCommandGateway: ApplicationCommandGateway;
   /** Verification 结果的强一致不可变 Store。 */
   evidenceBundleStore: EvidenceBundleStore;
+  /** 按稳定身份解析启动期可信 Repository Root 的边界。 */
+  repositoryRootResolver: RepositoryRootResolverPort;
   /** 规范化 Action Hook 调度器。 */
   handleHook: CanonicalHookDispatcher;
   /** Codex PreToolUse/PostToolUse 平台适配器。 */
@@ -100,6 +104,8 @@ export interface HarnessApplication {
   verificationCommands: VerificationCommandService;
   /** 在 Write Set、仓库锁和 Journal 边界内应用文件变更。 */
   implementationCommands: ImplementationCommandService;
+  /** 创建实现 Git Checkpoint 并原子收口当前 Attempt。 */
+  implementationSubmissions: ImplementationSubmissionService;
   /** 获取 Repository 级排他 Lock；不执行 Worktree 创建或代码写入。 */
   acquireRepositoryLock: AcquireRepositoryLockUseCase;
   /** 以 Action 执行锁和持久化 Journal 闭合副作用。 */
@@ -134,4 +140,6 @@ export interface HarnessApplicationOptions {
   verificationExecutionMode?: VerificationExecutionMode;
   /** 可注入的 Repository Lock ID Generator。 */
   repositoryLockIdGenerator?: IdGenerator;
+  /** 可注入的可信 Repository Root Resolver；默认使用无绑定的 fail-closed 静态实现。 */
+  repositoryRootResolver?: RepositoryRootResolverPort;
 }

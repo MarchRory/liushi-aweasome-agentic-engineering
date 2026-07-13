@@ -30,6 +30,7 @@ import {
   type CodingTaskExecutionAuthorization,
   type HumanControlAppliedEvent,
   type HumanResolutionAppliedEvent,
+  type ImplementationSubmittedEvent,
   type VerificationFinishedEvent,
 } from "../../src/domain/codingTask/index.js";
 import { FailureTaxonomy } from "../../src/domain/workflow/index.js";
@@ -160,6 +161,19 @@ function attemptFinished(
   return { ...eventBase(sequence), type: CodingTaskEventType.AttemptFinished, payload };
 }
 
+function implementationSubmitted(
+  sequence: number,
+  attemptNumber: number,
+  targetRevision = "revision-2",
+  changedPaths: readonly string[] = ["src/z.ts", "src/a.ts"],
+): ImplementationSubmittedEvent {
+  return {
+    ...eventBase(sequence),
+    type: CodingTaskEventType.ImplementationSubmitted,
+    payload: { attemptNumber, targetRevision, changedPaths },
+  };
+}
+
 function verificationFinished(
   sequence: number,
   attemptNumber: number,
@@ -276,6 +290,44 @@ describe("CodingTask Aggregate", () => {
       attemptFinished(3, 1, CodingTaskAttemptOutcome.Succeeded),
     );
     expect(() => applyCodingTaskEvent(succeeded, attemptStarted(4, 2))).toThrow();
+  });
+
+  it("ImplementationSubmitted 原子完成 Attempt 并按序记录变更后进入 Verification", () => {
+    const started = applyCodingTaskEvent(
+      createInitialCodingTaskAggregate(created()),
+      attemptStarted(2, 1),
+    );
+    const submitted = applyCodingTaskEvent(started, implementationSubmitted(3, 1));
+
+    expect(submitted).toMatchObject({
+      phase: CodingTaskPhase.Verification,
+      runState: CodingTaskRunState.Active,
+      version: 3,
+      attempts: [
+        {
+          number: 1,
+          finishedAt: "2026-07-12T00:03:00.000Z",
+          outcome: CodingTaskAttemptOutcome.Succeeded,
+          targetRevision: "revision-2",
+          changedPaths: ["src/z.ts", "src/a.ts"],
+        },
+      ],
+    });
+  });
+
+  it("ImplementationSubmitted 拒绝错误 Attempt、空路径和非规范变更路径", () => {
+    const started = applyCodingTaskEvent(
+      createInitialCodingTaskAggregate(created()),
+      attemptStarted(2, 1),
+    );
+
+    expect(() => applyCodingTaskEvent(started, implementationSubmitted(3, 2))).toThrow();
+    expect(() =>
+      applyCodingTaskEvent(started, implementationSubmitted(3, 1, "revision-2", [])),
+    ).toThrow();
+    expect(() =>
+      applyCodingTaskEvent(started, implementationSubmitted(3, 1, "revision-2", ["../src/a.ts"])),
+    ).toThrow();
   });
 
   it.each([

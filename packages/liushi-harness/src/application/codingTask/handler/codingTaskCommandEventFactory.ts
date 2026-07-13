@@ -19,6 +19,7 @@ import {
   type CodingTaskEventDraft,
   type HumanControlAppliedEventDraft,
   type HumanResolutionAppliedEventDraft,
+  type ImplementationSubmittedEventDraft,
   type VerificationFinishedEventDraft,
   type VerificationRequestedEventDraft,
 } from "#domain/codingTask/index.js";
@@ -32,6 +33,7 @@ import {
   type RequestVerificationPayload,
   type ResolveHumanPayload,
   type StartAttemptPayload,
+  type SubmitImplementationPayload,
   type CodingTaskCommandPayload,
 } from "../commands/index.js";
 import {
@@ -62,6 +64,8 @@ export class CodingTaskCommandEventFactory {
         return this.startAttempt(command, locator, payload as StartAttemptPayload);
       case CodingTaskCommandType.FinishAttempt:
         return this.finishAttempt(command, locator, payload as FinishAttemptPayload);
+      case CodingTaskCommandType.SubmitImplementation:
+        return this.submitImplementation(command, locator, payload as SubmitImplementationPayload);
       case CodingTaskCommandType.RequestVerification:
         return this.requestVerification(command, locator, payload as RequestVerificationPayload);
       case CodingTaskCommandType.FinishVerification:
@@ -135,6 +139,22 @@ export class CodingTaskCommandEventFactory {
       ...this.metadata(command, locator),
       type: CodingTaskEventType.VerificationRequested,
       payload: { attemptNumber: payload.attemptNumber },
+    };
+  }
+
+  private submitImplementation(
+    command: CommandEnvelope<CodingTaskCommandPayload>,
+    locator: CodingTaskLocator,
+    payload: SubmitImplementationPayload,
+  ): ImplementationSubmittedEventDraft {
+    return {
+      ...this.metadata(command, locator),
+      type: CodingTaskEventType.ImplementationSubmitted,
+      payload: {
+        attemptNumber: payload.attemptNumber,
+        targetRevision: payload.targetRevision,
+        changedPaths: payload.changedPaths,
+      },
     };
   }
 

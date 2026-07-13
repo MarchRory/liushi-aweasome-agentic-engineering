@@ -37,6 +37,10 @@ export interface CodingTaskAttempt {
   finishedAt?: string;
   /** Attempt 的实现结果；缺失表示仍在执行。 */
   outcome?: CodingTaskAttemptOutcome;
+  /** 实现提交对应的目标 Revision。 */
+  targetRevision?: string;
+  /** 实现提交按原始顺序记录的变更路径。 */
+  changedPaths?: readonly string[];
   /** 明确失败时的实现失败分类。 */
   failureTaxonomy?: FailureTaxonomy;
   /** 当前 Attempt 的验证结果。 */

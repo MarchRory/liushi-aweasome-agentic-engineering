@@ -173,6 +173,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.InvalidStateTransition:
     case HarnessErrorCode.WorkspaceBusy:
     case HarnessErrorCode.VersionConflict:
+    case HarnessErrorCode.PreconditionNotMet:
     case HarnessErrorCode.OperationForbidden:
     case HarnessErrorCode.DecisionConflict:
     case HarnessErrorCode.ActionConflict:

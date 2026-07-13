@@ -25,6 +25,10 @@ import {
 import { parseCodingTaskPayload } from "../validation/index.js";
 import { codingTaskVersionConflict, parseCodingTaskLocator } from "./codingTaskCommandContext.js";
 import { CodingTaskCommandEventFactory } from "./codingTaskCommandEventFactory.js";
+import {
+  codingTaskImplementationSubmissionCapability,
+  type CodingTaskImplementationSubmissionCapability,
+} from "../internal/index.js";
 
 /** CodingTask Repository 使用的定位参数。 */
 type CodingTaskLocator = Parameters<CodingTaskRepository["load"]>[0];
@@ -47,8 +51,32 @@ export class CodingTaskCommandHandler implements CommandHandler<CodingTaskComman
   public async execute(
     command: CommandEnvelope<CodingTaskCommandPayload>,
   ): Promise<Result<CommandHandlerSuccess, HarnessError>> {
+    return this.executeCommand(command, false);
+  }
+
+  /** 持有内部能力凭证时提交实现完成命令。 */
+  public async executeImplementationSubmission(
+    command: CommandEnvelope<CodingTaskCommandPayload>,
+    capability: CodingTaskImplementationSubmissionCapability,
+  ): Promise<Result<CommandHandlerSuccess, HarnessError>> {
+    if (capability !== codingTaskImplementationSubmissionCapability) {
+      return failure(publicImplementationSubmissionForbidden());
+    }
+    return this.executeCommand(command, true);
+  }
+
+  private async executeCommand(
+    command: CommandEnvelope<CodingTaskCommandPayload>,
+    implementationSubmissionAllowed: boolean,
+  ): Promise<Result<CommandHandlerSuccess, HarnessError>> {
     const commandType = parseCommandType(command.commandType);
     if (commandType.status === ResultStatus.Failure) return commandType;
+    if (
+      commandType.value === CodingTaskCommandType.SubmitImplementation &&
+      !implementationSubmissionAllowed
+    ) {
+      return failure(publicImplementationSubmissionForbidden());
+    }
     if (command.aggregateType !== CODING_TASK_AGGREGATE_TYPE) {
       return failure(
         new HarnessError(HarnessErrorCode.InvalidInput, "CodingTask Aggregate Type 无效。"),
@@ -130,6 +158,13 @@ export class CodingTaskCommandHandler implements CommandHandler<CodingTaskComman
       ? result
       : success({ committedVersion: result.value.record.aggregate.version });
   }
+}
+
+function publicImplementationSubmissionForbidden(): HarnessError {
+  return new HarnessError(
+    HarnessErrorCode.OperationForbidden,
+    "SubmitImplementation 只能通过内部实现提交入口执行。",
+  );
 }
 
 function parseCommandType(value: string): Result<CodingTaskCommandType, HarnessError> {

@@ -17,7 +17,15 @@ import {
   FileCodingTaskRepository,
   FileParentDirectoryDurability,
 } from "../../src/infrastructure/index.js";
-import { TemporaryRuntimeStore } from "../support/runtime/index.js";
+import { CodingTaskCommandHandler } from "../../src/application/codingTask/handler/codingTaskCommandHandler.js";
+import { codingTaskImplementationSubmissionCapability } from "../../src/application/codingTask/internal/index.js";
+import type { CodingTaskCommandPayload } from "../../src/application/codingTask/commands/index.js";
+import type { CommandEnvelope } from "../../src/application/command/index.js";
+import {
+  FixedClock,
+  FixedSequenceIdGenerator,
+  TemporaryRuntimeStore,
+} from "../support/runtime/index.js";
 
 const workspaceId = "coding-task-command-workspace";
 const codingTaskId = "coding-task-command-1";
@@ -106,6 +114,99 @@ describe("CodingTask Command Gateway 纵向链路", () => {
     expect(loaded).toMatchObject({
       status: ResultStatus.Success,
       value: { aggregate: { runState: "completed", phase: "verification", version: 5 } },
+    });
+  });
+
+  it("公开入口拒绝 SubmitImplementation，内部能力入口持久化一个可 Replay 事件", async () => {
+    const root = await runtimeStores.create("liushi-coding-task-submit-");
+    const application = createHarnessApplication({
+      storeRoot: root,
+      codingTaskAuthorizationResolver: {
+        resolve: ({ requested }) =>
+          Promise.resolve({ status: ResultStatus.Success, value: requested }),
+      },
+    });
+    await application.codingTaskCommands.execute(
+      command(
+        CodingTaskCommandType.Create,
+        "coding-submit-create",
+        0,
+        ActorKind.Human,
+        createPayload(),
+      ),
+    );
+    await application.codingTaskCommands.execute(
+      command(CodingTaskCommandType.StartAttempt, "coding-submit-start", 1, ActorKind.Agent, {
+        workspaceId,
+        attemptNumber: 1,
+      }),
+    );
+
+    const submitCommand = command(
+      CodingTaskCommandType.SubmitImplementation,
+      "coding-submit-implementation",
+      2,
+      ActorKind.Agent,
+      {
+        workspaceId,
+        attemptNumber: 1,
+        targetRevision: "revision-2",
+        changedPaths: ["src/z.ts", "src/a.ts"],
+      },
+    );
+    const publicSubmission = await application.codingTaskCommands.execute(submitCommand);
+    expect(publicSubmission).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        status: CommandStatus.Rejected,
+        errorCode: CommandErrorCode.AuthorizationDenied,
+      },
+    });
+
+    const repository = new FileCodingTaskRepository(root, {
+      lockManager: new ExclusiveFileLockManager(),
+      parentDirectoryDurability: new FileParentDirectoryDurability(),
+    });
+    const handler = new CodingTaskCommandHandler(
+      repository,
+      new FixedClock(submittedAt),
+      new FixedSequenceIdGenerator(["01ARZ3NDEKTSV4RRFFQ69G5FB3"]),
+      {
+        resolve: ({ requested }) =>
+          Promise.resolve({ status: ResultStatus.Success, value: requested }),
+      },
+    );
+    const submitted = await handler.executeImplementationSubmission(
+      submitCommand as CommandEnvelope<CodingTaskCommandPayload>,
+      codingTaskImplementationSubmissionCapability,
+    );
+    expect(submitted).toMatchObject({
+      status: ResultStatus.Success,
+      value: { committedVersion: 3 },
+    });
+
+    expect(
+      await repository.load({
+        workspaceId: unwrap(parseWorkspaceId(workspaceId)),
+        codingTaskId: unwrap(parseCodingTaskId(codingTaskId)),
+      }),
+    ).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        aggregate: {
+          phase: "verification",
+          runState: "active",
+          version: 3,
+          attempts: [
+            {
+              outcome: "succeeded",
+              targetRevision: "revision-2",
+              changedPaths: ["src/z.ts", "src/a.ts"],
+            },
+          ],
+        },
+        lastSequence: 3,
+      },
     });
   });
 

@@ -36,6 +36,8 @@ import {
   VerificationCommandService,
   ImplementationCommandHandler,
   ImplementationCommandService,
+  ImplementationSubmissionHandler,
+  ImplementationSubmissionService,
   WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
@@ -60,11 +62,13 @@ import {
   MockVerificationExecutorAdapter,
   NodeVerificationExecutorAdapter,
   NodeFileMutationExecutorAdapter,
+  NodeGitCheckpointAdapter,
   NodeRepositoryLockAdapter,
   FileActionExecutionLockAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
   StructuredProjectConfigParserAdapter,
+  StaticRepositoryRootResolverAdapter,
   SystemDelayAdapter,
   SystemClock,
   UlidGenerator,
@@ -89,6 +93,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const decisionRequestIdGenerator = options.decisionRequestIdGenerator ?? new UlidGenerator();
   const approvalIdGenerator = options.approvalIdGenerator ?? new UlidGenerator();
   const repositoryLockIdGenerator = options.repositoryLockIdGenerator ?? new UlidGenerator();
+  const repositoryRootResolver =
+    options.repositoryRootResolver ?? new StaticRepositoryRootResolverAdapter();
   const snapshotStore = new FileSnapshotStore();
   const lockManager = new ExclusiveFileLockManager();
   const parentDirectoryDurability = new FileParentDirectoryDurability();
@@ -192,10 +198,21 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     new NodeFileMutationExecutorAdapter(worktreeInspector, digest),
     digest,
   );
+  const implementationSubmissionHandler = new ImplementationSubmissionHandler(
+    codingTaskRepository,
+    codingTaskAuthorizationResolver,
+    repositoryRootResolver,
+    repositoryLock,
+    journaledActionRunner,
+    new NodeGitCheckpointAdapter(commandRunner, worktreeInspector, digest),
+    codingTaskCommandHandler,
+    digest,
+  );
 
   return {
     applicationCommandGateway,
     evidenceBundleStore,
+    repositoryRootResolver,
     bindHookWorkspace: new BindHookWorkspaceUseCase(taskRepository, hookBindingStore, clock),
     checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
     compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
@@ -255,6 +272,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     implementationCommands: new ImplementationCommandService(
       applicationCommandGateway,
       implementationCommandHandler,
+    ),
+    implementationSubmissions: new ImplementationSubmissionService(
+      applicationCommandGateway,
+      implementationSubmissionHandler,
     ),
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
     journaledActionRunner,

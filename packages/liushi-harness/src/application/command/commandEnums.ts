@@ -44,6 +44,8 @@ export enum CommandErrorCode {
   InvalidSubmittedAt = "invalid_submitted_at",
   /** Payload 无效。 */
   InvalidPayload = "invalid_payload",
+  /** Command 的确定性执行前置条件尚未满足。 */
+  PreconditionNotMet = "precondition_not_met",
   /** Command 未获得执行所需的授权。 */
   AuthorizationDenied = "authorization_denied",
   /** Command 鍦ㄦ墽琛屽墠鍥犺祫婧愭垨 Lock 鐑欏崰鏈墽琛岋紝鍙樉寮忛噸璇曘€?*/

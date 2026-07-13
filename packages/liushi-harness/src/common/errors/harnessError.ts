@@ -26,6 +26,8 @@ export enum HarnessErrorCode {
   WorkspaceBusy = "workspace_busy",
   /** 请求基于的 Event Tail 已过期，必须重新加载后再提交。 */
   VersionConflict = "version_conflict",
+  /** Action Journal 已证明动作未应用，修复确定性前置条件后允许创建新命令重试。 */
+  PreconditionNotMet = "precondition_not_met",
   /** Hard Invariant 或确定性 Policy 禁止当前动作。 */
   OperationForbidden = "operation_forbidden",
   /** 同一 DecisionRequest 已记录不兼容的 Human 决策。 */

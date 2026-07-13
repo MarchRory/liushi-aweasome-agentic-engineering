@@ -84,6 +84,16 @@ export interface AttemptFinishedPayload {
   failureTaxonomy?: FailureTaxonomy;
 }
 
+/** ImplementationSubmitted 事件载荷。 */
+export interface ImplementationSubmittedPayload {
+  /** 被提交的 Attempt 序号。 */
+  attemptNumber: number;
+  /** 实现提交对应的目标 Revision。 */
+  targetRevision: string;
+  /** 按原始顺序记录且非空的变更路径。 */
+  changedPaths: readonly string[];
+}
+
 /** VerificationRequested 事件载荷。 */
 export interface VerificationRequestedPayload {
   /** 请求验证的 Attempt 序号。 */
@@ -150,6 +160,14 @@ export interface AttemptFinishedEvent extends CodingTaskEventBase {
   payload: AttemptFinishedPayload;
 }
 
+/** 实现提交并进入 Verification 的单一语义事件。 */
+export interface ImplementationSubmittedEvent extends CodingTaskEventBase {
+  /** Event 类型固定为 ImplementationSubmitted。 */
+  type: CodingTaskEventType.ImplementationSubmitted;
+  /** 实现提交的 Revision 和有序变更路径。 */
+  payload: ImplementationSubmittedPayload;
+}
+
 /** 请求进入 Verification 阶段的语义事件。 */
 export interface VerificationRequestedEvent extends CodingTaskEventBase {
   /** Event 类型固定为 VerificationRequested。 */
@@ -187,6 +205,7 @@ export type CodingTaskEvent =
   | CodingTaskCreatedEvent
   | AttemptStartedEvent
   | AttemptFinishedEvent
+  | ImplementationSubmittedEvent
   | VerificationRequestedEvent
   | VerificationFinishedEvent
   | HumanControlAppliedEvent
@@ -214,6 +233,14 @@ export interface AttemptFinishedEventDraft extends CodingTaskEventDraftBase {
   type: CodingTaskEventType.AttemptFinished;
   /** Attempt 结果和失败分类。 */
   payload: AttemptFinishedPayload;
+}
+
+/** 实现提交事件草稿。 */
+export interface ImplementationSubmittedEventDraft extends CodingTaskEventDraftBase {
+  /** Event 类型固定为 ImplementationSubmitted。 */
+  type: CodingTaskEventType.ImplementationSubmitted;
+  /** 实现提交的 Revision 和有序变更路径。 */
+  payload: ImplementationSubmittedPayload;
 }
 
 /** Verification 请求事件草稿。 */
@@ -253,6 +280,7 @@ export type CodingTaskEventDraft =
   | CodingTaskCreatedEventDraft
   | AttemptStartedEventDraft
   | AttemptFinishedEventDraft
+  | ImplementationSubmittedEventDraft
   | VerificationRequestedEventDraft
   | VerificationFinishedEventDraft
   | HumanControlAppliedEventDraft

@@ -43,13 +43,15 @@
 - `hook config --executor codex` 可只读生成受审阅的 `hooks.json` 投影，`hook handle --executor codex` 提供 Codex 原生 stdin/stdout Wrapper；配置文件写入和项目受信任由 Human 控制。
 - `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出和静态 Hook 能力；找不到、Access Denied、超时或未知版本均不会被标记为生产支持。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
-- CodingTask 已提供单仓 Aggregate、独立 Schema、File Store/Replay、Versioned Command Gateway/Service、权威 ExecutionAuthorization、G2 历史逻辑确认绑定、Attempt 串行状态机、Verification 结果接纳和 Human Resolution；Managed Worktree Provision Command 已通过 Repository Lock、JournaledActionRunner 和真实 `shell=false` Git Adapter 创建 Worktree；VerificationPlan、Local Command Runner 和强一致 EvidenceBundle Store 已落地，默认执行模式仍为 fail-closed Mock。
+- CodingTask 已提供单仓 Aggregate、独立 Schema、File Store/Replay、Versioned Command Gateway/Service、权威 ExecutionAuthorization、G2 历史逻辑确认绑定、Attempt 串行状态机、Verification 结果接纳和 Human Resolution；Managed Worktree Provision Command 已通过 Repository Lock、JournaledActionRunner 和真实 `shell=false` Git Adapter 创建 Worktree。
+- `implementationCommands` 已在权威授权、Write Set、Repository Lock 与 Action Journal 边界内提供受控文件变更；`implementationSubmissions` 使用可信 Repository Root 和原生 Git 创建单一 Checkpoint，以 `ImplementationSubmitted` 收口 Attempt，并对 Git/Event 非 ACID 中间态提供 Human 恢复入口。
+- `verificationCommands` 已提供版本化 Verification 执行与 EvidenceBundle 接纳；VerificationPlan、显式 Local Command Runner 和强一致 EvidenceBundle Store 已落地，默认执行模式仍为 fail-closed Mock。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Cell Runtime、Worktree 清理与受控写入、多仓写入编排、Verification 版本化 Command/恢复、影响面选择、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实受信任项目安装与 Smoke、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、Cell Runtime、Worktree 清理/重建、多仓写入编排、Verification 影响面选择、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
-本轮仍未提供 Worktree 清理/重建、受控代码写入、跨仓 Saga、Verification 版本化命令/Journal 恢复、影响面选择、重试/Flaky、Waiver、完整 Workflow Runtime、Skills/Memory/Connectors 或 Studio；Worktree Provision 不删除或自动修复既有历史；Local Command Runner 必须显式启用，默认 Mock 未配置 Check 固定返回 `Blocked`。
+本轮仍未提供 Worktree 清理/重建、跨仓 Saga、Verification 影响面选择、重试/Flaky、Waiver、完整 Workflow Runtime、Skills/Memory/Connectors 或 Studio；现有实现不会自主生成代码、创建 PR、推送、合并、发布或部署；Local Command Runner 必须显式启用，默认 Mock 未配置 Check 固定返回 `Blocked`。
 
 ## Documents
 
@@ -122,6 +124,8 @@ corepack pnpm@10.34.1 --filter liushi-harness build
 源码按 `Domain -> Application -> Infrastructure/Presentation -> Bootstrap` 分层。每个业务模块与 Adapter 使用独立目录，内部职责拆分后仅通过模块根 `index.ts` 暴露公共 API；架构测试会拒绝越层依赖、循环依赖、深层导入、非法 I/O、非 lower camelCase 命名和缺失 TSDoc。
 
 ## Release History
+
+可信根解析、Git Checkpoint 与 Attempt 收口边界见 [实现 Checkpoint 提交](./docs/engineering/implementationCheckpointSubmission.md)。
 
 依赖复用、核心自持语义与候选组件边界见 [Build vs Reuse 决策](./docs/engineering/buildVsReuse.md)。
 

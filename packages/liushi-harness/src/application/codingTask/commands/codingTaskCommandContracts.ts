@@ -36,6 +36,18 @@ export interface FinishAttemptPayload {
   failureTaxonomy?: FailureTaxonomy;
 }
 
+/** 原子提交实现的命令载荷。 */
+export interface SubmitImplementationPayload {
+  /** CodingTask 所属 Workspace。 */
+  workspaceId: string;
+  /** 要提交的 Attempt 序号。 */
+  attemptNumber: number;
+  /** 实现提交对应的目标 Revision。 */
+  targetRevision: string;
+  /** 按原始顺序记录且非空的变更路径。 */
+  changedPaths: readonly string[];
+}
+
 /** 请求 Verification 的命令载荷。 */
 export interface RequestVerificationPayload {
   /** CodingTask 所属 Workspace。 */
@@ -82,6 +94,8 @@ export interface CodingTaskCommandPayloadByType {
   [CodingTaskCommandType.StartAttempt]: StartAttemptPayload;
   /** FinishAttempt 命令对应的载荷。 */
   [CodingTaskCommandType.FinishAttempt]: FinishAttemptPayload;
+  /** SubmitImplementation 命令对应的载荷。 */
+  [CodingTaskCommandType.SubmitImplementation]: SubmitImplementationPayload;
   /** RequestVerification 命令对应的载荷。 */
   [CodingTaskCommandType.RequestVerification]: RequestVerificationPayload;
   /** FinishVerification 命令对应的载荷。 */

@@ -10,3 +10,5 @@ export * from "./verification/index.js";
 export * from "./repositoryLock/index.js";
 export * from "./actionExecutionLock/index.js";
 export * from "./fileMutation/index.js";
+export * from "./gitCheckpoint/index.js";
+export * from "./repositoryRootResolver/index.js";

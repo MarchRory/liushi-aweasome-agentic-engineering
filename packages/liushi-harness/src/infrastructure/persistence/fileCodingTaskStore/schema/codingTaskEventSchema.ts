@@ -75,6 +75,10 @@ const relativePath = text().refine((value) => {
   const segments = value.split("/");
   return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
 }, "必须是规范的相对 POSIX 路径。");
+const changedPath = relativePath.refine(
+  (value) => !/[<>:"|?*\u0000]/.test(value),
+  "不能包含文件名保留字符。",
+);
 const worktree = z
   .object({ worktreeId: text(), relativePath, branchName: text(), managed: z.boolean() })
   .strict();
@@ -127,6 +131,19 @@ const eventSchema = z.discriminatedUnion("type", [
           attemptNumber: z.number().int().positive(),
           outcome: z.enum(CodingTaskAttemptOutcome),
           failureTaxonomy: z.enum(FailureTaxonomy).optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...common,
+      type: z.literal(CodingTaskEventType.ImplementationSubmitted),
+      payload: z
+        .object({
+          attemptNumber: z.number().int().positive(),
+          targetRevision: text(),
+          changedPaths: z.array(changedPath).min(1),
         })
         .strict(),
     })

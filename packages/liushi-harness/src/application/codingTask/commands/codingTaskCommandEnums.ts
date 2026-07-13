@@ -6,6 +6,8 @@ export enum CodingTaskCommandType {
   StartAttempt = "coding_task.start_attempt",
   /** 完成 Attempt。 */
   FinishAttempt = "coding_task.finish_attempt",
+  /** 原子提交实现并进入 Verification。 */
+  SubmitImplementation = "coding_task.submit_implementation",
   /** 请求 Verification。 */
   RequestVerification = "coding_task.request_verification",
   /** 完成 Verification。 */

@@ -156,7 +156,9 @@ function errorReceipt(command: CommandEnvelope, error: HarnessError): CommandRec
     errorCode:
       error.code === HarnessErrorCode.OperationForbidden
         ? CommandErrorCode.AuthorizationDenied
-        : CommandErrorCode.InvalidPayload,
+        : error.code === HarnessErrorCode.PreconditionNotMet
+          ? CommandErrorCode.PreconditionNotMet
+          : CommandErrorCode.InvalidPayload,
     errorMessage: error.message,
   });
 }
