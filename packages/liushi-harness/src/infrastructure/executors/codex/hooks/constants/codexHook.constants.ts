@@ -28,8 +28,6 @@ export enum CodexSupportedTool {
 
 /** Codex Hook 输出中的权限决定集合。 */
 export enum CodexPermissionDecision {
-  /** 允许原始工具调用继续。 */
-  Allow = "allow",
   /** 拒绝原始工具调用。 */
   Deny = "deny",
 }

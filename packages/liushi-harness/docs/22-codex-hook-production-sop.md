@@ -76,7 +76,7 @@ liushi-harness hook bind `
 
 完成配置和绑定后，在临时验证仓或已审批的真实需求中执行一次最小闭环：
 
-1. 对 Write Set 内的 `apply_patch` 执行 PreToolUse，确认返回 `permissionDecision=allow`。
+1. 对 Write Set 内的 `apply_patch` 执行 PreToolUse，确认 Hook 退出码为 0 且 stdout 为空；`permissionDecision=allow` 只用于同时提供 `updatedInput` 的工具输入重写，不能用于原样放行。
 2. 完成工具调用后执行 PostToolUse，确认 Action Journal 产生 Intent、Observation 和 Resolution 关联记录。
 3. 对 Write Set 外的文件执行 PreToolUse，确认返回 `permissionDecision=deny`，并且没有写入目标文件。
 4. 使用相同 `tool_use_id` 但修改工具输入，确认返回冲突而不是重放旧结果。

@@ -31,10 +31,7 @@ describe("Codex Hook Adapter", () => {
     const firstPost = await setup.application.handleCodexHook.execute(postInput);
     const replayedPost = await setup.application.handleCodexHook.execute(postInput);
 
-    expect(firstPre).toMatchObject({
-      status: ResultStatus.Success,
-      value: { body: { hookSpecificOutput: { permissionDecision: "allow" } } },
-    });
+    expect(firstPre).toEqual({ status: ResultStatus.Success, value: {} });
     expect(replayedPre).toEqual(firstPre);
     expect(firstPost).toMatchObject({
       status: ResultStatus.Success,

@@ -12,6 +12,7 @@ import {
   CapabilityProbeStatus,
   CodexCapabilityName,
   CodexProbeCommandKind,
+  type CodexHookResponse,
 } from "../../src/application/index.js";
 import {
   CliCommand,
@@ -127,21 +128,30 @@ describe("CLI Hook wrapper", () => {
     expect(output.stderr).toBe("");
   });
 
-  it("成功时只输出 Codex 原生 Hook 响应，不包裹 CLI JSON Envelope", async () => {
+  it("存在响应体时只输出 Codex 原生 Hook 响应，不包裹 CLI JSON Envelope", async () => {
     const output = await runHookCommand(
       success({
         hook_event_name: "PreToolUse",
         tool_name: "apply_patch",
       }),
-      success({ body: { hookSpecificOutput: { permissionDecision: "allow" } } }),
+      success({ body: { hookSpecificOutput: { permissionDecision: "deny" } } }),
     );
 
     expect(output.exitCode).toBe(0);
     expect(JSON.parse(output.stdout)).toEqual({
-      hookSpecificOutput: { permissionDecision: "allow" },
+      hookSpecificOutput: { permissionDecision: "deny" },
     });
     expect(output.stdout).not.toContain('"status"');
     expect(output.stderr).toBe("");
+  });
+
+  it("PreToolUse 原样放行时退出 0 且不输出", async () => {
+    const output = await runHookCommand(
+      success({ hook_event_name: "PreToolUse", tool_name: "apply_patch" }),
+      success({}),
+    );
+
+    expect(output).toEqual({ exitCode: 0, stdout: "", stderr: "" });
   });
 
   it("Hook 输入或处理失败时写入 stderr 并返回 Codex 约定的拒绝退出码", async () => {
@@ -166,8 +176,7 @@ describe("CLI Hook wrapper", () => {
 async function runHookCommand(
   input: ReturnType<typeof success<unknown>> | ReturnType<typeof failure<HarnessError>>,
   hookResult:
-    | ReturnType<typeof success<{ body: Readonly<Record<string, unknown>> }>>
-    | ReturnType<typeof failure<HarnessError>>,
+    ReturnType<typeof success<CodexHookResponse>> | ReturnType<typeof failure<HarnessError>>,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let stdout = "";
   let stderr = "";

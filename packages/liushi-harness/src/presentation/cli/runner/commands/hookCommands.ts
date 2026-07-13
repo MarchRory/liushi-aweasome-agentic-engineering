@@ -107,7 +107,9 @@ export async function executeHookHandle(
   if (result.status === ResultStatus.Failure) {
     return writeNativeHookFailure(dependencies, result.error);
   }
-  dependencies.writer.stdout(`${JSON.stringify(result.value.body)}\n`);
+  if (result.value.body !== undefined) {
+    dependencies.writer.stdout(`${JSON.stringify(result.value.body)}\n`);
+  }
   return CLI_EXIT_CODE_SUCCESS;
 }
 

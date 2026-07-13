@@ -13,17 +13,14 @@ export function mapCodexHookResponse(result: {
   reason: string;
 }): CodexHookResponse {
   if (result.event === HarnessHookEvent.PreAction) {
+    // 原样放行必须退出 0 且不输出；permissionDecision=allow 仅用于携带 updatedInput 的重写。
+    if (result.decision === HookDecision.Allow) return {};
     return {
       body: {
         hookSpecificOutput: {
           hookEventName: CodexHookEvent.PreToolUse,
-          permissionDecision:
-            result.decision === HookDecision.Allow
-              ? CodexPermissionDecision.Allow
-              : CodexPermissionDecision.Deny,
-          ...(result.decision === HookDecision.Allow
-            ? {}
-            : { permissionDecisionReason: result.reason }),
+          permissionDecision: CodexPermissionDecision.Deny,
+          permissionDecisionReason: result.reason,
         },
       },
     };

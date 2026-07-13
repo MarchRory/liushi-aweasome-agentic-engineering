@@ -2,8 +2,8 @@ import type { HarnessError, Result } from "#common/index.js";
 
 /** Codex Hook Adapter 返回给平台 Wrapper 的结构化 JSON。 */
 export interface CodexHookResponse {
-  /** 应直接写到 Codex stdout 的 JSON 对象。 */
-  readonly body: Readonly<Record<string, unknown>>;
+  /** 应直接写到 Codex stdout 的 JSON 对象；缺省表示退出 0 且不输出。 */
+  readonly body?: Readonly<Record<string, unknown>>;
 }
 
 /** 执行器 Adapter 的统一 Hook 调用 Port。 */
