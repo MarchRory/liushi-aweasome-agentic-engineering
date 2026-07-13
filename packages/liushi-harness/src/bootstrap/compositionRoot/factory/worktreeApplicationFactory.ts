@@ -5,6 +5,8 @@ import {
   WorktreeProvisionRecoveryAssessmentService,
   WorktreeProvisionRecoveryCommandHandler,
   WorktreeProvisionRecoveryCommandService,
+  type UnresolvedWorktreeProvisionGuard,
+  WorktreeProvisionIntentMatcher,
   type ApplicationCommandGateway,
   type JournaledActionRunner,
 } from "#application/index.js";
@@ -51,6 +53,8 @@ export interface WorktreeApplicationFactoryInput {
   readonly digest: ContentDigestPort;
   /** 可注入时钟。 */
   readonly clock: Clock;
+  /** 未闭合 Worktree Provision 的单例守卫。 */
+  readonly unresolvedProvisionGuard: UnresolvedWorktreeProvisionGuard;
 }
 
 /** Worktree 应用子系统对 Composition Root 返回的公开入口。 */
@@ -82,6 +86,7 @@ export function createWorktreeApplication(
     input.repositoryRootResolver,
     recoveryInspector,
     input.digest,
+    new WorktreeProvisionIntentMatcher(input.digest),
   );
   const recoveryHandler = new WorktreeProvisionRecoveryCommandHandler(
     input.codingTaskRepository,
@@ -102,6 +107,7 @@ export function createWorktreeApplication(
         input.journaledActionRunner,
         provisioner,
         input.digest,
+        input.unresolvedProvisionGuard,
       ),
     ),
     assessWorktreeProvisionRecovery: new AssessWorktreeProvisionRecoveryUseCase(recoveryAssessment),

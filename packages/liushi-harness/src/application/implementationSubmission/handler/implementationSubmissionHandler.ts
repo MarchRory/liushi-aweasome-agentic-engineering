@@ -21,6 +21,7 @@ import type {
   RepositoryLockPort,
   RepositoryRootResolverPort,
 } from "#application/ports/index.js";
+import type { UnresolvedWorktreeProvisionGuard } from "#application/worktreeProvisioning/index.js";
 import {
   ActorKind,
   HarnessError,
@@ -65,6 +66,7 @@ export class ImplementationSubmissionHandler {
     private readonly gitCheckpoint: GitCheckpointPort,
     private readonly codingTaskHandler: CodingTaskCommandHandler,
     private readonly digest: ContentDigestPort,
+    private readonly unresolvedProvisionGuard: UnresolvedWorktreeProvisionGuard,
   ) {}
 
   /** 在 Gateway Reservation 前校验 Runtime Root 与 Command Digest 绑定。 */
@@ -144,6 +146,8 @@ export class ImplementationSubmissionHandler {
     }
     const executable = validateImplementationSubmissionAggregate(aggregate, payload);
     if (executable.status === ResultStatus.Failure) return executable;
+    const guarded = await this.unresolvedProvisionGuard.check(aggregate);
+    if (guarded.status === ResultStatus.Failure) return guarded;
     const authorized = await this.authorizationResolver.resolve({
       sourceTaskId: aggregate.sourceTaskId,
       workspaceId: aggregate.workspaceId,

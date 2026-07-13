@@ -46,6 +46,7 @@ import type {
   ProvisionWorktreeCommandPayload,
   ProvisionWorktreeRuntimeContext,
 } from "../contracts/index.js";
+import type { UnresolvedWorktreeProvisionGuard } from "../guard/index.js";
 import {
   parseProvisionWorktreePayload,
   validateProvisionWorktreeRuntime,
@@ -61,6 +62,7 @@ export class WorktreeProvisionCommandHandler {
     private readonly journaledActionRunner: JournaledActionRunner,
     private readonly provisioner: WorktreeProvisionerPort,
     private readonly digest: ContentDigestPort,
+    private readonly unresolvedProvisionGuard: UnresolvedWorktreeProvisionGuard,
   ) {}
 
   /** 在 Gateway Reservation 前校验 Runtime Root 与 Command Digest 绑定。 */
@@ -107,34 +109,37 @@ export class WorktreeProvisionCommandHandler {
       requested: aggregate.executionAuthorization,
     });
     if (authorization.status === ResultStatus.Failure) return authorization;
-
     const repositoryLock = await this.repositoryLock.acquire({
       workspaceId: aggregate.workspaceId,
       repositoryId: aggregate.repositoryId,
       holderId: aggregate.codingTaskId,
     });
     if (repositoryLock.status === ResultStatus.Failure) return repositoryLock;
-
     let provisioned: Result<JournaledActionRunOutput, HarnessError>;
     try {
-      const intent = this.createIntent(command, envelope.value, aggregate);
-      if (intent.status === ResultStatus.Failure) {
-        provisioned = failure(intent.error);
+      const guarded = await this.unresolvedProvisionGuard.check(aggregate, envelope.value.actionId);
+      if (guarded.status === ResultStatus.Failure) {
+        provisioned = guarded;
       } else {
-        provisioned = await this.journaledActionRunner.execute(
-          {
-            intent: intent.value,
-            executionInput: {
-              repositoryId: aggregate.repositoryId,
-              repositoryRoot: runtime.value.repositoryRoot,
-              worktreeBinding: aggregate.worktreeBinding,
-              baseRevision: aggregate.baseRevision,
-              writeSet: aggregate.writeSet,
-              evidenceId: `${WORKTREE_PROVISION_EVIDENCE_PREFIX}:${envelope.value.actionId}`,
+        const intent = this.createIntent(command, envelope.value, aggregate);
+        if (intent.status === ResultStatus.Failure) {
+          provisioned = failure(intent.error);
+        } else {
+          provisioned = await this.journaledActionRunner.execute(
+            {
+              intent: intent.value,
+              executionInput: {
+                repositoryId: aggregate.repositoryId,
+                repositoryRoot: runtime.value.repositoryRoot,
+                worktreeBinding: aggregate.worktreeBinding,
+                baseRevision: aggregate.baseRevision,
+                writeSet: aggregate.writeSet,
+                evidenceId: `${WORKTREE_PROVISION_EVIDENCE_PREFIX}:${envelope.value.actionId}`,
+              },
             },
-          },
-          this.provisioner,
-        );
+            this.provisioner,
+          );
+        }
       }
     } catch (error) {
       provisioned = failure(

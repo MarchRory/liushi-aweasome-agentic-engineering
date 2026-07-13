@@ -42,5 +42,5 @@
 
 - 本切片没有实现 Worktree Cleanup、Rebuild、分支删除、强制清理或多仓补偿 Saga。
 - CodingTask 尚未持有独立 Worktree 生命周期状态。
-- 其他实现、提交和验证命令尚未统一检查同一 Task 下未闭合的 Worktree Provision Journal。因此在全局下游写阻断完成前，调用方仍必须先查询 `listRecoverableActions` 并处理未知 Worktree Action。
+- Provision、受控文件变更、Implementation Submission 和 Verification 命令已经在 Repository Lock 内统一检查同一 CodingTask 的未闭合 Worktree Provision Journal。检查发生在新 Intent 和执行副作用之前；未知或等待 Human 的 Action 固定 fail closed，`retry_permitted` 只允许原 Provision Action 自身重试。
 - Assessment 是 Human 批准前的脱敏只读报告；Journal 持久化其结果、Digest、证据标识和 Resolution，不保存原始 Git 输出。

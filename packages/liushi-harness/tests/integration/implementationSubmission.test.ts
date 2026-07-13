@@ -19,6 +19,7 @@ import {
   ImplementationSubmissionHandler,
   ImplementationSubmissionService,
   JournaledActionRunner,
+  UnresolvedWorktreeProvisionGuard,
   HarnessError,
   HarnessErrorCode,
   ResultStatus,
@@ -435,6 +436,10 @@ function createSubmissionService(
     idGenerator,
     authorizationResolver,
   );
+  const actionJournalRepository = new FileActionJournalRepository(setup.storeRoot, {
+    lockManager,
+    parentDirectoryDurability: durability,
+  });
   const handler = new ImplementationSubmissionHandler(
     repository,
     authorizationResolver,
@@ -443,16 +448,14 @@ function createSubmissionService(
     ]),
     new NodeRepositoryLockAdapter(setup.storeRoot, lockManager, clock, idGenerator),
     new JournaledActionRunner(
-      new FileActionJournalRepository(setup.storeRoot, {
-        lockManager,
-        parentDirectoryDurability: durability,
-      }),
+      actionJournalRepository,
       clock,
       new FileActionExecutionLockAdapter(setup.storeRoot, lockManager),
     ),
     new NodeGitCheckpointAdapter(commandRunner, worktreeInspector, digest),
     codingTaskHandler,
     digest,
+    new UnresolvedWorktreeProvisionGuard(actionJournalRepository, digest),
   );
   return new ImplementationSubmissionService(setup.application.applicationCommandGateway, handler);
 }

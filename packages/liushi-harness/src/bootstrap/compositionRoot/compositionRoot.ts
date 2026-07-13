@@ -37,6 +37,7 @@ import {
   ImplementationCommandService,
   ImplementationSubmissionHandler,
   ImplementationSubmissionService,
+  UnresolvedWorktreeProvisionGuard,
   WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
@@ -71,11 +72,9 @@ import {
   SystemClock,
   UlidGenerator,
 } from "#infrastructure/index.js";
-
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
 import { VerificationExecutionMode } from "./enums/index.js";
 import { createWorktreeApplication } from "./factory/index.js";
-
 /** 唯一 Composition Root，负责构造具体 Adapter 和 Use Case。 */
 export function createHarnessApplication(options: HarnessApplicationOptions): HarnessApplication {
   if (options.storeRoot.trim().length === 0) {
@@ -83,7 +82,6 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       field: "storeRoot",
     });
   }
-
   const clock = options.clock ?? new SystemClock();
   const delay = options.delay ?? new SystemDelayAdapter();
   const taskIdGenerator = options.taskIdGenerator ?? new UlidGenerator();
@@ -125,6 +123,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const traceObservationStore = new FileTraceObservationStore(options.storeRoot, { lockManager });
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
+  const unresolvedProvisionGuard = new UnresolvedWorktreeProvisionGuard(
+    actionJournalRepository,
+    digest,
+  );
   const evidenceBundleStore = new FileEvidenceBundleStore(options.storeRoot, {
     lockManager,
     parentDirectoryDurability,
@@ -172,6 +174,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     worktreeInspector,
     digest,
     clock,
+    unresolvedProvisionGuard,
   });
   const verificationExecutor =
     options.verificationExecutor ??
@@ -198,6 +201,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     evidenceBundleStore,
     codingTaskCommandHandler,
     digest,
+    unresolvedProvisionGuard,
   );
   const implementationCommandHandler = new ImplementationCommandHandler(
     codingTaskRepository,
@@ -206,6 +210,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     journaledActionRunner,
     new NodeFileMutationExecutorAdapter(worktreeInspector, digest),
     digest,
+    unresolvedProvisionGuard,
   );
   const implementationSubmissionHandler = new ImplementationSubmissionHandler(
     codingTaskRepository,
@@ -216,8 +221,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     new NodeGitCheckpointAdapter(commandRunner, worktreeInspector, digest),
     codingTaskCommandHandler,
     digest,
+    unresolvedProvisionGuard,
   );
-
   return {
     applicationCommandGateway,
     evidenceBundleStore,

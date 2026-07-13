@@ -15,6 +15,7 @@ import type {
   FileMutationExecutorPort,
   RepositoryLockPort,
 } from "#application/ports/index.js";
+import type { UnresolvedWorktreeProvisionGuard } from "#application/worktreeProvisioning/index.js";
 import {
   HarnessError,
   HarnessErrorCode,
@@ -58,6 +59,7 @@ export class ImplementationCommandHandler {
     private readonly journaledActionRunner: JournaledActionRunner,
     private readonly executor: FileMutationExecutorPort,
     private readonly digest: ContentDigestPort,
+    private readonly unresolvedProvisionGuard: UnresolvedWorktreeProvisionGuard,
   ) {}
 
   /** 在 Gateway Reservation 前校验路径摘要绑定。 */
@@ -121,6 +123,8 @@ export class ImplementationCommandHandler {
     runtime: ImplementationCommandRuntimeContext,
     aggregate: CodingTaskAggregate,
   ): Promise<Result<CommandHandlerSuccess, HarnessError>> {
+    const guarded = await this.unresolvedProvisionGuard.check(aggregate);
+    if (guarded.status === ResultStatus.Failure) return guarded;
     const intent = this.createIntent(command, payload, aggregate);
     if (intent.status === ResultStatus.Failure) return intent;
     const journaled = await this.journaledActionRunner.execute(

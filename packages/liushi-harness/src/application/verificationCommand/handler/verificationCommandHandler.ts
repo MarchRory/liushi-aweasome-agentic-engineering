@@ -15,6 +15,7 @@ import type {
   EvidenceBundleStore,
   RepositoryLockPort,
 } from "#application/ports/index.js";
+import type { UnresolvedWorktreeProvisionGuard } from "#application/worktreeProvisioning/index.js";
 import {
   HarnessError,
   HarnessErrorCode,
@@ -63,6 +64,7 @@ export class VerificationCommandHandler {
     private readonly evidenceStore: EvidenceBundleStore,
     private readonly codingTaskHandler: CodingTaskCommandHandler,
     private readonly digest: ContentDigestPort,
+    private readonly unresolvedProvisionGuard: UnresolvedWorktreeProvisionGuard,
   ) {}
 
   /** 在 Gateway Reservation 前校验 Runtime Root 与 Command Digest 绑定。 */
@@ -124,6 +126,8 @@ export class VerificationCommandHandler {
     runtime: VerificationCommandRuntimeContext,
     aggregate: CodingTaskAggregate,
   ): Promise<Result<CommandHandlerSuccess, HarnessError>> {
+    const guarded = await this.unresolvedProvisionGuard.check(aggregate);
+    if (guarded.status === ResultStatus.Failure) return guarded;
     const intent = this.createIntent(command, payload, aggregate);
     if (intent.status === ResultStatus.Failure) return intent;
     const journaled = await this.journaledActionRunner.execute(

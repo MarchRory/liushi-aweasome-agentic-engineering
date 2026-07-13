@@ -15,14 +15,16 @@ import {
 } from "#common/index.js";
 import {
   ActionJournalStatus,
-  ActionKind,
   type ActionIntentRecord,
   type ActionJournalState,
 } from "#domain/actionJournal/index.js";
 import type { CodingTaskAggregate } from "#domain/codingTask/index.js";
-import { z } from "zod";
 
-import { calculateWorktreeProvisionRuntimeDigest } from "#application/worktreeProvisioning/index.js";
+import {
+  calculateWorktreeProvisionRuntimeDigest,
+  WorktreeProvisionIntentMatch,
+  type WorktreeProvisionIntentMatcher,
+} from "#application/worktreeProvisioning/index.js";
 import {
   WORKTREE_PROVISION_RECOVERY_EVIDENCE_PREFIX,
   WORKTREE_PROVISION_RECOVERY_SCHEMA_VERSION,
@@ -39,6 +41,7 @@ export class WorktreeProvisionRecoveryAssessmentService {
     private readonly repositoryRootResolver: RepositoryRootResolverPort,
     private readonly inspector: WorktreeProvisionRecoveryInspectorPort,
     private readonly digest: ContentDigestPort,
+    private readonly provisionIntentMatcher: WorktreeProvisionIntentMatcher,
   ) {}
 
   /** 评估未知 Provision Action，不执行任何 Git 或文件写操作。 */
@@ -77,6 +80,7 @@ export class WorktreeProvisionRecoveryAssessmentService {
       trustedRoot.value.repositoryRoot,
       aggregate,
       journal.value.intent,
+      this.provisionIntentMatcher,
     );
     if (binding.status === ResultStatus.Failure) return binding;
     const inspected = await this.inspector.inspect({
@@ -139,7 +143,19 @@ function validateProvisionIntent(
   repositoryRoot: string,
   aggregate: CodingTaskAggregate,
   intent: ActionIntentRecord,
+  matcher: WorktreeProvisionIntentMatcher,
 ): Result<void, HarnessError> {
+  const matched = matcher.match(aggregate, intent);
+  if (matched.status === ResultStatus.Failure) return matched;
+  if (matched.value === WorktreeProvisionIntentMatch.Unrelated) {
+    return failure(
+      new HarnessError(
+        HarnessErrorCode.OperationForbidden,
+        "Action 不是当前 CodingTask 的 Worktree Provision Intent。",
+        { actionId: intent.actionId },
+      ),
+    );
+  }
   const runtimeDigest = calculateWorktreeProvisionRuntimeDigest(digest, { repositoryRoot });
   if (runtimeDigest.status === ResultStatus.Failure) return runtimeDigest;
   const inputDigest = digest.calculate({
@@ -148,26 +164,7 @@ function validateProvisionIntent(
     repositoryRootDigest: runtimeDigest.value,
   });
   if (inputDigest.status === ResultStatus.Failure) return inputDigest;
-  const postconditionDigest = digest.calculate({
-    repositoryId: aggregate.repositoryId,
-    worktreeBinding: aggregate.worktreeBinding,
-    baseRevision: aggregate.baseRevision,
-  });
-  if (postconditionDigest.status === ResultStatus.Failure) return postconditionDigest;
-  const target = parseProvisionTarget(intent.target);
-  if (target.status === ResultStatus.Failure) return target;
-  if (
-    intent.workspaceId !== aggregate.workspaceId ||
-    intent.taskId !== aggregate.sourceTaskId ||
-    intent.kind !== ActionKind.GitMutation ||
-    target.value.repositoryId !== aggregate.repositoryId ||
-    target.value.worktreeId !== aggregate.worktreeBinding.worktreeId ||
-    target.value.relativePath !== aggregate.worktreeBinding.relativePath ||
-    target.value.branchName !== aggregate.worktreeBinding.branchName ||
-    intent.inputDigest !== inputDigest.value ||
-    intent.postconditionDigest !== postconditionDigest.value ||
-    intent.baseRevision !== aggregate.baseRevision
-  ) {
+  if (intent.inputDigest !== inputDigest.value) {
     return failure(
       new HarnessError(
         HarnessErrorCode.OperationForbidden,
@@ -177,28 +174,6 @@ function validateProvisionIntent(
     );
   }
   return success(undefined);
-}
-
-const provisionTargetSchema = z
-  .object({
-    repositoryId: z.string(),
-    worktreeId: z.string(),
-    relativePath: z.string(),
-    branchName: z.string(),
-  })
-  .strict();
-
-function parseProvisionTarget(value: string) {
-  try {
-    const parsed = provisionTargetSchema.safeParse(JSON.parse(value));
-    return parsed.success
-      ? success(parsed.data)
-      : failure(new HarnessError(HarnessErrorCode.CorruptStore, "Action Target 结构无效。"));
-  } catch (error) {
-    return failure(
-      new HarnessError(HarnessErrorCode.CorruptStore, "Action Target 不是有效 JSON。", {}, error),
-    );
-  }
 }
 
 function createAssessment(
