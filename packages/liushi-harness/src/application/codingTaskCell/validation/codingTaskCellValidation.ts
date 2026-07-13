@@ -9,6 +9,7 @@ import { IMPLEMENTATION_APPLY_COMMAND_TYPE } from "#application/implementationCo
 import { IMPLEMENTATION_SUBMIT_COMMAND_TYPE } from "#application/implementationSubmission/index.js";
 import { VERIFICATION_RUN_COMMAND_TYPE } from "#application/verificationCommand/index.js";
 import { WORKTREE_PROVISION_COMMAND_TYPE } from "#application/worktreeProvisioning/index.js";
+import type { ContentDigestPort } from "#application/ports/index.js";
 import {
   HarnessError,
   HarnessErrorCode,
@@ -23,6 +24,10 @@ import {
   type CodingTaskCellRunManifest,
 } from "../contracts/index.js";
 import { CodingTaskCellStage } from "../enums/index.js";
+import {
+  CodingTaskCellRevisionBinding,
+  parseCodingTaskCellVerificationTemplate,
+} from "../verificationBinding/index.js";
 
 const repositoryRuntimeSchema = z.object({ repositoryRoot: z.string() }).strict();
 const worktreeRuntimeSchema = z.object({ worktreeRoot: z.string() }).strict();
@@ -30,7 +35,11 @@ const repositoryStepSchema = z
   .object({ command: z.unknown(), runtime: repositoryRuntimeSchema })
   .strict();
 const verificationStepSchema = z
-  .object({ command: z.unknown(), runtime: worktreeRuntimeSchema })
+  .object({
+    command: z.unknown(),
+    binding: z.enum(CodingTaskCellRevisionBinding),
+    runtime: worktreeRuntimeSchema,
+  })
   .strict();
 const manifestSchema = z
   .object({
@@ -44,9 +53,10 @@ const manifestSchema = z
   })
   .strict();
 
-/** 严格解析 Cell Manifest，并只校验跨命令编排身份。 */
+/** 严格解析 Cell Manifest，并校验跨命令身份、Verification Template 与摘要。 */
 export function parseCodingTaskCellManifest(
   input: unknown,
+  digest: ContentDigestPort,
 ): Result<CodingTaskCellRunManifest, HarnessError> {
   const parsed = manifestSchema.safeParse(input);
   if (!parsed.success) return failure(invalidManifest("manifest"));
@@ -107,6 +117,15 @@ export function parseCodingTaskCellManifest(
     commands.map(({ stage }) => stage),
   );
   if (identity.status === ResultStatus.Failure) return identity;
+  const verificationCommand = parsedCommands.at(-1)!;
+  const verificationTemplate = parseCodingTaskCellVerificationTemplate(
+    verificationCommand.payload,
+    verificationCommand.requestDigest,
+    digest,
+  );
+  if (verificationTemplate.status === ResultStatus.Failure) {
+    return failure(withStage(verificationTemplate.error, CodingTaskCellStage.VerificationBinding));
+  }
   let commandIndex = 0;
   return success({
     schemaVersion: CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION,
@@ -125,7 +144,8 @@ export function parseCodingTaskCellManifest(
       runtime: parsed.data.submission.runtime,
     },
     verification: {
-      command: parsedCommands[commandIndex]!,
+      command: { ...verificationCommand, payload: verificationTemplate.value },
+      binding: parsed.data.verification.binding,
       runtime: parsed.data.verification.runtime,
     },
   });

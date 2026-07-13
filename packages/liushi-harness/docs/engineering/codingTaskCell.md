@@ -12,14 +12,14 @@
 liushi-harness cell run --file codingTaskCell.json --store .liushi/runtime --json
 ```
 
-Manifest 使用严格版本 `coding-task.cell.run.v1`，按固定顺序包含：
+Manifest 使用严格版本 `coding-task.cell.run.v2`，按固定顺序包含：
 
 1. `createCommand`：创建 CodingTask。
 2. `provision`：创建受管 Worktree。
 3. `startAttemptCommand`：开始当前 Attempt。
 4. `implementations`：一个或多个受控文件变更。
 5. `submission`：创建单一 Git Checkpoint 并原子提交实现结果。
-6. `verification`：执行已确认的 Verification Plan 并提交 EvidenceBundle。
+6. `verification`：提交不含 `targetRevision` 的 Verification Plan Template，并声明 `latest_implementation_checkpoint` Binding；Cell 从权威 CodingTask Aggregate 读取 Submission 生成的 Revision，重算最终 Command Digest 后执行验证并提交 EvidenceBundle。
 
 每个步骤复用已有版本化 Command Envelope。所有命令必须绑定同一 `aggregateId` 和 `correlationId`，`commandId` 不能重复；Repository Root 和 Worktree Root 只作为 Runtime Binding 传入，不写入 Receipt、Action Journal 或 EvidenceBundle。
 
@@ -42,4 +42,4 @@ Manifest 使用严格版本 `coding-task.cell.run.v1`，按固定顺序包含：
 4. `blocked` 时读取停止阶段与 Receipt，补充 Human 决策或修复确定性前置条件。
 5. `review_ready` 后由 Human 审查 PRReadyArtifact、Checkpoint、Evidence 和代码差异，再决定是否创建 PR。
 
-当前真实 Git E2E 已验证 G1/G4 Human Approval、默认 Task-backed 授权、Checkpoint、Local Command Verification、Evidence Passed、PRReadyArtifact 和跨 Application 实例幂等复用。公开项目安装 Smoke、Checkpoint 后自动绑定 Verification Target Revision 和 Human Touch Time 指标仍是下一阶段完成门。
+当前真实 Git E2E 已验证 G1/G4 Human Approval、默认 Task-backed 授权、Checkpoint 后权威绑定 Verification Target Revision、Local Command Verification、Evidence Passed、PRReadyArtifact 和跨 Application 实例幂等复用。公开项目安装 Smoke 和 Human Touch Time 指标仍是下一阶段完成门。

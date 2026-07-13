@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION,
+  CodingTaskCellRevisionBinding,
   CodingTaskCellService,
   CodingTaskCellStage,
   CodingTaskCellStatus,
@@ -33,6 +34,7 @@ import {
   success,
   type AssemblePrReadyArtifactUseCase,
   type CodingTaskCommandService,
+  type CodingTaskCellVerificationBindingService,
   type CommandEnvelope,
   type CommandReceipt,
   type EvidenceBundle,
@@ -43,6 +45,9 @@ import {
   type VerificationCommandService,
   type WorktreeProvisionCommandService,
 } from "../../src/index.js";
+import { Rfc8785Sha256DigestAdapter } from "../../src/infrastructure/index.js";
+
+const digest = new Rfc8785Sha256DigestAdapter();
 
 describe("CodingTask Cell Service", () => {
   it("按固定顺序执行多个 Implementation 并返回 ReviewReady", async () => {
@@ -72,6 +77,7 @@ describe("CodingTask Cell Service", () => {
       "implementation-0",
       "implementation-1",
       "submission",
+      "verification_binding",
       "verification",
       "evidence",
       "pr_ready",
@@ -94,6 +100,7 @@ describe("CodingTask Cell Service", () => {
       "implementation-0",
       "implementation-1",
       "submission",
+      "verification_binding",
       "verification",
       "evidence",
       "pr_ready",
@@ -187,6 +194,43 @@ describe("CodingTask Cell Service", () => {
     }
     expect(setup.calls.at(-1)).toBe("pr_ready");
   });
+
+  it("Template Digest 错误在 Create 前拒绝", async () => {
+    const setup = createSetup();
+    const manifest = createManifest();
+    manifest.verification.command.requestDigest = unwrapDigest(`sha256:${"f".repeat(64)}`);
+
+    const result = await setup.service.execute(manifest);
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    expect(setup.calls).toEqual([]);
+  });
+
+  it("Binder 失败停在 VerificationBinding 且不调用 Verification", async () => {
+    const setup = createSetup({
+      bindingFailure: new HarnessError(
+        HarnessErrorCode.InvalidStateTransition,
+        "Revision 绑定失败。",
+      ),
+    });
+
+    const result = await setup.service.execute(createManifest());
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.details["stage"]).toBe(CodingTaskCellStage.VerificationBinding);
+    }
+    expect(setup.calls).toEqual([
+      "create",
+      "provision",
+      "start",
+      "implementation-0",
+      "implementation-1",
+      "submission",
+      "verification_binding",
+    ]);
+    expect(setup.executeVerification).not.toHaveBeenCalled();
+  });
 });
 
 /** Cell Service 假依赖的可选阶段结果。 */
@@ -195,6 +239,7 @@ interface SetupOptions {
   readonly provisionFailure?: HarnessError;
   readonly evidenceStatus?: VerificationStatus;
   readonly prReadyFailure?: HarnessError;
+  readonly bindingFailure?: HarnessError;
 }
 
 function createSetup(options: SetupOptions = {}) {
@@ -218,6 +263,26 @@ function createSetup(options: SetupOptions = {}) {
     calls.push(command.commandId);
     return Promise.resolve(success(receipt(command)));
   });
+  const bindVerification = vi.fn(
+    (input: { readonly command: CommandEnvelope<Record<string, unknown>> }) => {
+      calls.push("verification_binding");
+      if (options.bindingFailure !== undefined) {
+        return Promise.resolve(failure(options.bindingFailure));
+      }
+      const payload = input.command.payload as ReturnType<typeof verificationPayload>;
+      const materializedPayload = {
+        ...payload,
+        plan: { ...payload.plan, targetRevision: "target-revision-1" },
+      };
+      return Promise.resolve(
+        success({
+          ...input.command,
+          requestDigest: unwrapDigest(calculateDigest(materializedPayload)),
+          payload: materializedPayload,
+        }),
+      );
+    },
+  );
   const executeVerification = vi.fn((command: CommandEnvelope) => {
     calls.push(command.commandId);
     return Promise.resolve(success(receipt(command)));
@@ -238,15 +303,18 @@ function createSetup(options: SetupOptions = {}) {
   return {
     calls,
     assemblePrReady,
+    executeVerification,
     prReadyArtifact,
     service: new CodingTaskCellService(
       { execute: executeCodingTask } as unknown as CodingTaskCommandService,
       { execute: executeProvision } as unknown as WorktreeProvisionCommandService,
       { execute: executeImplementation } as unknown as ImplementationCommandService,
       { execute: executeSubmission } as unknown as ImplementationSubmissionService,
+      { bind: bindVerification } as unknown as CodingTaskCellVerificationBindingService,
       { execute: executeVerification } as unknown as VerificationCommandService,
       { load: loadEvidence } as unknown as EvidenceBundleStore,
       { execute: assemblePrReady } as unknown as AssemblePrReadyArtifactUseCase,
+      digest,
     ),
   };
 }
@@ -325,38 +393,7 @@ function unwrap<T>(result: { status: ResultStatus; value?: T; error?: Error }): 
 function createManifest() {
   const aggregateId = "coding-task-cell-1";
   const correlationId = "cell-correlation-1";
-  const verificationPayload = {
-    workspaceId: "workspace-1",
-    actionId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
-    verificationRunId: "verification-run-1",
-    attemptNumber: 1,
-    worktreeRootDigest: `sha256:${"b".repeat(64)}`,
-    plan: {
-      schemaVersion: VERIFICATION_PLAN_SCHEMA_VERSION,
-      planId: "plan-1",
-      repositoryId: "repository-1",
-      worktreeId: "worktree-1",
-      expectedBranchName: "feature/cell",
-      baseRevision: "base-revision-1",
-      targetRevision: "target-revision-1",
-      checks: [
-        {
-          checkId: "check-1",
-          kind: VerificationKind.Typecheck,
-          requirement: VerificationRequirement.Required,
-          command: {
-            executable: "node",
-            args: ["--version"],
-            workingDirectory: "",
-            allowedEnvironmentKeys: [],
-          },
-          timeoutMs: 1_000,
-          retryable: false,
-        },
-      ],
-    },
-    failedVerificationTaxonomy: FailureTaxonomy.ImplementationDefect,
-  };
+  const verificationPayloadValue = verificationPayload();
   return {
     schemaVersion: CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION,
     createCommand: command("create", CodingTaskCommandType.Create, aggregateId, correlationId),
@@ -394,10 +431,45 @@ function createManifest() {
         VERIFICATION_RUN_COMMAND_TYPE,
         aggregateId,
         correlationId,
-        verificationPayload,
+        verificationPayloadValue,
       ),
+      binding: CodingTaskCellRevisionBinding.LatestImplementationCheckpoint,
       runtime: { worktreeRoot: "C:\\repository\\worktrees\\task" },
     },
+  };
+}
+
+function verificationPayload() {
+  return {
+    workspaceId: "workspace-1",
+    actionId: "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+    verificationRunId: "verification-run-1",
+    attemptNumber: 1,
+    worktreeRootDigest: `sha256:${"b".repeat(64)}`,
+    plan: {
+      schemaVersion: VERIFICATION_PLAN_SCHEMA_VERSION,
+      planId: "plan-1",
+      repositoryId: "repository-1",
+      worktreeId: "worktree-1",
+      expectedBranchName: "feature/cell",
+      baseRevision: "base-revision-1",
+      checks: [
+        {
+          checkId: "check-1",
+          kind: VerificationKind.Typecheck,
+          requirement: VerificationRequirement.Required,
+          command: {
+            executable: "node",
+            args: ["--version"],
+            workingDirectory: "",
+            allowedEnvironmentKeys: [],
+          },
+          timeoutMs: 1_000,
+          retryable: false,
+        },
+      ],
+    },
+    failedVerificationTaxonomy: FailureTaxonomy.ImplementationDefect,
   };
 }
 
@@ -416,11 +488,21 @@ function command(
     aggregateId,
     expectedVersion: 1,
     idempotencyKey: commandId,
-    requestDigest: `sha256:${"a".repeat(64)}`,
+    requestDigest: unwrapDigest(calculateDigest(payload)),
     actor: { kind: "agent", actorId: "agent-1" },
     authorizationContext: {},
     correlationId,
     submittedAt: "2026-07-14T00:00:00.000Z",
     payload,
   } as CommandEnvelope;
+}
+
+function calculateDigest(value: unknown): string {
+  const result = digest.calculate(value);
+  if (result.status === ResultStatus.Failure) throw result.error;
+  return result.value;
+}
+
+function unwrapDigest(value: string) {
+  return unwrap(parseContentDigest(value));
 }

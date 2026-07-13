@@ -10,6 +10,8 @@ export enum CodingTaskCellStage {
   Implementation = "implementation",
   /** 创建 Git Checkpoint 并提交实现。 */
   Submission = "submission",
+  /** 从权威 CodingTask Aggregate 物化 Verification Revision。 */
+  VerificationBinding = "verification_binding",
   /** 执行 Verification Plan。 */
   Verification = "verification",
   /** 强一致读取最终 EvidenceBundle。 */

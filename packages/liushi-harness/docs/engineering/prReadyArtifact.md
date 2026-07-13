@@ -42,4 +42,4 @@ Artifact Digest 对不含自身 ID 和 Digest 的完整正文计算，Artifact I
 
 ## 当前验证边界
 
-真实 Git E2E 已覆盖 G1/G4 Human Approval、默认 Task-backed 授权、文件变更、单一 Checkpoint、Local Command Verification、Artifact 装配和跨 Application 实例零重复副作用。公开项目 tarball 安装 Smoke、Checkpoint 后自动解析 Verification Target Revision、多仓依赖传播和 Human Touch Time 采集尚未完成。
+真实 Git E2E 已覆盖 G1/G4 Human Approval、默认 Task-backed 授权、文件变更、单一 Checkpoint、Checkpoint 后权威解析 Verification Target Revision、Local Command Verification、Artifact 装配和跨 Application 实例零重复副作用。公开项目 tarball 安装 Smoke、多仓依赖传播和 Human Touch Time 采集尚未完成。

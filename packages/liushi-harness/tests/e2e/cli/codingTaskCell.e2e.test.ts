@@ -10,6 +10,7 @@ import {
   ActorKind,
   ArtifactStatus,
   ArtifactType,
+  CodingTaskCellRevisionBinding,
   CodingTaskCellStage,
   CodingTaskCellStatus,
   CodingTaskCommandType,
@@ -52,9 +53,6 @@ const codingTaskId = "coding-task-cell-task";
 const sourceTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FB2";
 const correlationId = "coding-task-cell-correlation";
 const submittedAt = "2026-07-14T00:00:00.000Z";
-const fixedGitDate = "2026-07-14T00:00:00Z";
-const originalAuthorDate = process.env["GIT_AUTHOR_DATE"];
-const originalCommitterDate = process.env["GIT_COMMITTER_DATE"];
 const writeSet = ["src/index.ts"] as const;
 const remainingRisks = [
   { description: "实现可能改变导出行为。", mitigation: "运行本地验证并人工审查差异。" },
@@ -63,8 +61,6 @@ const riskOperations = [{ target: "src/index.ts", reason: "修改仓库中的公
 const rollbackPlan = ["回退 CodingTask 生成的单一 checkpoint。"] as const;
 
 afterEach(async () => {
-  restoreEnvironment("GIT_AUTHOR_DATE", originalAuthorDate);
-  restoreEnvironment("GIT_COMMITTER_DATE", originalCommitterDate);
   await Promise.all(
     temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   );
@@ -95,7 +91,6 @@ describe("CodingTask Cell CLI E2E", () => {
           codingTaskId,
           sourceTaskId,
           baseRevision: setup.baseRevision,
-          headRevision: setup.targetRevision,
           writeSet,
           verification: { status: VerificationStatus.Passed },
           remainingRisks,
@@ -116,8 +111,9 @@ describe("CodingTask Cell CLI E2E", () => {
         ],
       },
     });
+    const headRevision = readHeadRevision(firstEnvelope);
     expect(secondEnvelope).toEqual(firstEnvelope);
-    expect(await runGit(setup.worktreeRoot, ["rev-parse", "HEAD"])).toBe(setup.targetRevision);
+    expect(await runGit(setup.worktreeRoot, ["rev-parse", "HEAD"])).toBe(headRevision);
     expect(
       await runGit(setup.worktreeRoot, ["rev-list", "--count", `${setup.baseRevision}..HEAD`]),
     ).toBe("1");
@@ -136,7 +132,6 @@ interface CellSetup {
   readonly manifestFile: string;
   readonly verificationCounter: string;
   readonly baseRevision: string;
-  readonly targetRevision: string;
 }
 
 async function createSetup(): Promise<CellSetup> {
@@ -151,9 +146,6 @@ async function createSetup(): Promise<CellSetup> {
   await runGit(repositoryRoot, ["add", "."]);
   await runGit(repositoryRoot, ["commit", "-m", "base"]);
   const baseRevision = await runGit(repositoryRoot, ["rev-parse", "HEAD"]);
-  process.env["GIT_AUTHOR_DATE"] = fixedGitDate;
-  process.env["GIT_COMMITTER_DATE"] = fixedGitDate;
-  const targetRevision = await predictCheckpoint(repositoryRoot, baseRevision);
   const worktreeRoot = join(repositoryRoot, "worktrees", "cell");
   const verificationCounter = join(storeRoot, "verification-count.txt");
   const application = createApplication(storeRoot, repositoryRoot);
@@ -217,7 +209,6 @@ async function createSetup(): Promise<CellSetup> {
     repositoryRoot,
     worktreeRoot,
     baseRevision,
-    targetRevision,
     verificationCounter,
     executionAuthorization,
   });
@@ -229,7 +220,6 @@ async function createSetup(): Promise<CellSetup> {
     manifestFile,
     verificationCounter,
     baseRevision,
-    targetRevision,
   };
 }
 
@@ -237,7 +227,6 @@ function createManifest(input: {
   readonly repositoryRoot: string;
   readonly worktreeRoot: string;
   readonly baseRevision: string;
-  readonly targetRevision: string;
   readonly verificationCounter: string;
   readonly executionAuthorization: CodingTaskExecutionAuthorization;
 }) {
@@ -306,6 +295,7 @@ function createManifest(input: {
     },
     verification: {
       command: command("cell-verification", VERIFICATION_RUN_COMMAND_TYPE, 3, verificationPayload),
+      binding: CodingTaskCellRevisionBinding.LatestImplementationCheckpoint,
       runtime: { worktreeRoot: input.worktreeRoot },
     },
   };
@@ -332,7 +322,6 @@ function createVerificationPayload(
       worktreeId: binding.worktreeId,
       expectedBranchName: binding.branchName,
       baseRevision: input.baseRevision,
-      targetRevision: input.targetRevision,
       checks: [
         {
           checkId: "external-counter",
@@ -459,25 +448,6 @@ function createExecutionAuthorization(
   };
 }
 
-async function predictCheckpoint(repositoryRoot: string, baseRevision: string): Promise<string> {
-  const predictionRoot = await createTemporaryRoot("liushi-cell-prediction-");
-  await runGit(repositoryRoot, [
-    "worktree",
-    "add",
-    "-b",
-    "feature/coding-task-cell-prediction",
-    predictionRoot,
-    baseRevision,
-  ]);
-  await writeFile(join(predictionRoot, "src", "index.ts"), "export const value = 2;\n");
-  await runGit(predictionRoot, ["add", "src/index.ts"]);
-  await runGit(predictionRoot, ["commit", "-m", `harness: submit ${codingTaskId} attempt 1`]);
-  const targetRevision = await runGit(predictionRoot, ["rev-parse", "HEAD"]);
-  await runGit(repositoryRoot, ["worktree", "remove", "--force", predictionRoot]);
-  await runGit(repositoryRoot, ["branch", "-D", "feature/coding-task-cell-prediction"]);
-  return targetRevision;
-}
-
 async function runCell(setup: CellSetup) {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -532,7 +502,11 @@ function parseOutput(stdout: readonly string[]) {
   };
 }
 
-function restoreEnvironment(key: string, value: string | undefined): void {
-  if (value === undefined) delete process.env[key];
-  else process.env[key] = value;
+function readHeadRevision(envelope: ReturnType<typeof parseOutput>): string {
+  const data = envelope.data as { readonly prReadyArtifact?: { readonly headRevision?: unknown } };
+  const headRevision = data.prReadyArtifact?.headRevision;
+  if (typeof headRevision !== "string" || headRevision.length === 0) {
+    throw new Error("首次运行必须返回真实 PRReadyArtifact.headRevision。");
+  }
+  return headRevision;
 }

@@ -6,7 +6,7 @@ import {
 } from "#application/command/index.js";
 import type { ImplementationCommandService } from "#application/implementationCommand/index.js";
 import type { ImplementationSubmissionService } from "#application/implementationSubmission/index.js";
-import type { EvidenceBundleStore } from "#application/ports/index.js";
+import type { ContentDigestPort, EvidenceBundleStore } from "#application/ports/index.js";
 import type { AssemblePrReadyArtifactUseCase } from "#application/useCases/assemblePrReadyArtifact/index.js";
 import {
   parseRunVerificationPayload,
@@ -25,6 +25,7 @@ import {
 } from "../contracts/index.js";
 import { CodingTaskCellStage, CodingTaskCellStatus } from "../enums/index.js";
 import { parseCodingTaskCellManifest } from "../validation/index.js";
+import type { CodingTaskCellVerificationBindingService } from "../verificationBinding/index.js";
 
 /** 串行编排已获 Human Gate 授权的 CodingTask 编码阶段。 */
 export class CodingTaskCellService {
@@ -33,14 +34,16 @@ export class CodingTaskCellService {
     private readonly worktreeProvisionCommands: WorktreeProvisionCommandService,
     private readonly implementationCommands: ImplementationCommandService,
     private readonly implementationSubmissions: ImplementationSubmissionService,
+    private readonly verificationBinding: CodingTaskCellVerificationBindingService,
     private readonly verificationCommands: VerificationCommandService,
     private readonly evidenceBundleStore: EvidenceBundleStore,
     private readonly assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase,
+    private readonly digest: ContentDigestPort,
   ) {}
 
   /** 按冻结顺序执行 Cell；任何非确定完成状态都会立即停止。 */
   public async execute(input: unknown): Promise<Result<CodingTaskCellReport, HarnessError>> {
-    const parsed = parseCodingTaskCellManifest(input);
+    const parsed = parseCodingTaskCellManifest(input, this.digest);
     if (parsed.status === ResultStatus.Failure) return parsed;
     const manifest = parsed.value;
     const receipts: CodingTaskCellStageReceipt[] = [];
@@ -82,16 +85,20 @@ export class CodingTaskCellService {
     );
     if (stopped.status === ResultStatus.Failure) return stopped;
     if (stopped.value !== undefined) return success(stopped.value);
+    const verificationCommand = await this.verificationBinding.bind({
+      command: manifest.verification.command,
+      binding: manifest.verification.binding,
+    });
+    if (verificationCommand.status === ResultStatus.Failure) {
+      return failure(withStage(verificationCommand.error, CodingTaskCellStage.VerificationBinding));
+    }
     stopped = await executeStage(CodingTaskCellStage.Verification, receipts, () =>
-      this.verificationCommands.execute(
-        manifest.verification.command,
-        manifest.verification.runtime,
-      ),
+      this.verificationCommands.execute(verificationCommand.value, manifest.verification.runtime),
     );
     if (stopped.status === ResultStatus.Failure) return stopped;
     if (stopped.value !== undefined) return success(stopped.value);
 
-    const locator = createEvidenceLocator(manifest.verification.command);
+    const locator = createEvidenceLocator(verificationCommand.value);
     if (locator.status === ResultStatus.Failure) {
       return failure(withStage(locator.error, CodingTaskCellStage.Evidence));
     }

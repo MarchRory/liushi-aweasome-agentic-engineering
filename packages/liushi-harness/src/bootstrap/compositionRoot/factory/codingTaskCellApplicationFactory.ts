@@ -1,6 +1,7 @@
 import {
   AssemblePrReadyArtifactUseCase,
   CodingTaskCellService,
+  CodingTaskCellVerificationBindingService,
   CodingTaskCommandService,
   ImplementationCommandService,
   ImplementationSubmissionService,
@@ -100,9 +101,11 @@ export function createCodingTaskCellApplication(
       input.worktreeProvisionCommands,
       implementationCommands,
       implementationSubmissions,
+      new CodingTaskCellVerificationBindingService(input.codingTaskRepository, input.digest),
       verificationCommands,
       input.evidenceBundleStore,
       assemblePrReadyArtifact,
+      input.digest,
     ),
   };
 }

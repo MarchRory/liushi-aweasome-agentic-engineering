@@ -3,9 +3,13 @@ import type { PrReadyArtifact } from "#domain/repositoryDelivery/index.js";
 import type { EvidenceBundle } from "#domain/verification/index.js";
 
 import type { CodingTaskCellStage, CodingTaskCellStatus } from "../enums/index.js";
+import type {
+  CodingTaskCellRevisionBinding,
+  CodingTaskCellVerificationTemplatePayload,
+} from "../verificationBinding/index.js";
 
 /** CodingTask Cell Manifest 的严格版本。 */
-export const CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION = "coding-task.cell.run.v1";
+export const CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION = "coding-task.cell.run.v2";
 
 /** CodingTask Cell Report 的稳定版本。 */
 export const CODING_TASK_CELL_REPORT_SCHEMA_VERSION = "coding-task.cell.report.v1";
@@ -23,8 +27,10 @@ export interface CodingTaskCellRepositoryStep {
 
 /** 携带 Worktree Root 的 Verification 步骤。 */
 export interface CodingTaskCellVerificationStep {
-  /** 交给 Verification Service 的完整 Command Envelope。 */
-  readonly command: CommandEnvelope;
+  /** 携带 Plan Template 的 Verification Command Envelope。 */
+  readonly command: CommandEnvelope<CodingTaskCellVerificationTemplatePayload>;
+  /** 从权威 CodingTask Aggregate 解析目标 Revision 的封闭策略。 */
+  readonly binding: CodingTaskCellRevisionBinding;
   /** 仅在本次调用中使用的 Runtime Binding。 */
   readonly runtime: {
     /** 本地 Worktree Root。 */

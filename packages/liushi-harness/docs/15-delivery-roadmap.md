@@ -85,7 +85,7 @@ Human、Lead 与六角色评审已经确认：
 
 ### 5.1 S3 CodingTask 进展修订
 
-S3 当前已经完成 Domain Core、File Store/Replay、Command Gateway/Service、默认权威授权解析、Managed Worktree Provision/Inspector、未知 Provision Human 对账与下游 Guard、Workspace/Repository 排他 Lock、Action 级执行锁和 Intent-first `JournaledActionRunner`、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted Attempt 收口、Verification 版本化命令与 EvidenceBundle、G8 Profile-backed 单仓影响面、fail-closed Mock、显式 Local Command Runner、单一纵向 CodingTask CLI Cell 和单仓 PRReadyArtifact 权威装配。真实 Git E2E 已验证 G1/G4 Human Approval、Checkpoint、Evidence Passed、PRReadyArtifact 确定性和跨实例零重复副作用；下一步进入 Checkpoint 后自动绑定 Verification Target Revision、公开项目安装 Smoke 与 Human Touch Time 采集。Worktree 清理/重建、失败分类/受限重试和多仓编排作为后续运维与扩展能力，不再阻断首个受控闭环。在公开项目证据形成前，不得宣称 CodingTask 已完成生产验证。
+S3 当前已经完成 Domain Core、File Store/Replay、Command Gateway/Service、默认权威授权解析、Managed Worktree Provision/Inspector、未知 Provision Human 对账与下游 Guard、Workspace/Repository 排他 Lock、Action 级执行锁和 Intent-first `JournaledActionRunner`、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted Attempt 收口、Checkpoint 后权威绑定 Verification Target Revision、Verification 版本化命令与 EvidenceBundle、G8 Profile-backed 单仓影响面、fail-closed Mock、显式 Local Command Runner、单一纵向 CodingTask CLI Cell 和单仓 PRReadyArtifact 权威装配。真实 Git E2E 已验证 G1/G4 Human Approval、Checkpoint、Evidence Passed、PRReadyArtifact 确定性和跨实例零重复副作用；下一步只进入公开项目安装 Smoke 与 Human Touch Time 采集。Worktree 清理/重建、失败分类/受限重试和多仓编排作为后续运维与扩展能力，不再阻断首个受控闭环。在公开项目证据形成前，不得宣称 CodingTask 已完成生产验证。
 
 ## 6. 每个切片的统一开工门
 
