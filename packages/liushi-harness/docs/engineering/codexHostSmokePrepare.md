@@ -19,10 +19,15 @@ Prepare 是真实 Host Smoke 的前置阶段，不是 Host Smoke 通过证据。
 ```powershell
 corepack pnpm@10.23.0 smoke:codex-host:prepare -- `
   --root D:\liushi-smoke\defu-codex-host `
-  --codex C:\path\to\codex.exe
+  --codex C:\path\to\codex.exe `
+  --codex-home D:\.codex `
+  --model gpt-5.6-sol `
+  --actor-id smoke-human
 ```
 
 `--root` 已存在、不是绝对路径或包含 NUL 时，命令关闭式拒绝。Prepare 失败后，只会清理本次成功创建且经 `lstat` 证明为普通目录的精确 root；调用方原有目录不会被删除。Prepare 成功后保留该目录，等待 Human 审阅和激活。
+
+`--model` 必须由 Human 显式选择并进入 Activation Digest。上例使用当前旗舰 `gpt-5.6-sol`；Host Smoke 的任务很窄，Activation Plan 固定使用 `low` reasoning effort 控制成本。[OpenAI Model guidance](https://developers.openai.com/api/docs/guides/latest-model)
 
 ## 准备链路
 
@@ -33,6 +38,7 @@ corepack pnpm@10.23.0 smoke:codex-host:prepare -- `
 5. 通过安装后的 CLI 对指定 Codex 执行静态 `hook probe`；要求报告 Schema v2、三条命令、`overallStatus=verified`、`hookFramework=verified` 和 `productionVerified=false`。
 6. 通过安装后的 CLI 获取原生 Hook Projection，将 Handler 绑定到实际 Node、Tarball CLI Entrypoint 和独立 Runtime Store。
 7. 只将候选配置写入 `control/candidateHooks.json`，并生成 `control/prepareManifest.json`。
+8. 生成 `control/activationPlan.json`，固定 trust 片段、Hook 写入、Binding、正负 Host 命令、证据路径和回滚边界，但不执行其中任何动作。
 
 所有外部命令继续使用 `shell=false`。候选 Hook 命令只是待审阅配置字符串，Prepare 不执行该字符串。
 
@@ -46,6 +52,7 @@ Manifest Schema 为 `liushi.codex-host-smoke.prepare.v2`，状态固定为 `huma
 - 候选 Hook 配置 Digest。
 - Workspace、Task 和 PlanRisk Artifact ID/Digest。
 - 完整 Human Activation Action 列表。
+- 精确 Activation Plan Digest。
 
 任何风险相关字段漂移都会改变 Activation Digest。Manifest 是包含本机路径的本地控制文件，不能作为可发布的跨机器 Evidence。
 

@@ -26,31 +26,44 @@ afterEach(async () => {
 });
 
 describe("Codex Host Smoke Prepare", () => {
-  it("严格解析绝对 root 和 codex executable", () => {
+  it("严格解析 Prepare 的路径和执行身份", () => {
     const root = resolve("host-smoke-root");
     const codex = resolve("codex.exe");
+    const codexHome = resolve("codex-home");
+    const options = [
+      "--root",
+      root,
+      "--codex",
+      codex,
+      "--codex-home",
+      codexHome,
+      "--model",
+      "gpt-5.6-sol",
+      "--actor-id",
+      "smoke-human",
+    ];
 
     const expected = {
       command: "prepare",
       root,
       codexExecutable: codex,
+      codexHome,
+      model: "gpt-5.6-sol",
+      actorId: "smoke-human",
     };
 
-    expect(parseCodexHostSmokeArguments(["prepare", "--root", root, "--codex", codex])).toEqual(
-      expected,
-    );
-    expect(
-      parseCodexHostSmokeArguments(["prepare", "--", "--root", root, "--codex", codex]),
-    ).toEqual(expected);
+    expect(parseCodexHostSmokeArguments(["prepare", ...options])).toEqual(expected);
+    expect(parseCodexHostSmokeArguments(["prepare", "--", ...options])).toEqual(expected);
 
     for (const args of [
-      ["execute", "--root", root, "--codex", codex],
-      ["prepare", "--root", "relative", "--codex", codex],
-      ["prepare", "--root", root, "--codex", "relative"],
-      ["prepare", "--root", root, "--codex", codex, "--unknown", "value"],
-      ["prepare", "--root", root, "--root", root, "--codex", codex],
-      ["prepare", "--", "--", "--root", root, "--codex", codex],
-      ["prepare", "--root", `${root}\0`, "--codex", codex],
+      ["execute", ...options],
+      ["prepare", ...options, "--unknown", "value"],
+      ["prepare", ...options, "--root", root],
+      ["prepare", "--", "--", ...options],
+      ["prepare", ...options.slice(0, -2)],
+      ["prepare", ...options.slice(0, 1), "relative", ...options.slice(2)],
+      ["prepare", ...options.slice(0, 7), "unsafe model", ...options.slice(8)],
+      ["prepare", ...options.slice(0, 9), "actor\0", ...options.slice(10)],
     ]) {
       expect(() => parseCodexHostSmokeArguments(args)).toThrow();
     }
@@ -118,9 +131,14 @@ describe("Codex Host Smoke Prepare", () => {
       ...input,
       codexProbe: { ...input.codexProbe, version: "0.145.0" },
     });
+    const fourth = calculateActivationDigest({
+      ...input,
+      activationPlan: { ...input.activationPlan, model: { id: "gpt-next" } },
+    });
 
     expect(first).not.toBe(second);
     expect(first).not.toBe(third);
+    expect(first).not.toBe(fourth);
     const manifest = createCodexHostSmokeManifest(input);
     expect(manifest.schemaVersion).toBe("liushi.codex-host-smoke.prepare.v2");
     expect(manifest.activation.digest).toBe(first);
@@ -145,6 +163,23 @@ describe("Codex Host Smoke Prepare", () => {
       productionVerified: false,
     });
     expect(manifest.activation.digest).toBe(summary.activationDigest);
+    expect(summary.activationPlanPath).toBe(manifest.activationPlan.path);
+    const activationPlan = JSON.parse(await readFile(summary.activationPlanPath, "utf8"));
+    expect(activationPlan).toMatchObject({
+      schemaVersion: "liushi.codex-host-smoke.activation-plan.v1",
+      status: "human_approval_required",
+      actorId: "smoke-human",
+      model: { id: "gpt-5.6-sol", reasoningEffort: "low" },
+      projectTrust: { writeExecuted: false },
+      hookConfigWrite: { writeExecuted: false },
+      hookBinding: { executed: false },
+      hookDefinitionTrust: { command: "/hooks", bypassAllowed: false, completed: false },
+    });
+    expect(activationPlan.hostRuns).toHaveLength(2);
+    expect(activationPlan.hostRuns.every((run) => run.executed === false)).toBe(true);
+    expect(activationPlan.hostRuns.flatMap((run) => run.args)).not.toContain(
+      "--dangerously-bypass-hook-trust",
+    );
     await expect(access(join(summary.worktreeRoot, ".codex", "hooks.json"))).rejects.toThrow();
     await expect(access(manifest.candidateHookConfig.path)).resolves.toBeUndefined();
   });
@@ -195,9 +230,19 @@ async function createServiceFixture(options = {}) {
   temporaryRoots.push(parent);
   const codexExecutable = join(parent, "codex.exe");
   await writeFile(codexExecutable, "fixture", "utf8");
+  const codexHome = join(parent, "codexHome");
+  await mkdir(codexHome);
+  await writeFile(join(codexHome, "config.toml"), "", "utf8");
   const root = join(parent, "prepared");
   return {
-    input: { root, codexExecutable, packageRoot: join(parent, "package") },
+    input: {
+      root,
+      codexExecutable,
+      codexHome,
+      model: "gpt-5.6-sol",
+      actorId: "smoke-human",
+      packageRoot: join(parent, "package"),
+    },
     dependencies: {
       clonePublicProject: async (preparedRoot) => {
         const repositoryRoot = join(preparedRoot, "repository");
@@ -330,7 +375,10 @@ function manifestInput() {
       artifact: { sha256: `sha256:${"1".repeat(64)}` },
     },
     executionEnvironment: { nodeVersion: "v24", platform: "win32", architecture: "x64" },
-    paths: { worktreeRoot: "C:/host/worktree" },
+    paths: {
+      worktreeRoot: "C:/host/worktree",
+      activationPlanFile: "C:/host/control/activationPlan.json",
+    },
     worktree: {
       headRevision: "82632b66f5914e9946edce300e10633a3d5c0cb7",
       clean: true,
@@ -343,6 +391,11 @@ function manifestInput() {
     candidateHookConfig: {
       digest: `sha256:${"3".repeat(64)}`,
       path: "C:/host/control/candidateHooks.json",
+    },
+    activationPlan: {
+      schemaVersion: "liushi.codex-host-smoke.activation-plan.v1",
+      model: { id: "gpt-5.6-sol", reasoningEffort: "low" },
+      hostRuns: [],
     },
     bindingCandidate: {
       workspaceId: "liushi-public-project-smoke",

@@ -18,8 +18,10 @@ import {
   runHarnessNativeJson,
 } from "../../publicProjectSmoke/harnessClient/index.mjs";
 import { clonePublicProject, runBaseline } from "../../publicProjectSmoke/project/index.mjs";
+import { createCodexHostSmokeActivationPlan } from "../activation/index.mjs";
 import { createCandidateHookConfig } from "../config/index.mjs";
 import {
+  CODEX_HOST_SMOKE_ACTIVATION_PLAN_FILE,
   CODEX_HOST_SMOKE_CANDIDATE_CONFIG_FILE,
   CODEX_HOST_SMOKE_CONTROL_DIRECTORY,
   CODEX_HOST_SMOKE_MANIFEST_FILE,
@@ -45,6 +47,7 @@ const defaultDependencies = {
 export async function prepareCodexHostSmoke(input, overrides = {}) {
   const dependencies = { ...defaultDependencies, ...overrides };
   const codexExecutable = await validateCodexExecutable(input.codexExecutable);
+  const codexHome = await validateCodexHome(input.codexHome);
   const root = validateAbsolutePath(input.root, "--root");
   let rootCreated = false;
   try {
@@ -104,6 +107,29 @@ export async function prepareCodexHostSmoke(input, overrides = {}) {
       `${JSON.stringify(candidateConfig, null, 2)}\n`,
       "utf8",
     );
+    const bindingCandidate = createBindingCandidate(gate, paths.worktreeRoot);
+    const candidateConfigDigest = calculateDigest(candidateConfig);
+    const intendedHookConfigFile = join(paths.worktreeRoot, ".codex", "hooks.json");
+    const activationPlan = createCodexHostSmokeActivationPlan({
+      actorId: input.actorId,
+      model: input.model,
+      codexExecutable,
+      codexHome,
+      nodeExecutable: process.execPath,
+      cliEntrypoint,
+      controlRoot: paths.controlRoot,
+      storeRoot: paths.storeRoot,
+      worktreeRoot: paths.worktreeRoot,
+      candidateConfigFile: paths.candidateConfigFile,
+      candidateConfigDigest,
+      intendedHookConfigFile,
+      bindingCandidate,
+    });
+    await writeFile(
+      paths.activationPlanFile,
+      `${JSON.stringify(activationPlan, null, 2)}\n`,
+      "utf8",
+    );
 
     const manifest = createCodexHostSmokeManifest({
       generatedAt: dependencies.now(),
@@ -130,7 +156,8 @@ export async function prepareCodexHostSmoke(input, overrides = {}) {
         storeRoot: paths.storeRoot,
         consumerRoot: consumer.consumerRoot,
         candidateConfigFile: paths.candidateConfigFile,
-        intendedHookConfigFile: join(paths.worktreeRoot, ".codex", "hooks.json"),
+        activationPlanFile: paths.activationPlanFile,
+        intendedHookConfigFile,
       },
       worktree: {
         ...worktree,
@@ -139,14 +166,16 @@ export async function prepareCodexHostSmoke(input, overrides = {}) {
       codexProbe: probe,
       candidateHookConfig: {
         path: paths.candidateConfigFile,
-        digest: calculateDigest(candidateConfig),
+        digest: candidateConfigDigest,
       },
-      bindingCandidate: createBindingCandidate(gate, paths.worktreeRoot),
+      activationPlan,
+      bindingCandidate,
     });
     await writeFile(paths.manifestFile, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
     return {
       status: CODEX_HOST_SMOKE_STATUS,
       manifestPath: paths.manifestFile,
+      activationPlanPath: paths.activationPlanFile,
       worktreeRoot: paths.worktreeRoot,
       activationDigest: manifest.activation.digest,
       requiredHumanActions: manifest.activation.requiredHumanActions,
@@ -164,6 +193,7 @@ function createPaths(root) {
     storeRoot: join(root, CODEX_HOST_SMOKE_RUNTIME_DIRECTORY),
     worktreeRoot: join(root, CODEX_HOST_SMOKE_WORKTREE_DIRECTORY),
     candidateConfigFile: join(controlRoot, CODEX_HOST_SMOKE_CANDIDATE_CONFIG_FILE),
+    activationPlanFile: join(controlRoot, CODEX_HOST_SMOKE_ACTIVATION_PLAN_FILE),
     manifestFile: join(controlRoot, CODEX_HOST_SMOKE_MANIFEST_FILE),
   };
 }
@@ -236,6 +266,15 @@ async function validateCodexExecutable(value) {
   const metadata = await stat(executable);
   if (!metadata.isFile()) throw new Error("--codex 必须指向已存在的文件。");
   return realpath(executable);
+}
+
+async function validateCodexHome(value) {
+  const codexHome = validateAbsolutePath(value, "--codex-home");
+  const metadata = await stat(codexHome);
+  if (!metadata.isDirectory()) throw new Error("--codex-home 必须指向已存在的目录。");
+  const config = await stat(join(codexHome, "config.toml"));
+  if (!config.isFile()) throw new Error("--codex-home 必须包含 config.toml。");
+  return realpath(codexHome);
 }
 
 function validateAbsolutePath(value, label) {

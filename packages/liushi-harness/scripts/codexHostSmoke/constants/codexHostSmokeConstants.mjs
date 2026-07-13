@@ -4,6 +4,7 @@ export const CODEX_HOST_SMOKE_WORKTREE_DIRECTORY = "worktree";
 export const CODEX_HOST_SMOKE_CONTROL_DIRECTORY = "control";
 export const CODEX_HOST_SMOKE_RUNTIME_DIRECTORY = "runtime";
 export const CODEX_HOST_SMOKE_CANDIDATE_CONFIG_FILE = "candidateHooks.json";
+export const CODEX_HOST_SMOKE_ACTIVATION_PLAN_FILE = "activationPlan.json";
 export const CODEX_HOST_SMOKE_MANIFEST_FILE = "prepareManifest.json";
 
 export const CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS = [

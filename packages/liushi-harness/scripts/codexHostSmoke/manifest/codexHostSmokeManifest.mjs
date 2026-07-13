@@ -19,6 +19,10 @@ export function createCodexHostSmokeManifest(input) {
     worktree: input.worktree,
     codexProbe: input.codexProbe,
     candidateHookConfig: input.candidateHookConfig,
+    activationPlan: {
+      path: input.paths.activationPlanFile,
+      digest: calculateDigest(input.activationPlan),
+    },
     bindingCandidate: input.bindingCandidate,
     activation: {
       digest: calculateDigest(activationBinding),
@@ -47,6 +51,7 @@ function createActivationBinding(input) {
     codexProbeDigest: calculateDigest(input.codexProbe),
     packageArtifactSha256: input.package.artifact.sha256,
     candidateHookConfigDigest: input.candidateHookConfig.digest,
+    activationPlanDigest: calculateDigest(input.activationPlan),
     workspaceId: input.bindingCandidate.workspaceId,
     taskId: input.bindingCandidate.taskId,
     planRiskArtifactId: input.bindingCandidate.planRiskArtifactId,
