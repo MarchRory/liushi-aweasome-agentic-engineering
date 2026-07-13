@@ -9,7 +9,7 @@ export interface ApplyImplementationCommandPayload {
   readonly actionId: string;
   /** 当前仍在运行的实现 Attempt 序号。 */
   readonly attemptNumber: number;
-  /** Repository Root 与 Worktree Root 的联合摘要。 */
+  /** Repository Root 的摘要绑定。 */
   readonly runtimeRootDigest: ContentDigest;
   /** 按路径排序的完整目标文件集合。 */
   readonly mutations: readonly FileMutation[];
@@ -19,6 +19,4 @@ export interface ApplyImplementationCommandPayload {
 export interface ImplementationCommandRuntimeContext {
   /** 仅在当前进程中使用的 Repository Root。 */
   readonly repositoryRoot: string;
-  /** 仅在当前进程中使用的 Worktree Root。 */
-  readonly worktreeRoot: string;
 }

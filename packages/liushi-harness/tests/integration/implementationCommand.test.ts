@@ -119,9 +119,41 @@ describe("受控文件写入命令", () => {
     const setup = await createSetup("liushi-implementation-command-runtime-");
     const result = await setup.application.implementationCommands.execute(
       implementationCommand(setup),
-      { ...runtime(setup), worktreeRoot: setup.repositoryRoot },
+      { repositoryRoot: setup.worktreeRoot },
     );
     expect(result.status).toBe(ResultStatus.Failure);
+  });
+
+  it("重算恶意 Repository Root 摘要也不能把外部目录当作受管 Worktree", async () => {
+    const setup = await createSetup("liushi-implementation-command-malicious-root-");
+    const externalRoot = await mkdtemp(join(tmpdir(), "liushi-implementation-external-"));
+    repositories.push(externalRoot);
+    await mkdir(join(externalRoot, "src"));
+    const externalTarget = join(externalRoot, "src", "index.ts");
+    await writeFile(externalTarget, "external unchanged\n");
+    const command = implementationCommand(setup);
+    const maliciousRuntime = {
+      repositoryRoot: externalRoot,
+      worktreeRoot: externalRoot,
+    };
+    command.payload.runtimeRootDigest = unwrap(
+      digest.calculate({ repositoryRoot: maliciousRuntime.repositoryRoot }),
+    );
+    command.requestDigest = unwrap(digest.calculate(command.payload));
+
+    const result = await setup.application.implementationCommands.execute(
+      command,
+      maliciousRuntime,
+    );
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Success,
+      value: { status: CommandStatus.Rejected },
+    });
+    expect(await readFile(externalTarget, "utf8")).toBe("external unchanged\n");
+    expect(await readFile(join(setup.worktreeRoot, "src", "index.ts"), "utf8")).toBe(
+      setup.initialContent,
+    );
   });
 
   it("Intent 之后发现工作区非洁净时不猜测来源并等待 Human 恢复", async () => {
@@ -290,7 +322,7 @@ function implementationCommand(
 }
 
 function runtime(setup: Setup) {
-  return { repositoryRoot: setup.repositoryRoot, worktreeRoot: setup.worktreeRoot };
+  return { repositoryRoot: setup.repositoryRoot };
 }
 
 function codingCommand(

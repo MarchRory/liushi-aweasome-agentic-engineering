@@ -26,9 +26,7 @@ export interface ApplyFileMutationsInput {
   readonly repositoryId: RepositoryId;
   /** 仅供本次检查使用的 Repository Root。 */
   readonly repositoryRoot: string;
-  /** 仅供本次写入使用的 Worktree Root。 */
-  readonly worktreeRoot: string;
-  /** 已由 CodingTask 锁定的工作树绑定。 */
+  /** 已由 CodingTask 锁定的受管工作树绑定。 */
   readonly worktreeBinding: WorktreeBinding;
   /** 已由 CodingTask 锁定的基础版本。 */
   readonly baseRevision: string;

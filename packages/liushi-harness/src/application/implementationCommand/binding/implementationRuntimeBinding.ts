@@ -10,6 +10,5 @@ export function calculateImplementationRuntimeDigest(
 ): Result<ContentDigest, HarnessError> {
   return digest.calculate({
     repositoryRoot: runtime.repositoryRoot,
-    worktreeRoot: runtime.worktreeRoot,
   });
 }

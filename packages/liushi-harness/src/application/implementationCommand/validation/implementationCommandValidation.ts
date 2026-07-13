@@ -114,10 +114,10 @@ export function parseApplyImplementationPayload(
 export function validateImplementationRuntime(
   input: ImplementationCommandRuntimeContext,
 ): Result<ImplementationCommandRuntimeContext, HarnessError> {
-  if (!validAbsolutePath(input?.repositoryRoot) || !validAbsolutePath(input?.worktreeRoot)) {
+  if (!validAbsolutePath(input?.repositoryRoot)) {
     return failure(invalid("runtime"));
   }
-  return success({ repositoryRoot: input.repositoryRoot, worktreeRoot: input.worktreeRoot });
+  return success({ repositoryRoot: input.repositoryRoot });
 }
 
 function validAbsolutePath(value: unknown): value is string {

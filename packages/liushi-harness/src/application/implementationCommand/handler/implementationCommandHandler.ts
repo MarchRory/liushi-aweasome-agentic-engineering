@@ -129,7 +129,6 @@ export class ImplementationCommandHandler {
         executionInput: {
           repositoryId: aggregate.repositoryId,
           repositoryRoot: runtime.repositoryRoot,
-          worktreeRoot: runtime.worktreeRoot,
           worktreeBinding: aggregate.worktreeBinding,
           baseRevision: aggregate.baseRevision,
           writeSet: aggregate.writeSet,

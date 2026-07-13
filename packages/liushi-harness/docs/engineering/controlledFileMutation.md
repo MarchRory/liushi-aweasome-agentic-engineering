@@ -11,7 +11,7 @@
 3. 要求目标路径精确属于已确认 Write Set。
 4. 获取 Repository Lock，持久化 FileMutation Action Intent。
 5. 要求真实 Worktree 在 Action 开始时洁净且版本、分支符合 CodingTask 绑定。
-6. 校验所有目标文件、父目录、当前内容摘要和目标内容摘要。
+6. 从 Repository Root 与 Worktree Binding 唯一推导真实写入根，并校验所有目标文件、父目录、当前内容摘要和目标内容摘要。
 7. 使用临时文件、`fsync` 和原子替换写入完整 UTF-8 文本。
 8. 使用 Git Worktree Inspector 验收实际 Changed Paths 与本次 Mutation 集合完全一致。
 9. 持久化 Observation 与 Resolution，由 Gateway 生成稳定 Receipt。
@@ -22,6 +22,8 @@
 - Replace 必须携带当前完整文本摘要，防止覆盖 Human 或其他 Agent 的并发修改。
 - 当前采用完整目标文本，不解析或信任模型生成的 Patch 语义。
 - 父目录逐段拒绝符号链接，防止通过文件系统重定向逃逸 Worktree。
+- Replace 保留原文件 mode；写入后重新读取实际内容并计算摘要，不能用请求中的摘要代替结果证据。
+- 文件与父目录按平台能力执行持久化同步；不支持目录 `fsync` 的平台按 best-effort 记录，其他同步失败进入 `OutcomeUnknown`。
 - Worktree 非洁净、部分写入、后置检查不一致或提交结果未知时进入 `OutcomeUnknown`，不得自动重试。
 - 本切片不负责模型调用、Agent 选择、Attempt 收口、验证计划生成或 PR 创建。
 
