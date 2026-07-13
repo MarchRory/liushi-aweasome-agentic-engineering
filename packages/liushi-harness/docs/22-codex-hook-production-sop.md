@@ -44,7 +44,7 @@ liushi-harness hook config --executor codex > .codex/hooks.json
 - 配置只包含 `command` Handler，不包含未实现的 prompt、agent 或 async Handler。
 - PreToolUse 和 PostToolUse 都只匹配 `apply_patch`。
 - `command` 与 `commandWindows` 能在目标环境中找到 `liushi-harness`。
-- Codex 已将该项目识别为受信任项目，且 Hook 配置变更已由 Human 审阅。
+- Codex 已将该项目识别为受信任项目；写入配置后，Human 还必须通过 `/hooks` 审阅并信任当前 Hook 定义哈希。二者是独立 Gate。
 - 绑定时使用的 Runtime Store 与 Hook 子进程使用同一个 `LIUSHI_HARNESS_HOME`。不要让 `hook bind` 写入一个自定义 Store，而让 Codex Hook 子进程回退到另一个默认 Store。
 
 Codex 官方文档说明，当前 Hook 只运行 `command` Handler，且 PreToolUse 对部分工具的拦截能力有限；PostToolUse 不能撤销已经发生的副作用。因此这一步不能被解释为完整安全边界。[Codex Hooks 官方文档](https://learn.chatgpt.com/docs/hooks)

@@ -51,5 +51,6 @@ function createActivationBinding(input) {
     taskId: input.bindingCandidate.taskId,
     planRiskArtifactId: input.bindingCandidate.planRiskArtifactId,
     planRiskArtifactDigest: input.bindingCandidate.planRiskArtifactDigest,
+    requiredHumanActions: CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS,
   };
 }

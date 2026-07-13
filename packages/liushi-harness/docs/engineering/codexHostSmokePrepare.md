@@ -38,13 +38,14 @@ corepack pnpm@10.23.0 smoke:codex-host:prepare -- `
 
 ## 激活摘要
 
-Manifest Schema 为 `liushi.codex-host-smoke.prepare.v1`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
+Manifest Schema 为 `liushi.codex-host-smoke.prepare.v2`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
 
 - 固定仓库身份、Revision 和 Worktree HEAD。
 - 实际 Codex executable 与版本。
 - npm Tarball SHA-256。
 - 候选 Hook 配置 Digest。
 - Workspace、Task 和 PlanRisk Artifact ID/Digest。
+- 完整 Human Activation Action 列表。
 
 任何风险相关字段漂移都会改变 Activation Digest。Manifest 是包含本机路径的本地控制文件，不能作为可发布的跨机器 Evidence。
 
@@ -55,5 +56,6 @@ Manifest Schema 为 `liushi.codex-host-smoke.prepare.v1`，状态固定为 `huma
 1. 审阅候选 Hook 配置和 Activation Digest。
 2. 将 Manifest 中的精确 Worktree Root 加入 Codex trusted project 配置。
 3. 明确批准 Hook Binding、`.codex/hooks.json` 写入和仅限该临时 Worktree 的 `workspace-write` Host Smoke。
+4. 写入配置后，在 Codex `/hooks` 中审阅并信任当前 Hook 定义哈希；项目 trust 不能替代该步骤。
 
 在上述动作完成并记录前，不得增加自动 trust、`--dangerously-bypass-hook-trust`、`danger-full-access` 或隐式执行路径。

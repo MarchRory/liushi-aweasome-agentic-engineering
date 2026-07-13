@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { parseCodexHostSmokeArguments } from "../../scripts/codexHostSmoke/cli/index.mjs";
 import { createCandidateHookConfig } from "../../scripts/codexHostSmoke/config/index.mjs";
+import { CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS } from "../../scripts/codexHostSmoke/constants/index.mjs";
 import {
   calculateActivationDigest,
   createCodexHostSmokeManifest,
@@ -120,7 +121,13 @@ describe("Codex Host Smoke Prepare", () => {
 
     expect(first).not.toBe(second);
     expect(first).not.toBe(third);
-    expect(createCodexHostSmokeManifest(input).activation.digest).toBe(first);
+    const manifest = createCodexHostSmokeManifest(input);
+    expect(manifest.schemaVersion).toBe("liushi.codex-host-smoke.prepare.v2");
+    expect(manifest.activation.digest).toBe(first);
+    expect(manifest.activation.binding.requiredHumanActions).toEqual(
+      CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS,
+    );
+    expect(manifest.activation.requiredHumanActions.at(-1)).toContain("/hooks");
   });
 
   it("成功时保留 fixture，但不写 worktree Hook 配置或 Binding", async () => {
