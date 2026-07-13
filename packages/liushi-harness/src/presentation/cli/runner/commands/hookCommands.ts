@@ -70,7 +70,9 @@ export async function executeHookProbe(
     );
     return CLI_EXIT_CODE_INVALID_INPUT;
   }
-  const result = await application.probeCodexCapabilities.execute();
+  const result = await application.probeCodexCapabilities.execute({
+    executable: command.executable,
+  });
   if (result.status === ResultStatus.Failure) {
     writeFailure(dependencies, command.outputFormat, command.command, result.error);
     return mapErrorExitCode(result.error.code);

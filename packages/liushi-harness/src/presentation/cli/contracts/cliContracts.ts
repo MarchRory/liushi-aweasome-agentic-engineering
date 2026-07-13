@@ -228,6 +228,8 @@ export interface HookProbeCliCommand extends BaseCliCommand {
   command: CliCommand.HookProbe;
   /** 当前支持的执行器。 */
   executor: HookExecutorKind;
+  /** 实际交给 Node spawn 的可执行文件或命令名。 */
+  executable: string;
 }
 
 /** CLI Parser 成功后允许进入执行阶段的命令。 */

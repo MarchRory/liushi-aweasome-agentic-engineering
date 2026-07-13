@@ -58,7 +58,7 @@ export function writeSuccess<T>(
     }
     if (command === CliCommand.HookProbe) {
       dependencies.writer.stdout(
-        `Codex probe: version=${scalarString(data["version"])} overall=${scalarString(data["overallStatus"])} productionVerified=${scalarString(data["productionVerified"])} commandHandler=${findingStatus(data["commandHandler"])} preToolUse=${findingStatus(data["preToolUse"])} postToolUse=${findingStatus(data["postToolUse"])} nativeStdin=${findingStatus(data["nativeStdin"])}.\n`,
+        `Codex probe: executable=${scalarString(data["executable"])} version=${scalarString(data["version"])} overall=${scalarString(data["overallStatus"])} productionVerified=${scalarString(data["productionVerified"])} commandHandler=${findingStatus(data["commandHandler"])} hookFramework=${findingStatus(data["hookFramework"])} preToolUse=${findingStatus(data["preToolUse"])} postToolUse=${findingStatus(data["postToolUse"])} nativeStdin=${findingStatus(data["nativeStdin"])}.\n`,
       );
       return;
     }

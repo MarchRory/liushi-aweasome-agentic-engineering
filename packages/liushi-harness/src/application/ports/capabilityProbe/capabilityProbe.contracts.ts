@@ -3,8 +3,24 @@ import type {
   CapabilityProbeExecutor,
   CapabilityProbeStatus,
   CodexCapabilityName,
-  CodexProbeCommand,
+  CodexProbeCommandKind,
 } from "./capabilityProbe.enums.js";
+
+/** 单次 Codex 静态探测命令的可审计记录。 */
+export interface CodexProbeCommandRecord {
+  /** 封闭命令种类。 */
+  kind: CodexProbeCommandKind;
+  /** 实际交给 Node spawn 的可执行文件。 */
+  executable: string;
+  /** 实际交给 Node spawn 的参数。 */
+  args: readonly string[];
+}
+
+/** Codex capability probe 的显式应用输入。 */
+export interface CodexCapabilityProbeRequest {
+  /** 实际探测的可执行文件或命令名。 */
+  executable: string;
+}
 
 /** 单项 Codex 能力的可审计结果。 */
 export interface CapabilityProbeFinding {
@@ -34,16 +50,20 @@ export interface CodexCapabilityProbeReport {
   postToolUse: CapabilityProbeFinding;
   /** Native stdin 能力。 */
   nativeStdin: CapabilityProbeFinding;
+  /** Hook Framework 功能开关。 */
+  hookFramework: CapabilityProbeFinding;
   /** 本次静态探测的整体状态，不代表生产支持。 */
   overallStatus: CapabilityProbeStatus;
   /** 是否允许据此宣称生产支持。 */
   productionVerified: boolean;
   /** 本次探测使用的安全静态命令。 */
-  commands: readonly CodexProbeCommand[];
+  commands: readonly CodexProbeCommandRecord[];
 }
 
 /** Codex capability probe 应用端口。 */
 export interface CodexCapabilityProbePort {
   /** 执行只读的 Codex 能力探测。 */
-  probe(): Promise<Result<CodexCapabilityProbeReport, HarnessError>>;
+  probe(
+    request: CodexCapabilityProbeRequest,
+  ): Promise<Result<CodexCapabilityProbeReport, HarnessError>>;
 }

@@ -22,10 +22,10 @@ Human 在接入前必须确认：
 接入前先执行只读能力探测：
 
 ```powershell
-liushi-harness hook probe --executor codex --json
+liushi-harness hook probe --executor codex [--executable <path-or-command>] --json
 ```
 
-Probe 只执行 `codex --version` 和 `codex --help`，不启动模型、不读取凭据、不写入项目。报告中的 `verified` 仅表示静态命令证据，`productionVerified` 当前固定为 `false`；找不到、Access Denied、超时或未知版本必须按未验证处理。
+Probe 通过 `shell=false` 对选定 executable 执行 `--version`、`--help` 和 `features list`，每条命令都有固定超时与输出上限，不启动模型、不读取凭据、不写入项目。报告会记录实际 executable 和每条参数；`hookFramework=verified` 只表示功能列表包含格式完整且启用的 `hooks` 行，不证明 PreToolUse、PostToolUse 或 Native stdin 已在 Host 中运行。具体能力只接受帮助文本中独立、非否定的显式声明。报告中的 `verified` 仅表示对应静态证据，`productionVerified` 当前固定为 `false`；找不到、Access Denied、超时、输出超限、非零退出、空输出或未知版本必须按未验证处理。
 
 在目标仓库或公共层根目录执行：
 

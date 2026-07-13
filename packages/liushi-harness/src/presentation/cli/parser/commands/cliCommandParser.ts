@@ -10,6 +10,7 @@ import {
   parseCliApprovalDecision,
   parseCliVerificationMode,
   parseHookExecutor,
+  parseProbeExecutable,
 } from "../options/index.js";
 
 /** 将已收集参数映射为唯一受支持的语义命令。 */
@@ -237,11 +238,15 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
     };
   }
   if (isExactCommand(collected.positionals, ["hook", "probe"])) {
-    validateAllowedOptions(collected, new Set([CliOptionName.Json, CliOptionName.Executor]));
+    validateAllowedOptions(
+      collected,
+      new Set([CliOptionName.Json, CliOptionName.Executor, CliOptionName.Executable]),
+    );
     return {
       command: CliCommand.HookProbe,
       outputFormat,
       executor: parseHookExecutor(requireValue(collected, CliOptionName.Executor)),
+      executable: parseProbeExecutable(collected.values.get(CliOptionName.Executable) ?? "codex"),
     };
   }
   if (isExactCommand(collected.positionals, ["hook", "handle"])) {

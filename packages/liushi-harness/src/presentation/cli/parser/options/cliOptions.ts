@@ -52,6 +52,8 @@ export enum CliOptionName {
   Context = "--context",
   /** 指定 Hook 执行器实现。 */
   Executor = "--executor",
+  /** 指定 Capability Probe 实际执行的可执行文件。 */
+  Executable = "--executable",
 }
 
 const CLI_OPTION_BY_NAME = new Map<string, CliOptionName>(
@@ -128,6 +130,18 @@ export function parseHookExecutor(value: string): HookExecutorKind {
     });
   }
   return executor;
+}
+
+/** 校验并规范化显式 Capability Probe 可执行文件。 */
+export function parseProbeExecutable(value: string): string {
+  const executable = value.trim();
+  if (executable.length === 0) {
+    throw createInvalidCliOptionError(CliOptionName.Executable, "Executable must be non-empty.");
+  }
+  if (executable.includes("\0")) {
+    throw createInvalidCliOptionError(CliOptionName.Executable, "Executable must not contain NUL.");
+  }
+  return executable;
 }
 
 /** 创建带稳定 Option 诊断字段的 InvalidInput Error。 */

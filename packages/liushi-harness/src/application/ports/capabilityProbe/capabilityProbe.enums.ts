@@ -18,14 +18,18 @@ export enum CodexCapabilityName {
   PostToolUse = "post_tool_use",
   /** 原生 stdin 协议可以被静态发现。 */
   NativeStdin = "native_stdin",
+  /** Codex Hook Framework 功能开关可以被静态发现。 */
+  HookFramework = "hook_framework",
 }
 
-/** Codex Capability Probe 使用的静态命令。 */
-export enum CodexProbeCommand {
+/** Codex Capability Probe 使用的封闭静态命令种类。 */
+export enum CodexProbeCommandKind {
   /** 读取 Codex 版本，不启动模型。 */
-  Version = "codex --version",
+  Version = "version",
   /** 读取 Codex 帮助，不启动模型。 */
-  Help = "codex --help",
+  Help = "help",
+  /** 读取 Codex 功能开关列表，不启动模型。 */
+  FeaturesList = "features_list",
 }
 
 /** Capability Probe 当前支持的执行器。 */

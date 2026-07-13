@@ -11,7 +11,7 @@ import {
   CapabilityProbeExecutor,
   CapabilityProbeStatus,
   CodexCapabilityName,
-  CodexProbeCommand,
+  CodexProbeCommandKind,
 } from "../../src/application/index.js";
 import {
   CliCommand,
@@ -43,6 +43,14 @@ describe("CLI Hook wrapper", () => {
     ]);
     const config = parseCliArguments(["hook", "config", "--executor", "codex"]);
     const probe = parseCliArguments(["hook", "probe", "--executor", "codex", "--json"]);
+    const customProbe = parseCliArguments([
+      "hook",
+      "probe",
+      "--executor",
+      "codex",
+      "--executable",
+      " C:/tools/codex.exe ",
+    ]);
     const handle = parseCliArguments(["hook", "handle", "--executor", "codex"]);
     const invalidFormat = parseCliArguments(["hook", "handle", "--executor", "codex", "--json"]);
 
@@ -60,12 +68,38 @@ describe("CLI Hook wrapper", () => {
     });
     expect(probe).toMatchObject({
       status: ResultStatus.Success,
-      value: { command: CliCommand.HookProbe, outputFormat: CliOutputFormat.Json },
+      value: {
+        command: CliCommand.HookProbe,
+        outputFormat: CliOutputFormat.Json,
+        executable: "codex",
+      },
+    });
+    expect(customProbe).toMatchObject({
+      status: ResultStatus.Success,
+      value: { command: CliCommand.HookProbe, executable: "C:/tools/codex.exe" },
     });
     expect(invalidFormat).toMatchObject({
       status: ResultStatus.Failure,
       error: { code: HarnessErrorCode.InvalidInput, details: { option: "--json" } },
     });
+  });
+
+  it("hook probe 拒绝空白或包含 NUL 的 executable", () => {
+    for (const executable of ["   ", "codex\0.exe"]) {
+      const result = parseCliArguments([
+        "hook",
+        "probe",
+        "--executor",
+        "codex",
+        "--executable",
+        executable,
+      ]);
+
+      expect(result).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.InvalidInput, details: { option: "--executable" } },
+      });
+    }
   });
 
   it("hook config 只输出可审阅的原生配置对象", async () => {
@@ -188,12 +222,13 @@ async function runProbeCommand(): Promise<{ exitCode: number; stdout: string; st
   let stderr = "";
   const application = {
     probeCodexCapabilities: {
-      execute: () =>
-        Promise.resolve(
+      execute: (request: { executable: string }) => {
+        expect(request).toEqual({ executable: "C:/tools/codex.exe" });
+        return Promise.resolve(
           success({
-            schemaVersion: "1.0.0",
+            schemaVersion: "2.0.0",
             executor: CapabilityProbeExecutor.Codex,
-            executable: "codex",
+            executable: request.executable,
             overallStatus: CapabilityProbeStatus.Unverified,
             commandHandler: {
               capability: CodexCapabilityName.CommandHandler,
@@ -215,10 +250,32 @@ async function runProbeCommand(): Promise<{ exitCode: number; stdout: string; st
               status: CapabilityProbeStatus.Unverified,
               evidence: "test",
             },
+            hookFramework: {
+              capability: CodexCapabilityName.HookFramework,
+              status: CapabilityProbeStatus.Verified,
+              evidence: "hooks stable true",
+            },
             productionVerified: false,
-            commands: [CodexProbeCommand.Version, CodexProbeCommand.Help],
+            commands: [
+              {
+                kind: CodexProbeCommandKind.Version,
+                executable: request.executable,
+                args: ["--version"],
+              },
+              {
+                kind: CodexProbeCommandKind.Help,
+                executable: request.executable,
+                args: ["--help"],
+              },
+              {
+                kind: CodexProbeCommandKind.FeaturesList,
+                executable: request.executable,
+                args: ["features", "list"],
+              },
+            ],
           }),
-        ),
+        );
+      },
     },
   } as unknown as CliApplication;
   const dependencies: RunCliDependencies = {
@@ -235,6 +292,9 @@ async function runProbeCommand(): Promise<{ exitCode: number; stdout: string; st
     jsonDocumentReader: new NodeJsonDocumentReaderAdapter(),
   };
 
-  const exitCode = await runCli(["hook", "probe", "--executor", "codex", "--json"], dependencies);
+  const exitCode = await runCli(
+    ["hook", "probe", "--executor", "codex", "--executable", "C:/tools/codex.exe", "--json"],
+    dependencies,
+  );
   return { exitCode, stdout, stderr };
 }
