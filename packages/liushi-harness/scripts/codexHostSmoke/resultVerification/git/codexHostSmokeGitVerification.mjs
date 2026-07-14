@@ -76,7 +76,7 @@ function runGit(cwd, args) {
     cwd,
     timeout: 30_000,
     maxBuffer: MAX_GIT_OUTPUT_BYTES,
-  }).stdout.trim();
+  }).stdout.trimEnd();
 }
 
 function splitNonEmpty(value) {
