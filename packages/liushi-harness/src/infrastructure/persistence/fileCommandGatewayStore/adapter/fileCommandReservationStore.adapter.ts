@@ -5,6 +5,7 @@ import {
   CommandStatus,
   createCommandReceipt,
   type CommandEnvelope,
+  type CommandInvocationProvenance,
   type CommandReceipt,
   type CommandReservation,
   type CommandReservationStore,
@@ -120,6 +121,9 @@ export class FileCommandReservationStore implements CommandReservationStore {
       commandId: command.commandId,
       requestDigest: command.requestDigest,
       submittedAt: command.submittedAt,
+      ...(command.invocationProvenance === undefined
+        ? {}
+        : { invocationProvenance: command.invocationProvenance }),
     });
     return success({ disposition: CommandReservationDisposition.Acquired });
   }
@@ -177,6 +181,14 @@ function resolveExisting(
       errorMessage: "同一幂等作用域已绑定不同 Request Digest。",
     });
   }
+  if (
+    !isSameCommandInvocationProvenance(existing.invocationProvenance, command.invocationProvenance)
+  ) {
+    return resolvedReceipt(command, CommandStatus.Conflict, {
+      errorCode: CommandErrorCode.IdempotencyConflict,
+      errorMessage: "同一幂等作用域已绑定不同 Invocation Provenance。",
+    });
+  }
   if (existing.receipt === undefined) {
     return {
       disposition: CommandReservationDisposition.Pending,
@@ -225,10 +237,30 @@ function assertReservationOwner(
   assertScope(existing, command);
   if (
     existing.commandId !== command.commandId ||
-    existing.requestDigest !== command.requestDigest
+    existing.requestDigest !== command.requestDigest ||
+    !isSameCommandInvocationProvenance(existing.invocationProvenance, command.invocationProvenance)
   ) {
     throw new Error("Command Completion 与 Reservation Owner 不匹配。");
   }
+}
+
+/** 逐字段比较可选的调用来源证明，避免依赖对象序列化顺序。 */
+function isSameCommandInvocationProvenance(
+  existing: CommandInvocationProvenance | undefined,
+  incoming: CommandInvocationProvenance | undefined,
+): boolean {
+  if (existing === undefined || incoming === undefined) return existing === incoming;
+  return (
+    existing.schemaVersion === incoming.schemaVersion &&
+    existing.executor === incoming.executor &&
+    existing.invocationId === incoming.invocationId &&
+    existing.sessionIdDigest === incoming.sessionIdDigest &&
+    existing.turnIdDigest === incoming.turnIdDigest &&
+    existing.toolCallIdDigest === incoming.toolCallIdDigest &&
+    existing.toolName === incoming.toolName &&
+    existing.targetsDigest === incoming.targetsDigest &&
+    existing.inputDigest === incoming.inputDigest
+  );
 }
 
 function commitOutcomeUnknown(recordFile: string, lockFile: string, cause: unknown): HarnessError {

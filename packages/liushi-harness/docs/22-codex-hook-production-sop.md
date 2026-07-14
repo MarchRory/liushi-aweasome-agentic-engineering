@@ -93,7 +93,11 @@ corepack pnpm@10.23.0 smoke:codex-host:verify-result -- `
   --activation-digest sha256:<digest>
 ```
 
-`verify-result` 是只读、关闭式结果门。它同时校验精确 Hook 配置与 Binding、唯一正向 Git 差异、闭合 Action Journal、对应 Trace、负向授权拒绝和负向目标零写入；只有返回 `productionVerified=true` 才能声明该精确 TUI Host Scope 通过。
+`verify-result` 是只读、关闭式结果门。它同时校验精确 Hook 配置与 Binding、唯一正向 Git 差异、闭合 Action Journal、对应 Trace、负向授权拒绝和负向目标零写入。正向 Pre/Post 必须属于同一个 executor、session、turn、tool call 和 invocation，并绑定相同工具、目标及输入；负向 Pre 必须来自同一 session、精确指向由 Task ID 唯一派生的挑战目标、使用独立 invocation，且不能出现对应 Post。挑战文件未创建是合法的零写入状态，其他读取错误仍会使验收失败。持久化证据只保存宿主标识摘要，不保存原始 session、turn 或 tool call ID；Action、Command、Correlation 和 Trace/Span 标识从结构化 Workspace/Task invocation scope 摘要派生。只有返回 `productionVerified=true` 才能声明该精确 TUI Host Scope 通过。
+
+该门能够防止跨会话拼接证据并发现普通持久化漂移，但当前没有外部签名或远端证明锚点；能够同时改写本地证据和全部摘要的本机高权限攻击者不在此边界内。
+
+2026-07-15 的已验证快照为 Windows x64、Codex `0.144.0-alpha.4`、`gpt-5.6-sol` 和 `unjs/defu@82632b66`。Activation Digest 为 `sha256:c8753d182d522f4e5634a75dcb6df2bcde308b3e34b46042d63e230b5418e020`，规范化结果文件 SHA-256 为 `d2c96e2c48c819536047a433b10b2c400738e2a41456341aeb655ca44c2e923a`，共通过 13 项检查。该快照不是其他 Codex 版本、工具或平台的兼容性声明。
 
 Hook 的原生入口是：
 

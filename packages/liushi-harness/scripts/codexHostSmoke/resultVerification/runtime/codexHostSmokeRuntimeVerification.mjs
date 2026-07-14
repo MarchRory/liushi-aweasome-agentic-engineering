@@ -4,13 +4,78 @@ import { isDeepStrictEqual } from "node:util";
 
 import { calculateDigest } from "../../../publicProjectSmoke/digest/index.mjs";
 import { readCodexHostSmokeJsonFile } from "../../verification/index.mjs";
+import { includesExactTextWithNormalizedLineEndings } from "../../verification/textEvidence/index.mjs";
 
 const MAX_EVIDENCE_BYTES = 4 * 1024 * 1024;
 const RESERVATION_FILE = "reservation.json";
+const COMMAND_INVOCATION_PROVENANCE_SCHEMA_VERSION = "1.0.0";
+const HOOK_COMMAND_TYPES = ["hook.pre_action", "hook.post_action"];
+const RESERVATION_REQUIRED_KEYS = [
+  "aggregateId",
+  "aggregateType",
+  "commandId",
+  "commandType",
+  "idempotencyKey",
+  "requestDigest",
+  "schemaVersion",
+  "submittedAt",
+];
+const RESERVATION_KEYS = [...RESERVATION_REQUIRED_KEYS, "invocationProvenance", "receipt"];
+const RECEIPT_REQUIRED_KEYS = ["commandId", "requestDigest", "schemaVersion", "status"];
+const RECEIPT_KEYS = [
+  ...RECEIPT_REQUIRED_KEYS,
+  "committedVersion",
+  "duplicateOfCommandId",
+  "errorCode",
+  "errorMessage",
+];
+const COMMAND_STATUSES = new Set([
+  "committed",
+  "rejected",
+  "conflict",
+  "duplicate",
+  "outcome_unknown",
+]);
+const COMMAND_ERROR_CODES = new Set([
+  "invalid_envelope",
+  "unsupported_schema_version",
+  "invalid_command_id",
+  "invalid_command_type",
+  "invalid_aggregate_type",
+  "invalid_aggregate_id",
+  "invalid_expected_version",
+  "invalid_idempotency_key",
+  "invalid_request_digest",
+  "invalid_actor",
+  "invalid_authorization_context",
+  "invalid_correlation_id",
+  "invalid_causation_id",
+  "invalid_submitted_at",
+  "invalid_payload",
+  "precondition_not_met",
+  "authorization_denied",
+  "resource_unavailable",
+  "version_conflict",
+  "idempotency_conflict",
+  "outcome_unknown",
+]);
+const PROVENANCE_KEYS = [
+  "executor",
+  "inputDigest",
+  "invocationId",
+  "schemaVersion",
+  "sessionIdDigest",
+  "targetsDigest",
+  "toolCallIdDigest",
+  "toolName",
+  "turnIdDigest",
+];
 
 export async function verifyCodexHostSmokeActivationEvidence(manifest, plan, candidateConfig) {
   const trustConfig = await readFile(plan.projectTrust.configFile, "utf8");
-  if (!trustConfig.includes(plan.projectTrust.proposedToml.trim())) {
+  if (
+    !includesExactTextWithNormalizedLineEndings(trustConfig, plan.projectTrust.proposedToml.trim())
+  ) {
     throw new Error("Host Smoke 精确项目 trust 不存在。");
   }
   const activeConfig = await readCodexHostSmokeJsonFile(
@@ -26,19 +91,15 @@ export async function verifyCodexHostSmokeActivationEvidence(manifest, plan, can
   await assertBinding(manifest, plan);
 }
 
-export async function verifyCodexHostSmokeRuntimeEvidence(
-  manifest,
-  taskDirectory,
-  positiveScenario,
-) {
+export async function verifyCodexHostSmokeRuntimeEvidence(manifest, taskDirectory, scenarios) {
   const identity = manifest.bindingCandidate;
   const action = await verifyActionJournal(
     join(taskDirectory, "actions.jsonl"),
-    positiveScenario,
+    scenarios.positive,
     identity,
   );
   const trace = await verifyTrace(join(taskDirectory, "traces.jsonl"), action.actionId, identity);
-  await verifyCommandReceipts(manifest, action, trace);
+  await verifyCommandReceipts(manifest, action, trace, scenarios);
 }
 
 async function assertBinding(manifest, plan) {
@@ -134,20 +195,26 @@ async function verifyTrace(path, actionId, identity) {
   return trace;
 }
 
-async function verifyCommandReceipts(manifest, action, trace) {
+async function verifyCommandReceipts(manifest, action, trace, scenarios) {
   const reservationFiles = await collectReservationFiles(
     join(manifest.paths.storeRoot, "commandGateway"),
   );
   const reservations = await Promise.all(
     reservationFiles.map((path) => readCodexHostSmokeJsonFile(path, "Command Reservation")),
   );
+  if (!reservations.every(isValidReservationStructure)) {
+    throw new Error("Host Smoke Command Reservation 结构无效。");
+  }
   const generatedAt = Date.parse(manifest.generatedAt);
   const hookReservations = reservations.filter(
     (record) =>
-      isValidHookReservation(record) &&
-      Number.isFinite(Date.parse(record.submittedAt)) &&
-      Date.parse(record.submittedAt) >= generatedAt,
+      Date.parse(record.submittedAt) >= generatedAt &&
+      (HOOK_COMMAND_TYPES.includes(record.commandType) ||
+        record?.invocationProvenance?.executor === "codex"),
   );
+  if (!hookReservations.every(isValidHookReservation)) {
+    throw new Error("Host Smoke 本轮 Hook Reservation provenance 无效。");
+  }
   const positivePre = hookReservations.filter(
     (record) =>
       record.commandType === "hook.pre_action" &&
@@ -170,37 +237,193 @@ async function verifyCommandReceipts(manifest, action, trace) {
       record.receipt.errorCode === "authorization_denied" &&
       record.receipt.errorMessage?.includes("目标超出 PlanRisk Write Set"),
   );
-  if (
-    hookReservations.length !== 3 ||
-    positivePre.length !== 1 ||
-    positivePost.length !== 1 ||
-    negativePre.length !== 1
-  ) {
+  if (positivePre.length !== 1 || positivePost.length !== 1 || negativePre.length !== 1) {
     throw new Error("Host Smoke Command Receipt 未证明一次正向闭环和一次 Write Set 拒绝。");
+  }
+  const positivePreProvenance = positivePre[0].invocationProvenance;
+  const positivePostProvenance = positivePost[0].invocationProvenance;
+  const negativePreProvenance = negativePre[0].invocationProvenance;
+  if (
+    !hasSameInvocation(positivePreProvenance, positivePostProvenance) ||
+    positivePreProvenance.toolName !== "apply_patch" ||
+    positivePreProvenance.targetsDigest !== calculateDigest([scenarios.positive.target]) ||
+    trace.tool.toolCallId !== positivePreProvenance.toolCallIdDigest ||
+    trace.tool.toolName !== positivePreProvenance.toolName ||
+    calculateDigest(JSON.parse(action.target)) !== positivePreProvenance.targetsDigest ||
+    action.inputDigest !== positivePreProvenance.inputDigest
+  ) {
+    throw new Error("Host Smoke 正向 Pre/Post、Trace 与 Action Intent provenance 不可拼接。");
+  }
+  if (
+    negativePreProvenance.executor !== positivePreProvenance.executor ||
+    negativePreProvenance.sessionIdDigest !== positivePreProvenance.sessionIdDigest ||
+    negativePreProvenance.toolName !== "apply_patch" ||
+    negativePreProvenance.targetsDigest !== calculateDigest([scenarios.negative.target]) ||
+    negativePreProvenance.invocationId === positivePreProvenance.invocationId
+  ) {
+    throw new Error("Host Smoke 负向 Pre provenance 未绑定同 Session 的精确负向目标。");
+  }
+  if (
+    reservations.some(
+      (record) =>
+        record.commandType === "hook.post_action" &&
+        record.invocationProvenance?.invocationId === negativePreProvenance.invocationId,
+    )
+  ) {
+    throw new Error("Host Smoke 负向 invocation 不允许存在 Post reservation。");
+  }
+  if (hookReservations.length !== 3) {
+    throw new Error("Host Smoke 本轮必须且只能包含三条 Hook Reservation。");
   }
 }
 
 function isValidHookReservation(record) {
   return (
-    record?.schemaVersion === "1.0.0" &&
+    isValidReservationStructure(record) &&
     record.aggregateType === "action" &&
-    typeof record.aggregateId === "string" &&
-    ["hook.pre_action", "hook.post_action"].includes(record.commandType) &&
-    typeof record.idempotencyKey === "string" &&
-    typeof record.commandId === "string" &&
-    /^sha256:[a-f0-9]{64}$/u.test(record.requestDigest) &&
-    typeof record.submittedAt === "string" &&
-    record.receipt?.schemaVersion === "1.0.0" &&
-    record.receipt?.commandId === record.commandId &&
-    record.receipt.requestDigest === record.requestDigest &&
-    hasValidReceiptResult(record.receipt)
+    HOOK_COMMAND_TYPES.includes(record.commandType) &&
+    record.receipt !== undefined &&
+    hasValidCodexInvocationProvenance(record.invocationProvenance)
   );
 }
 
-function hasValidReceiptResult(receipt) {
-  return receipt.status === "committed"
-    ? Number.isInteger(receipt.committedVersion) && receipt.committedVersion >= 0
-    : typeof receipt.errorCode === "string" && receipt.committedVersion === undefined;
+function isValidReservationStructure(record) {
+  return (
+    isRecord(record) &&
+    hasExactKeys(record, RESERVATION_REQUIRED_KEYS, RESERVATION_KEYS) &&
+    record.schemaVersion === "1.0.0" &&
+    [
+      record.aggregateType,
+      record.aggregateId,
+      record.commandType,
+      record.idempotencyKey,
+      record.commandId,
+    ].every(isNonBlankString) &&
+    isContentDigest(record.requestDigest) &&
+    isIsoDateTime(record.submittedAt) &&
+    (record.invocationProvenance === undefined ||
+      hasValidInvocationProvenanceShape(record.invocationProvenance)) &&
+    (record.receipt === undefined || isValidReceipt(record.receipt, record))
+  );
+}
+
+function isValidReceipt(receipt, reservation) {
+  if (
+    !isRecord(receipt) ||
+    !hasExactKeys(receipt, RECEIPT_REQUIRED_KEYS, RECEIPT_KEYS) ||
+    receipt.schemaVersion !== "1.0.0" ||
+    !isNonBlankString(receipt.commandId) ||
+    receipt.commandId !== reservation.commandId ||
+    !isContentDigest(receipt.requestDigest) ||
+    receipt.requestDigest !== reservation.requestDigest ||
+    !COMMAND_STATUSES.has(receipt.status) ||
+    (receipt.errorCode !== undefined && !COMMAND_ERROR_CODES.has(receipt.errorCode)) ||
+    (receipt.errorMessage !== undefined &&
+      (!isNonBlankString(receipt.errorMessage) || receipt.errorCode === undefined))
+  ) {
+    return false;
+  }
+  if (receipt.status === "committed") {
+    return (
+      Number.isInteger(receipt.committedVersion) &&
+      receipt.committedVersion >= 0 &&
+      receipt.errorCode === undefined &&
+      receipt.errorMessage === undefined &&
+      receipt.duplicateOfCommandId === undefined
+    );
+  }
+  if (receipt.committedVersion !== undefined) return false;
+  if (receipt.status === "duplicate") {
+    return isNonBlankString(receipt.duplicateOfCommandId);
+  }
+  return receipt.duplicateOfCommandId === undefined && receipt.errorCode !== undefined;
+}
+
+function hasValidCodexInvocationProvenance(provenance) {
+  return (
+    hasValidInvocationProvenanceShape(provenance) &&
+    provenance.executor === "codex" &&
+    provenance.invocationId ===
+      calculateDigest({
+        executor: provenance.executor,
+        sessionIdDigest: provenance.sessionIdDigest,
+        turnIdDigest: provenance.turnIdDigest,
+        toolCallIdDigest: provenance.toolCallIdDigest,
+        toolName: provenance.toolName,
+      })
+  );
+}
+
+function hasValidInvocationProvenanceShape(provenance) {
+  if (
+    provenance?.schemaVersion !== COMMAND_INVOCATION_PROVENANCE_SCHEMA_VERSION ||
+    !isNonBlankString(provenance.executor) ||
+    !isNonBlankString(provenance.toolName) ||
+    !isDeepStrictEqual(Object.keys(provenance).sort(), PROVENANCE_KEYS) ||
+    ![
+      provenance.invocationId,
+      provenance.sessionIdDigest,
+      provenance.turnIdDigest,
+      provenance.toolCallIdDigest,
+      provenance.targetsDigest,
+      provenance.inputDigest,
+    ].every(isContentDigest)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function hasSameInvocation(left, right) {
+  return [
+    "executor",
+    "sessionIdDigest",
+    "turnIdDigest",
+    "toolCallIdDigest",
+    "toolName",
+    "invocationId",
+    "targetsDigest",
+    "inputDigest",
+  ].every((field) => left[field] === right[field]);
+}
+
+function isContentDigest(value) {
+  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/u.test(value);
+}
+
+function hasExactKeys(input, requiredKeys, allowedKeys) {
+  const keys = Object.keys(input);
+  return (
+    requiredKeys.every((key) => Object.hasOwn(input, key)) &&
+    keys.every((key) => allowedKeys.includes(key))
+  );
+}
+
+function isNonBlankString(value) {
+  return (
+    typeof value === "string" && value.length > 0 && value === value.trim() && !value.includes("\0")
+  );
+}
+
+function isIsoDateTime(value) {
+  if (typeof value !== "string") return false;
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.exec(value);
+  if (match === null || !Number.isFinite(Date.parse(value))) return false;
+  const [, year, month, day, hour, minute, second] = match.map(Number);
+  const normalized = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  return (
+    normalized.getUTCFullYear() === year &&
+    normalized.getUTCMonth() === month - 1 &&
+    normalized.getUTCDate() === day &&
+    normalized.getUTCHours() === hour &&
+    normalized.getUTCMinutes() === minute &&
+    normalized.getUTCSeconds() === second
+  );
+}
+
+function isRecord(input) {
+  return typeof input === "object" && input !== null && !Array.isArray(input);
 }
 
 async function readJsonLines(path, label) {

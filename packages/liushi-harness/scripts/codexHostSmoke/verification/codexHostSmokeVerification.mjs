@@ -8,6 +8,7 @@ import {
   inspectCodexHostSmokeVersion,
   loadAndVerifyCodexHostSmokePacket,
 } from "./codexHostSmokePacketVerification.mjs";
+import { includesExactTextWithNormalizedLineEndings } from "./textEvidence/index.mjs";
 
 const VERIFICATION_SCHEMA_VERSION = "liushi.codex-host-smoke.verification.v2";
 
@@ -59,7 +60,9 @@ function assertWorktree(manifest, actual) {
 
 async function assertNotActivated(manifest, plan) {
   const trustConfig = await readFile(plan.projectTrust.configFile, "utf8");
-  if (trustConfig.includes(plan.projectTrust.proposedToml.trim())) {
+  if (
+    includesExactTextWithNormalizedLineEndings(trustConfig, plan.projectTrust.proposedToml.trim())
+  ) {
     throw new Error("Host Smoke 精确项目 trust 已在未获批准时出现。");
   }
   for (const path of [

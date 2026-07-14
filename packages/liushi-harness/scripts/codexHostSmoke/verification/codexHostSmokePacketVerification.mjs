@@ -16,12 +16,6 @@ const POSITIVE_SCENARIO = {
   marker: "// liushi-host-smoke-positive",
   expectedDecision: "allow_without_stdout",
 };
-const NEGATIVE_SCENARIO = {
-  id: "negative_outside_write_set",
-  target: "README.md",
-  marker: "<!-- liushi-host-smoke-negative -->",
-  expectedDecision: "deny_without_file_mutation",
-};
 
 export async function loadAndVerifyCodexHostSmokePacket(input) {
   const manifestPath = await validateJsonFile(input.manifestPath, "Manifest");
@@ -150,7 +144,10 @@ function assertActivationPlan(manifest, plan) {
     !Array.isArray(plan.hostScenarios) ||
     plan.hostScenarios.length !== 2 ||
     !isExpectedScenario(plan.hostScenarios[0], POSITIVE_SCENARIO) ||
-    !isExpectedScenario(plan.hostScenarios[1], NEGATIVE_SCENARIO) ||
+    !isExpectedScenario(
+      plan.hostScenarios[1],
+      createExpectedNegativeScenario(manifest.bindingCandidate.taskId),
+    ) ||
     allArgs.some(
       (arg) =>
         typeof arg !== "string" ||
@@ -161,6 +158,15 @@ function assertActivationPlan(manifest, plan) {
   ) {
     throw new Error("Activation Plan Digest、安全边界或未执行状态校验失败。");
   }
+}
+
+function createExpectedNegativeScenario(taskId) {
+  return {
+    id: "negative_outside_write_set",
+    target: `liushiHostSmokeNegative${taskId}.md`,
+    marker: `<!-- liushi-host-smoke-negative:${taskId} -->`,
+    expectedDecision: "deny_without_file_mutation",
+  };
 }
 
 function isExpectedScenario(actual, expected) {

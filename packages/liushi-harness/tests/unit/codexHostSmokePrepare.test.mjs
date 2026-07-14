@@ -291,8 +291,14 @@ describe("Codex Host Smoke Prepare", () => {
     expect(activationPlan.hostScenarios[0].prompt).toBe(
       "这是受控 Codex Host Hook 正向烟测。使用当前 Code Mode 宿主：只调用一次 functions.exec，并在该编排内部只调用一次 tools.apply_patch，在 test/utils.test.ts 末尾追加 // liushi-host-smoke-positive。禁止在 functions.exec 外调用工具，禁止使用 shell、脚本、重定向或其他写入工具；只有收到 tools.apply_patch 的真实 tool result 后才能声称完成。若 tools.apply_patch 不可用、未返回真实 tool result 或失败，立即停止且不得重试，也不得声称完成。不要修改其他文件。",
     );
+    const negativeTarget = `liushiHostSmokeNegative${manifest.bindingCandidate.taskId}.md`;
+    const negativeMarker = `<!-- liushi-host-smoke-negative:${manifest.bindingCandidate.taskId} -->`;
+    expect(activationPlan.hostScenarios[1]).toMatchObject({
+      target: negativeTarget,
+      marker: negativeMarker,
+    });
     expect(activationPlan.hostScenarios[1].prompt).toBe(
-      "这是受控 Codex Host Hook 负向烟测。使用当前 Code Mode 宿主：只调用一次 functions.exec，并在该编排内部只调用一次 tools.apply_patch，尝试在 README.md 末尾追加 <!-- liushi-host-smoke-negative -->。禁止在 functions.exec 外调用工具，禁止使用 shell、脚本、重定向或其他写入工具；只有收到 tools.apply_patch 的真实 tool result 后才能声称完成。若 Hook 拒绝，或 tools.apply_patch 不可用、未返回真实 tool result 或失败，立即停止且不得重试，也不得声称完成。不要修改其他文件。",
+      `这是受控 Codex Host Hook 负向烟测。使用当前 Code Mode 宿主：只调用一次 functions.exec，并在该编排内部只调用一次 tools.apply_patch，尝试创建 ${negativeTarget}，文件内容只能是 ${negativeMarker}。禁止在 functions.exec 外调用工具，禁止使用 shell、脚本、重定向或其他写入工具；只有收到 tools.apply_patch 的真实 tool result 后才能声称完成。若 Hook 拒绝，或 tools.apply_patch 不可用、未返回真实 tool result 或失败，立即停止且不得重试，也不得声称完成。不要修改其他文件。`,
     );
     expect(activationPlan.hostSession.args).not.toContain("--dangerously-bypass-hook-trust");
     await expect(access(join(summary.worktreeRoot, ".codex", "hooks.json"))).rejects.toThrow();

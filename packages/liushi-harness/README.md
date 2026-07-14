@@ -40,7 +40,7 @@
 - Application Command Gateway 已提供原子 Reservation、独立 Lock、跨进程幂等和稳定 Receipt；并发重复请求只执行一次 Handler，Pending 或 Receipt 提交失败固定返回 `outcome_unknown`。
 - Canonical Action Hook Core 已提供严格 PreAction/PostAction 契约、Command/Payload 摘要绑定和 fail-closed Dispatcher；PreAction 只允许 PlanRisk Write Set 内的文件动作，R2/R3 必须绑定 G4 Human Approval，历史业务逻辑变更必须绑定 G2 Human Approval，R4 始终禁止。
 - PostAction 会将结果确定性写入 Action Journal，并记录可丢失 Trace；失败或结果未知进入 Human 处理，只有证据证明 `not_applied` 才允许受控重试。
-- Codex `apply_patch` Hook Adapter 已支持 PreToolUse/PostToolUse、Code Mode 子 Agent 字段、确定性 Action ID、输入冲突检测、Workspace Binding 和 Action Journal/Trace 因果链；可识别事件的 Handler 失败或异常会映射为结构化 `deny`/`block`，不把普通进程失败误当作安全拒绝。
+- Codex `apply_patch` Hook Adapter 已支持 PreToolUse/PostToolUse、Code Mode 子 Agent 字段、确定性 Action ID、输入冲突检测、Workspace Binding 和 Action Journal/Trace 因果链；Command Reservation 以摘要形式绑定 executor、session、turn、tool call、工具、目标与输入，不持久化原始宿主标识；Action、Command、Correlation 和 Trace/Span 标识从结构化 Workspace/Task invocation scope 摘要派生，不拼接宿主原始 ID；可识别事件的 Handler 失败或异常会映射为结构化 `deny`/`block`，不把普通进程失败误当作安全拒绝。
 - `hook config --executor codex` 可只读生成受审阅的 `hooks.json` 投影，`hook handle --executor codex` 提供 Codex 原生 stdin/stdout Wrapper；配置文件写入和项目受信任由 Human 控制。
 - `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出与 `hooks` 功能开关，并通过 `--executable` 选择实际 Codex；找不到、Access Denied、超时、非零退出、空输出或未知版本均不会被标记为生产支持。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
@@ -52,8 +52,9 @@
 - 未闭合 Worktree Provision Guard 已在同一 Repository Lock 内覆盖 Provision、受控文件变更、Implementation Submission 和 Verification；未知或等待 Human 的 Provision 会在新 Intent 与任何执行副作用前 fail closed，只有同一 `retry_permitted` Action 可以重试 Provision。
 - `cell run` 已将 CodingTask 创建、Worktree Provision、Attempt、一个或多个受控文件变更、Checkpoint Submission、Verification 与单仓 `PRReadyArtifact` 装配串成可跨进程恢复的单一编码 Cell；生产 CLI 强制要求 Workspace、Repository、绝对 Repository Root 和 Verification Mode，并在任何副作用前精确校验 Manifest 绑定。只有权威 Store 中的 `passed` Evidence、当前 Human Gate 重算和来源 Artifact 绑定全部通过后才返回 `review_ready`。
 - 固定公开项目 Smoke 已从真实 npm Tarball 独立安装启动生产 CLI，在 `unjs/defu@82632b66` 完成预编排单文件 Mutation 的 G1/G4 Gate 协议、受管 Worktree、单一 Checkpoint、离线安装、完整测试、Passed Evidence、PRReadyArtifact 与跨进程幂等复用。该结果不代表 Agent 已能自主理解需求或生成代码。
+- Codex Host Smoke 已在 Windows x64、Codex `0.144.0-alpha.4` 的真实交互式 TUI 中，对同一会话内的 `apply_patch` 正向写入与越界拒绝完成动态验证。关闭式结果门同时校验正向 Pre/Post 属于同一 tool invocation、负向目标精确匹配且不存在 Post、Action/Trace 因果绑定和目标零写入；该结论只覆盖该精确 Host Scope，不代表企业项目自动安装或其他工具、版本和平台已经验证。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 真实 Host Hook 正负路径与企业项目安装、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、Codex 企业项目安装与版本矩阵、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 只生成可审计 Bundle，不写入业务仓库，也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
@@ -116,7 +117,7 @@ liushi-harness hook probe --executor codex [--executable <path-or-command>] --js
 
 `profile compile` 是 G8 后的确定性编译命令，不会自行扫描仓库。标准链路是：保存 `project scan --json` 的 `data` 为 Report，Human 基于该 Report 创建并提交 `ProjectProfileProposal`，批准返回的 G8 DecisionRequest，然后用同一 Report 和 Proposal Artifact ID 编译。Report、Proposal、Approval、Workspace、Task 或 Revision 任一漂移都会 fail closed；旧 Revision 的 Approval 不能复用。
 
-`cell run` 的 `--workspace`、`--repository`、`--root` 和 `--verification-mode` 均为必填。生产 Bootstrap 只在显式传入 `local_command` 时启用本地命令；`fail_closed_mock` 不执行本地命令。Manifest 的 Create Workspace/Repository 以及 Provision、全部 Implementation、Submission Repository Root 必须与 CLI 绑定精确一致；Verification Worktree Root 必须等于从绑定 Repository Root 和受管 `worktreeBinding.relativePath` 推导的唯一规范路径。缺少绑定或任一不匹配都会在任何服务调用前 fail closed。Manifest 自报授权仍不能替代权威 Human Gate 重算。固定公开项目 Smoke 只覆盖外部预编排 Mutation 的 CLI 正路径，不代表真实 Human 决策、Agent 自主编码、Codex Host Hook 或企业项目接入已经完成。
+`cell run` 的 `--workspace`、`--repository`、`--root` 和 `--verification-mode` 均为必填。生产 Bootstrap 只在显式传入 `local_command` 时启用本地命令；`fail_closed_mock` 不执行本地命令。Manifest 的 Create Workspace/Repository 以及 Provision、全部 Implementation、Submission Repository Root 必须与 CLI 绑定精确一致；Verification Worktree Root 必须等于从绑定 Repository Root 和受管 `worktreeBinding.relativePath` 推导的唯一规范路径。缺少绑定或任一不匹配都会在任何服务调用前 fail closed。Manifest 自报授权仍不能替代权威 Human Gate 重算。固定公开项目 Cell Smoke 只覆盖外部预编排 Mutation 的 CLI 正路径，不代表真实 Human 决策、Agent 自主编码或企业项目接入；Codex Host 能力以独立的 `verify-result` 动态证据为准。
 
 默认 Runtime Store 为 `~/.liushi-harness`。可以通过 `LIUSHI_HARNESS_HOME` 或单次命令的 `--store <path>` 覆盖。
 
@@ -153,4 +154,4 @@ Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件�
 
 固定公开项目的 CLI 正路径、证据字段与 HTT 边界见 [固定公开项目 CodingTask Cell Smoke](./docs/engineering/publicProjectSmoke.md)。
 
-真实 Codex Host 验收的默认只读准备阶段见 [Codex Host Smoke Prepare](./docs/engineering/codexHostSmokePrepare.md)。
+真实 Codex Host 验收的只读准备和关闭式结果门见 [Codex Host Smoke Prepare](./docs/engineering/codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)。

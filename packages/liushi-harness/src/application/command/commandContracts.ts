@@ -2,6 +2,7 @@ import type { ActorRef, ContentDigest } from "#common/index.js";
 
 import type {
   COMMAND_ENVELOPE_SCHEMA_VERSION,
+  COMMAND_INVOCATION_PROVENANCE_SCHEMA_VERSION,
   COMMAND_RECEIPT_SCHEMA_VERSION,
 } from "./commandConstants.js";
 import type { CommandErrorCode, CommandStatus } from "./commandEnums.js";
@@ -15,6 +16,50 @@ export type CommandJsonValue =
 
 /** Command 的授权上下文；只承载可序列化的声明，不代表授权决策本身。 */
 export type AuthorizationContext = Readonly<Record<string, CommandJsonValue>>;
+
+/** Command 调用来源的版本化证明，只保存稳定标识与摘要，不承载业务 Payload。 */
+export interface CommandInvocationProvenance {
+  /** Command Invocation Provenance 的 Schema 版本。 */
+  schemaVersion: typeof COMMAND_INVOCATION_PROVENANCE_SCHEMA_VERSION;
+  /** 实际发起调用的执行器名称。 */
+  executor: string;
+  /** 本次调用标识的内容摘要。 */
+  invocationId: ContentDigest;
+  /** 原始 Session 标识的内容摘要。 */
+  sessionIdDigest: ContentDigest;
+  /** 原始 Turn 标识的内容摘要。 */
+  turnIdDigest: ContentDigest;
+  /** 原始 Tool Call 标识的内容摘要。 */
+  toolCallIdDigest: ContentDigest;
+  /** 被调用工具的稳定名称。 */
+  toolName: string;
+  /** 调用目标集合的内容摘要。 */
+  targetsDigest: ContentDigest;
+  /** 工具输入的内容摘要。 */
+  inputDigest: ContentDigest;
+}
+
+/** 构造 Command Invocation Provenance 时使用的外部输入。 */
+export interface CommandInvocationProvenanceInput {
+  /** 显式 Schema 版本，用于拒绝未来或未知版本。 */
+  schemaVersion: string;
+  /** 实际发起调用的执行器名称。 */
+  executor: string;
+  /** 本次调用标识的内容摘要。 */
+  invocationId: string;
+  /** 原始 Session 标识的内容摘要。 */
+  sessionIdDigest: string;
+  /** 原始 Turn 标识的内容摘要。 */
+  turnIdDigest: string;
+  /** 原始 Tool Call 标识的内容摘要。 */
+  toolCallIdDigest: string;
+  /** 被调用工具的稳定名称。 */
+  toolName: string;
+  /** 调用目标集合的内容摘要。 */
+  targetsDigest: string;
+  /** 工具输入的内容摘要。 */
+  inputDigest: string;
+}
 
 /** Versioned Application Command 的完整信封。 */
 export interface CommandEnvelope<TPayload = unknown> {
@@ -42,6 +87,8 @@ export interface CommandEnvelope<TPayload = unknown> {
   correlationId: string;
   /** 直接触发本次 Command 的上游标识；根 Command 可以省略。 */
   causationId?: string;
+  /** 可选的调用来源证明；通用 Command 可以省略。 */
+  invocationProvenance?: CommandInvocationProvenance;
   /** Command 被提交时的 ISO 8601 时间。 */
   submittedAt: string;
   /** Command 的业务输入。 */
@@ -74,6 +121,8 @@ export interface CommandEnvelopeInput<TPayload = unknown> {
   correlationId: string;
   /** 直接触发本次 Command 的上游标识；根 Command 可以省略。 */
   causationId?: string;
+  /** 可选的调用来源证明；通用 Command 可以省略。 */
+  invocationProvenance?: CommandInvocationProvenanceInput;
   /** Command 被提交时的 ISO 8601 时间。 */
   submittedAt: string;
   /** Command 的业务输入。 */

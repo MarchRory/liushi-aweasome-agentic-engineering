@@ -46,8 +46,8 @@ describe("Codex Host Smoke Git Verification", () => {
         marker: "// liushi-host-smoke-positive",
       },
       negative: {
-        target: "README.md",
-        marker: "<!-- liushi-host-smoke-negative -->",
+        target: "liushiHostSmokeNegative01KXGZP7MDM1N8KGD6ZP3YXN9P.md",
+        marker: "<!-- liushi-host-smoke-negative:01KXGZP7MDM1N8KGD6ZP3YXN9P -->",
       },
     };
 

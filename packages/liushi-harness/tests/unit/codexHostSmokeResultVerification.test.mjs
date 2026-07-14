@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -31,7 +31,10 @@ describe("Codex Host Smoke Result Verification", () => {
       activationDigest: fixture.input.activationDigest,
     });
     expect(result.checks).toContain("positive_action_journal_closed");
+    expect(result.checks).toContain("positive_same_tool_invocation");
     expect(result.checks).toContain("negative_authorization_denied");
+    expect(result.checks).toContain("negative_exact_target_same_session");
+    expect(result.checks).toContain("negative_no_post");
   });
 
   it("缺少正向 Trace 时关闭式拒绝", async () => {
@@ -47,6 +50,121 @@ describe("Codex Host Smoke Result Verification", () => {
 
     await expect(verifyCodexHostSmokeResult(fixture.input, fixture.dependencies)).rejects.toThrow(
       "Command Receipt",
+    );
+  });
+
+  it.each(["payload", "session_id"])("拒绝 Reservation 顶层未知字段 %s", async (field) => {
+    const fixture = await createResultFixture();
+    await mutateReservation(fixture.positivePreReservationFile, (record) => {
+      record[field] = "forbidden";
+    });
+
+    await expect(verifyCodexHostSmokeResult(fixture.input, fixture.dependencies)).rejects.toThrow(
+      "Command Reservation 结构无效",
+    );
+  });
+
+  it.each([
+    [
+      "正向 Pre/Post 分裂到不同 Session",
+      async (fixture) => {
+        await mutateReservation(fixture.positivePostReservationFile, (record) => {
+          record.invocationProvenance.sessionIdDigest = calculateDigest("split-session");
+          refreshInvocationId(record.invocationProvenance);
+        });
+      },
+      "不可拼接",
+    ],
+    [
+      "正向 Post 工具名与 Pre 不一致",
+      async (fixture) => {
+        await mutateReservation(fixture.positivePostReservationFile, (record) => {
+          record.invocationProvenance.toolName = "different_tool";
+          refreshInvocationId(record.invocationProvenance);
+        });
+      },
+      "不可拼接",
+    ],
+    [
+      "负向 Pre 使用错误目标",
+      async (fixture) => {
+        await mutateReservation(fixture.negativeReservationFile, (record) => {
+          record.invocationProvenance.targetsDigest = calculateDigest(["wrong-target.md"]);
+        });
+      },
+      "精确负向目标",
+    ],
+    [
+      "负向 invocation 出现 Post",
+      async (fixture) => {
+        const negativePre = JSON.parse(await readFile(fixture.negativeReservationFile, "utf8"));
+        const commandId = "post-negative";
+        const negativePost = {
+          ...negativePre,
+          commandType: "hook.post_action",
+          idempotencyKey: "hook-execution-post-negative",
+          commandId,
+          submittedAt: "2026-07-14T00:05:00.000Z",
+          receipt: {
+            schemaVersion: "1.0.0",
+            commandId,
+            requestDigest: negativePre.requestDigest,
+            status: "committed",
+            committedVersion: 5,
+          },
+        };
+        const directory = join(fixture.storeRoot, "commandGateway", "3", "record-3");
+        await mkdir(directory, { recursive: true });
+        await writeJson(join(directory, "reservation.json"), negativePost);
+      },
+      "负向 invocation 不允许存在 Post",
+    ],
+    [
+      "仅有早于 Manifest 的陈旧 Reservation",
+      async (fixture) => {
+        await Promise.all(
+          fixture.reservationFiles.map((path) =>
+            mutateReservation(path, (record) => {
+              record.submittedAt = "2026-07-13T23:59:59.999Z";
+            }),
+          ),
+        );
+      },
+      "Command Receipt",
+    ],
+    [
+      "第四条 Hook Reservation 使用非法 submittedAt",
+      async (fixture) => {
+        const source = JSON.parse(await readFile(fixture.positivePreReservationFile, "utf8"));
+        const commandId = "pre-invalid-time";
+        const invalidTime = {
+          ...source,
+          idempotencyKey: "hook-execution-pre-invalid-time",
+          commandId,
+          submittedAt: "invalid-submitted-at",
+          receipt: { ...source.receipt, commandId },
+        };
+        const directory = join(fixture.storeRoot, "commandGateway", "3", "record-3");
+        await mkdir(directory, { recursive: true });
+        await writeJson(join(directory, "reservation.json"), invalidTime);
+      },
+      "Command Reservation 结构无效",
+    ],
+    [
+      "单字段篡改但未重算 invocationId",
+      async (fixture) => {
+        await mutateReservation(fixture.positivePostReservationFile, (record) => {
+          record.invocationProvenance.turnIdDigest = calculateDigest("tampered-turn");
+        });
+      },
+      "provenance 无效",
+    ],
+  ])("拒绝%s", async (_label, mutate, expectedMessage) => {
+    const fixture = await createResultFixture();
+    await mutate(fixture);
+
+    await expect(verifyCodexHostSmokeResult(fixture.input, fixture.dependencies)).rejects.toThrow(
+      expectedMessage,
     );
   });
 });
@@ -144,7 +262,11 @@ async function createResultFixture() {
     writeJson(activationPlanFile, activationPlan),
     writeJson(manifestFile, manifest),
     writeJson(intendedHookConfigFile, candidateConfig),
-    writeFile(join(codexHome, "config.toml"), activationPlan.projectTrust.proposedToml, "utf8"),
+    writeFile(
+      join(codexHome, "config.toml"),
+      activationPlan.projectTrust.proposedToml.replaceAll("\n", "\r\n"),
+      "utf8",
+    ),
   ]);
 
   await writeBinding(storeRoot, worktreeRoot, bindingCandidate);
@@ -157,7 +279,8 @@ async function createResultFixture() {
     bindingCandidate.taskId,
   );
   await mkdir(taskDirectory, { recursive: true });
-  const actionRecords = createActionRecords(actionId, bindingCandidate);
+  const positiveInputDigest = calculateDigest({ command: "positive-apply-patch" });
+  const actionRecords = createActionRecords(actionId, bindingCandidate, positiveInputDigest);
   await writeFile(
     join(taskDirectory, "actions.jsonl"),
     `${actionRecords.map((record) => JSON.stringify(record)).join("\n")}\n`,
@@ -175,15 +298,24 @@ async function createResultFixture() {
       operationKind: "tool",
       operationName: "apply_patch",
       status: "ok",
-      tool: { toolName: "apply_patch", toolCallId: "tool-positive" },
+      tool: { toolName: "apply_patch", toolCallId: calculateDigest("tool-positive") },
     })}\n`,
     "utf8",
   );
-  const reservationFiles = await writeReservations(storeRoot, actionId);
+  const reservationFiles = await writeReservations(
+    storeRoot,
+    actionId,
+    positiveInputDigest,
+    bindingCandidate.taskId,
+  );
 
   return {
     input: { manifestPath: manifestFile, activationDigest: manifest.activation.digest },
+    storeRoot,
     traceFile,
+    reservationFiles,
+    positivePreReservationFile: reservationFiles[0],
+    positivePostReservationFile: reservationFiles[1],
     negativeReservationFile: reservationFiles[2],
     dependencies: {
       inspectWorktree: () => ({
@@ -205,7 +337,7 @@ async function createResultFixture() {
   };
 }
 
-function createActionRecords(actionId, binding) {
+function createActionRecords(actionId, binding, inputDigest) {
   const records = [
     {
       schemaVersion: "1.0.0",
@@ -216,6 +348,7 @@ function createActionRecords(actionId, binding) {
       taskId: binding.taskId,
       commandId: "pre-positive",
       target: JSON.stringify(["test/utils.test.ts"]),
+      inputDigest,
     },
     {
       schemaVersion: "1.0.0",
@@ -270,16 +403,45 @@ async function writeBinding(storeRoot, worktreeRoot, binding) {
   });
 }
 
-async function writeReservations(storeRoot, actionId) {
+async function writeReservations(storeRoot, actionId, positiveInputDigest, taskId) {
+  const positiveProvenance = createInvocationProvenance({
+    sessionId: "session-host-smoke",
+    turnId: "turn-positive",
+    toolCallId: "tool-positive",
+    target: "test/utils.test.ts",
+    inputDigest: positiveInputDigest,
+  });
+  const negativeProvenance = createInvocationProvenance({
+    sessionId: "session-host-smoke",
+    turnId: "turn-negative",
+    toolCallId: "tool-negative",
+    target: `liushiHostSmokeNegative${taskId}.md`,
+    inputDigest: calculateDigest({ command: "negative-apply-patch" }),
+  });
   const records = [
-    createReservation("hook.pre_action", "pre-positive", actionId, "committed", 2),
-    createReservation("hook.post_action", "post-positive", actionId, "committed", 3),
+    createReservation(
+      "hook.pre_action",
+      "pre-positive",
+      actionId,
+      "committed",
+      2,
+      positiveProvenance,
+    ),
+    createReservation(
+      "hook.post_action",
+      "post-positive",
+      actionId,
+      "committed",
+      3,
+      positiveProvenance,
+    ),
     createReservation(
       "hook.pre_action",
       "pre-negative",
       "01KXF44E7QE04TX02M0EBRHDN1",
       "rejected",
       4,
+      negativeProvenance,
       {
         errorCode: "authorization_denied",
         errorMessage: "PreAction 目标超出 PlanRisk Write Set。",
@@ -297,7 +459,15 @@ async function writeReservations(storeRoot, actionId) {
   );
 }
 
-function createReservation(commandType, commandId, aggregateId, status, minute, receiptExtra = {}) {
+function createReservation(
+  commandType,
+  commandId,
+  aggregateId,
+  status,
+  minute,
+  invocationProvenance,
+  receiptExtra = {},
+) {
   const requestDigest = `sha256:${String(minute).repeat(64)}`;
   return {
     schemaVersion: "1.0.0",
@@ -308,6 +478,7 @@ function createReservation(commandType, commandId, aggregateId, status, minute, 
     commandId,
     requestDigest,
     submittedAt: `2026-07-14T00:0${minute}:00.000Z`,
+    invocationProvenance,
     receipt: {
       schemaVersion: "1.0.0",
       commandId,
@@ -317,6 +488,37 @@ function createReservation(commandType, commandId, aggregateId, status, minute, 
       ...receiptExtra,
     },
   };
+}
+
+function createInvocationProvenance({ sessionId, turnId, toolCallId, target, inputDigest }) {
+  const provenance = {
+    schemaVersion: "1.0.0",
+    executor: "codex",
+    sessionIdDigest: calculateDigest(sessionId),
+    turnIdDigest: calculateDigest(turnId),
+    toolCallIdDigest: calculateDigest(toolCallId),
+    toolName: "apply_patch",
+    targetsDigest: calculateDigest([target]),
+    inputDigest,
+  };
+  refreshInvocationId(provenance);
+  return provenance;
+}
+
+function refreshInvocationId(provenance) {
+  provenance.invocationId = calculateDigest({
+    executor: provenance.executor,
+    sessionIdDigest: provenance.sessionIdDigest,
+    turnIdDigest: provenance.turnIdDigest,
+    toolCallIdDigest: provenance.toolCallIdDigest,
+    toolName: provenance.toolName,
+  });
+}
+
+async function mutateReservation(path, mutate) {
+  const record = JSON.parse(await readFile(path, "utf8"));
+  mutate(record);
+  await writeJson(path, record);
 }
 
 async function writeJson(path, value) {

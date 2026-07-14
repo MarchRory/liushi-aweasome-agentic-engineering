@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   COMMAND_ENVELOPE_SCHEMA_VERSION,
+  COMMAND_INVOCATION_PROVENANCE_SCHEMA_VERSION,
   CommandErrorCode,
   CommandStatus,
   createCommandEnvelope,
@@ -41,6 +42,35 @@ describe("Application Command contracts", () => {
         payload: { workspaceId: "workspace-1" },
       });
     }
+  });
+
+  it("保留合法的 Command Invocation Provenance 并支持往返解析", () => {
+    const created = createCommandEnvelope({
+      ...createEnvelopeInput(),
+      invocationProvenance: createInvocationProvenance(),
+    });
+
+    expect(created.status).toBe(ResultStatus.Success);
+    if (created.status === ResultStatus.Success) {
+      const roundTrip = parseCommandEnvelope(JSON.parse(JSON.stringify(created.value)) as unknown);
+      expect(roundTrip).toEqual(created);
+      expect(created.value.invocationProvenance).toEqual(createInvocationProvenance());
+    }
+  });
+
+  it.each([
+    ["空白 executor", { ...createInvocationProvenance(), executor: " " }],
+    ["包含 NUL 的 toolName", { ...createInvocationProvenance(), toolName: "shell\0command" }],
+    ["非法 sessionIdDigest", { ...createInvocationProvenance(), sessionIdDigest: "session-1" }],
+    ["未知嵌套字段", { ...createInvocationProvenance(), unexpected: true }],
+  ])("拒绝 %s", (_name, invocationProvenance) => {
+    const result = parseCommandEnvelope({
+      ...createEnvelopeInput(),
+      schemaVersion: COMMAND_ENVELOPE_SCHEMA_VERSION,
+      invocationProvenance,
+    });
+
+    expect(result.status).toBe(ResultStatus.Failure);
   });
 
   it("rejects unknown envelope fields and unsupported schema versions", () => {
@@ -150,5 +180,19 @@ function createEnvelopeInput() {
     causationId: "causation-1",
     submittedAt: "2026-07-12T00:00:00.000Z",
     payload: { workspaceId: "workspace-1" },
+  };
+}
+
+function createInvocationProvenance() {
+  return {
+    schemaVersion: COMMAND_INVOCATION_PROVENANCE_SCHEMA_VERSION,
+    executor: "codex",
+    invocationId: `sha256:${"1".repeat(64)}`,
+    sessionIdDigest: `sha256:${"2".repeat(64)}`,
+    turnIdDigest: `sha256:${"3".repeat(64)}`,
+    toolCallIdDigest: `sha256:${"4".repeat(64)}`,
+    toolName: "shell_command",
+    targetsDigest: `sha256:${"5".repeat(64)}`,
+    inputDigest: `sha256:${"6".repeat(64)}`,
   };
 }

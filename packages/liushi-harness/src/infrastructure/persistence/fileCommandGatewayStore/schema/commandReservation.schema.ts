@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 import { ResultStatus, parseContentDigest } from "#common/index.js";
-import { parseCommandReceipt, type CommandReceipt } from "#application/index.js";
+import {
+  parseCommandInvocationProvenance,
+  parseCommandReceipt,
+  type CommandInvocationProvenance,
+  type CommandReceipt,
+} from "#application/index.js";
 
 import { COMMAND_RESERVATION_FILE_SCHEMA_VERSION } from "../constants/index.js";
 import type { PersistedCommandReservation } from "../contracts/index.js";
@@ -26,6 +31,16 @@ const receiptSchema = z.unknown().transform((value, context): CommandReceipt => 
   }
   return parsed.value;
 });
+const invocationProvenanceSchema = z
+  .unknown()
+  .transform((value, context): CommandInvocationProvenance => {
+    const parsed = parseCommandInvocationProvenance(value);
+    if (parsed.status === ResultStatus.Failure) {
+      context.addIssue({ code: "custom", message: parsed.error.message });
+      return z.NEVER;
+    }
+    return parsed.value;
+  });
 const reservationSchema = z
   .object({
     schemaVersion: z.literal(COMMAND_RESERVATION_FILE_SCHEMA_VERSION),
@@ -36,6 +51,7 @@ const reservationSchema = z
     commandId: nonBlank,
     requestDigest: digestSchema,
     submittedAt: z.string().datetime({ offset: true }),
+    invocationProvenance: invocationProvenanceSchema.optional(),
     receipt: receiptSchema.optional(),
   })
   .strict();
@@ -46,6 +62,10 @@ export function parsePersistedCommandReservation(input: unknown): PersistedComma
   if (!parsed.success) {
     throw parsed.error;
   }
-  const { receipt, ...required } = parsed.data;
-  return { ...required, ...(receipt === undefined ? {} : { receipt }) };
+  const { invocationProvenance, receipt, ...required } = parsed.data;
+  return {
+    ...required,
+    ...(invocationProvenance === undefined ? {} : { invocationProvenance }),
+    ...(receipt === undefined ? {} : { receipt }),
+  };
 }

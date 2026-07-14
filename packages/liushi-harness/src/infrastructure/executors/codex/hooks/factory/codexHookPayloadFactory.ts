@@ -1,5 +1,12 @@
 import { CodexHookEvent, type HookWorkspaceBinding } from "#application/index.js";
-import { ActorKind, ResultStatus, success, type HarnessError, type Result } from "#common/index.js";
+import {
+  ActorKind,
+  ResultStatus,
+  success,
+  type ContentDigest,
+  type HarnessError,
+  type Result,
+} from "#common/index.js";
 import {
   parseArtifactDigest,
   parseArtifactId,
@@ -12,7 +19,7 @@ import { parseWorkspaceId, type WorkspaceId } from "#domain/workspace/index.js";
 
 import { CodexSupportedTool } from "../constants/index.js";
 import type { CodexHookInput } from "../contracts/index.js";
-import { deriveDeterministicHex, deriveDeterministicUlid } from "../identity/index.js";
+import { deriveDeterministicHex } from "../identity/index.js";
 
 /** 已通过格式校验、可交给 Canonical Dispatcher 的绑定身份。 */
 export interface CodexHookBindingIdentity {
@@ -46,20 +53,9 @@ export function parseCodexHookBindingIdentity(
   });
 }
 
-/** 生成一次 Hook 调用对应的确定性 Action ID。 */
-export function deriveCodexActionId(binding: HookWorkspaceBinding, input: CodexHookInput): string {
-  return deriveDeterministicUlid(
-    `${binding.workspaceRoot}:${binding.taskId}:${input.session_id}:${input.turn_id}:${input.tool_use_id}`,
-  );
-}
-
 /** 生成可重放的 Hook Command 或幂等键。 */
-export function deriveCodexKey(
-  binding: HookWorkspaceBinding,
-  input: CodexHookInput,
-  label: string,
-): string {
-  return `codex-${label}-${deriveDeterministicHex(`${binding.workspaceRoot}:${input.session_id}:${input.turn_id}:${input.tool_use_id}`, 48)}`;
+export function deriveCodexKey(invocationScopeId: ContentDigest, label: string): string {
+  return `codex-${label}-${deriveDeterministicHex(invocationScopeId, 48)}`;
 }
 
 /** 构造 Canonical Action Hook 的公共 Payload 字段。 */
@@ -68,13 +64,13 @@ export function createCodexBasePayload(
   binding: HookWorkspaceBinding,
   identity: CodexHookBindingIdentity,
   actionId: string,
+  invocationScopeId: ContentDigest,
   occurredAt: string | undefined,
   fallbackOccurredAt: string,
 ): Record<string, unknown> {
-  const seed = `${binding.workspaceRoot}:${input.session_id}:${input.turn_id}:${input.tool_use_id}`;
   return {
     schemaVersion: "1.0.0",
-    hookExecutionId: deriveCodexKey(binding, input, input.hook_event_name),
+    hookExecutionId: deriveCodexKey(invocationScopeId, input.hook_event_name),
     executor: "codex",
     sessionId: input.session_id,
     turnId: input.turn_id,
@@ -83,11 +79,10 @@ export function createCodexBasePayload(
     actionId,
     actor: { kind: ActorKind.Agent, actorId: binding.actorId },
     commandId: deriveCodexKey(
-      binding,
-      input,
+      invocationScopeId,
       input.hook_event_name === CodexHookEvent.PreToolUse ? "pre-command" : "post-command",
     ),
-    correlationId: `codex-turn-${deriveDeterministicHex(seed, 32)}`,
+    correlationId: `codex-invocation-${deriveDeterministicHex(invocationScopeId, 32)}`,
     occurredAt: occurredAt ?? fallbackOccurredAt,
   };
 }

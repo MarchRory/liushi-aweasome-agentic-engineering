@@ -1,4 +1,4 @@
-import type { CommandReceipt } from "#application/index.js";
+import type { CommandInvocationProvenance, CommandReceipt } from "#application/index.js";
 import type { ContentDigest } from "#common/index.js";
 import type {
   FileLockManager,
@@ -25,6 +25,8 @@ export interface PersistedCommandReservation {
   readonly requestDigest: ContentDigest;
   /** 首次请求提交时间。 */
   readonly submittedAt: string;
+  /** 首次请求携带的调用来源证明。 */
+  readonly invocationProvenance?: CommandInvocationProvenance;
   /** Handler 完成并可靠落盘后的 Receipt。 */
   readonly receipt?: CommandReceipt;
 }

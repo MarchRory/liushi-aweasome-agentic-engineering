@@ -48,7 +48,7 @@ export async function verifyCodexHostSmokeResult(input, overrides = {}) {
     "tasks",
     manifest.bindingCandidate.taskId,
   );
-  await verifyCodexHostSmokeRuntimeEvidence(manifest, taskDirectory, scenarios.positive);
+  await verifyCodexHostSmokeRuntimeEvidence(manifest, taskDirectory, scenarios);
 
   return {
     schemaVersion: RESULT_SCHEMA_VERSION,
@@ -67,7 +67,10 @@ export async function verifyCodexHostSmokeResult(input, overrides = {}) {
       "positive_exact_git_diff",
       "positive_action_journal_closed",
       "positive_apply_patch_trace",
+      "positive_same_tool_invocation",
       "negative_authorization_denied",
+      "negative_exact_target_same_session",
+      "negative_no_post",
       "negative_target_unchanged",
     ],
   };

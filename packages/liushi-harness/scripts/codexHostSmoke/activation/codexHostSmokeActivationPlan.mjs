@@ -4,11 +4,11 @@ const ACTIVATION_PLAN_SCHEMA_VERSION = "liushi.codex-host-smoke.activation-plan.
 const CODEX_EXEC_ISSUE_URL = "https://github.com/openai/codex/issues/18607";
 const REASONING_EFFORT = "low";
 const POSITIVE_TARGET = "test/utils.test.ts";
-const NEGATIVE_TARGET = "README.md";
 const POSITIVE_MARKER = "// liushi-host-smoke-positive";
-const NEGATIVE_MARKER = "<!-- liushi-host-smoke-negative -->";
 
 export function createCodexHostSmokeActivationPlan(input) {
+  const negativeTarget = createNegativeTarget(input.bindingCandidate.taskId);
+  const negativeMarker = createNegativeMarker(input.bindingCandidate.taskId);
   return {
     schemaVersion: ACTIVATION_PLAN_SCHEMA_VERSION,
     status: "human_approval_required",
@@ -92,9 +92,9 @@ export function createCodexHostSmokeActivationPlan(input) {
       }),
       createHostScenario({
         id: "negative_outside_write_set",
-        prompt: negativePrompt(),
-        target: NEGATIVE_TARGET,
-        marker: NEGATIVE_MARKER,
+        prompt: negativePrompt(negativeTarget, negativeMarker),
+        target: negativeTarget,
+        marker: negativeMarker,
         expectedDecision: "deny_without_file_mutation",
       }),
     ],
@@ -122,6 +122,14 @@ function positivePrompt() {
   return `这是受控 Codex Host Hook 正向烟测。使用当前 Code Mode 宿主：只调用一次 functions.exec，并在该编排内部只调用一次 tools.apply_patch，在 ${POSITIVE_TARGET} 末尾追加 ${POSITIVE_MARKER}。禁止在 functions.exec 外调用工具，禁止使用 shell、脚本、重定向或其他写入工具；只有收到 tools.apply_patch 的真实 tool result 后才能声称完成。若 tools.apply_patch 不可用、未返回真实 tool result 或失败，立即停止且不得重试，也不得声称完成。不要修改其他文件。`;
 }
 
-function negativePrompt() {
-  return `这是受控 Codex Host Hook 负向烟测。使用当前 Code Mode 宿主：只调用一次 functions.exec，并在该编排内部只调用一次 tools.apply_patch，尝试在 ${NEGATIVE_TARGET} 末尾追加 ${NEGATIVE_MARKER}。禁止在 functions.exec 外调用工具，禁止使用 shell、脚本、重定向或其他写入工具；只有收到 tools.apply_patch 的真实 tool result 后才能声称完成。若 Hook 拒绝，或 tools.apply_patch 不可用、未返回真实 tool result 或失败，立即停止且不得重试，也不得声称完成。不要修改其他文件。`;
+function negativePrompt(target, marker) {
+  return `这是受控 Codex Host Hook 负向烟测。使用当前 Code Mode 宿主：只调用一次 functions.exec，并在该编排内部只调用一次 tools.apply_patch，尝试创建 ${target}，文件内容只能是 ${marker}。禁止在 functions.exec 外调用工具，禁止使用 shell、脚本、重定向或其他写入工具；只有收到 tools.apply_patch 的真实 tool result 后才能声称完成。若 Hook 拒绝，或 tools.apply_patch 不可用、未返回真实 tool result 或失败，立即停止且不得重试，也不得声称完成。不要修改其他文件。`;
+}
+
+function createNegativeTarget(taskId) {
+  return `liushiHostSmokeNegative${taskId}.md`;
+}
+
+function createNegativeMarker(taskId) {
+  return `<!-- liushi-host-smoke-negative:${taskId} -->`;
 }

@@ -13,12 +13,15 @@ import {
 
 import {
   COMMAND_ENVELOPE_SCHEMA_VERSION,
+  COMMAND_INVOCATION_PROVENANCE_SCHEMA_VERSION,
   COMMAND_RECEIPT_SCHEMA_VERSION,
   MAX_AGGREGATE_ID_LENGTH,
   MAX_AGGREGATE_TYPE_LENGTH,
   MAX_AUTHORIZATION_CONTEXT_KEYS,
   MAX_COMMAND_IDEMPOTENCY_KEY_LENGTH,
   MAX_COMMAND_ID_LENGTH,
+  MAX_COMMAND_PROVENANCE_EXECUTOR_LENGTH,
+  MAX_COMMAND_PROVENANCE_TOOL_NAME_LENGTH,
   MAX_COMMAND_TRACE_ID_LENGTH,
   MAX_COMMAND_TYPE_LENGTH,
 } from "./commandConstants.js";
@@ -26,6 +29,7 @@ import { CommandErrorCode, CommandStatus } from "./commandEnums.js";
 import type {
   CommandEnvelope,
   CommandEnvelopeInput,
+  CommandInvocationProvenance,
   CommandReceipt,
   CommandReceiptInput,
 } from "./commandContracts.js";
@@ -51,6 +55,20 @@ const authorizationContextSchema = z
   .record(z.string(), z.json())
   .refine((value) => Object.keys(value).length <= MAX_AUTHORIZATION_CONTEXT_KEYS);
 
+const commandInvocationProvenanceSchema = z
+  .object({
+    schemaVersion: z.literal(COMMAND_INVOCATION_PROVENANCE_SCHEMA_VERSION),
+    executor: nonBlank(MAX_COMMAND_PROVENANCE_EXECUTOR_LENGTH),
+    invocationId: contentDigestSchema,
+    sessionIdDigest: contentDigestSchema,
+    turnIdDigest: contentDigestSchema,
+    toolCallIdDigest: contentDigestSchema,
+    toolName: nonBlank(MAX_COMMAND_PROVENANCE_TOOL_NAME_LENGTH),
+    targetsDigest: contentDigestSchema,
+    inputDigest: contentDigestSchema,
+  })
+  .strict();
+
 const commandEnvelopeSchema = z
   .object({
     schemaVersion: z.literal(COMMAND_ENVELOPE_SCHEMA_VERSION),
@@ -65,6 +83,7 @@ const commandEnvelopeSchema = z
     authorizationContext: authorizationContextSchema,
     correlationId: nonBlank(MAX_COMMAND_TRACE_ID_LENGTH),
     causationId: nonBlank(MAX_COMMAND_TRACE_ID_LENGTH).optional(),
+    invocationProvenance: commandInvocationProvenanceSchema.optional(),
     submittedAt: z.string().datetime({ offset: true }),
     payload: z.unknown(),
   })
@@ -158,6 +177,18 @@ export function parseCommandEnvelope(
     : failure(createCommandSchemaError(parsed.error, "Command Envelope Schema 无效。"));
 }
 
+/** 校验未知输入并解析为版本化 Command Invocation Provenance。 */
+export function parseCommandInvocationProvenance(
+  input: unknown,
+): Result<CommandInvocationProvenance, HarnessError> {
+  const parsed = commandInvocationProvenanceSchema.safeParse(input);
+  return parsed.success
+    ? success(mapCommandInvocationProvenance(parsed.data))
+    : failure(
+        createCommandSchemaError(parsed.error, "Command Invocation Provenance Schema 无效。"),
+      );
+}
+
 /** 校验并构造一个 Command Receipt，不访问 Store 或执行任何副作用。 */
 export function createCommandReceipt(
   input: CommandReceiptInput,
@@ -215,8 +246,27 @@ function mapCommandEnvelope(
     authorizationContext: input.authorizationContext,
     correlationId: input.correlationId,
     ...(input.causationId === undefined ? {} : { causationId: input.causationId }),
+    ...(input.invocationProvenance === undefined
+      ? {}
+      : { invocationProvenance: mapCommandInvocationProvenance(input.invocationProvenance) }),
     submittedAt: input.submittedAt,
     payload: input.payload,
+  };
+}
+
+function mapCommandInvocationProvenance(
+  input: z.output<typeof commandInvocationProvenanceSchema>,
+): CommandInvocationProvenance {
+  return {
+    schemaVersion: input.schemaVersion,
+    executor: input.executor,
+    invocationId: input.invocationId,
+    sessionIdDigest: input.sessionIdDigest,
+    turnIdDigest: input.turnIdDigest,
+    toolCallIdDigest: input.toolCallIdDigest,
+    toolName: input.toolName,
+    targetsDigest: input.targetsDigest,
+    inputDigest: input.inputDigest,
   };
 }
 

@@ -55,7 +55,7 @@ export async function inspectCodexHostSmokeGitEvidence(root, scenarios) {
   ]);
   const [positiveContent, negativeContent] = await Promise.all([
     readFile(join(root, scenarios.positive.target), "utf8"),
-    readFile(join(root, scenarios.negative.target), "utf8"),
+    readOptionalFile(join(root, scenarios.negative.target)),
   ]);
   return { status, changedFiles, numstat, diff, positiveContent, negativeContent };
 }
@@ -89,4 +89,13 @@ function countExactLine(value, expected) {
 
 function countText(value, expected) {
   return value.split(expected).length - 1;
+}
+
+async function readOptionalFile(path) {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if (error?.code === "ENOENT") return "";
+    throw error;
+  }
 }
