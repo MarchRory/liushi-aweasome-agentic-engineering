@@ -117,7 +117,6 @@ export async function prepareCodexHostSmoke(input, overrides = {}) {
       codexHome,
       nodeExecutable: process.execPath,
       cliEntrypoint,
-      controlRoot: paths.controlRoot,
       storeRoot: paths.storeRoot,
       worktreeRoot: paths.worktreeRoot,
       candidateConfigFile: paths.candidateConfigFile,

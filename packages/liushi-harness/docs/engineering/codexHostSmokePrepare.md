@@ -6,7 +6,7 @@
 
 Prepare 是真实 Host Smoke 的前置阶段，不是 Host Smoke 通过证据。它固定保持以下边界：
 
-- 不运行 `codex exec`，不产生模型调用或 Token 成本。
+- 不启动 Codex 交互式 TUI，不产生模型调用或 Token 成本。
 - 不修改 `$CODEX_HOME/config.toml` 或任何项目 trust 配置。
 - 不执行 `hook bind`。
 - 不写入 Worktree 的 `.codex/hooks.json`。
@@ -48,7 +48,7 @@ corepack pnpm@10.23.0 smoke:codex-host:verify -- `
 5. 通过安装后的 CLI 对指定 Codex 执行静态 `hook probe`；要求报告 Schema v2、三条命令、`overallStatus=verified`、`hookFramework=verified` 和 `productionVerified=false`。
 6. 通过安装后的 CLI 获取原生 Hook Projection，将 Handler 绑定到实际 Node、Tarball CLI Entrypoint 和独立 Runtime Store。
 7. 只将候选配置写入 `control/candidateHooks.json`，并生成 `control/prepareManifest.json`。
-8. 生成 `control/activationPlan.json`，固定 trust 片段、Hook 写入、Binding、正负 Host 命令、证据路径和回滚边界，但不执行其中任何动作。
+8. 生成 `control/activationPlan.json`，固定 trust 片段、Hook 写入、Binding、交互式 TUI 启动参数、正负场景 Prompt 和回滚边界，但不执行其中任何动作。
 
 所有外部命令继续使用 `shell=false`。候选 Hook 命令只是待审阅配置字符串，Prepare 不执行该字符串。
 
@@ -56,11 +56,23 @@ corepack pnpm@10.23.0 smoke:codex-host:verify -- `
 
 当前旗舰模型可能以 `code_mode_only` 方式暴露工具。Host Smoke 因此要求模型只调用一次 `functions.exec`，并在该编排内部只调用一次 `tools.apply_patch`；Hook matcher 仍使用 Codex 官方支持的 `^apply_patch$`。不得将提示退化为要求模型直接调用顶层 `apply_patch`，否则模型可能在没有真实工具调用时仅输出完成声明。
 
-`codex exec` 退出码为 `0` 只表示进程正常结束，不代表 Host Smoke 通过。验收必须同时观察 JSONL 中的真实工具或文件变更事件、目标文件差异，以及 Harness Hook 审计证据；零工具调用、仅有 Agent Message 或模型自述完成都必须关闭式判失败。
+`codex exec` 不能承载本次动态验收。Codex 官方问题记录了非交互模式不分发 PreToolUse/PostToolUse 的路径，而本机正向执行也出现了“文件已改但 Hook 零证据”的结果。[openai/codex#18607](https://github.com/openai/codex/issues/18607)
+
+Activation Plan 因此只生成 `interactive_tui` 会话和两条独立场景 Prompt。Human 必须在同一个已通过 `/hooks` 信任审阅的 TUI 中依次执行正向、负向场景；不得把 Codex Desktop、App Server 或 `codex exec` 的结果自动等同于该 Host Scope。
+
+场景完成后运行只读结果验证：
+
+```powershell
+corepack pnpm@10.23.0 smoke:codex-host:verify-result -- `
+  --manifest C:\path\to\control\prepareManifest.json `
+  --activation-digest sha256:<digest>
+```
+
+只有该命令返回 `productionVerified=true` 才表示精确 TUI、Codex 版本、项目和 Activation Digest 通过。验证器要求正向目标只有一行差异、Action Journal 完整闭合、Trace 绑定 `apply_patch`，同时要求负向目标零写入并存在 `authorization_denied` Command Receipt；模型自述、UI Active、退出码和单独文件差异均不是充分证据。
 
 ## 激活摘要
 
-Manifest Schema 为 `liushi.codex-host-smoke.prepare.v3`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
+Manifest Schema 为 `liushi.codex-host-smoke.prepare.v4`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
 
 - 固定仓库身份、Revision、Working Tree HEAD 和 `.git=directory` 发现约束。
 - 实际 Codex executable 与版本。
@@ -80,5 +92,6 @@ Manifest Schema 为 `liushi.codex-host-smoke.prepare.v3`，状态固定为 `huma
 2. 将 Manifest 中的精确 Worktree Root 加入 Codex trusted project 配置。
 3. 明确批准 Hook Binding、`.codex/hooks.json` 写入和仅限该临时 Worktree 的 `workspace-write` Host Smoke。
 4. 写入配置后，在 Codex `/hooks` 中审阅并信任当前 Hook 定义哈希；项目 trust 不能替代该步骤。
+5. 在同一个 TUI 中按 Activation Plan 顺序执行两个场景，并运行 `verify-result` 收口证据。
 
 在上述动作完成并记录前，不得增加自动 trust、`--dangerously-bypass-hook-trust`、`danger-full-access` 或隐式执行路径。

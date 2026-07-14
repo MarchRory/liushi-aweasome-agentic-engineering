@@ -4,6 +4,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { parseCodexHostSmokeArguments } from "./cli/index.mjs";
+import { verifyCodexHostSmokeResult } from "./resultVerification/index.mjs";
 import { prepareCodexHostSmoke } from "./service/index.mjs";
 import { verifyCodexHostSmoke } from "./verification/index.mjs";
 
@@ -14,7 +15,9 @@ try {
   const summary =
     command.command === "prepare"
       ? await prepareCodexHostSmoke({ ...command, packageRoot })
-      : await verifyCodexHostSmoke(command);
+      : command.command === "verify"
+        ? await verifyCodexHostSmoke(command)
+        : await verifyCodexHostSmokeResult(command);
   process.stdout.write(`${JSON.stringify(summary)}\n`);
 } catch (error) {
   const message = error instanceof Error ? error.message : "Codex Host Smoke Prepare 未知失败。";

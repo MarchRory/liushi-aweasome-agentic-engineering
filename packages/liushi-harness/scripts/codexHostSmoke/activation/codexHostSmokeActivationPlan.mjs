@@ -1,6 +1,7 @@
 import { join } from "node:path";
 
-const ACTIVATION_PLAN_SCHEMA_VERSION = "liushi.codex-host-smoke.activation-plan.v1";
+const ACTIVATION_PLAN_SCHEMA_VERSION = "liushi.codex-host-smoke.activation-plan.v2";
+const CODEX_EXEC_ISSUE_URL = "https://github.com/openai/codex/issues/18607";
 const REASONING_EFFORT = "low";
 const POSITIVE_TARGET = "test/utils.test.ts";
 const NEGATIVE_TARGET = "README.md";
@@ -8,8 +9,6 @@ const POSITIVE_MARKER = "// liushi-host-smoke-positive";
 const NEGATIVE_MARKER = "<!-- liushi-host-smoke-negative -->";
 
 export function createCodexHostSmokeActivationPlan(input) {
-  const positiveEvidence = createEvidencePaths(input.controlRoot, "positive");
-  const negativeEvidence = createEvidencePaths(input.controlRoot, "negative");
   return {
     schemaVersion: ACTIVATION_PLAN_SCHEMA_VERSION,
     status: "human_approval_required",
@@ -59,22 +58,44 @@ export function createCodexHostSmokeActivationPlan(input) {
       bypassAllowed: false,
       completed: false,
     },
-    hostRuns: [
-      createHostRun(input, {
+    hostSession: {
+      mode: "interactive_tui",
+      executable: input.codexExecutable,
+      args: [
+        "--model",
+        input.model,
+        "--config",
+        `model_reasoning_effort=${JSON.stringify(REASONING_EFFORT)}`,
+        "--sandbox",
+        "workspace-write",
+        "--cd",
+        input.worktreeRoot,
+      ],
+      launchExecuted: false,
+    },
+    unsupportedHostModes: [
+      {
+        mode: "codex_exec",
+        supported: false,
+        reason:
+          "codex exec 在当前验收路径中未可靠触发 PreToolUse/PostToolUse，不能承载本次 Host Hook 验收。",
+        issueUrl: CODEX_EXEC_ISSUE_URL,
+      },
+    ],
+    hostScenarios: [
+      createHostScenario({
         id: "positive_write_set",
         prompt: positivePrompt(),
         target: POSITIVE_TARGET,
         marker: POSITIVE_MARKER,
         expectedDecision: "allow_without_stdout",
-        evidence: positiveEvidence,
       }),
-      createHostRun(input, {
+      createHostScenario({
         id: "negative_outside_write_set",
         prompt: negativePrompt(),
         target: NEGATIVE_TARGET,
         marker: NEGATIVE_MARKER,
         expectedDecision: "deny_without_file_mutation",
-        evidence: negativeEvidence,
       }),
     ],
     rollback: {
@@ -86,40 +107,14 @@ export function createCodexHostSmokeActivationPlan(input) {
   };
 }
 
-function createHostRun(input, spec) {
+function createHostScenario(spec) {
   return {
     id: spec.id,
-    executable: input.codexExecutable,
-    args: [
-      "exec",
-      "--model",
-      input.model,
-      "--config",
-      `model_reasoning_effort=${JSON.stringify(REASONING_EFFORT)}`,
-      "--sandbox",
-      "workspace-write",
-      "--cd",
-      input.worktreeRoot,
-      "--ephemeral",
-      "--json",
-      "--output-last-message",
-      spec.evidence.lastMessage,
-      spec.prompt,
-    ],
+    prompt: spec.prompt,
     target: spec.target,
     marker: spec.marker,
     expectedDecision: spec.expectedDecision,
-    stdoutEvidence: spec.evidence.stdout,
-    stderrEvidence: spec.evidence.stderr,
     executed: false,
-  };
-}
-
-function createEvidencePaths(controlRoot, prefix) {
-  return {
-    stdout: join(controlRoot, `${prefix}Host.jsonl`),
-    stderr: join(controlRoot, `${prefix}Host.stderr.txt`),
-    lastMessage: join(controlRoot, `${prefix}Host.lastMessage.txt`),
   };
 }
 

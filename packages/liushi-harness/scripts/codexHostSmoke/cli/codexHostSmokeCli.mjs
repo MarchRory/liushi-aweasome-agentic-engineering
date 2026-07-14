@@ -2,6 +2,7 @@ import { isAbsolute, resolve } from "node:path";
 
 const PREPARE_COMMAND = "prepare";
 const VERIFY_COMMAND = "verify";
+const VERIFY_RESULT_COMMAND = "verify-result";
 const ROOT_OPTION = "--root";
 const CODEX_OPTION = "--codex";
 const CODEX_HOME_OPTION = "--codex-home";
@@ -15,8 +16,9 @@ const ALLOWED_OPTIONS = new Set([...PATH_OPTIONS, ...TEXT_OPTIONS]);
 
 export function parseCodexHostSmokeArguments(args) {
   if (args[0] === VERIFY_COMMAND) return parseVerifyArguments(args);
+  if (args[0] === VERIFY_RESULT_COMMAND) return parseVerifyArguments(args, VERIFY_RESULT_COMMAND);
   if (args[0] !== PREPARE_COMMAND)
-    throw new Error("Codex Host Smoke 仅支持 prepare 或 verify 命令。");
+    throw new Error("Codex Host Smoke 仅支持 prepare、verify 或 verify-result 命令。");
   const optionStartIndex = args[1] === "--" ? 2 : 1;
   const values = new Map();
   for (let index = optionStartIndex; index < args.length; index += 2) {
@@ -55,7 +57,7 @@ export function parseCodexHostSmokeArguments(args) {
   return { command: PREPARE_COMMAND, root, codexExecutable, codexHome, model, actorId };
 }
 
-function parseVerifyArguments(args) {
+function parseVerifyArguments(args, command = VERIFY_COMMAND) {
   const optionStartIndex = args[1] === "--" ? 2 : 1;
   const values = collectOptions(
     args,
@@ -72,7 +74,7 @@ function parseVerifyArguments(args) {
     throw new Error("--activation-digest 必须是小写 SHA-256 Digest。");
   }
   return {
-    command: VERIFY_COMMAND,
+    command,
     manifestPath: normalizeAbsolutePath(manifestPath, MANIFEST_OPTION),
     activationDigest: normalizedDigest,
   };

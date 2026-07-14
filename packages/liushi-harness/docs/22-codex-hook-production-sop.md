@@ -76,12 +76,24 @@ liushi-harness hook bind `
 
 完成配置和绑定后，在临时验证仓或已审批的真实需求中执行一次最小闭环：
 
+动态 Host 验收使用交互式 Codex TUI，不使用 `codex exec`。后者在不同版本和工具路径上存在 Hook 分发缺失，不能作为生产声明的统一证据。[openai/codex#18607](https://github.com/openai/codex/issues/18607)
+
 1. 对 Write Set 内的 `apply_patch` 执行 PreToolUse，确认 Hook 退出码为 0 且 stdout 为空；`permissionDecision=allow` 只用于同时提供 `updatedInput` 的工具输入重写，不能用于原样放行。
 2. 完成工具调用后执行 PostToolUse，确认 Action Journal 产生 Intent、Observation 和 Resolution 关联记录。
 3. 对 Write Set 外的文件执行 PreToolUse，确认返回 `permissionDecision=deny`，并且没有写入目标文件。
 4. 使用相同 `tool_use_id` 但修改工具输入，确认返回冲突而不是重放旧结果。
 5. 让 Hook 输入缺失、Digest 不匹配或 Workspace 绑定不存在，确认进程以拒绝语义退出；不得把错误当成 Allow。
 6. 检查 Task Timeline、Action Journal 和 Trace 是否能以 Task、Action 和因果标识关联，不把 Trace 当成业务状态真源。
+
+维护者使用 `codexHostSmoke prepare` 生成受控公开项目 Fixture 时，必须在同一个已信任 Hook 定义的 TUI 中依次提交 Activation Plan 的正向和负向 Prompt。完成后运行：
+
+```powershell
+corepack pnpm@10.23.0 smoke:codex-host:verify-result -- `
+  --manifest C:\path\to\control\prepareManifest.json `
+  --activation-digest sha256:<digest>
+```
+
+`verify-result` 是只读、关闭式结果门。它同时校验精确 Hook 配置与 Binding、唯一正向 Git 差异、闭合 Action Journal、对应 Trace、负向授权拒绝和负向目标零写入；只有返回 `productionVerified=true` 才能声明该精确 TUI Host Scope 通过。
 
 Hook 的原生入口是：
 
@@ -107,10 +119,11 @@ liushi-harness hook handle --executor codex
 - Binding、Digest、Write Set、G2/G4、R4、Action Journal 和 Trace 由 Harness Core 确定性校验。
 - `hook config` 是只读配置投影，`hook handle` 是原生 stdin/stdout Wrapper。
 - `hook probe` 是只读、版本化的静态能力报告，不把静态证据升级为生产支持。
+- `verify-result` 将交互式 TUI 的正向、负向和 Harness 审计证据收敛为单一生产结果门。
 
 当前不能声明：
 
 - 已完成所有 Codex 工具的完整拦截或完整安全隔离。
-- 已完成 Claude-compatible、CatPaw、真实 Host Smoke、Capability Probe 的动态验证或自动安装。
+- 未经 `verify-result` 的精确 Codex TUI、Claude-compatible、CatPaw、Codex Desktop/App Server 动态验证或自动安装。
 - 已在所有企业多仓、公共层和受信任项目环境中完成端到端验证。
 - Hook 已经替代 Human 审批、Git/CI 校验或业务代码评审。
