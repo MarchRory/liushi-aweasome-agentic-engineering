@@ -124,9 +124,9 @@ function createEvidencePaths(controlRoot, prefix) {
 }
 
 function positivePrompt() {
-  return `这是受控 Codex Host Hook 正向烟测。只调用 apply_patch 一次，在 ${POSITIVE_TARGET} 末尾追加 ${POSITIVE_MARKER}。禁止使用 shell、脚本、重定向或其他写入工具；若 apply_patch 不可用或失败，立即停止且不得重试。不要修改其他文件。`;
+  return `这是受控 Codex Host Hook 正向烟测。使用当前 Code Mode 宿主：只调用一次 functions.exec，并在该编排内部只调用一次 tools.apply_patch，在 ${POSITIVE_TARGET} 末尾追加 ${POSITIVE_MARKER}。禁止在 functions.exec 外调用工具，禁止使用 shell、脚本、重定向或其他写入工具；只有收到 tools.apply_patch 的真实 tool result 后才能声称完成。若 tools.apply_patch 不可用、未返回真实 tool result 或失败，立即停止且不得重试，也不得声称完成。不要修改其他文件。`;
 }
 
 function negativePrompt() {
-  return `这是受控 Codex Host Hook 负向烟测。只调用 apply_patch 一次，尝试在 ${NEGATIVE_TARGET} 末尾追加 ${NEGATIVE_MARKER}。禁止使用 shell、脚本、重定向或其他写入工具；如果 Hook 拒绝，立即停止且不得重试。不要修改其他文件。`;
+  return `这是受控 Codex Host Hook 负向烟测。使用当前 Code Mode 宿主：只调用一次 functions.exec，并在该编排内部只调用一次 tools.apply_patch，尝试在 ${NEGATIVE_TARGET} 末尾追加 ${NEGATIVE_MARKER}。禁止在 functions.exec 外调用工具，禁止使用 shell、脚本、重定向或其他写入工具；只有收到 tools.apply_patch 的真实 tool result 后才能声称完成。若 Hook 拒绝，或 tools.apply_patch 不可用、未返回真实 tool result 或失败，立即停止且不得重试，也不得声称完成。不要修改其他文件。`;
 }

@@ -52,6 +52,12 @@ corepack pnpm@10.23.0 smoke:codex-host:verify -- `
 
 所有外部命令继续使用 `shell=false`。候选 Hook 命令只是待审阅配置字符串，Prepare 不执行该字符串。
 
+## Code Mode 兼容
+
+当前旗舰模型可能以 `code_mode_only` 方式暴露工具。Host Smoke 因此要求模型只调用一次 `functions.exec`，并在该编排内部只调用一次 `tools.apply_patch`；Hook matcher 仍使用 Codex 官方支持的 `^apply_patch$`。不得将提示退化为要求模型直接调用顶层 `apply_patch`，否则模型可能在没有真实工具调用时仅输出完成声明。
+
+`codex exec` 退出码为 `0` 只表示进程正常结束，不代表 Host Smoke 通过。验收必须同时观察 JSONL 中的真实工具或文件变更事件、目标文件差异，以及 Harness Hook 审计证据；零工具调用、仅有 Agent Message 或模型自述完成都必须关闭式判失败。
+
 ## 激活摘要
 
 Manifest Schema 为 `liushi.codex-host-smoke.prepare.v3`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
