@@ -223,9 +223,12 @@ function validateWorktree(worktree) {
   if (
     worktree?.headRevision !== PUBLIC_REPOSITORY_REVISION ||
     worktree.clean !== true ||
-    worktree.detached !== true
+    worktree.detached !== true ||
+    worktree.gitEntryKind !== "directory"
   ) {
-    throw new Error("Codex Host Smoke Worktree 未满足固定 Revision、Detached 和 Clean 约束。");
+    throw new Error(
+      "Codex Host Smoke Worktree 未满足普通 Clone、固定 Revision、Detached 和 Clean 约束。",
+    );
   }
   return worktree;
 }

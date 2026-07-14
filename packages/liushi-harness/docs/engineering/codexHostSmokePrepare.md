@@ -43,7 +43,7 @@ corepack pnpm@10.23.0 smoke:codex-host:verify -- `
 
 1. 固定 Clone `unjs/defu` 并运行 Frozen Install 与完整 Baseline Test。
 2. 从当前包执行真实 `npm pack`，由独立 Consumer 安装 Tarball。
-3. 创建固定 Revision、Detached 且 Clean 的独立 Git Worktree。
+3. 通过本地普通 Clone 创建固定 Revision、Detached 且 Clean 的独立 Working Tree，并要求 `.git` 为真实目录。Codex 当前会静默忽略 linked worktree 根目录中的项目 Hooks，因此 Prepare 禁止使用 `.git` 文件形态。[openai/codex#27133](https://github.com/openai/codex/issues/27133)
 4. 通过安装后的 CLI 建立 G1/G4 自动化模拟 Gate 协议，但不执行 Hook Binding。
 5. 通过安装后的 CLI 对指定 Codex 执行静态 `hook probe`；要求报告 Schema v2、三条命令、`overallStatus=verified`、`hookFramework=verified` 和 `productionVerified=false`。
 6. 通过安装后的 CLI 获取原生 Hook Projection，将 Handler 绑定到实际 Node、Tarball CLI Entrypoint 和独立 Runtime Store。
@@ -54,9 +54,9 @@ corepack pnpm@10.23.0 smoke:codex-host:verify -- `
 
 ## 激活摘要
 
-Manifest Schema 为 `liushi.codex-host-smoke.prepare.v2`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
+Manifest Schema 为 `liushi.codex-host-smoke.prepare.v3`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
 
-- 固定仓库身份、Revision 和 Worktree HEAD。
+- 固定仓库身份、Revision、Working Tree HEAD 和 `.git=directory` 发现约束。
 - 实际 Codex executable 与版本。
 - npm Tarball SHA-256。
 - 候选 Hook 配置 Digest。

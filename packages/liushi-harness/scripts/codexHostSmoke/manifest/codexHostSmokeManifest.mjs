@@ -46,6 +46,7 @@ function createActivationBinding(input) {
     worktreeHeadRevision: input.worktree.headRevision,
     worktreeClean: input.worktree.clean,
     worktreeDetached: input.worktree.detached,
+    worktreeGitEntryKind: input.worktree.gitEntryKind,
     codexExecutable: input.codexProbe.executable,
     codexVersion: input.codexProbe.version,
     codexProbeDigest: calculateDigest(input.codexProbe),

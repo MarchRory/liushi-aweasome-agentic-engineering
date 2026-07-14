@@ -1,9 +1,10 @@
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { runProcess } from "../../scripts/common/process/index.mjs";
 import { parseCodexHostSmokeArguments } from "../../scripts/codexHostSmoke/cli/index.mjs";
 import { createCandidateHookConfig } from "../../scripts/codexHostSmoke/config/index.mjs";
 import { CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS } from "../../scripts/codexHostSmoke/constants/index.mjs";
@@ -15,6 +16,7 @@ import {
   assertCodexHostSmokeCommand,
   runCodexHostSmokeCommand,
 } from "../../scripts/codexHostSmoke/policy/index.mjs";
+import { createCodexHostSmokeWorktree } from "../../scripts/codexHostSmoke/project/index.mjs";
 import { prepareCodexHostSmoke } from "../../scripts/codexHostSmoke/service/index.mjs";
 import { verifyCodexHostSmoke } from "../../scripts/codexHostSmoke/verification/index.mjs";
 
@@ -171,17 +173,56 @@ describe("Codex Host Smoke Prepare", () => {
       ...input,
       activationPlan: { ...input.activationPlan, model: { id: "gpt-next" } },
     });
+    const fifth = calculateActivationDigest({
+      ...input,
+      worktree: { ...input.worktree, gitEntryKind: "file" },
+    });
 
     expect(first).not.toBe(second);
     expect(first).not.toBe(third);
     expect(first).not.toBe(fourth);
+    expect(first).not.toBe(fifth);
     const manifest = createCodexHostSmokeManifest(input);
-    expect(manifest.schemaVersion).toBe("liushi.codex-host-smoke.prepare.v2");
+    expect(manifest.schemaVersion).toBe("liushi.codex-host-smoke.prepare.v3");
     expect(manifest.activation.digest).toBe(first);
     expect(manifest.activation.binding.requiredHumanActions).toEqual(
       CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS,
     );
     expect(manifest.activation.requiredHumanActions.at(-1)).toContain("/hooks");
+  });
+
+  it("使用普通 Clone 隔离 Host Smoke", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "liushi-codex-host-clone-test-"));
+    temporaryRoots.push(parent);
+    const sourceRoot = join(parent, "source");
+    const worktreeRoot = join(parent, "worktree");
+    await mkdir(sourceRoot);
+    runGitFixture(sourceRoot, ["init"]);
+    runGitFixture(sourceRoot, ["config", "user.name", "liushi-host-smoke-test"]);
+    runGitFixture(sourceRoot, ["config", "user.email", "liushi-host-smoke@example.invalid"]);
+    await writeFile(join(sourceRoot, "README.md"), "fixture\n", "utf8");
+    runGitFixture(sourceRoot, ["add", "README.md"]);
+    runGitFixture(sourceRoot, ["commit", "-m", "fixture"]);
+    const revision = runGitFixture(sourceRoot, ["rev-parse", "HEAD"]);
+
+    const result = createCodexHostSmokeWorktree(sourceRoot, worktreeRoot, revision);
+
+    expect(result).toMatchObject({
+      headRevision: revision,
+      clean: true,
+      detached: true,
+      gitEntryKind: "directory",
+    });
+    expect((await lstat(join(worktreeRoot, ".git"))).isDirectory()).toBe(true);
+  });
+
+  it("拒绝 linked worktree 的 .git 文件形态", async () => {
+    const fixture = await createServiceFixture({ gitEntryKind: "file" });
+
+    await expect(prepareCodexHostSmoke(fixture.input, fixture.dependencies)).rejects.toThrow(
+      "普通 Clone",
+    );
+    await expect(access(fixture.input.root)).rejects.toThrow();
   });
 
   it("成功时保留 fixture，但不写 worktree Hook 配置或 Binding", async () => {
@@ -192,6 +233,8 @@ describe("Codex Host Smoke Prepare", () => {
     expect(summary.status).toBe("human_activation_required");
     await expect(access(summary.manifestPath)).resolves.toBeUndefined();
     const manifest = JSON.parse(await readFile(summary.manifestPath, "utf8"));
+    expect(manifest.worktree.gitEntryKind).toBe("directory");
+    expect(manifest.activation.binding.worktreeGitEntryKind).toBe("directory");
     expect(manifest.bindingCandidate.hookBindExecuted).toBe(false);
     expect(manifest.codexProbe).toMatchObject({
       overallStatus: "verified",
@@ -241,6 +284,7 @@ describe("Codex Host Smoke Prepare", () => {
         headRevision: manifest.worktree.headRevision,
         clean: true,
         detached: true,
+        gitEntryKind: "directory",
       }),
       inspectCodexVersion: () => `codex-cli ${manifest.codexProbe.version}`,
     };
@@ -336,6 +380,7 @@ async function createServiceFixture(options = {}) {
           headRevision: "82632b66f5914e9946edce300e10633a3d5c0cb7",
           clean: true,
           detached: true,
+          gitEntryKind: options.gitEntryKind ?? "directory",
         };
       },
       createHarnessConsumer: async (_packageRoot, preparedRoot) => {
@@ -437,6 +482,14 @@ function hookProjection() {
   };
 }
 
+function runGitFixture(cwd, args) {
+  return runProcess("git", args, {
+    cwd,
+    timeout: 30_000,
+    maxBuffer: 1024 * 1024,
+  }).stdout.trim();
+}
+
 function manifestInput() {
   return {
     generatedAt: "2026-07-14T00:00:00.000Z",
@@ -460,6 +513,7 @@ function manifestInput() {
       headRevision: "82632b66f5914e9946edce300e10633a3d5c0cb7",
       clean: true,
       detached: true,
+      gitEntryKind: "directory",
     },
     codexProbe: {
       executable: "C:/codex.exe",

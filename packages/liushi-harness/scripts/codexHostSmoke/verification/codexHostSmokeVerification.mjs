@@ -1,10 +1,11 @@
+import { lstatSync } from "node:fs";
 import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import { runProcess } from "../../common/process/index.mjs";
 import { calculateDigest } from "../../publicProjectSmoke/digest/index.mjs";
 
-const PREPARE_SCHEMA_VERSION = "liushi.codex-host-smoke.prepare.v2";
+const PREPARE_SCHEMA_VERSION = "liushi.codex-host-smoke.prepare.v3";
 const ACTIVATION_PLAN_SCHEMA_VERSION = "liushi.codex-host-smoke.activation-plan.v1";
 const VERIFICATION_SCHEMA_VERSION = "liushi.codex-host-smoke.verification.v1";
 const MAX_JSON_BYTES = 1024 * 1024;
@@ -53,7 +54,7 @@ export async function verifyCodexHostSmoke(input, overrides = {}) {
       "manifest_digest",
       "activation_plan_digest",
       "candidate_hook_config_digest",
-      "worktree_head_clean_detached",
+      "standard_clone_head_clean_detached",
       "host_not_activated",
       "codex_version",
     ],
@@ -114,9 +115,12 @@ function assertWorktree(manifest, actual) {
     resolve(actual.root) !== resolve(manifest.paths.worktreeRoot) ||
     actual.headRevision !== manifest.worktree.headRevision ||
     actual.clean !== true ||
-    actual.detached !== true
+    actual.detached !== true ||
+    actual.gitEntryKind !== "directory" ||
+    manifest.worktree.gitEntryKind !== "directory" ||
+    manifest.activation.binding.worktreeGitEntryKind !== "directory"
   ) {
-    throw new Error("Host Smoke Worktree HEAD、clean 或 detached 状态已漂移。");
+    throw new Error("Host Smoke 普通 Clone、HEAD、clean 或 detached 状态已漂移。");
   }
 }
 
@@ -142,7 +146,16 @@ function inspectWorktree(root) {
   const headRevision = runGit(root, ["rev-parse", "HEAD"]);
   const status = runGit(root, ["status", "--porcelain=v1"]);
   const branch = runGit(root, ["branch", "--show-current"]);
-  return { root, headRevision, clean: status.length === 0, detached: branch.length === 0 };
+  const gitEntry = lstatSync(join(root, ".git"));
+  const gitEntryKind =
+    gitEntry.isDirectory() && !gitEntry.isSymbolicLink() ? "directory" : "unsupported";
+  return {
+    root,
+    headRevision,
+    clean: status.length === 0,
+    detached: branch.length === 0,
+    gitEntryKind,
+  };
 }
 
 function inspectCodexVersion(executable) {

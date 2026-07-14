@@ -1,17 +1,34 @@
-import { relative } from "node:path";
+import { lstatSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 
 import { runProcess } from "../../common/process/index.mjs";
 import { PUBLIC_REPOSITORY_REVISION } from "../../publicProjectSmoke/constants/index.mjs";
 
-export function createCodexHostSmokeWorktree(repositoryRoot, worktreeRoot) {
+export function createCodexHostSmokeWorktree(
+  repositoryRoot,
+  worktreeRoot,
+  revision = PUBLIC_REPOSITORY_REVISION,
+) {
   assertSeparateWorktree(repositoryRoot, worktreeRoot);
-  runGit(repositoryRoot, ["worktree", "add", "--detach", worktreeRoot, PUBLIC_REPOSITORY_REVISION]);
+  runProcess("git", ["clone", "--no-hardlinks", "--no-checkout", repositoryRoot, worktreeRoot], {
+    cwd: dirname(worktreeRoot),
+    timeout: 60_000,
+    maxBuffer: 1024 * 1024,
+  });
+  runGit(worktreeRoot, ["config", "core.autocrlf", "false"]);
+  runGit(worktreeRoot, ["checkout", "--detach", revision]);
   const headRevision = runGit(worktreeRoot, ["rev-parse", "HEAD"]);
   const status = runGit(worktreeRoot, ["status", "--porcelain"]);
-  if (headRevision !== PUBLIC_REPOSITORY_REVISION || status.length !== 0) {
-    throw new Error("Codex Host Smoke Worktree 未保持固定 Revision 或洁净状态。");
+  const gitEntry = lstatSync(join(worktreeRoot, ".git"));
+  if (
+    headRevision !== revision ||
+    status.length !== 0 ||
+    !gitEntry.isDirectory() ||
+    gitEntry.isSymbolicLink()
+  ) {
+    throw new Error("Codex Host Smoke Worktree 未保持普通 Clone、固定 Revision 或洁净状态。");
   }
-  return { headRevision, clean: true, detached: true };
+  return { headRevision, clean: true, detached: true, gitEntryKind: "directory" };
 }
 
 function assertSeparateWorktree(repositoryRoot, worktreeRoot) {
