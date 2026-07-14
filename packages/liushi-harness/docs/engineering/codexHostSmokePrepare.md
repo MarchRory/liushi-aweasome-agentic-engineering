@@ -52,6 +52,8 @@ corepack pnpm@10.23.0 smoke:codex-host:verify -- `
 
 所有外部命令继续使用 `shell=false`。候选 Hook 命令只是待审阅配置字符串，Prepare 不执行该字符串。
 
+候选命令的 OS 差异由独立 `platform` 兼容层处理，配置投影不包含 Shell 转义逻辑。POSIX `command` 使用单引号字面量；Windows `commandWindows` 遵循 Codex 当前 Turn Shell 的 PowerShell `-Command` 契约，使用调用运算符 `&` 执行带引号的 Node 绝对路径，并用单引号字面量阻止变量与子表达式展开。该字段不声明 cmd.exe 兼容性；如果 Codex 后续改变 Windows Hook Shell，必须在兼容层增加对应实现和真实 Host 回归证据。
+
 ## Code Mode 兼容
 
 当前旗舰模型可能以 `code_mode_only` 方式暴露工具。Host Smoke 因此要求模型只调用一次 `functions.exec`，并在该编排内部只调用一次 `tools.apply_patch`；Hook matcher 仍使用 Codex 官方支持的 `^apply_patch$`。不得将提示退化为要求模型直接调用顶层 `apply_patch`，否则模型可能在没有真实工具调用时仅输出完成声明。

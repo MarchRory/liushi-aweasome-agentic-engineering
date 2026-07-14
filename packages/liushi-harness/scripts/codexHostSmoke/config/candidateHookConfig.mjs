@@ -1,59 +1,20 @@
 import { isDeepStrictEqual } from "node:util";
 
+import { createCodexHostHookCommands } from "../platform/index.mjs";
+
 const EXPECTED_EVENTS = ["PreToolUse", "PostToolUse"];
 const EXPECTED_MATCHER = "^apply_patch$";
 
 export function createCandidateHookConfig(input) {
   assertProjectionShape(input.projection);
-  const command = createPosixCommand(input);
-  const commandWindows = createWindowsCommand(input);
+  const commands = createCodexHostHookCommands(input);
   const candidate = globalThis.structuredClone(input.projection);
   for (const event of EXPECTED_EVENTS) {
-    candidate.hooks[event][0].hooks[0].command = command;
-    candidate.hooks[event][0].hooks[0].commandWindows = commandWindows;
+    candidate.hooks[event][0].hooks[0].command = commands.command;
+    candidate.hooks[event][0].hooks[0].commandWindows = commands.commandWindows;
   }
   assertProjectionShape(candidate);
   return candidate;
-}
-
-function createPosixCommand(input) {
-  return commandArguments(input).map(quotePosixArgument).join(" ");
-}
-
-function createWindowsCommand(input) {
-  return commandArguments(input).map(quoteWindowsArgument).join(" ");
-}
-
-function commandArguments(input) {
-  return [
-    input.nodeExecutable,
-    input.cliEntrypoint,
-    "hook",
-    "handle",
-    "--executor",
-    "codex",
-    "--store",
-    input.storeRoot,
-  ];
-}
-
-function quotePosixArgument(value) {
-  assertCommandArgument(value);
-  return `'${value.replaceAll("'", `'"'"'`)}'`;
-}
-
-function quoteWindowsArgument(value) {
-  assertCommandArgument(value);
-  if (value.includes('"')) {
-    throw new Error("Windows Hook 命令参数不能包含双引号。");
-  }
-  return `"${value}"`;
-}
-
-function assertCommandArgument(value) {
-  if (typeof value !== "string" || value.length === 0 || value.includes("\0")) {
-    throw new Error("Hook 命令参数必须是非空无 NUL 字符串。");
-  }
 }
 
 function assertProjectionShape(projection) {

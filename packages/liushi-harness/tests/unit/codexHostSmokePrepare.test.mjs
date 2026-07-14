@@ -130,10 +130,10 @@ describe("Codex Host Smoke Prepare", () => {
     expect(candidate.hooks.PreToolUse[0].matcher).toBe("^apply_patch$");
     expect(candidate.hooks.PostToolUse[0].matcher).toBe("^apply_patch$");
     expect(candidate.hooks.PreToolUse[0].hooks[0].commandWindows).toContain(
-      '"C:/Program Files/node/node.exe"',
+      "& 'C:/Program Files/node/node.exe'",
     );
     expect(candidate.hooks.PreToolUse[0].hooks[0].commandWindows).toContain(
-      '"--store" "C:/host/runtime"',
+      "'--store' 'C:/host/runtime'",
     );
     expect(candidate.hooks.PreToolUse[0].hooks[0].command).toContain(
       "'C:/host/consumer/cliEntrypoint.js'",
