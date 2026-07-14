@@ -1,5 +1,18 @@
-import { HookExecutorKind } from "#application/index.js";
-import { HarnessError, HarnessErrorCode, ResultStatus } from "#common/index.js";
+import {
+  CODEX_HOOK_FAIL_CLOSED_REASON,
+  CodexHookEvent,
+  CodexPermissionDecision,
+  CodexPostHookDecision,
+  HookExecutorKind,
+  type CodexHookResponse,
+} from "#application/index.js";
+import {
+  HarnessError,
+  HarnessErrorCode,
+  ResultStatus,
+  failure,
+  type Result,
+} from "#common/index.js";
 
 import { CLI_EXIT_CODE_INVALID_INPUT, CLI_EXIT_CODE_SUCCESS } from "../../constants/index.js";
 import {
@@ -10,6 +23,7 @@ import {
   type HookProbeCliCommand,
   type RunCliDependencies,
 } from "../../contracts/index.js";
+import type { HookInputReader } from "../../input/index.js";
 import { mapErrorExitCode, writeFailure, writeSuccess } from "../../output/index.js";
 
 /** 执行 Human 显式确认后的 Hook 工作区绑定。 */
@@ -99,17 +113,80 @@ export async function executeHookHandle(
       new HarnessError(HarnessErrorCode.IoFailure, "Hook input reader is not configured."),
     );
   }
-  const input = await dependencies.hookInputReader.read();
+  const input = await readCodexHookInput(dependencies.hookInputReader);
   if (input.status === ResultStatus.Failure) {
     return writeNativeHookFailure(dependencies, input.error);
   }
-  const result = await application.handleCodexHook.execute(input.value);
+  const result = await handleCodexHook(application, input.value);
   if (result.status === ResultStatus.Failure) {
-    return writeNativeHookFailure(dependencies, result.error);
+    return writeCodexHookFailClosed(dependencies, input.value, result.error);
   }
   if (result.value.body !== undefined) {
     dependencies.writer.stdout(`${JSON.stringify(result.value.body)}\n`);
   }
+  return CLI_EXIT_CODE_SUCCESS;
+}
+
+async function readCodexHookInput(reader: HookInputReader): Promise<Result<unknown, HarnessError>> {
+  try {
+    return await reader.read();
+  } catch {
+    return failure(
+      new HarnessError(HarnessErrorCode.IoFailure, "Codex Hook input reader failed unexpectedly."),
+    );
+  }
+}
+
+async function handleCodexHook(
+  application: CliApplication,
+  input: unknown,
+): Promise<Result<CodexHookResponse, HarnessError>> {
+  try {
+    return await application.handleCodexHook.execute(input);
+  } catch {
+    return failure(
+      new HarnessError(HarnessErrorCode.IoFailure, "Codex Hook handler failed unexpectedly."),
+    );
+  }
+}
+
+function writeCodexHookFailClosed(
+  dependencies: RunCliDependencies,
+  input: unknown,
+  error: HarnessError,
+): number {
+  const event = readCodexHookEvent(input);
+  if (event === CodexHookEvent.PreToolUse) {
+    return writeNativeHookBody(dependencies, {
+      hookSpecificOutput: {
+        hookEventName: CodexHookEvent.PreToolUse,
+        permissionDecision: CodexPermissionDecision.Deny,
+        permissionDecisionReason: CODEX_HOOK_FAIL_CLOSED_REASON,
+      },
+    });
+  }
+  if (event === CodexHookEvent.PostToolUse) {
+    return writeNativeHookBody(dependencies, {
+      decision: CodexPostHookDecision.Block,
+      reason: CODEX_HOOK_FAIL_CLOSED_REASON,
+    });
+  }
+  return writeNativeHookFailure(dependencies, error);
+}
+
+function readCodexHookEvent(input: unknown): CodexHookEvent | undefined {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return undefined;
+  const event = (input as Readonly<Record<string, unknown>>)["hook_event_name"];
+  return Object.values(CodexHookEvent).includes(event as CodexHookEvent)
+    ? (event as CodexHookEvent)
+    : undefined;
+}
+
+function writeNativeHookBody(
+  dependencies: RunCliDependencies,
+  body: Readonly<Record<string, unknown>>,
+): number {
+  dependencies.writer.stdout(`${JSON.stringify(body)}\n`);
   return CLI_EXIT_CODE_SUCCESS;
 }
 

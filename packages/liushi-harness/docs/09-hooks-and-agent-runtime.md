@@ -79,6 +79,8 @@ Wrapper 不读取或修改 Store，不包含风险正则和业务规则。Rule R
 
 当前 Adapter 仅覆盖 `apply_patch`，并使用 Codex 的 `command` Handler。Codex 官方文档说明 PreToolUse 对部分工具的拦截能力仍有限，PostToolUse 也不能撤销已经发生的副作用，因此 Hook 不是完整安全边界；CLI、Sandbox、Git 和 CI 必须继续复用同一 Policy Engine。[Codex Hooks](https://learn.chatgpt.com/docs/hooks)
 
+Codex Wrapper 严格接收官方 PreToolUse/PostToolUse Schema，包括必填的 `transcript_path`，以及 Code Mode 等嵌套宿主可选提供的 `agent_id`、`agent_type`。当事件已可识别但 Adapter 返回失败或抛出异常时，Wrapper 不依赖普通非零退出码：PreToolUse 以退出码 0 返回结构化 `permissionDecision=deny`，PostToolUse 以退出码 0 返回 `decision=block`，防止宿主继续动作或让 Agent 错报成功。只有 stdin 无法解析或事件不可识别时，才写入 stderr 并返回拒绝退出码。
+
 ## 4. 平台事件映射
 
 | Canonical        | Codex                             | Claude-compatible                   |
@@ -112,6 +114,8 @@ Claude-compatible 的命令、Prompt、Agent、HTTP 等扩展 Hook 只有 Comman
 | TurnStop         | 最多继续一次，然后返回未完成原因      | 防止 Stop Hook 无限循环             |
 
 Failure Policy 是 Harness Policy，平台映射不能自行改成 Fail Open。
+
+Codex 的普通 Hook 进程失败不能被当作可靠拦截证据。PreAction 风险路径必须获得结构化拒绝结果；PostAction 已经无法撤销副作用，结构化 `block` 只负责中断后续模型循环并把现场交回 Human。
 
 Rule 相关 Hook 行为固定为：
 

@@ -1,10 +1,11 @@
-import { HarnessHookEvent, HookDecision, type CodexHookResponse } from "#application/index.js";
-
 import {
   CodexHookEvent,
   CodexPermissionDecision,
   CodexPostHookDecision,
-} from "../constants/index.js";
+  HarnessHookEvent,
+  HookDecision,
+  type CodexHookResponse,
+} from "#application/index.js";
 
 /** 将 Canonical Hook 决策映射为 Codex 原生 JSON 响应。 */
 export function mapCodexHookResponse(result: {

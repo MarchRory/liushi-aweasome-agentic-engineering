@@ -1,4 +1,5 @@
-import { CodexHookEvent } from "../constants/index.js";
+import { CodexHookEvent } from "#application/index.js";
+
 import {
   CODEX_HOOK_DEFAULT_COMMAND,
   CODEX_HOOK_DEFAULT_MATCHER,

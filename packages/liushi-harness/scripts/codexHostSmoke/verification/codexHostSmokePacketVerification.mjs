@@ -1,11 +1,12 @@
 import { lstat, readFile, realpath } from "node:fs/promises";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 import { runProcess } from "../../common/process/index.mjs";
 import { calculateDigest } from "../../publicProjectSmoke/digest/index.mjs";
+import { CODEX_HOST_SMOKE_RUNTIME_DIRECTORY } from "../constants/index.mjs";
 
-const PREPARE_SCHEMA_VERSION = "liushi.codex-host-smoke.prepare.v4";
+const PREPARE_SCHEMA_VERSION = "liushi.codex-host-smoke.prepare.v5";
 const ACTIVATION_PLAN_SCHEMA_VERSION = "liushi.codex-host-smoke.activation-plan.v2";
 const CODEX_EXEC_ISSUE_URL = "https://github.com/openai/codex/issues/18607";
 const MAX_JSON_BYTES = 1024 * 1024;
@@ -87,6 +88,8 @@ function assertManifest(manifest, activationDigest, manifestPath) {
     calculateDigest(binding) !== activationDigest ||
     resolve(paths?.root ?? "") !== dirname(dirname(manifestPath)) ||
     !allAbsolutePaths(paths) ||
+    resolve(paths.storeRoot) !==
+      resolve(join(paths.worktreeRoot, CODEX_HOST_SMOKE_RUNTIME_DIRECTORY)) ||
     manifest.worktree?.headRevision !== manifest.project?.revision ||
     manifest.worktree?.gitEntryKind !== "directory" ||
     binding?.schemaVersion !== PREPARE_SCHEMA_VERSION ||

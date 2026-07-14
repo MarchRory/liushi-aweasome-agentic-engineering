@@ -82,7 +82,7 @@ liushi-harness hook bind `
 2. 完成工具调用后执行 PostToolUse，确认 Action Journal 产生 Intent、Observation 和 Resolution 关联记录。
 3. 对 Write Set 外的文件执行 PreToolUse，确认返回 `permissionDecision=deny`，并且没有写入目标文件。
 4. 使用相同 `tool_use_id` 但修改工具输入，确认返回冲突而不是重放旧结果。
-5. 让 Hook 输入缺失、Digest 不匹配或 Workspace 绑定不存在，确认进程以拒绝语义退出；不得把错误当成 Allow。
+5. 让 Digest 不匹配或 Workspace 绑定不存在，确认 PreToolUse 返回结构化 `permissionDecision=deny`；让 stdin 无法解析或事件不可识别，确认进程以拒绝退出码结束。两种错误都不得被当成 Allow。
 6. 检查 Task Timeline、Action Journal 和 Trace 是否能以 Task、Action 和因果标识关联，不把 Trace 当成业务状态真源。
 
 维护者使用 `codexHostSmoke prepare` 生成受控公开项目 Fixture 时，必须在同一个已信任 Hook 定义的 TUI 中依次提交 Activation Plan 的正向和负向 Prompt。完成后运行：
@@ -101,11 +101,12 @@ Hook 的原生入口是：
 liushi-harness hook handle --executor codex
 ```
 
-它从 stdin 读取 Codex 原生 JSON，只向 stdout 输出平台原生 JSON；失败信息写入 stderr，并使用 Codex 约定的拒绝退出码。该命令不接受 `--json`，避免把 CLI Envelope 误当成平台 Hook 响应。
+它从 stdin 读取 Codex 原生 JSON，只向 stdout 输出平台原生 JSON，并兼容 Code Mode 可选提供的 `agent_id`、`agent_type`。已识别 PreToolUse 的处理失败或异常以退出码 0 返回结构化 `permissionDecision=deny`；已识别 PostToolUse 的失败返回结构化 `decision=block`，避免普通进程失败被宿主按 fail-open 继续处理。只有 stdin 无法解析或事件不可识别时，失败信息才写入 stderr 并使用拒绝退出码。该命令不接受 `--json`，避免把 CLI Envelope 误当成平台 Hook 响应。
 
 ## 6. 失败、暂停与回滚
 
 - PreToolUse 被拒绝时，Human 先检查 PlanRisk、审批 Digest、目标路径和当前 Revision，不得直接修改 Hook 配置来绕过拒绝。
+- PreToolUse 显示 `hook (failed)` 且工具仍被执行时，立即停止负向测试并视为 fail-open 故障；不得把非零退出码本身当作拦截成功证据。
 - PostToolUse 失败或结果未知时，先由 Human 判断副作用是否已发生；只有证据明确为 `not_applied` 才能受控重试。
 - 历史逻辑判断不清时暂停实现，回到产品和技术方案阶段确认业务语义，再更新 PlanRisk 和相应审批。
 - 回滚接入时由 Human 移除项目 `.codex/hooks.json` 中的 Harness 配置，并审阅 Runtime Store 中的绑定记录；当前版本没有自动删除绑定或自动覆盖项目配置的命令。

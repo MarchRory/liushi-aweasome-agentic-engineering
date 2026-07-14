@@ -1,4 +1,4 @@
-import type { HookWorkspaceBinding } from "#application/index.js";
+import { CodexHookEvent, type HookWorkspaceBinding } from "#application/index.js";
 import { ActorKind, ResultStatus, success, type HarnessError, type Result } from "#common/index.js";
 import {
   parseArtifactDigest,
@@ -10,7 +10,7 @@ import { ActionOutcome, type ActionJournalState } from "#domain/actionJournal/in
 import { parseTaskId, type TaskId } from "#domain/task/index.js";
 import { parseWorkspaceId, type WorkspaceId } from "#domain/workspace/index.js";
 
-import { CodexHookEvent, CodexSupportedTool } from "../constants/index.js";
+import { CodexSupportedTool } from "../constants/index.js";
 import type { CodexHookInput } from "../contracts/index.js";
 import { deriveDeterministicHex, deriveDeterministicUlid } from "../identity/index.js";
 

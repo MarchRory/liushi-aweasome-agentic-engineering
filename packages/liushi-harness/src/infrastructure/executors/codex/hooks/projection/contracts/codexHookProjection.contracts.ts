@@ -1,4 +1,4 @@
-import type { CodexHookEvent } from "../../constants/index.js";
+import type { CodexHookEvent } from "#application/index.js";
 
 /** Codex 当前支持的 Hook handler 类型。 */
 export enum CodexHookHandlerType {

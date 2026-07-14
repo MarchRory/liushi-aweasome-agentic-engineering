@@ -56,7 +56,7 @@ async function createResultFixture() {
   temporaryRoots.push(root);
   const controlRoot = join(root, "control");
   const worktreeRoot = join(root, "worktree");
-  const storeRoot = join(root, "runtime");
+  const storeRoot = join(worktreeRoot, ".liushi-harness-runtime");
   const codexHome = join(root, "codexHome");
   const consumerRoot = join(root, "consumer");
   const repositoryRoot = join(root, "repository");

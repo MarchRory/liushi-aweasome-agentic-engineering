@@ -8,6 +8,7 @@ import {
   success,
 } from "../../src/common/index.js";
 import {
+  CODEX_HOOK_FAIL_CLOSED_REASON,
   CapabilityProbeExecutor,
   CapabilityProbeStatus,
   CodexCapabilityName,
@@ -154,29 +155,75 @@ describe("CLI Hook wrapper", () => {
     expect(output).toEqual({ exitCode: 0, stdout: "", stderr: "" });
   });
 
-  it("Hook 输入或处理失败时写入 stderr 并返回 Codex 约定的拒绝退出码", async () => {
+  it("无法识别 Hook 事件时写入 stderr 并返回拒绝退出码", async () => {
     const inputFailure = await runHookCommand(
       failure(new HarnessError(HarnessErrorCode.InvalidInput, "bad hook input")),
       failure(new HarnessError(HarnessErrorCode.OperationForbidden, "blocked by policy")),
     );
-    const processingFailure = await runHookCommand(
+    const readerException = await runHookCommand(
+      new Error("reader crashed"),
+      failure(new HarnessError(HarnessErrorCode.OperationForbidden, "blocked by policy")),
+    );
+    const unknownEventFailure = await runHookCommand(
       success({ valid: true }),
       failure(new HarnessError(HarnessErrorCode.OperationForbidden, "blocked by policy")),
     );
 
     expect(inputFailure).toEqual({ exitCode: 2, stdout: "", stderr: "bad hook input\n" });
-    expect(processingFailure).toEqual({
+    expect(readerException).toEqual({
+      exitCode: 2,
+      stdout: "",
+      stderr: "Codex Hook input reader failed unexpectedly.\n",
+    });
+    expect(unknownEventFailure).toEqual({
       exitCode: 2,
       stdout: "",
       stderr: "blocked by policy\n",
     });
   });
+
+  it("PreToolUse 处理失败或抛异常时均以结构化 deny 安全拒绝", async () => {
+    const input = success({ hook_event_name: "PreToolUse", tool_name: "apply_patch" });
+    const processingFailure = await runHookCommand(
+      input,
+      failure(new HarnessError(HarnessErrorCode.OperationForbidden, "blocked by policy")),
+    );
+    const handlerException = await runHookCommand(input, new Error("handler crashed"));
+
+    for (const output of [processingFailure, handlerException]) {
+      expect(output.exitCode).toBe(0);
+      expect(output.stderr).toBe("");
+      expect(JSON.parse(output.stdout)).toEqual({
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason: CODEX_HOOK_FAIL_CLOSED_REASON,
+        },
+      });
+    }
+  });
+
+  it("PostToolUse 处理失败时返回 block，禁止 Agent 把未记录动作宣称为成功", async () => {
+    const output = await runHookCommand(
+      success({ hook_event_name: "PostToolUse", tool_name: "apply_patch" }),
+      failure(new HarnessError(HarnessErrorCode.IoFailure, "journal unavailable")),
+    );
+
+    expect(output.exitCode).toBe(0);
+    expect(output.stderr).toBe("");
+    expect(JSON.parse(output.stdout)).toEqual({
+      decision: "block",
+      reason: CODEX_HOOK_FAIL_CLOSED_REASON,
+    });
+  });
 });
 
 async function runHookCommand(
-  input: ReturnType<typeof success<unknown>> | ReturnType<typeof failure<HarnessError>>,
+  input: ReturnType<typeof success<unknown>> | ReturnType<typeof failure<HarnessError>> | Error,
   hookResult:
-    ReturnType<typeof success<CodexHookResponse>> | ReturnType<typeof failure<HarnessError>>,
+    | ReturnType<typeof success<CodexHookResponse>>
+    | ReturnType<typeof failure<HarnessError>>
+    | Error,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let stdout = "";
   let stderr = "";
@@ -189,14 +236,19 @@ async function runHookCommand(
     },
   };
   const application = {
-    handleCodexHook: { execute: () => Promise.resolve(hookResult) },
+    handleCodexHook: {
+      execute: () =>
+        hookResult instanceof Error ? Promise.reject(hookResult) : Promise.resolve(hookResult),
+    },
   } as unknown as CliApplication;
   const dependencies: RunCliDependencies = {
     defaultStoreRoot: ".runtime",
     applicationFactory: { create: () => application },
     writer,
     jsonDocumentReader: new NodeJsonDocumentReaderAdapter(),
-    hookInputReader: { read: () => Promise.resolve(input) },
+    hookInputReader: {
+      read: () => (input instanceof Error ? Promise.reject(input) : Promise.resolve(input)),
+    },
   };
 
   const exitCode = await runCli(["hook", "handle", "--executor", "codex"], dependencies);

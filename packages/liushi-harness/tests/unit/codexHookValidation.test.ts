@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { ResultStatus } from "../../src/common/index.js";
+import { CodexHookEvent } from "../../src/application/index.js";
 import {
-  CodexHookEvent,
   parseApplyPatchTargets,
   parseCodexHookInput,
 } from "../../src/infrastructure/executors/index.js";
@@ -13,6 +13,9 @@ const BASE_INPUT = {
   model: "gpt-5",
   permission_mode: "default",
   turn_id: "turn-1",
+  transcript_path: null,
+  agent_id: "code-mode-agent",
+  agent_type: "code_mode",
   tool_name: "apply_patch",
   tool_use_id: "tool-1",
   tool_input: {
@@ -28,6 +31,13 @@ describe("Codex Hook validation", () => {
       hook_event_name: CodexHookEvent.PreToolUse,
     });
     expect(parsed.status).toBe(ResultStatus.Success);
+    if (parsed.status === ResultStatus.Success) {
+      expect(parsed.value).toMatchObject({
+        agent_id: "code-mode-agent",
+        agent_type: "code_mode",
+        transcript_path: null,
+      });
+    }
 
     const targets = parseApplyPatchTargets(BASE_INPUT.tool_input);
     expect(targets.status).toBe(ResultStatus.Success);

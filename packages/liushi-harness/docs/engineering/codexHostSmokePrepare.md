@@ -46,7 +46,7 @@ corepack pnpm@10.23.0 smoke:codex-host:verify -- `
 3. 通过本地普通 Clone 创建固定 Revision、Detached 且 Clean 的独立 Working Tree，并要求 `.git` 为真实目录。Codex 当前会静默忽略 linked worktree 根目录中的项目 Hooks，因此 Prepare 禁止使用 `.git` 文件形态。[openai/codex#27133](https://github.com/openai/codex/issues/27133)
 4. 通过安装后的 CLI 建立 G1/G4 自动化模拟 Gate 协议，但不执行 Hook Binding。
 5. 通过安装后的 CLI 对指定 Codex 执行静态 `hook probe`；要求报告 Schema v2、三条命令、`overallStatus=verified`、`hookFramework=verified` 和 `productionVerified=false`。
-6. 通过安装后的 CLI 获取原生 Hook Projection，将 Handler 绑定到实际 Node、Tarball CLI Entrypoint 和独立 Runtime Store。
+6. 通过安装后的 CLI 获取原生 Hook Projection，将 Handler 绑定到实际 Node、Tarball CLI Entrypoint 和 Worktree 内的 `.liushi-harness-runtime`。Prepare 将该目录精确加入临时普通 Clone 的 `.git/info/exclude`，使 `workspace-write` 可以写审计状态且不污染业务 Git 差异；不得把 Runtime 放到 Worktree 外或受 Sandbox 保护的 `.codex` 内。
 7. 只将候选配置写入 `control/candidateHooks.json`，并生成 `control/prepareManifest.json`。
 8. 生成 `control/activationPlan.json`，固定 trust 片段、Hook 写入、Binding、交互式 TUI 启动参数、正负场景 Prompt 和回滚边界，但不执行其中任何动作。
 
@@ -72,7 +72,7 @@ corepack pnpm@10.23.0 smoke:codex-host:verify-result -- `
 
 ## 激活摘要
 
-Manifest Schema 为 `liushi.codex-host-smoke.prepare.v4`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
+Manifest Schema 为 `liushi.codex-host-smoke.prepare.v5`，状态固定为 `human_activation_required`。`activation.digest` 绑定：
 
 - 固定仓库身份、Revision、Working Tree HEAD 和 `.git=directory` 发现约束。
 - 实际 Codex executable 与版本。

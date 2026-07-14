@@ -1,4 +1,5 @@
 import {
+  CodexHookEvent,
   HarnessHookEvent,
   createCommandEnvelope,
   parsePostActionHookPayload,
@@ -34,7 +35,7 @@ import {
   type ActionJournalState,
 } from "#domain/actionJournal/index.js";
 
-import { CodexHookEvent, CodexSupportedTool } from "../constants/index.js";
+import { CodexSupportedTool } from "../constants/index.js";
 import type { CodexPostToolUseInput, CodexPreToolUseInput } from "../contracts/index.js";
 import {
   classifyCodexToolOutcome,

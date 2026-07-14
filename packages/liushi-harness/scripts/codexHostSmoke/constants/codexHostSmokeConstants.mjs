@@ -1,8 +1,8 @@
-export const CODEX_HOST_SMOKE_PREPARE_SCHEMA_VERSION = "liushi.codex-host-smoke.prepare.v4";
+export const CODEX_HOST_SMOKE_PREPARE_SCHEMA_VERSION = "liushi.codex-host-smoke.prepare.v5";
 export const CODEX_HOST_SMOKE_STATUS = "human_activation_required";
 export const CODEX_HOST_SMOKE_WORKTREE_DIRECTORY = "worktree";
 export const CODEX_HOST_SMOKE_CONTROL_DIRECTORY = "control";
-export const CODEX_HOST_SMOKE_RUNTIME_DIRECTORY = "runtime";
+export const CODEX_HOST_SMOKE_RUNTIME_DIRECTORY = ".liushi-harness-runtime";
 export const CODEX_HOST_SMOKE_CANDIDATE_CONFIG_FILE = "candidateHooks.json";
 export const CODEX_HOST_SMOKE_ACTIVATION_PLAN_FILE = "activationPlan.json";
 export const CODEX_HOST_SMOKE_MANIFEST_FILE = "prepareManifest.json";

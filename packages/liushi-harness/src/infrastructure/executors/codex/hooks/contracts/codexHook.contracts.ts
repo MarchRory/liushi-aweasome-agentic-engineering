@@ -1,4 +1,6 @@
-import type { CodexHookEvent, CodexPermissionMode } from "../constants/index.js";
+import type { CodexHookEvent } from "#application/index.js";
+
+import type { CodexPermissionMode } from "../constants/index.js";
 
 /** Codex Hook 的公共输入字段。 */
 export interface CodexHookInputBase {
@@ -14,8 +16,12 @@ export interface CodexHookInputBase {
   readonly permission_mode: CodexPermissionMode;
   /** 当前 Turn 标识。 */
   readonly turn_id: string;
-  /** 可选 Transcript 路径，仅作为外部引用。 */
-  readonly transcript_path?: string | null;
+  /** Transcript 路径，仅作为外部引用；当前宿主没有路径时为 null。 */
+  readonly transcript_path: string | null;
+  /** 可选子 Agent 标识，由 Code Mode 等嵌套宿主提供。 */
+  readonly agent_id?: string;
+  /** 可选子 Agent 类型，由 Code Mode 等嵌套宿主提供。 */
+  readonly agent_type?: string;
 }
 
 /** Codex PreToolUse 原始输入。 */

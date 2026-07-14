@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CodexHookEvent } from "#application/index.js";
 import {
   HarnessError,
   HarnessErrorCode,
@@ -9,7 +10,7 @@ import {
   type Result,
 } from "#common/index.js";
 
-import { CodexHookEvent, CodexPermissionMode } from "../constants/index.js";
+import { CodexPermissionMode } from "../constants/index.js";
 import type {
   CodexHookInput,
   CodexPostToolUseInput,
@@ -30,7 +31,9 @@ const baseSchema = {
   model: nonBlank(256),
   permission_mode: z.enum(CodexPermissionMode),
   turn_id: nonBlank(256),
-  transcript_path: z.string().max(4_096).nullable().optional(),
+  transcript_path: z.string().max(4_096).nullable(),
+  agent_id: nonBlank(256).optional(),
+  agent_type: nonBlank(256).optional(),
   tool_name: nonBlank(256),
   tool_use_id: nonBlank(256),
   tool_input: z.unknown(),

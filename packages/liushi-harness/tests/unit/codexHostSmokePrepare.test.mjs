@@ -7,7 +7,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { runProcess } from "../../scripts/common/process/index.mjs";
 import { parseCodexHostSmokeArguments } from "../../scripts/codexHostSmoke/cli/index.mjs";
 import { createCandidateHookConfig } from "../../scripts/codexHostSmoke/config/index.mjs";
-import { CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS } from "../../scripts/codexHostSmoke/constants/index.mjs";
+import {
+  CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS,
+  CODEX_HOST_SMOKE_RUNTIME_DIRECTORY,
+} from "../../scripts/codexHostSmoke/constants/index.mjs";
 import {
   calculateActivationDigest,
   createCodexHostSmokeManifest,
@@ -192,7 +195,7 @@ describe("Codex Host Smoke Prepare", () => {
     expect(first).not.toBe(fourth);
     expect(first).not.toBe(fifth);
     const manifest = createCodexHostSmokeManifest(input);
-    expect(manifest.schemaVersion).toBe("liushi.codex-host-smoke.prepare.v4");
+    expect(manifest.schemaVersion).toBe("liushi.codex-host-smoke.prepare.v5");
     expect(manifest.activation.digest).toBe(first);
     expect(manifest.activation.binding.requiredHumanActions).toEqual(
       CODEX_HOST_SMOKE_REQUIRED_HUMAN_ACTIONS,
@@ -225,6 +228,12 @@ describe("Codex Host Smoke Prepare", () => {
       gitEntryKind: "directory",
     });
     expect((await lstat(join(worktreeRoot, ".git"))).isDirectory()).toBe(true);
+    const runtimeStore = join(worktreeRoot, CODEX_HOST_SMOKE_RUNTIME_DIRECTORY);
+    await mkdir(runtimeStore);
+    await writeFile(join(runtimeStore, "probe.json"), "{}\n", "utf8");
+    expect(runGitFixture(worktreeRoot, ["status", "--porcelain=v1", "--untracked-files=all"])).toBe(
+      "",
+    );
   });
 
   it("拒绝 linked worktree 的 .git 文件形态", async () => {
@@ -247,6 +256,10 @@ describe("Codex Host Smoke Prepare", () => {
     expect(manifest.worktree.gitEntryKind).toBe("directory");
     expect(manifest.activation.binding.worktreeGitEntryKind).toBe("directory");
     expect(manifest.bindingCandidate.hookBindExecuted).toBe(false);
+    expect(manifest.paths.storeRoot).toBe(
+      join(summary.worktreeRoot, CODEX_HOST_SMOKE_RUNTIME_DIRECTORY),
+    );
+    await expect(access(manifest.paths.storeRoot)).resolves.toBeUndefined();
     expect(manifest.codexProbe).toMatchObject({
       overallStatus: "verified",
       hookFrameworkStatus: "verified",

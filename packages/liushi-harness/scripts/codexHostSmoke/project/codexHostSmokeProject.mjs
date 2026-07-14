@@ -1,8 +1,9 @@
-import { lstatSync } from "node:fs";
+import { appendFileSync, lstatSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
 import { runProcess } from "../../common/process/index.mjs";
 import { PUBLIC_REPOSITORY_REVISION } from "../../publicProjectSmoke/constants/index.mjs";
+import { CODEX_HOST_SMOKE_RUNTIME_DIRECTORY } from "../constants/index.mjs";
 
 export function createCodexHostSmokeWorktree(
   repositoryRoot,
@@ -17,6 +18,7 @@ export function createCodexHostSmokeWorktree(
   });
   runGit(worktreeRoot, ["config", "core.autocrlf", "false"]);
   runGit(worktreeRoot, ["checkout", "--detach", revision]);
+  excludeRuntimeStore(worktreeRoot);
   const headRevision = runGit(worktreeRoot, ["rev-parse", "HEAD"]);
   const status = runGit(worktreeRoot, ["status", "--porcelain"]);
   const gitEntry = lstatSync(join(worktreeRoot, ".git"));
@@ -29,6 +31,14 @@ export function createCodexHostSmokeWorktree(
     throw new Error("Codex Host Smoke Worktree 未保持普通 Clone、固定 Revision 或洁净状态。");
   }
   return { headRevision, clean: true, detached: true, gitEntryKind: "directory" };
+}
+
+function excludeRuntimeStore(worktreeRoot) {
+  const excludeFile = join(worktreeRoot, ".git", "info", "exclude");
+  const entry = `/${CODEX_HOST_SMOKE_RUNTIME_DIRECTORY}/`;
+  const current = readFileSync(excludeFile, "utf8");
+  if (current.split(/\r?\n/u).includes(entry)) return;
+  appendFileSync(excludeFile, `${current.endsWith("\n") ? "" : "\n"}${entry}\n`, "utf8");
 }
 
 function assertSeparateWorktree(repositoryRoot, worktreeRoot) {

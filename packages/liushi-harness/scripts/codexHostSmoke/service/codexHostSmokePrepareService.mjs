@@ -54,13 +54,14 @@ export async function prepareCodexHostSmoke(input, overrides = {}) {
     await mkdir(root);
     rootCreated = true;
     const paths = createPaths(root);
-    await Promise.all([mkdir(paths.controlRoot), mkdir(paths.storeRoot)]);
+    await mkdir(paths.controlRoot);
 
     const repositoryRoot = await dependencies.clonePublicProject(root);
     const baselineChecks = await dependencies.runBaseline(repositoryRoot);
     const worktree = validateWorktree(
       await dependencies.createWorktree(repositoryRoot, paths.worktreeRoot),
     );
+    await mkdir(paths.storeRoot);
     const consumer = await dependencies.createHarnessConsumer(input.packageRoot, root);
     const runEnvelope = (consumerRoot, args) =>
       runCodexHostSmokeCommand(dependencies.runHarnessEnvelope, consumerRoot, args);
@@ -187,10 +188,11 @@ export async function prepareCodexHostSmoke(input, overrides = {}) {
 
 function createPaths(root) {
   const controlRoot = join(root, CODEX_HOST_SMOKE_CONTROL_DIRECTORY);
+  const worktreeRoot = join(root, CODEX_HOST_SMOKE_WORKTREE_DIRECTORY);
   return {
     controlRoot,
-    storeRoot: join(root, CODEX_HOST_SMOKE_RUNTIME_DIRECTORY),
-    worktreeRoot: join(root, CODEX_HOST_SMOKE_WORKTREE_DIRECTORY),
+    storeRoot: join(worktreeRoot, CODEX_HOST_SMOKE_RUNTIME_DIRECTORY),
+    worktreeRoot,
     candidateConfigFile: join(controlRoot, CODEX_HOST_SMOKE_CANDIDATE_CONFIG_FILE),
     activationPlanFile: join(controlRoot, CODEX_HOST_SMOKE_ACTIVATION_PLAN_FILE),
     manifestFile: join(controlRoot, CODEX_HOST_SMOKE_MANIFEST_FILE),

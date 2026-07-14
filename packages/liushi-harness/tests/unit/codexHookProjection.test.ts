@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  CodexHookEvent,
-  CodexHookHandlerType,
-  createCodexHookProjection,
-} from "../../src/infrastructure/index.js";
+import { CodexHookEvent } from "../../src/application/index.js";
+import { CodexHookHandlerType, createCodexHookProjection } from "../../src/infrastructure/index.js";
 
 describe("Codex Hook projection", () => {
   it("只生成 command handler，并同时覆盖 PreToolUse 与 PostToolUse", () => {
