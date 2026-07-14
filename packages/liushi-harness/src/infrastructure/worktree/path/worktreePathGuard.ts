@@ -6,6 +6,7 @@ import {
   WorktreeInspectionDiagnosticCode,
   type WorktreeInspectionDiagnosticCode as WorktreePathFailureCode,
 } from "#application/ports/worktree/index.js";
+import { samePathIdentity } from "#infrastructure/system/index.js";
 
 /** 已通过真实路径 containment 检查的运行时 Worktree 路径。 */
 export interface WorktreePathContext {
@@ -75,9 +76,5 @@ export function isWithinRoot(root: string, candidate: string): boolean {
 
 /** 判断两个已解析路径是否表示同一个目录。 */
 export function sameResolvedPath(left: string, right: string): boolean {
-  const normalizedLeft = resolve(left);
-  const normalizedRight = resolve(right);
-  return process.platform === "win32"
-    ? normalizedLeft.toLowerCase() === normalizedRight.toLowerCase()
-    : normalizedLeft === normalizedRight;
+  return samePathIdentity(left, right);
 }

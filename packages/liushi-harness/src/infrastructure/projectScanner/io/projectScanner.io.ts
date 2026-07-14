@@ -1,6 +1,7 @@
-import { isAbsolute, normalize, relative, sep } from "node:path";
+import { isAbsolute, relative, sep } from "node:path";
 
 import type { ProjectPathCaseCollision } from "#application/ports/projectFileSystem/index.js";
+import { normalizePathIdentity } from "#infrastructure/system/index.js";
 
 /** 使用与 locale 无关的排序比较仓库相对路径。 */
 export function compareRelativePaths(left: string, right: string): number {
@@ -20,11 +21,7 @@ export function toRelativePosixPath(root: string, absolutePath: string): string 
 
 /** 为真实仓库 root 创建稳定的内部 identity。 */
 export function canonicalizeRootIdentity(realRoot: string): string {
-  const normalized = normalize(realRoot);
-  const withoutTrailingSeparator = normalized.replace(/[\\/]$/, "");
-  return process.platform === "win32"
-    ? withoutTrailingSeparator.toLocaleLowerCase("en-US")
-    : withoutTrailingSeparator;
+  return normalizePathIdentity(realRoot);
 }
 
 /** 测试候选路径是否为 root，或按字面路径位于 root 下方。 */

@@ -2,6 +2,7 @@ import { open } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { ParentDirectorySyncStatus } from "#application/index.js";
+import { isBestEffortDirectorySyncError } from "#infrastructure/system/index.js";
 
 import type { ParentDirectoryDurability, ParentDirectorySyncOutcome } from "../contracts/index.js";
 
@@ -27,13 +28,4 @@ export class FileParentDirectoryDurability implements ParentDirectoryDurability 
       throw error;
     }
   }
-}
-
-function isBestEffortDirectorySyncError(error: unknown): error is NodeJS.ErrnoException {
-  if (!(error instanceof Error) || !("code" in error)) {
-    return false;
-  }
-  return ["EISDIR", "EPERM", "EINVAL", "ENOTSUP", "EACCES"].includes(
-    String((error as NodeJS.ErrnoException).code),
-  );
 }

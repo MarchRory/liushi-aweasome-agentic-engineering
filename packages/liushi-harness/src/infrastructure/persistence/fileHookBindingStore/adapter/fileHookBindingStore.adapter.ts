@@ -11,6 +11,7 @@ import {
   type Result,
 } from "#common/index.js";
 import type { ExclusiveFileLockHandle } from "#infrastructure/persistence/fileEventStore/index.js";
+import { samePathIdentity } from "#infrastructure/system/index.js";
 
 import type { FileHookBindingStoreDependencies } from "../contracts/index.js";
 import { readHookBindingFile, writeHookBindingFile } from "../io/index.js";
@@ -127,7 +128,7 @@ function sameBindingIdentity(left: HookWorkspaceBinding, right: HookWorkspaceBin
 }
 
 function samePath(left: string, right: string): boolean {
-  return comparablePath(left) === comparablePath(right);
+  return samePathIdentity(left, right);
 }
 
 function isWithin(root: string, candidate: string): boolean {
@@ -139,11 +140,6 @@ function isWithin(root: string, candidate: string): boolean {
       !relativePath.startsWith("..\\") &&
       !relativePath.startsWith("../"))
   );
-}
-
-function comparablePath(value: string): string {
-  const normalized = resolve(value).replace(/[\\/]+$/u, "");
-  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
 }
 
 async function releaseBestEffort(lock: ExclusiveFileLockHandle): Promise<void> {

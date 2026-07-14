@@ -21,6 +21,7 @@ import {
 import { ActionOutcome } from "#domain/actionJournal/index.js";
 import { WorktreeInspectionStatus } from "#application/ports/worktree/index.js";
 import { isWithinRoot } from "#infrastructure/worktree/path/index.js";
+import { isBestEffortDirectorySyncError } from "#infrastructure/system/index.js";
 
 /** 以完整目标文本和内容摘要实现确定性的受控文件写入。 */
 export class NodeFileMutationExecutorAdapter implements FileMutationExecutorPort {
@@ -262,14 +263,6 @@ function samePaths(actual: readonly string[], expected: readonly string[]): bool
 
 function isMissing(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
-}
-
-function isBestEffortDirectorySyncError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    "code" in error &&
-    ["EISDIR", "EPERM", "EINVAL", "ENOTSUP", "EACCES"].includes(String(error.code))
-  );
 }
 
 function notApplied(errorCode: string): FileMutationExecutionResult {
