@@ -125,11 +125,11 @@ export class FileExecutorCompatibilityEvidenceStore implements ExecutorCompatibi
     return this.reader.load(evidenceDigest);
   }
 
-  /** 恢复并校验同一 Artifact 派生的完整 Projection。 */
-  public loadProjection(
+  /** 恢复并校验按完整来源身份分组的 Projection 集合。 */
+  public loadProjections(
     evidenceDigests: readonly ContentDigest[],
-  ): ReturnType<ExecutorCompatibilityEvidenceStore["loadProjection"]> {
-    return this.reader.loadProjection(evidenceDigests);
+  ): ReturnType<ExecutorCompatibilityEvidenceStore["loadProjections"]> {
+    return this.reader.loadProjections(evidenceDigests);
   }
 
   private async persistArtifact(

@@ -128,4 +128,17 @@ describe("architecture dependency direction", () => {
 
     expect(violations).toEqual([]);
   });
+
+  it("Executor Compatibility Query 仅依赖执行器无关的 Projection Verifier Port", () => {
+    const graph = createSourceGraph();
+    const querySource = graph.sourceFiles.find(
+      (sourceFile) =>
+        formatRelative(graph, sourceFile.fileName).replaceAll("\\", "/") ===
+        "src/application/useCases/queryExecutorCompatibility/queryExecutorCompatibility.useCase.ts",
+    );
+    if (querySource === undefined) throw new Error("Executor Compatibility Query 源码缺失。");
+
+    expect(querySource.getText()).toContain("ExecutorCompatibilityEvidenceProjectionVerifierPort");
+    expect(querySource.getText()).not.toContain("CodexCompatibilityEvidenceProjectorPort");
+  });
 });

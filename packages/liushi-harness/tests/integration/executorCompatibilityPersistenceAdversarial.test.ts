@@ -161,9 +161,16 @@ describe("Executor Compatibility persistence adversarial QA", () => {
         evidenceDigests: GOLDEN_PERSISTED_EVIDENCE_DIGESTS,
       },
     });
-    expect(await createEvidenceStore(storeRoot).loadProjection(GOLDEN_EVIDENCE_DIGESTS)).toEqual({
+    expect(await createEvidenceStore(storeRoot).loadProjections(GOLDEN_EVIDENCE_DIGESTS)).toEqual({
       status: ResultStatus.Success,
-      value: fixture.projection,
+      value: [
+        {
+          ...fixture.projection,
+          evidence: [...fixture.projection.evidence].sort((left, right) =>
+            left.evidenceDigest.localeCompare(right.evidenceDigest),
+          ),
+        },
+      ],
     });
     expect(await listJsonFiles(dirname(firstEvidencePaths.recordFile))).toHaveLength(7);
   }, 10_000);

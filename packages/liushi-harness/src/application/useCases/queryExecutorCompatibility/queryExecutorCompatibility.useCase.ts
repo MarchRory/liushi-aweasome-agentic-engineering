@@ -1,5 +1,5 @@
 import type {
-  CodexCompatibilityEvidenceProjectorPort,
+  ExecutorCompatibilityEvidenceProjectionVerifierPort,
   ExecutorCompatibilityEvidenceStore,
   ExecutorCompatibilityMatrixStore,
 } from "#application/ports/index.js";
@@ -16,6 +16,7 @@ import {
   compileExecutorCompatibilityMatrix,
   createExecutorCompatibilityPolicyDigestInput,
   createManagedFileMutationHookPolicy,
+  type ExecutorCapabilityEvidence,
   type ExecutorCompatibilityDigestPort,
   type ExecutorCompatibilityMatrix,
 } from "#domain/executorCompatibility/index.js";
@@ -31,7 +32,7 @@ export interface QueryExecutorCompatibilityOutput {
 /** 按来自受信编译边界的精确 Matrix Digest 读取并重新证明内容完整性。 */
 export class QueryExecutorCompatibilityUseCase {
   public constructor(
-    private readonly projector: CodexCompatibilityEvidenceProjectorPort,
+    private readonly verifier: ExecutorCompatibilityEvidenceProjectionVerifierPort,
     private readonly evidenceStore: ExecutorCompatibilityEvidenceStore,
     private readonly matrixStore: ExecutorCompatibilityMatrixStore,
     private readonly digestPort: ExecutorCompatibilityDigestPort,
@@ -56,33 +57,46 @@ export class QueryExecutorCompatibilityUseCase {
       });
     }
 
-    const loadedProjection = await this.evidenceStore.loadProjection(
+    const loadedProjections = await this.evidenceStore.loadProjections(
       loadedRecord.value.matrix.evidenceDigests,
     );
-    if (loadedProjection.status === ResultStatus.Failure) {
-      if (loadedProjection.error.code === HarnessErrorCode.ExecutorCompatibilityEvidenceNotFound) {
+    if (loadedProjections.status === ResultStatus.Failure) {
+      if (loadedProjections.error.code === HarnessErrorCode.ExecutorCompatibilityEvidenceNotFound) {
+        const evidenceDigest = loadedProjections.error.details["evidenceDigest"];
         return corruptStore(
           "Executor Compatibility Matrix 引用的 Evidence 不存在。",
           matrixDigest,
           {
-            evidenceDigest: loadedProjection.error.details["evidenceDigest"] ?? "unknown",
+            causeCode: loadedProjections.error.code,
+            ...(evidenceDigest === undefined ? {} : { evidenceDigest }),
           },
         );
       }
-      return loadedProjection;
-    }
-    const verifiedProjection = this.projector.verifyPersistedProjection(loadedProjection.value);
-    if (verifiedProjection.status === ResultStatus.Failure) {
-      return corruptStore("Codex 持久化 Projection 无法通过确定性复验。", matrixDigest, {
-        causeCode: verifiedProjection.error.code,
+      return corruptStore("Executor Compatibility Evidence 来源无法恢复。", matrixDigest, {
+        causeCode: loadedProjections.error.code,
       });
+    }
+
+    const verifiedEvidence: ExecutorCapabilityEvidence[] = [];
+    for (const projection of loadedProjections.value) {
+      const verifiedProjection = this.verifier.verifyPersistedProjection(projection);
+      if (verifiedProjection.status === ResultStatus.Failure) {
+        return corruptStore(
+          "Executor Compatibility 持久化 Projection 无法通过确定性复验。",
+          matrixDigest,
+          { causeCode: verifiedProjection.error.code },
+        );
+      }
+      verifiedEvidence.push(...verifiedProjection.value.evidence);
     }
 
     const recomputed = compileExecutorCompatibilityMatrix(
       {
         scope: loadedRecord.value.matrix.scope,
         policy: trustedPolicy,
-        evidence: verifiedProjection.value.evidence,
+        evidence: verifiedEvidence.sort((left, right) =>
+          left.evidenceDigest.localeCompare(right.evidenceDigest),
+        ),
       },
       this.digestPort,
     );

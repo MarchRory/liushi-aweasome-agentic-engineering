@@ -33,7 +33,7 @@ export function createExecutorCompatibilityApplication(
   /** 按 Matrix Digest 重新证明 Executor Compatibility。 */
   readonly queryExecutorCompatibility: QueryExecutorCompatibilityUseCase;
 } {
-  const projector = new CodexCompatibilityEvidenceProjectorAdapter(dependencies.digest);
+  const codexProjector = new CodexCompatibilityEvidenceProjectorAdapter(dependencies.digest);
   const evidenceStore = new FileExecutorCompatibilityEvidenceStore(storeRoot, {
     lockManager: dependencies.lockManager,
     parentDirectoryDurability: dependencies.parentDirectoryDurability,
@@ -47,13 +47,13 @@ export function createExecutorCompatibilityApplication(
 
   return {
     compileCodexExecutorCompatibility: new CompileCodexExecutorCompatibilityUseCase(
-      projector,
+      codexProjector,
       evidenceStore,
       matrixStore,
       dependencies.digest,
     ),
     queryExecutorCompatibility: new QueryExecutorCompatibilityUseCase(
-      projector,
+      codexProjector,
       evidenceStore,
       matrixStore,
       dependencies.digest,

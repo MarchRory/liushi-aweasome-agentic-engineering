@@ -14,6 +14,7 @@ import type {
   ExecutorCompatibilityDigestPort,
 } from "#domain/executorCompatibility/index.js";
 import { mapExecutorCompatibilityPreWriteError } from "#infrastructure/persistence/executorCompatibilityStoreSupport/index.js";
+import { canonicalizeJson } from "#infrastructure/serialization/index.js";
 
 import {
   readExecutorCompatibilityArtifactFile,
@@ -36,6 +37,20 @@ interface LoadedExecutorCompatibilityEvidenceRecord {
   readonly evidence: ExecutorCapabilityEvidence;
   /** Evidence 精确引用的脱敏 Artifact。 */
   readonly artifact: Record<string, unknown>;
+  /** 用于同来源 Artifact 完整内容比对的规范 JSON。 */
+  readonly canonicalArtifact: string;
+}
+
+/** 同一完整来源身份下待组装的 Projection。 */
+interface LoadedExecutorCompatibilityProjectionGroup {
+  /** 已通过摘要校验的脱敏 Artifact。 */
+  readonly artifact: Record<string, unknown>;
+  /** Artifact 的规范 JSON，用于拒绝同来源内容漂移。 */
+  readonly canonicalArtifact: string;
+  /** Artifact 的内容摘要。 */
+  readonly artifactDigest: ContentDigest;
+  /** 属于当前来源的规范 Evidence。 */
+  readonly evidence: ExecutorCapabilityEvidence[];
 }
 
 /** 负责从内容寻址 Runtime Store 恢复并校验 Evidence Projection。 */
@@ -54,10 +69,10 @@ export class FileExecutorCompatibilityEvidenceReader {
     return loaded.status === ResultStatus.Failure ? loaded : success(loaded.value.evidence);
   }
 
-  /** 恢复同一 Artifact 派生的完整 Projection。 */
-  public async loadProjection(
+  /** 按完整来源身份恢复确定排序的 Projection 集合。 */
+  public async loadProjections(
     evidenceDigests: readonly ContentDigest[],
-  ): ReturnType<ExecutorCompatibilityEvidenceStore["loadProjection"]> {
+  ): ReturnType<ExecutorCompatibilityEvidenceStore["loadProjections"]> {
     if (evidenceDigests.length === 0) {
       return failure(
         new HarnessError(
@@ -66,38 +81,60 @@ export class FileExecutorCompatibilityEvidenceReader {
         ),
       );
     }
+    if (new Set(evidenceDigests).size !== evidenceDigests.length) {
+      return corruptProjections("Executor Compatibility Matrix 包含重复 Evidence 摘要。");
+    }
 
     const records: LoadedExecutorCompatibilityEvidenceRecord[] = [];
-    for (const evidenceDigest of evidenceDigests) {
+    for (const evidenceDigest of [...evidenceDigests].sort((left, right) =>
+      left.localeCompare(right),
+    )) {
       const loaded = await this.loadEvidenceRecord(evidenceDigest);
       if (loaded.status === ResultStatus.Failure) return loaded;
       records.push(loaded.value);
     }
-    const first = records[0];
-    if (first === undefined) {
-      return failure(
-        new HarnessError(HarnessErrorCode.CorruptStore, "Executor Compatibility Projection 为空。"),
+
+    const sourceIdentityByArtifactDigest = new Map<ContentDigest, string>();
+    const groups = new Map<string, LoadedExecutorCompatibilityProjectionGroup>();
+    for (const record of records) {
+      const sourceIdentity = createSourceIdentity(record.evidence);
+      const knownSourceIdentity = sourceIdentityByArtifactDigest.get(
+        record.evidence.source.artifactDigest,
       );
+      if (knownSourceIdentity !== undefined && knownSourceIdentity !== sourceIdentity) {
+        return corruptProjections(
+          "同一 Executor Compatibility Artifact 摘要绑定了不一致的来源身份。",
+        );
+      }
+      sourceIdentityByArtifactDigest.set(record.evidence.source.artifactDigest, sourceIdentity);
+
+      const group = groups.get(sourceIdentity);
+      if (group === undefined) {
+        groups.set(sourceIdentity, {
+          artifact: record.artifact,
+          canonicalArtifact: record.canonicalArtifact,
+          artifactDigest: record.evidence.source.artifactDigest,
+          evidence: [record.evidence],
+        });
+        continue;
+      }
+      if (group.canonicalArtifact !== record.canonicalArtifact) {
+        return corruptProjections("同一 Executor Compatibility 来源包含不一致的 Artifact。");
+      }
+      group.evidence.push(record.evidence);
     }
-    const mismatchedSource = records.some(
-      ({ evidence }) =>
-        evidence.source.artifactDigest !== first.evidence.source.artifactDigest ||
-        evidence.source.locator.kind !== first.evidence.source.locator.kind ||
-        evidence.source.locator.value !== first.evidence.source.locator.value,
+
+    return success(
+      [...groups.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([, group]) => ({
+          artifact: group.artifact,
+          artifactDigest: group.artifactDigest,
+          evidence: [...group.evidence].sort((left, right) =>
+            left.evidenceDigest.localeCompare(right.evidenceDigest),
+          ),
+        })),
     );
-    if (mismatchedSource) {
-      return failure(
-        new HarnessError(
-          HarnessErrorCode.CorruptStore,
-          "Executor Compatibility Projection 引用了多个来源 Artifact。",
-        ),
-      );
-    }
-    return success({
-      artifact: first.artifact,
-      artifactDigest: first.evidence.source.artifactDigest,
-      evidence: records.map(({ evidence }) => evidence),
-    });
   }
 
   private async loadEvidenceRecord(
@@ -153,11 +190,37 @@ export class FileExecutorCompatibilityEvidenceReader {
         evidence.source.artifactDigest,
         this.digest,
       );
-      return success({ evidence, artifact });
+      return success({ evidence, artifact, canonicalArtifact: canonicalizeArtifact(artifact) });
     } catch (error) {
       return failure(mapReadError(error));
     }
   }
+}
+
+/** 来源身份不包含每条 Evidence 自身的检查项和观察时间。 */
+function createSourceIdentity(evidence: ExecutorCapabilityEvidence): string {
+  return canonicalizeJson({
+    artifactDigest: evidence.source.artifactDigest,
+    locator: evidence.source.locator,
+    schemaVersion: evidence.source.schemaVersion,
+  });
+}
+
+function canonicalizeArtifact(artifact: Record<string, unknown>): string {
+  try {
+    return canonicalizeJson(artifact);
+  } catch (error) {
+    throw new HarnessError(
+      HarnessErrorCode.CorruptStore,
+      "Executor Compatibility Artifact 无法规范化。",
+      {},
+      error,
+    );
+  }
+}
+
+function corruptProjections(message: string): Result<never, HarnessErrorType> {
+  return failure(new HarnessError(HarnessErrorCode.CorruptStore, message));
 }
 
 function mapReadError(error: unknown): HarnessError {

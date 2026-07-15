@@ -6,6 +6,7 @@ import {
   QueryExecutorCompatibilityUseCase,
   type CodexCompatibilityEvidenceProjectorPort,
   type ExecutorCompatibilityEvidenceProjection,
+  type ExecutorCompatibilityEvidenceProjectionVerifierPort,
   type ExecutorCompatibilityEvidenceWriteResult,
   type ExecutorCompatibilityEvidenceStore,
   type ExecutorCompatibilityMatrixRecord,
@@ -53,10 +54,12 @@ const digestAdapter = new Rfc8785Sha256DigestAdapter();
 
 describe("Executor Compatibility Application", () => {
   it("现有 Codex Projector Adapter 结构化满足 Application Port", () => {
-    const projector: CodexCompatibilityEvidenceProjectorPort =
-      new CodexCompatibilityEvidenceProjectorAdapter(digestAdapter);
+    const adapter = new CodexCompatibilityEvidenceProjectorAdapter(digestAdapter);
+    const projector: CodexCompatibilityEvidenceProjectorPort = adapter;
+    const verifier: ExecutorCompatibilityEvidenceProjectionVerifierPort = adapter;
 
     expect(projector).toBeInstanceOf(CodexCompatibilityEvidenceProjectorAdapter);
+    expect(verifier).toBe(projector);
   });
 
   it("Compile 强制 RuntimeStore Locator 并按 Projection、Matrix 顺序持久化", async () => {
@@ -279,12 +282,95 @@ describe("Executor Compatibility Application", () => {
     expect(result.value).toEqual({ matrix: record.matrix, recomputed: true });
     expect(result.value.matrix).not.toBe(record.matrix);
     expect(evidenceStore.loaded).toEqual(record.matrix.evidenceDigests);
+    expect(evidenceStore.projectionLoads).toEqual([record.matrix.evidenceDigests]);
+  });
+
+  it("Query 逐一复验两个独立 Artifact，并合并全部 Evidence 重编译", async () => {
+    const projections = [createProjection("artifact-a"), createProjection("artifact-b")];
+    const record = createMatrixRecordFromProjections(projections);
+    const evidenceStore = new SpyEvidenceStore(
+      [],
+      undefined,
+      projections.flatMap((projection) => projection.evidence),
+    );
+    const verifier = new SpyProjector();
+    const useCase = new QueryExecutorCompatibilityUseCase(
+      verifier,
+      evidenceStore,
+      new SpyMatrixStore([], record),
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(record.matrix.matrixDigest);
+
+    expect(result).toEqual({
+      status: ResultStatus.Success,
+      value: { matrix: record.matrix, recomputed: true },
+    });
+    expect(verifier.verifiedProjections.map((projection) => projection.artifactDigest)).toEqual(
+      projections.map((projection) => projection.artifactDigest).sort(),
+    );
+    expect(verifier.verifiedProjections.flatMap((projection) => projection.evidence)).toHaveLength(
+      2,
+    );
+  });
+
+  it("Query 将任一来源的复验失败收敛为不泄漏 Artifact 的 CorruptStore", async () => {
+    const projections = [
+      createProjection("private-artifact-a"),
+      createProjection("private-artifact-b"),
+    ];
+    const orderedProjections = [...projections].sort((left, right) =>
+      left.artifactDigest.localeCompare(right.artifactDigest),
+    );
+    const failedProjection = orderedProjections[1];
+    if (failedProjection === undefined) throw new Error("测试 Projection 缺失。");
+    const record = createMatrixRecordFromProjections(projections);
+    const verifier = new SpyProjector();
+    verifier.verificationFailure = {
+      artifactDigest: failedProjection.artifactDigest,
+      error: new HarnessError(HarnessErrorCode.InvalidInput, "复验失败。", {
+        artifact: JSON.stringify(failedProjection.artifact),
+      }),
+    };
+    const useCase = new QueryExecutorCompatibilityUseCase(
+      verifier,
+      new SpyEvidenceStore(
+        [],
+        undefined,
+        projections.flatMap((projection) => projection.evidence),
+      ),
+      new SpyMatrixStore([], record),
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(record.matrix.matrixDigest);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        code: HarnessErrorCode.CorruptStore,
+        details: {
+          requestedMatrixDigest: record.matrix.matrixDigest,
+          causeCode: HarnessErrorCode.InvalidInput,
+        },
+      },
+    });
+    if (result.status === ResultStatus.Success) throw new Error("预期 Query 失败。");
+    expect(result.error.details).not.toHaveProperty("artifact");
+    expect(verifier.verifiedProjections).toHaveLength(2);
   });
 });
 
-class SpyProjector implements CodexCompatibilityEvidenceProjectorPort {
+class SpyProjector
+  implements
+    CodexCompatibilityEvidenceProjectorPort,
+    ExecutorCompatibilityEvidenceProjectionVerifierPort
+{
   public readonly inputs: ProjectCodexCompatibilityEvidenceInput[] = [];
   public readonly verifiedProjections: ExecutorCompatibilityEvidenceProjection[] = [];
+  public verificationFailure:
+    { readonly artifactDigest: ContentDigest; readonly error: HarnessError } | undefined;
 
   public constructor(
     private readonly result: Result<
@@ -307,6 +393,9 @@ class SpyProjector implements CodexCompatibilityEvidenceProjectorPort {
   ): Result<ExecutorCompatibilityEvidenceProjection, HarnessError> {
     this.events.push("project.verify");
     this.verifiedProjections.push(projection);
+    if (this.verificationFailure?.artifactDigest === projection.artifactDigest) {
+      return failure(this.verificationFailure.error);
+    }
     return success(projection);
   }
 }
@@ -355,9 +444,9 @@ class SpyEvidenceStore implements ExecutorCompatibilityEvidenceStore {
     );
   }
 
-  public async loadProjection(
+  public async loadProjections(
     evidenceDigests: readonly ContentDigest[],
-  ): Promise<Result<ExecutorCompatibilityEvidenceProjection, HarnessError>> {
+  ): Promise<Result<readonly ExecutorCompatibilityEvidenceProjection[], HarnessError>> {
     this.projectionLoads.push([...evidenceDigests]);
     const evidence: ExecutorCapabilityEvidence[] = [];
     for (const evidenceDigest of evidenceDigests) {
@@ -365,15 +454,24 @@ class SpyEvidenceStore implements ExecutorCompatibilityEvidenceStore {
       if (loaded.status === ResultStatus.Failure) return loaded;
       evidence.push(loaded.value);
     }
-    const first = evidence[0];
-    if (first === undefined) {
-      return failure(new HarnessError(HarnessErrorCode.CorruptStore, "Projection 为空。"));
+    if (evidence.length === 0) {
+      return failure(new HarnessError(HarnessErrorCode.CorruptStore, "Projection 集合为空。"));
     }
-    return success({
-      artifact: { kind: "spy-artifact" },
-      artifactDigest: first.source.artifactDigest,
-      evidence,
-    });
+    const groups = new Map<ContentDigest, ExecutorCapabilityEvidence[]>();
+    for (const item of evidence) {
+      const group = groups.get(item.source.artifactDigest);
+      if (group === undefined) groups.set(item.source.artifactDigest, [item]);
+      else group.push(item);
+    }
+    return success(
+      [...groups.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([artifactDigest, groupedEvidence]) => ({
+          artifact: { kind: "spy-artifact", artifactDigest },
+          artifactDigest,
+          evidence: groupedEvidence,
+        })),
+    );
   }
 }
 
@@ -423,8 +521,10 @@ function createCompileInput() {
   };
 }
 
-function createProjection(): ExecutorCompatibilityEvidenceProjection {
-  const artifact = { kind: "redacted-codex-artifact" };
+function createProjection(
+  artifactKind = "redacted-codex-artifact",
+): ExecutorCompatibilityEvidenceProjection {
+  const artifact = { kind: artifactKind };
   const artifactDigest = calculateDigest(artifact);
   const scope = createScope();
   const withoutDigest: Omit<ExecutorCapabilityEvidence, "evidenceDigest"> = {
@@ -479,10 +579,18 @@ function createMatrixRecord(
   projection: ExecutorCompatibilityEvidenceProjection = createProjection(),
   policy: ExecutorCompatibilityPolicy = createManagedFileMutationHookPolicy(),
 ): ExecutorCompatibilityMatrixRecord {
-  const firstEvidence = projection.evidence[0];
+  return createMatrixRecordFromProjections([projection], policy);
+}
+
+function createMatrixRecordFromProjections(
+  projections: readonly ExecutorCompatibilityEvidenceProjection[],
+  policy: ExecutorCompatibilityPolicy = createManagedFileMutationHookPolicy(),
+): ExecutorCompatibilityMatrixRecord {
+  const evidence = projections.flatMap((projection) => projection.evidence);
+  const firstEvidence = evidence[0];
   if (firstEvidence === undefined) throw new Error("测试 Evidence 缺失。");
   const compiled = compileExecutorCompatibilityMatrix(
-    { scope: firstEvidence.scope, policy, evidence: projection.evidence },
+    { scope: firstEvidence.scope, policy, evidence },
     digestAdapter,
   );
   if (compiled.status === ResultStatus.Failure) throw compiled.error;

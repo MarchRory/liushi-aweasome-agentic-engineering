@@ -30,4 +30,5 @@ export type * from "./managedFileMutation/index.js";
 export type * from "./managedFileStateReader/index.js";
 export type * from "./managedOwnershipVerifier/index.js";
 export type * from "./codexCompatibilityEvidenceProjector/index.js";
+export type * from "./executorCompatibilityEvidenceProjectionVerifier/index.js";
 export * from "./executorCompatibilityStore/index.js";

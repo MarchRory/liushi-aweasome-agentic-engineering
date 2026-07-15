@@ -1,6 +1,7 @@
 import type {
   CodexCompatibilityEvidenceProjectorPort,
   ExecutorCompatibilityEvidenceProjection,
+  ExecutorCompatibilityEvidenceProjectionVerifierPort,
 } from "#application/ports/index.js";
 import { ResultStatus, success, type HarnessError, type Result } from "#common/index.js";
 import {
@@ -22,7 +23,11 @@ import {
 import { projectCodexCompatibilityArtifact } from "./codexCompatibilityArtifact.projector.js";
 
 /** 将受验 Codex Host Packet 投影为可由 Domain Compiler 消费的证据。 */
-export class CodexCompatibilityEvidenceProjectorAdapter implements CodexCompatibilityEvidenceProjectorPort {
+export class CodexCompatibilityEvidenceProjectorAdapter
+  implements
+    CodexCompatibilityEvidenceProjectorPort,
+    ExecutorCompatibilityEvidenceProjectionVerifierPort
+{
   /** 注入 RFC 8785 摘要端口，确保 Artifact 与 Evidence 使用同一算法。 */
   public constructor(private readonly digestPort: ExecutorCompatibilityDigestPort) {}
 

@@ -50,6 +50,14 @@ import { TemporaryRuntimeStore } from "../support/runtime/index.js";
 const runtimeStores = new TemporaryRuntimeStore();
 const digest = new Rfc8785Sha256DigestAdapter();
 
+/** 构造同 Artifact 摘要来源身份冲突的测试维度。 */
+enum SourceIdentityConflictKind {
+  /** 来源 Schema 版本冲突。 */
+  Schema = "schema",
+  /** 来源 Locator 冲突。 */
+  Locator = "locator",
+}
+
 afterEach(async () => runtimeStores.cleanup());
 
 describe("File Executor Compatibility Stores", () => {
@@ -95,6 +103,11 @@ describe("File Executor Compatibility Stores", () => {
     expect(
       await createEvidenceStore(storeRoot).load(fixture.projection.evidence[0]!.evidenceDigest),
     ).toEqual({ status: ResultStatus.Success, value: fixture.projection.evidence[0] });
+    expect(
+      await createEvidenceStore(storeRoot).loadProjections(
+        fixture.projection.evidence.map((item) => item.evidenceDigest),
+      ),
+    ).toEqual({ status: ResultStatus.Success, value: [fixture.projection] });
     expect(await createMatrixStore(storeRoot).load(fixture.record.matrix.matrixDigest)).toEqual({
       status: ResultStatus.Success,
       value: fixture.record,
@@ -107,6 +120,71 @@ describe("File Executor Compatibility Stores", () => {
       fixture.projection.artifact,
     );
   });
+
+  it("按完整来源身份恢复两个独立 Artifact，并确定性排序 Projection", async () => {
+    const storeRoot = await runtimeStores.create("liushi-executor-compatibility-multi-source-");
+    const fixtures = [createFixture("source-a"), createFixture("source-b")];
+    for (const fixture of fixtures) {
+      await expectSuccess(createEvidenceStore(storeRoot).persist(fixture.projection));
+    }
+    const requestedDigests = fixtures
+      .flatMap((fixture) => fixture.projection.evidence)
+      .map((item) => item.evidenceDigest)
+      .reverse();
+
+    const loaded = await createEvidenceStore(storeRoot).loadProjections(requestedDigests);
+
+    expect(loaded).toEqual({
+      status: ResultStatus.Success,
+      value: fixtures
+        .map((fixture) => fixture.projection)
+        .sort((left, right) => left.artifactDigest.localeCompare(right.artifactDigest)),
+    });
+  });
+
+  it("恢复 Projection 时拒绝空集合与重复 Evidence 摘要", async () => {
+    const storeRoot = await runtimeStores.create("liushi-executor-compatibility-projection-set-");
+    const fixture = createFixture();
+    await expectSuccess(createEvidenceStore(storeRoot).persist(fixture.projection));
+    const evidenceDigest = fixture.projection.evidence[0]!.evidenceDigest;
+
+    expect(await createEvidenceStore(storeRoot).loadProjections([])).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.CorruptStore },
+    });
+    expect(
+      await createEvidenceStore(storeRoot).loadProjections([evidenceDigest, evidenceDigest]),
+    ).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.CorruptStore },
+    });
+  });
+
+  it.each([SourceIdentityConflictKind.Schema, SourceIdentityConflictKind.Locator])(
+    "同一 Artifact 摘要绑定不一致的 source %s 时拒绝恢复",
+    async (conflictKind) => {
+      const storeRoot = await runtimeStores.create(
+        `liushi-executor-compatibility-source-${conflictKind}-`,
+      );
+      const fixture = createFixture();
+      const conflictingProjection = createConflictingSourceProjection(
+        fixture.projection,
+        conflictKind,
+      );
+      await expectSuccess(createEvidenceStore(storeRoot).persist(fixture.projection));
+      await expectSuccess(createEvidenceStore(storeRoot).persist(conflictingProjection));
+
+      expect(
+        await createEvidenceStore(storeRoot).loadProjections([
+          fixture.projection.evidence[0]!.evidenceDigest,
+          conflictingProjection.evidence[0]!.evidenceDigest,
+        ]),
+      ).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.CorruptStore },
+      });
+    },
+  );
 
   it("并发持久化同一 Projection 与 Matrix 不产生冲突内容", async () => {
     const storeRoot = await runtimeStores.create("liushi-executor-compatibility-concurrent-");
@@ -347,7 +425,7 @@ describe("File Executor Compatibility Stores", () => {
   });
 });
 
-function createFixture(): {
+function createFixture(sourceRun = "primary"): {
   readonly projection: ExecutorCompatibilityEvidenceProjection;
   readonly record: ExecutorCompatibilityMatrixRecord;
 } {
@@ -364,6 +442,7 @@ function createFixture(): {
   const artifact = {
     schemaVersion: "integration-artifact.v1",
     profileId: "managed_file_mutation_hooks.v1",
+    sourceRun,
     scope,
     observations: [{ checkId: "hook_framework_enabled", outcome: "passed" }],
   };
@@ -405,6 +484,46 @@ function createFixture(): {
   return {
     projection: { artifact, artifactDigest, evidence: [evidence] },
     record: { matrix: compiled.value, policy },
+  };
+}
+
+function createConflictingSourceProjection(
+  projection: ExecutorCompatibilityEvidenceProjection,
+  conflictKind: SourceIdentityConflictKind,
+): ExecutorCompatibilityEvidenceProjection {
+  const original = projection.evidence[0];
+  if (original === undefined) throw new Error("测试 Evidence 缺失。");
+  const scope =
+    conflictKind === SourceIdentityConflictKind.Locator
+      ? { ...original.scope, adapterKind: ExecutorAdapterKind.GenericCli }
+      : original.scope;
+  const artifactHex = projection.artifactDigest.slice("sha256:".length);
+  const withoutDigest: Omit<ExecutorCapabilityEvidence, "evidenceDigest"> = {
+    ...original,
+    scope,
+    source: {
+      ...original.source,
+      schemaVersion:
+        conflictKind === SourceIdentityConflictKind.Schema
+          ? "integration-artifact.v2"
+          : original.source.schemaVersion,
+      locator:
+        conflictKind === SourceIdentityConflictKind.Locator
+          ? {
+              kind: ExecutorEvidenceLocatorKind.RuntimeStore,
+              value: `executorCompatibility/generic_cli/${artifactHex}.json`,
+            }
+          : original.source.locator,
+    },
+  };
+  return {
+    ...projection,
+    evidence: [
+      {
+        ...withoutDigest,
+        evidenceDigest: calculateDigest(createExecutorCapabilityEvidenceDigestInput(withoutDigest)),
+      },
+    ],
   };
 }
 

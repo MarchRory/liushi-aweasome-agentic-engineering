@@ -34,6 +34,7 @@ export function validateExecutorCompatibilityEvidenceProjection(
   }
 
   let locatorValue: string | undefined;
+  let sourceSchemaVersion: string | undefined;
   const evidence = projection.evidence.map((value) => {
     const item = parseExecutorCompatibilityEvidence(value, HarnessErrorCode.InvalidInput);
     const evidenceDigest = parseExecutorCompatibilityContentDigest(item.evidenceDigest);
@@ -58,7 +59,11 @@ export function validateExecutorCompatibilityEvidenceProjection(
     if (locatorValue !== undefined && locatorValue !== item.source.locator.value) {
       throw invalidInput("全部 Evidence 必须引用同一个 Runtime Store Locator。", "source.locator");
     }
+    if (sourceSchemaVersion !== undefined && sourceSchemaVersion !== item.source.schemaVersion) {
+      throw invalidInput("全部 Evidence 必须引用同一个来源 Schema。", "source.schemaVersion");
+    }
     locatorValue = item.source.locator.value;
+    sourceSchemaVersion = item.source.schemaVersion;
     assertEvidenceDigest(digestPort, item, evidenceDigest, HarnessErrorCode.InvalidInput);
     return item;
   });
