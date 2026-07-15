@@ -85,7 +85,7 @@ const persistedSchema = z
     installationRevisionId: z.string().regex(/^[0-9A-HJKMNP-TV-Z]{26}$/u),
     installPlanDigest: digestSchema,
     original: originalSchema,
-    provenance: z.literal(ManagedOwnershipProvenance.UnverifiedClaim),
+    provenance: z.nativeEnum(ManagedOwnershipProvenance),
     metadata: metadataSchema,
   })
   .strict();
@@ -150,7 +150,19 @@ export function verifyInstallPlanIntegrity(
   if (parsed.status === ResultStatus.Failure) return parsed;
   const manifest = verifyManifestSnapshot(parsed.value, digest);
   if (manifest.status === ResultStatus.Failure) return manifest;
+  const manifestByPath = new Map(
+    parsed.value.manifest.entries.map((entry) => [entry.path, entry] as const),
+  );
   for (const entry of parsed.value.files) {
+    const manifestClaim = manifestByPath.get(entry.path);
+    if (
+      (entry.persisted === undefined) !== (manifestClaim === undefined) ||
+      (entry.persisted !== undefined &&
+        manifestClaim !== undefined &&
+        (!hasSameOwnershipFields(entry.persisted, manifestClaim) ||
+          entry.persisted.repositoryId !== parsed.value.repositoryId))
+    )
+      return corruptPlan("Managed ownership claim is not bound to the plan manifest.", entry.path);
     const desiredDigest = digest.calculate(entry.desired.content);
     if (
       desiredDigest.status === ResultStatus.Failure ||
@@ -168,6 +180,27 @@ export function verifyInstallPlanIntegrity(
   return planDigest.status === ResultStatus.Failure || planDigest.value !== parsed.value.planDigest
     ? corruptPlan("InstallPlan digest is invalid.")
     : parsed;
+}
+
+function hasSameOwnershipFields(
+  left: NonNullable<InstallPlan["files"][number]["persisted"]>,
+  right: NonNullable<InstallPlan["files"][number]["persisted"]>,
+): boolean {
+  return (
+    left.path === right.path &&
+    left.lastAppliedDigest === right.lastAppliedDigest &&
+    left.repositoryId === right.repositoryId &&
+    left.installationRevisionId === right.installationRevisionId &&
+    left.installPlanDigest === right.installPlanDigest &&
+    left.original.kind === right.original.kind &&
+    left.original.digest === right.original.digest &&
+    left.metadata.ownerPackage === right.metadata.ownerPackage &&
+    left.metadata.profile === right.metadata.profile &&
+    left.metadata.packageVersion === right.metadata.packageVersion &&
+    left.metadata.template === right.metadata.template &&
+    left.metadata.source === right.metadata.source &&
+    left.metadata.sourceDigest === right.metadata.sourceDigest
+  );
 }
 
 function parsePlan(
@@ -220,7 +253,15 @@ function verifyManifestSnapshot(
   const parsed = parseManagedManifest(raw);
   if (
     parsed.status === ResultStatus.Failure ||
-    JSON.stringify(parsed.value.entries) !== JSON.stringify(plan.manifest.entries)
+    parsed.value.entries.length !== plan.manifest.entries.length ||
+    parsed.value.entries.some((entry, index) => {
+      const planned = plan.manifest.entries[index];
+      return (
+        planned === undefined ||
+        entry.provenance !== planned.provenance ||
+        !hasSameOwnershipFields(entry, planned)
+      );
+    })
   )
     return corruptPlan("Managed manifest entries do not match its bound content.");
   return success(undefined);

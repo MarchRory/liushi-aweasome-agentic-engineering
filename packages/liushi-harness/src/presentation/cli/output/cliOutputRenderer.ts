@@ -111,6 +111,12 @@ export function writeSuccess<T>(
       }
       return;
     }
+    if (command === CliCommand.InitApply) {
+      dependencies.writer.stdout(
+        `Installation Revision ${String(data["revisionId"])}: disposition=${String(data["disposition"])} status=${String(data["status"])} repositoryMutated=${String(data["repositoryMutated"])}.\n`,
+      );
+      return;
+    }
     const taskId = String(data["taskId"]);
     const workspaceId = String(data["workspaceId"]);
     if (command === CliCommand.TaskCreate) {

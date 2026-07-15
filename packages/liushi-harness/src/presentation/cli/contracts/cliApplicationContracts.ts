@@ -1,5 +1,6 @@
 import type {
   BindHookWorkspaceUseCase,
+  ApplyInstallPlanUseCase,
   CodingTaskCellService,
   CheckRuntimeHealthUseCase,
   CodexHookHandler,
@@ -43,6 +44,8 @@ export interface HookConfigProjector {
 
 /** CLI 可调用的 Application Use Cases。 */
 export interface CliApplication {
+  /** G0 受管文件 Apply Use Case。 */
+  applyInstallPlan: ApplyInstallPlanUseCase;
   /** G0 托管文件 dry-run InstallPlan Use Case。 */
   createInstallPlan: CreateInstallPlanUseCase;
   /** 串行 CodingTask Cell。 */

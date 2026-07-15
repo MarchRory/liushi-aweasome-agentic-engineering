@@ -1,6 +1,7 @@
 import {
   CliCommand,
   type CliOutputFormat,
+  type InitApplyCliCommand,
   type InitDryRunCliCommand,
 } from "../../contracts/index.js";
 import type { CollectedCliArguments } from "../collection/index.js";
@@ -22,8 +23,41 @@ export function parseInitCliCommand(
   collected: CollectedCliArguments,
   outputFormat: CliOutputFormat,
   storeRoot: string | undefined,
-): InitDryRunCliCommand | undefined {
+): InitDryRunCliCommand | InitApplyCliCommand | undefined {
   if (!isExactCliCommand(collected.positionals, ["init"])) return undefined;
+  const dryRun = collected.flags.has(CliOptionName.DryRun);
+  const applyPlanId = collected.values.get(CliOptionName.Apply);
+  if (dryRun === (applyPlanId !== undefined))
+    throw createInvalidCliOptionError(
+      CliOptionName.Apply,
+      "Init requires exactly one of --dry-run or --apply <planId>.",
+    );
+  if (applyPlanId !== undefined) {
+    validateAllowedCliOptions(
+      collected,
+      new Set([
+        CliOptionName.Json,
+        CliOptionName.Store,
+        CliOptionName.Apply,
+        CliOptionName.PlanDigest,
+        CliOptionName.Workspace,
+        CliOptionName.Repository,
+        CliOptionName.ActorId,
+        CliOptionName.IdempotencyKey,
+      ]),
+    );
+    return {
+      command: CliCommand.InitApply,
+      outputFormat,
+      ...(storeRoot === undefined ? {} : { storeRoot }),
+      workspaceId: requireCliOptionValue(collected, CliOptionName.Workspace),
+      repositoryId: requireCliOptionValue(collected, CliOptionName.Repository),
+      planId: applyPlanId,
+      planDigest: requireCliOptionValue(collected, CliOptionName.PlanDigest),
+      actorId: requireCliOptionValue(collected, CliOptionName.ActorId),
+      idempotencyKey: requireCliOptionValue(collected, CliOptionName.IdempotencyKey),
+    };
+  }
   validateAllowedCliOptions(
     collected,
     new Set([
@@ -37,12 +71,6 @@ export function parseInitCliCommand(
       CliOptionName.ActorId,
     ]),
   );
-  if (!collected.flags.has(CliOptionName.DryRun)) {
-    throw createInvalidCliOptionError(
-      CliOptionName.DryRun,
-      "Managed file installation currently requires --dry-run.",
-    );
-  }
   return {
     command: CliCommand.InitDryRun,
     outputFormat,

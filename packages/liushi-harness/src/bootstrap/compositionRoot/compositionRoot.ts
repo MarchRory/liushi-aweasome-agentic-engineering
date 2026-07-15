@@ -69,7 +69,7 @@ import type { HarnessApplication, HarnessApplicationOptions } from "./compositio
 import {
   createCodingTaskCellApplication,
   createCodingTaskAuthorizationResolver,
-  createInstallationPlanningApplication,
+  createManagedFileInstallationApplication,
   createUnresolvedProvisionGuard,
   createVerificationExecutor,
   createWorktreeApplication,
@@ -86,7 +86,6 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const taskIdGenerator = options.taskIdGenerator ?? new UlidGenerator();
   const eventIdGenerator = options.eventIdGenerator ?? new UlidGenerator();
   const artifactIdGenerator = options.artifactIdGenerator ?? new UlidGenerator();
-  const installPlanIdGenerator = options.installPlanIdGenerator ?? new UlidGenerator();
   const decisionRequestIdGenerator = options.decisionRequestIdGenerator ?? new UlidGenerator();
   const approvalIdGenerator = options.approvalIdGenerator ?? new UlidGenerator();
   const repositoryLockIdGenerator = options.repositoryLockIdGenerator ?? new UlidGenerator();
@@ -259,7 +258,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       new CodexCapabilityProbeAdapter(commandRunner),
     ),
     // prettier-ignore
-    createInstallPlan: createInstallationPlanningApplication(options.storeRoot, options.packageVersion ?? "development", digest, clock, installPlanIdGenerator, lockManager, parentDirectoryDurability),
+    ...createManagedFileInstallationApplication(options, { digest, clock, lockManager, parentDirectoryDurability, repositoryLock }),
     getActionJournal: new GetActionJournalUseCase(actionJournalRepository),
     listRecoverableActions: new ListRecoverableActionsUseCase(actionJournalRepository),
     listTraceObservations: new ListTraceObservationsUseCase(traceObservationStore),

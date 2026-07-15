@@ -23,6 +23,7 @@ import {
   executeHookHandle,
   executeHookProbe,
   executeProjectScan,
+  executeInitApply,
   executeInitDryRun,
 } from "./commands/index.js";
 import {
@@ -79,6 +80,9 @@ async function executeCommand(
 ): Promise<number> {
   if (command.command === CliCommand.InitDryRun) {
     return executeInitDryRun(command, createApplication(command, dependencies), dependencies);
+  }
+  if (command.command === CliCommand.InitApply) {
+    return executeInitApply(command, createApplication(command, dependencies), dependencies);
   }
   switch (command.command) {
     case CliCommand.Help:

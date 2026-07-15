@@ -17,9 +17,11 @@ import {
   createMissingManagedManifest,
   parseManagedManifest,
   type ActualManagedFileState,
+  type ManagedFileContentSnapshot,
   type ManagedManifestSnapshot,
 } from "#domain/installation/index.js";
 import {
+  findMissingRepositoryParentDirectories,
   normalizePathIdentity,
   resolveRepositoryRoot,
   resolveSafeRepositoryTarget,
@@ -67,6 +69,55 @@ export class NodeManagedFileStateReaderAdapter implements ManagedFileStateReader
             ),
           );
     }
+  }
+
+  /** 读取并校验可供 rollback journal 使用的完整内容前镜像。 */
+  public async readContentSnapshot(
+    root: string,
+    path: string,
+  ): Promise<Result<ManagedFileContentSnapshot, HarnessErrorType>> {
+    const target = await resolveSafeRepositoryTarget(root, path);
+    if (target.status === ResultStatus.Failure) return target;
+    try {
+      const stat = await lstat(target.value);
+      if (!stat.isFile() || stat.isSymbolicLink())
+        return failure(
+          new HarnessError(
+            HarnessErrorCode.OperationForbidden,
+            "Managed file preimage must be a regular non-symbolic file.",
+            { path },
+          ),
+        );
+      const content = await readFile(target.value, "utf8");
+      const digest = this.digest.calculate(content);
+      return digest.status === ResultStatus.Failure
+        ? digest
+        : success({
+            path,
+            kind: ManagedFileActualKind.RegularFile,
+            content,
+            digest: digest.value,
+          });
+    } catch (error) {
+      return isNodeError(error) && error.code === "ENOENT"
+        ? success({ path, kind: ManagedFileActualKind.Missing })
+        : failure(
+            new HarnessError(
+              HarnessErrorCode.IoFailure,
+              "Unable to read managed file preimage.",
+              { path },
+              error,
+            ),
+          );
+    }
+  }
+
+  /** 读取目标集合缺失的父目录，不产生任何 Repository 副作用。 */
+  public async findMissingParentDirectories(
+    root: string,
+    paths: readonly string[],
+  ): Promise<Result<readonly string[], HarnessErrorType>> {
+    return findMissingRepositoryParentDirectories(root, paths);
   }
 
   /** 严格读取 manifest，缺失时返回空清单且不创建目录。 */

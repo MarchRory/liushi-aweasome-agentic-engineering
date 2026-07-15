@@ -108,6 +108,59 @@ export async function resolveSafeRepositoryTarget(
   }
 }
 
+/** 盘点目标文件尚不存在的父目录，并拒绝非目录或符号链接父路径。 */
+export async function findMissingRepositoryParentDirectories(
+  root: string,
+  paths: readonly string[],
+): Promise<Result<readonly string[], HarnessError>> {
+  const resolvedRoot = await resolveRepositoryRoot(root);
+  if (resolvedRoot.status === ResultStatus.Failure) return resolvedRoot;
+  const missing = new Set<string>();
+  try {
+    for (const path of paths) {
+      const target = await resolveSafeRepositoryTarget(resolvedRoot.value, path);
+      if (target.status === ResultStatus.Failure) return target;
+      const parts = path.split("/");
+      let current = resolvedRoot.value;
+      for (let index = 0; index < parts.length - 1; index += 1) {
+        current = resolve(current, parts[index] as string);
+        const relativePath = parts.slice(0, index + 1).join("/");
+        if (missing.has(relativePath)) continue;
+        try {
+          const stat = await lstat(current);
+          if (stat.isSymbolicLink() || !stat.isDirectory())
+            return failure(
+              new HarnessError(
+                HarnessErrorCode.OperationForbidden,
+                "Managed file parent path is unsupported.",
+                { path: relativePath },
+              ),
+            );
+        } catch (error) {
+          if (isNodeError(error) && error.code === "ENOENT") {
+            for (let rest = index; rest < parts.length - 1; rest += 1)
+              missing.add(parts.slice(0, rest + 1).join("/"));
+            break;
+          }
+          throw error;
+        }
+      }
+    }
+    return success([...missing].sort(comparePath));
+  } catch (error) {
+    return failure(
+      error instanceof HarnessError
+        ? error
+        : new HarnessError(
+            HarnessErrorCode.IoFailure,
+            "Unable to inspect managed repository directories.",
+            { root },
+            error,
+          ),
+    );
+  }
+}
+
 function isSafeRelativePath(value: string): boolean {
   return (
     value.length > 0 &&
@@ -119,6 +172,10 @@ function isSafeRelativePath(value: string): boolean {
 function isWithin(root: string, value: string): boolean {
   const part = relative(root, value);
   return part.length > 0 && !part.startsWith(`..${sep}`) && part !== ".." && !isAbsolute(part);
+}
+
+function comparePath(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

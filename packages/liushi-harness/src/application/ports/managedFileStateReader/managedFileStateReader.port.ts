@@ -1,6 +1,7 @@
 import type { HarnessError, Result } from "#common/index.js";
 import type {
   ActualManagedFileState,
+  ManagedFileContentSnapshot,
   ManagedManifestSnapshot,
 } from "#domain/installation/index.js";
 
@@ -12,6 +13,16 @@ export interface ManagedFileStateReader {
   resolveRoot(root: string): Promise<Result<string, HarnessError>>;
   /** 验证 root 并读取目标文件的现场状态，绝不写 Repository。 */
   readActual(root: string, path: string): Promise<Result<ActualManagedFileState, HarnessError>>;
+  /** 读取可恢复的完整文件前镜像；不支持的现场类型直接失败。 */
+  readContentSnapshot(
+    root: string,
+    path: string,
+  ): Promise<Result<ManagedFileContentSnapshot, HarnessError>>;
+  /** 盘点一组目标文件当前缺失的父目录，结果按路径稳定排序。 */
+  findMissingParentDirectories(
+    root: string,
+    paths: readonly string[],
+  ): Promise<Result<readonly string[], HarnessError>>;
   /** 严格读取 managed-files manifest；缺失视为空清单。 */
   readManifest(root: string): Promise<Result<ManagedManifestSnapshot, HarnessError>>;
 }

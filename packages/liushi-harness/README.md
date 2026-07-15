@@ -44,6 +44,9 @@
 - `hook config --executor codex` 可只读生成受审阅的 `hooks.json` 投影，`hook handle --executor codex` 提供 Codex 原生 stdin/stdout Wrapper；配置文件写入和项目受信任由 Human 控制。
 - `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出与 `hooks` 功能开关，并通过 `--executable` 选择实际 Codex；找不到、Access Denied、超时、非零退出、空输出或未知版本均不会被标记为生产支持。
 - `init --target codex --root <path> --workspace <id> --repository <id> --dry-run` 可生成并持久化 G0 InstallPlan；命令拒绝 Runtime Store 与 Repository 的直接或符号链接重叠，不写 `.codex/hooks.json` 或 Manifest，Existing Human File 和未经 Runtime Revision 证明的 Manifest Claim 均保持 `Conflict`。
+- `init --apply` 已实现 G0 Human 明确 Apply：在 Repository Lock 内验证精确 InstallPlan 和同一 Approval，完成全量 preflight/preimage 后先持久化 Installation Revision Intent，再逐文件、Manifest 原子写入并记录 checkpoint，后置验证后提交 `Committed` Revision。
+- Runtime Store 的 `Committed` Installation Revision 是所有权证据，Repository Manifest 自声明不可信；相同已提交 Approval 返回 `Reused`，物理现场已完成但 checkpoint 未闭合时只补齐元数据。Partial、Mixed、Unknown 和漂移状态必须 Human 介入，不盲目重试或自动回滚。
+- Rollback、Uninstall 和 CLI recovery 当前未实现；`actor-id` 只是审计身份声明，不是认证机制，企业使用须由外部受信任包装器或身份系统注入。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
 - CodingTask 已提供单仓 Aggregate、独立 Schema、File Store/Replay、Versioned Command Gateway/Service、权威 ExecutionAuthorization、G2 历史逻辑确认绑定、Attempt 串行状态机、Verification 结果接纳和 Human Resolution；Managed Worktree Provision Command 已通过 Repository Lock、JournaledActionRunner 和真实 `shell=false` Git Adapter 创建 Worktree。
 - `implementationCommands` 已在权威授权、Write Set、Repository Lock 与 Action Journal 边界内提供受控文件变更；`implementationSubmissions` 使用可信 Repository Root 和原生 Git 创建单一 Checkpoint，以 `ImplementationSubmitted` 收口 Attempt，并对 Git/Event 非 ACID 中间态提供 Human 恢复入口。
@@ -55,7 +58,7 @@
 - 固定公开项目 Smoke 已从真实 npm Tarball 独立安装启动生产 CLI，在 `unjs/defu@82632b66` 完成预编排单文件 Mutation 的 G1/G4 Gate 协议、受管 Worktree、单一 Checkpoint、离线安装、完整测试、Passed Evidence、PRReadyArtifact 与跨进程幂等复用。该结果不代表 Agent 已能自主理解需求或生成代码。
 - Codex Host Smoke 已在 Windows x64、Codex `0.144.0-alpha.4` 的真实交互式 TUI 中，对同一会话内的 `apply_patch` 正向写入与越界拒绝完成动态验证。关闭式结果门同时校验正向 Pre/Post 属于同一 tool invocation、负向目标精确匹配且不存在 Post、Action/Trace 因果绑定和目标零写入；该结论只覆盖该精确 Host Scope，不代表企业项目自动安装或其他工具、版本和平台已经验证。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、G0 Apply/Revision/Rollback/Uninstall、Codex 版本矩阵、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、G0 Rollback/Uninstall、Codex 版本矩阵、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
@@ -102,6 +105,8 @@ liushi-harness approval decide --workspace <workspace-id> --task <task-ulid> --r
 liushi-harness rules resolve --catalog .\ruleCatalog.json --context .\ruleContext.json --json
 liushi-harness project scan --file .\project-scan-manifest.json --json
 liushi-harness profile compile --workspace <workspace-id> --task <task-ulid> --artifact <proposal-artifact-ulid> --report .\project-discovery-report.json --json
+liushi-harness init --target codex --root <absolute-path> --workspace <workspace-id> --repository <repository-id> --dry-run [--store <path>] [--json]
+liushi-harness init --apply <plan-ulid> --plan-digest <sha256> --workspace <id> --repository <id> --actor-id <id> --idempotency-key <key> [--store <path>] [--json]
 liushi-harness cell run --file .\codingTaskCell.json --workspace <workspace-id> --repository <repository-id> --root <absolute-repository-root> --verification-mode <fail_closed_mock|local_command> --json
 liushi-harness hook config --executor codex > .codex/hooks.json
 liushi-harness hook bind --root <repository-root> --workspace <workspace-id> --task <task-ulid> --artifact <plan-risk-artifact-ulid> --artifact-digest <sha256:digest> --actor-id <human-id>
@@ -109,6 +114,8 @@ liushi-harness hook probe --executor codex [--executable <path-or-command>] --js
 ```
 
 `hook config` 只向 stdout 输出配置，不自动创建或覆盖 `.codex/hooks.json`；重定向、审阅和项目受信任必须由 Human 执行。`hook bind` 只接受精确的、已通过 G4 的 PlanRisk Digest，涉及历史业务逻辑时还必须通过 G2；R4 始终拒绝。`hook handle` 由 Codex Hook 通过 stdin 调用，输出平台原生 JSON，不使用 CLI JSON Envelope。
+
+`init --apply` 是 G0 Human 明确动作，必须同时提交精确的计划 ID/Digest、Workspace、Repository、`actor-id` 和 `idempotency-key`；成功 JSON 的 `data` 包含 `revisionId`、`disposition`、`status=committed` 和 `repositoryMutated`。`actor-id` 只用于审计身份声明，不提供认证或授权；企业接入必须由外部受信任包装器或身份系统注入。
 
 `hook probe` 通过 `shell=false` 对选定 executable 运行 `--version`、`--help` 和 `features list`，每条命令都有固定超时与输出上限，并在报告中记录实际 executable 与参数。`hookFramework=verified` 只表示功能列表包含格式完整且启用的 `hooks` 行；PreToolUse、PostToolUse 和 Native stdin 仍只接受帮助文本中独立、非否定的显式声明。该命令不启动模型、不读取凭据、不写入项目，`productionVerified` 固定为 `false`，不能替代真实受信任项目的 Hook Smoke/Negative Test。
 

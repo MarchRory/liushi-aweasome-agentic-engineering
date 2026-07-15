@@ -3,7 +3,7 @@ import type { HarnessErrorCode } from "#common/index.js";
 
 import type { CliVerificationMode } from "../enums/index.js";
 import type { BaseCliCommand, CliCommand } from "./cliCommandContracts.js";
-import type { InitDryRunCliCommand } from "./cliInstallationContracts.js";
+import type { InitApplyCliCommand, InitDryRunCliCommand } from "./cliInstallationContracts.js";
 
 /** CLI 接受的 Human Approval 决策值。 */
 export enum CliApprovalDecision {
@@ -200,7 +200,8 @@ export type ParsedCliCommand =
   | HookHandleCliCommand
   | HookConfigCliCommand
   | HookProbeCliCommand
-  | InitDryRunCliCommand;
+  | InitDryRunCliCommand
+  | InitApplyCliCommand;
 
 /** CLI JSON 失败信息。 */
 export interface CliErrorPayload {

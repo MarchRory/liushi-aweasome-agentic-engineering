@@ -2,7 +2,11 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import writeFileAtomic from "write-file-atomic";
 
-import type { ContentDigestPort, InstallPlanStore } from "#application/ports/index.js";
+import type {
+  ContentDigestPort,
+  InstallPlanStore,
+  ManagedOwnershipVerifier,
+} from "#application/ports/index.js";
 import {
   HarnessError,
   HarnessErrorCode,
@@ -12,7 +16,11 @@ import {
   type HarnessError as HarnessErrorType,
   type Result,
 } from "#common/index.js";
-import type { InstallPlan, InstallPlanId } from "#domain/installation/index.js";
+import {
+  ManagedOwnershipProvenance,
+  type InstallPlan,
+  type InstallPlanId,
+} from "#domain/installation/index.js";
 import type { WorkspaceId } from "#domain/workspace/index.js";
 import type {
   FileLockManager,
@@ -38,6 +46,7 @@ export class FileInstallPlanStore implements InstallPlanStore {
       readonly lockManager: FileLockManager;
       readonly parentDirectoryDurability: ParentDirectoryDurability;
       readonly digest: ContentDigestPort;
+      readonly ownershipVerifier: ManagedOwnershipVerifier;
     },
   ) {}
 
@@ -67,6 +76,8 @@ export class FileInstallPlanStore implements InstallPlanStore {
   public async save(plan: InstallPlan): Promise<Result<InstallPlan, HarnessErrorType>> {
     const verified = verifyInstallPlanIntegrity(plan, this.dependencies.digest);
     if (verified.status === ResultStatus.Failure) return verified;
+    const ownership = await this.verifyManagedOwnership(verified.value);
+    if (ownership.status === ResultStatus.Failure) return ownership;
     const paths = resolveInstallPlanStorePaths(
       this.storeRoot,
       verified.value.workspaceId,
@@ -118,6 +129,8 @@ export class FileInstallPlanStore implements InstallPlanStore {
         );
       const parsed = verifyInstallPlanIntegrity(raw, this.dependencies.digest);
       if (parsed.status === ResultStatus.Failure) return parsed;
+      const ownership = await this.verifyManagedOwnership(parsed.value);
+      if (ownership.status === ResultStatus.Failure) return ownership;
       return parsed.value.workspaceId === workspaceId && parsed.value.planId === planId
         ? parsed
         : failure(
@@ -152,6 +165,8 @@ export class FileInstallPlanStore implements InstallPlanStore {
   ): Promise<Result<InstallPlan, HarnessErrorType>> {
     const valid = verifyInstallPlanIntegrity(existing, this.dependencies.digest);
     if (valid.status === ResultStatus.Failure) return valid;
+    const ownership = await this.verifyManagedOwnership(valid.value);
+    if (ownership.status === ResultStatus.Failure) return ownership;
     await this.dependencies.parentDirectoryDurability.syncParentDirectory(recordFile);
     return valid.value.planDigest === requested.planDigest
       ? success(valid.value)
@@ -193,6 +208,29 @@ export class FileInstallPlanStore implements InstallPlanStore {
     } catch (error) {
       return failure(asError(error, "Unable to validate InstallPlan derived paths."));
     }
+  }
+
+  /** 重新证明计划中被提升为可信状态的每一条 Repository 声明。 */
+  private async verifyManagedOwnership(plan: InstallPlan): Promise<Result<void, HarnessErrorType>> {
+    for (const file of plan.files) {
+      const claim = file.persisted;
+      if (claim === undefined || claim.provenance !== ManagedOwnershipProvenance.VerifiedRevision)
+        continue;
+      const verified = await this.dependencies.ownershipVerifier.verify({
+        workspaceId: plan.workspaceId,
+        claim,
+      });
+      if (verified.status === ResultStatus.Failure) return verified;
+      if (!verified.value)
+        return failure(
+          new HarnessError(
+            HarnessErrorCode.CorruptStore,
+            "InstallPlan contains an unproven managed ownership claim.",
+            { path: file.path },
+          ),
+        );
+    }
+    return success(undefined);
   }
 }
 

@@ -1,5 +1,5 @@
 import { CreateInstallPlanUseCase } from "#application/index.js";
-import type { ContentDigestPort } from "#application/ports/index.js";
+import type { ContentDigestPort, ManagedOwnershipVerifier } from "#application/ports/index.js";
 import type { Clock, IdGenerator } from "#common/index.js";
 import {
   CodexInstallProfileProjectorAdapter,
@@ -20,6 +20,7 @@ export function createInstallationPlanningApplication(
   idGenerator: IdGenerator,
   lockManager: FileLockManager,
   parentDirectoryDurability: ParentDirectoryDurability,
+  ownershipVerifier: ManagedOwnershipVerifier,
 ): CreateInstallPlanUseCase {
   return new CreateInstallPlanUseCase(
     new NodeManagedFileStateReaderAdapter(digest),
@@ -28,7 +29,9 @@ export function createInstallationPlanningApplication(
       lockManager,
       parentDirectoryDurability,
       digest,
+      ownershipVerifier,
     }),
+    ownershipVerifier,
     digest,
     clock,
     idGenerator,

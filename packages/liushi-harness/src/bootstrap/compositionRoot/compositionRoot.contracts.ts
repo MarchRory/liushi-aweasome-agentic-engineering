@@ -1,5 +1,6 @@
 import type {
   ApplicationCommandGateway,
+  ApplyInstallPlanUseCase,
   AssemblePrReadyArtifactUseCase,
   CodingTaskCellService,
   CodingTaskCellRuntimeBinding,
@@ -65,6 +66,8 @@ export interface HarnessApplication {
   probeCodexCapabilities: ProbeCodexCapabilitiesUseCase;
   /** 生成并持久化不修改 Repository 的 G0 Managed Files InstallPlan。 */
   createInstallPlan: CreateInstallPlanUseCase;
+  /** 应用 Human 精确批准的 G0 Managed Files InstallPlan。 */
+  applyInstallPlan: ApplyInstallPlanUseCase;
   /** 将人工确认的 Task/PlanRisk 绑定到执行器工作区。 */
   bindHookWorkspace: BindHookWorkspaceUseCase;
   /** Runtime Store 健康检查。 */
@@ -151,6 +154,8 @@ export interface HarnessApplicationOptions {
   artifactIdGenerator?: IdGenerator;
   /** 可选 InstallPlan ID Generator。 */
   installPlanIdGenerator?: IdGenerator;
+  /** 可选 Installation Revision ID Generator。 */
+  installationRevisionIdGenerator?: IdGenerator;
   /** 可选 DecisionRequest ID Generator。 */
   decisionRequestIdGenerator?: IdGenerator;
   /** 可选 Approval ID Generator。 */

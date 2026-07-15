@@ -62,6 +62,10 @@ export enum CliOptionName {
   Target = "--target",
   /** 仅创建 Runtime Store InstallPlan。 */
   DryRun = "--dry-run",
+  /** 显式批准并应用指定 InstallPlan ID。 */
+  Apply = "--apply",
+  /** 显式批准的 InstallPlan 摘要。 */
+  PlanDigest = "--plan-digest",
 }
 
 const CLI_OPTION_BY_NAME = new Map<string, CliOptionName>(

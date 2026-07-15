@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { HarnessErrorCode, ResultStatus } from "../../src/common/index.js";
+import { HarnessErrorCode, ResultStatus, success } from "../../src/common/index.js";
 import { ParentDirectorySyncStatus } from "../../src/application/index.js";
 import {
   FileInstallAction,
@@ -15,6 +15,7 @@ import {
   parseInstallationRevisionId,
   parseRepositoryId,
   parseWorkspaceId,
+  serializeManagedManifest,
   type InstallPlan,
 } from "../../src/domain/index.js";
 import {
@@ -126,6 +127,7 @@ describe("File InstallPlan Store", () => {
         },
       },
       digest: new Rfc8785Sha256DigestAdapter(),
+      ownershipVerifier: { verify: () => Promise.resolve(success(false)) },
     });
     const plan = createPlan();
     expect(await store.save(plan)).toMatchObject({
@@ -151,33 +153,7 @@ describe("File InstallPlan Store", () => {
     "拒绝从原始计划数据伪造 Verified Revision 所有权：%s",
     async (repositoryId) => {
       const root = await runtimeStores.create("liushi-install-plan-forged-owner-");
-      const plan = createPlan();
-      const entry = plan.files[0]!;
-      const persistedRepository = parseRepositoryId(repositoryId);
-      const revision = parseInstallationRevisionId("01ARZ3NDEKTSV4RRFFQ69G5FAV");
-      if (
-        persistedRepository.status === ResultStatus.Failure ||
-        revision.status === ResultStatus.Failure
-      )
-        throw new Error("fixture identity failed");
-      const forged = recalculatePlan({
-        ...plan,
-        files: [
-          {
-            ...entry,
-            persisted: {
-              path: entry.path,
-              lastAppliedDigest: entry.desired.digest,
-              repositoryId: persistedRepository.value,
-              installationRevisionId: revision.value,
-              installPlanDigest: plan.planDigest,
-              original: { kind: ManagedFileActualKind.Missing },
-              provenance: ManagedOwnershipProvenance.VerifiedRevision,
-              metadata: entry.desired.metadata,
-            },
-          },
-        ],
-      });
+      const forged = createVerifiedClaimPlan(repositoryId);
 
       expect(await createStore(root).save(forged)).toMatchObject({
         status: ResultStatus.Failure,
@@ -185,6 +161,19 @@ describe("File InstallPlan Store", () => {
       });
     },
   );
+
+  it("仅在 Runtime Revision 证明 claim 后持久化 Verified InstallPlan", async () => {
+    const root = await runtimeStores.create("liushi-install-plan-verified-owner-");
+    const plan = createVerifiedClaimPlan("repository-1");
+
+    expect(await createStore(root).save(plan)).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.CorruptStore },
+    });
+    expect(await createStore(root, true).save(plan)).toMatchObject({
+      status: ResultStatus.Success,
+    });
+  });
 
   it("按 Windows 身份拒绝大小写别名，并按 POSIX 身份保留两个独立路径", () => {
     const plan = createCaseAliasPlan();
@@ -199,11 +188,58 @@ describe("File InstallPlan Store", () => {
   });
 });
 
-function createStore(root: string): FileInstallPlanStore {
+function createStore(root: string, ownershipVerified = false): FileInstallPlanStore {
   return new FileInstallPlanStore(root, {
     lockManager: new ExclusiveFileLockManager(),
     parentDirectoryDurability: new FileParentDirectoryDurability(),
     digest: new Rfc8785Sha256DigestAdapter(),
+    ownershipVerifier: { verify: () => Promise.resolve(success(ownershipVerified)) },
+  });
+}
+
+function createVerifiedClaimPlan(persistedRepositoryId: string): InstallPlan {
+  const plan = createPlan();
+  const file = plan.files[0]!;
+  const persistedRepository = parseRepositoryId(persistedRepositoryId);
+  const revision = parseInstallationRevisionId("01ARZ3NDEKTSV4RRFFQ69G5FAV");
+  if (
+    persistedRepository.status === ResultStatus.Failure ||
+    revision.status === ResultStatus.Failure
+  )
+    throw new Error("fixture identity failed");
+  const claim = {
+    path: file.path,
+    lastAppliedDigest: file.desired.digest,
+    repositoryId: persistedRepository.value,
+    installationRevisionId: revision.value,
+    installPlanDigest: plan.planDigest,
+    original: { kind: ManagedFileActualKind.Missing },
+    provenance: ManagedOwnershipProvenance.UnverifiedClaim,
+    metadata: file.desired.metadata,
+  } as const;
+  const manifestContent = serializeManagedManifest([claim]);
+  const manifestDigest = new Rfc8785Sha256DigestAdapter().calculate(manifestContent);
+  if (manifestDigest.status === ResultStatus.Failure) throw manifestDigest.error;
+  return recalculatePlan({
+    ...plan,
+    manifest: {
+      state: ManagedManifestState.Present,
+      entries: [claim],
+      content: manifestContent,
+      digest: manifestDigest.value,
+    },
+    files: [
+      {
+        ...file,
+        action: FileInstallAction.Skip,
+        actual: {
+          path: file.path,
+          kind: ManagedFileActualKind.RegularFile,
+          digest: file.desired.digest,
+        },
+        persisted: { ...claim, provenance: ManagedOwnershipProvenance.VerifiedRevision },
+      },
+    ],
   });
 }
 

@@ -32,6 +32,8 @@ export enum CliCommand {
   HookProbe = "hook.probe",
   /** 生成并持久化不修改 Repository 的 G0 安装计划。 */
   InitDryRun = "init.dry_run",
+  /** 以 Human G0 批准应用精确安装计划。 */
+  InitApply = "init.apply",
 }
 
 /** CLI 输出格式。 */

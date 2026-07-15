@@ -12,6 +12,7 @@ import {
   calculateInstallPlanDigest,
   compareManagedFilePath,
   ManagedFileGateId,
+  ManagedOwnershipProvenance,
   parseInstallPlanId,
   planManagedFile,
   type InstallPlan,
@@ -21,6 +22,7 @@ import type {
   InstallPlanStore,
   InstallProfileProjector,
   ManagedFileStateReader,
+  ManagedOwnershipVerifier,
 } from "#application/ports/index.js";
 import type { CreateInstallPlanInput, CreateInstallPlanOutput } from "./contracts/index.js";
 import { validateCreateInstallPlanInput } from "./validation/index.js";
@@ -32,6 +34,7 @@ export class CreateInstallPlanUseCase {
     private readonly reader: ManagedFileStateReader,
     private readonly projector: InstallProfileProjector,
     private readonly store: InstallPlanStore,
+    private readonly ownershipVerifier: ManagedOwnershipVerifier,
     private readonly digest: ContentDigestPort,
     private readonly clock: Clock,
     private readonly idGenerator: IdGenerator,
@@ -83,15 +86,29 @@ export class CreateInstallPlanUseCase {
     )) {
       const actual = await this.reader.readActual(resolvedRoot.value, file.path);
       if (actual.status === ResultStatus.Failure) return actual;
-      const persisted = manifestByIdentity.get(this.reader.identifyPath(file.path));
-      if (persisted !== undefined && persisted.path !== file.path)
+      const manifestClaim = manifestByIdentity.get(this.reader.identifyPath(file.path));
+      if (manifestClaim !== undefined && manifestClaim.path !== file.path)
         return failure(
           new HarnessError(
             HarnessErrorCode.CorruptStore,
             "Managed file manifest path casing does not match the active profile.",
-            { path: persisted.path },
+            { path: manifestClaim.path },
           ),
         );
+      let persisted = manifestClaim;
+      if (manifestClaim !== undefined) {
+        const ownership = await this.ownershipVerifier.verify({
+          workspaceId: valid.value.workspaceId,
+          claim: manifestClaim,
+        });
+        if (ownership.status === ResultStatus.Failure) return ownership;
+        persisted = {
+          ...manifestClaim,
+          provenance: ownership.value
+            ? ManagedOwnershipProvenance.VerifiedRevision
+            : ManagedOwnershipProvenance.UnverifiedClaim,
+        };
+      }
       const planned = planManagedFile(file, actual.value, persisted);
       if (planned.status === ResultStatus.Failure) return planned;
       files.push(planned.value);

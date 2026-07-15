@@ -39,6 +39,7 @@ describe("CLI doctor 与 help E2E", () => {
       expect(output.stdout).toHaveLength(1);
       expect(singleOutput(output.stdout).split("\n").filter(Boolean)).toEqual([
         expect.stringContaining("init --target codex"),
+        expect.stringContaining("init --apply"),
         expect.stringContaining("doctor"),
         expect.stringContaining("task create"),
         expect.stringContaining("task status"),

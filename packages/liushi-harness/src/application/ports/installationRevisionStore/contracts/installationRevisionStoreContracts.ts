@@ -4,6 +4,7 @@ import type {
   InstallationRevisionId,
   InstallationRevisionIntent,
   InstallationRevisionState,
+  InstallPlanId,
 } from "#domain/installation/index.js";
 import type { RepositoryId, WorkspaceId } from "#domain/workspace/index.js";
 
@@ -25,6 +26,22 @@ export interface InstallationRevisionReservation {
   readonly disposition: InstallationRevisionReservationDisposition;
   /** 已持久化并通过完整性重放的 Revision。 */
   readonly state: InstallationRevisionState;
+}
+
+/** 在读取 Repository 现场前定位既有幂等批准的输入。 */
+export interface FindInstallationRevisionByApprovalInput {
+  /** 批准所属 Workspace。 */
+  readonly workspaceId: WorkspaceId;
+  /** 批准唯一写入的 Repository。 */
+  readonly repositoryId: RepositoryId;
+  /** 被批准的精确计划 ID。 */
+  readonly planId: InstallPlanId;
+  /** 被批准的精确计划摘要。 */
+  readonly planDigest: ContentDigest;
+  /** 发起批准的 Human 审计身份。 */
+  readonly actorId: string;
+  /** 重试时保持稳定的幂等键。 */
+  readonly idempotencyKey: string;
 }
 
 /** 以乐观版本前置条件追加一个不可变阶段事件。 */

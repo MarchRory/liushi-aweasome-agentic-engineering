@@ -17,3 +17,4 @@ export * from "./worktreeProvisionRecovery/index.js";
 export * from "./verificationExecution/index.js";
 export * from "./verificationCommand/index.js";
 export * from "./installationPlanning/index.js";
+export * from "./installationApply/index.js";

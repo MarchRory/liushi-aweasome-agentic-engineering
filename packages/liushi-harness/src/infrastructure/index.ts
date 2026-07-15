@@ -16,3 +16,5 @@ export * from "./worktreeProvisionRecovery/index.js";
 export * from "./codingTaskCellRuntimePath/index.js";
 export * from "./managedFileReader/index.js";
 export * from "./fileInstallPlanStore/index.js";
+export * from "./installationRevisionStore/index.js";
+export * from "./managedFileMutation/index.js";
