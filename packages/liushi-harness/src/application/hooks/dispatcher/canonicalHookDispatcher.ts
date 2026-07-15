@@ -25,6 +25,7 @@ import {
 import type { ActionHookAuthorizationPolicy } from "../authorization/index.js";
 import type {
   ActionHookPayload,
+  CanonicalHookDispatcherPort,
   HookDispatchResult,
   PostActionHookPayload,
   PreActionHookPayload,
@@ -43,7 +44,7 @@ import {
 } from "./hookResultProjector.js";
 
 /** 通过 Gateway、Policy、Action Journal 与 Trace 处理 Canonical Action Hook。 */
-export class CanonicalHookDispatcher {
+export class CanonicalHookDispatcher implements CanonicalHookDispatcherPort {
   public constructor(
     private readonly gateway: ApplicationCommandGateway,
     private readonly authorizationPolicy: ActionHookAuthorizationPolicy,

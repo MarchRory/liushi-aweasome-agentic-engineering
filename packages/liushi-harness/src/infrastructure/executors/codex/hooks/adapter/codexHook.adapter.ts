@@ -5,7 +5,7 @@ import {
   parsePostActionHookPayload,
   parsePreActionHookPayload,
   type ActionHookPayload,
-  type CanonicalHookDispatcher,
+  type CanonicalHookDispatcherPort,
   type CommandEnvelope,
   type CommandInvocationProvenance,
   type CodexHookHandler,
@@ -54,10 +54,10 @@ import { parseApplyPatchTargets, parseCodexHookInput } from "../validation/index
 /** 将 Codex PreToolUse/PostToolUse 映射为 Canonical Action Hook。 */
 export class CodexHookAdapter implements CodexHookHandler {
   public constructor(
-    private readonly dispatcher: CanonicalHookDispatcher,
-    private readonly bindingStore: HookBindingStore,
-    private readonly actionJournal: ActionJournalRepository,
-    private readonly taskRepository: TaskRepository,
+    private readonly dispatcher: CanonicalHookDispatcherPort,
+    private readonly bindingStore: Pick<HookBindingStore, "find">,
+    private readonly actionJournal: Pick<ActionJournalRepository, "load">,
+    private readonly taskRepository: CodexHookTaskReader,
     private readonly digest: ContentDigestPort,
     private readonly clock: Clock,
   ) {}
@@ -281,6 +281,10 @@ export class CodexHookAdapter implements CodexHookHandler {
     }
     return loaded;
   }
+}
+
+interface CodexHookTaskReader {
+  load(locator: Parameters<TaskRepository["load"]>[0]): Promise<Result<unknown, HarnessErrorType>>;
 }
 
 function invalid(message: string): Result<never, HarnessErrorType> {

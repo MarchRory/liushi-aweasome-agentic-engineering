@@ -1,4 +1,4 @@
-import type { ActorRef, ContentDigest } from "#common/index.js";
+import type { ActorRef, ContentDigest, HarnessError, Result } from "#common/index.js";
 import type {
   ActionId,
   ActionKind,
@@ -124,4 +124,10 @@ export interface HookDispatchResult {
   readonly failureKind?: HookFailureKind;
   /** Action Journal 当前状态。 */
   readonly actionStatus?: ActionJournalStatus;
+}
+
+/** Canonical Hook Adapter 仅可依赖的窄分发端口。 */
+export interface CanonicalHookDispatcherPort {
+  /** 严格解析并分发一个 Canonical Hook Command。 */
+  execute(input: unknown): Promise<Result<HookDispatchResult, HarnessError>>;
 }
