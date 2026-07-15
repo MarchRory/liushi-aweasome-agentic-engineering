@@ -45,6 +45,7 @@
 - `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出与 `hooks` 功能开关，并通过 `--executable` 选择实际 Codex；找不到、Access Denied、超时、非零退出、空输出或未知版本均不会被标记为生产支持。
 - `init --target codex --root <path> --workspace <id> --repository <id> --dry-run` 可生成并持久化 G0 InstallPlan；命令拒绝 Runtime Store 与 Repository 的直接或符号链接重叠，不写 `.codex/hooks.json` 或 Manifest，Existing Human File 和未经 Runtime Revision 证明的 Manifest Claim 均保持 `Conflict`。
 - `init --apply` 已实现 G0 Human 明确 Apply：在 Repository Lock 内验证精确 InstallPlan 和同一 Approval，完成全量 preflight/preimage 后先持久化 Installation Revision Intent，再逐文件、Manifest 原子写入并记录 checkpoint，后置验证后提交 `Committed` Revision。
+- Executor Compatibility Matrix Domain 已实现 Adapter/Distribution 分离、精确版本/Host/OS/模型/权限/配置 Scope、分级 Evidence、可复核 Locator、固定支持 Policy 与确定性 Digest 编译；静态 Probe、证据缺失或冲突都不能升级为生产支持，CatPaw 也不能继承 Claude Code 的声明。
 - Runtime Store 的 `Committed` Installation Revision 是所有权证据，Repository Manifest 自声明不可信；相同已提交 Approval 返回 `Reused`，物理现场已完成但 checkpoint 未闭合时只补齐元数据。Partial、Mixed、Unknown 和漂移状态必须 Human 介入，不盲目重试或自动回滚。
 - Rollback、Uninstall 和 CLI recovery 当前未实现；`actor-id` 只是审计身份声明，不是认证机制，企业使用须由外部受信任包装器或身份系统注入。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
@@ -165,3 +166,5 @@ Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件�
 真实 Codex Host 验收的只读准备和关闭式结果门见 [Codex Host Smoke Prepare](./docs/engineering/codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)。
 
 Managed File 的所有权、零写入 dry-run、G0 和后续恢复边界见 [Managed File 安装协议](./docs/engineering/managedFileInstallation.md)。
+
+跨 Codex、Claude Code 与 CatPaw 的精确 Scope、Evidence 和支持声明算法见 [执行器兼容性矩阵](./docs/engineering/executorCompatibilityMatrix.md)。

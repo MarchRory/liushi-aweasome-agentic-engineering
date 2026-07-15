@@ -19,7 +19,7 @@
 | --------------------------- | -------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | 06 代码库组织               | 已完成   | `implemented` | 分层、循环依赖、目录、命名、Barrel、行数、TSDoc、中文注释、ESLint、Prettier、TS7/TS6 和 Changesets 门禁                                                                                                                                                                                                                                                               | 目标目录中的未来模块不计为能力                                                                                                  |
 | 07 Workspace 与多仓         | 已完成   | `partial`     | 多仓身份、只读扫描、依赖歧义、Profile Proposal、G8、Profile Bundle、Managed Worktree 创建/检查、未知 Provision Human 对账与下游 Guard、Workspace/Repository 排他 Lock、单仓受控文件变更、可信 Repository Root 与 Git Checkpoint                                                                                                                                       | WorkspaceGraph Registry、Worktree 清理/重建和跨仓 Saga                                                                          |
-| 08 Executor Adapter         | 已完成   | `partial`     | Codex Probe、Hook Binding、Pre/Post Adapter、CLI Wrapper、`hooks.json` 投影、G0 InstallPlan dry-run、G0 Apply、Installation Revision、Fixture 测试、固定公开项目生产 CLI Cell Smoke，以及 Windows/Codex `0.144.0-alpha.4` 交互式 TUI 的同会话 Host 正负路径                                                                                                           | Rollback/Uninstall、Codex 版本/平台矩阵、Claude/CatPaw Adapter、Role Invocation                                                 |
+| 08 Executor Adapter         | 已完成   | `partial`     | Codex Probe、Hook Binding、Pre/Post Adapter、CLI Wrapper、`hooks.json` 投影、G0 InstallPlan dry-run、G0 Apply、Installation Revision、Executor Compatibility Matrix Domain、Fixture 测试、固定公开项目生产 CLI Cell Smoke，以及 Windows/Codex `0.144.0-alpha.4` 交互式 TUI 的同会话 Host 正负路径                                                                     | Codex Evidence 投影与持久化版本矩阵、Rollback/Uninstall、Claude/CatPaw Adapter、Role Invocation                                 |
 | 09 Hooks 与 Agent Runtime   | 已完成   | `partial`     | Canonical Pre/PostAction、Codex `apply_patch` Projection/Wrapper、PlanRisk/Human Gate 授权、Dispatcher、Action Journal、Worktree Journaled Runner 与 Trace                                                                                                                                                                                                            | Verification Runner 接入、其他平台 Projection、自动安装、其他生命周期、Role Runtime 和 Human Battle                             |
 | 10 模型路由与 Eval          | 已完成   | `designed`    | 无产品运行时能力                                                                                                                                                                                                                                                                                                                                                      | Model Registry、Router、升级、Eval Dataset 和成本策略                                                                           |
 | 11 Skills 与 Connectors     | 已完成   | `designed`    | Scanner、CLI 和 Digest 可供未来复用                                                                                                                                                                                                                                                                                                                                   | Skill Registry/Runner、MCP、Wiki、Issue、Obsidian、认证和写入 Gate                                                              |
@@ -66,6 +66,19 @@
 - 同一已提交 Approval 幂等返回 `Reused`；物理文件和 Manifest 已全部达到 after 状态但 checkpoint 未闭合时只补齐元数据。Partial、Mixed、Unknown、Conflict、Existing Human File、Digest 漂移、未知文件类型和符号链接均 fail closed，必须 Human 处理，不盲目重试或自动回滚。
 - Windows/POSIX 路径与文件系统差异位于 `platformCompatibility`/Infrastructure，Domain/Application 不混入操作系统判断。Apply unit、filesystem/Revision Store integration、完整 lifecycle integration 和 CLI E2E 已覆盖；POSIX mode 测试在 Windows 跳过。
 - Rollback、Uninstall 和 CLI recovery 命令仍未实现；当前 Installation Revision 的 preimage 与 checkpoint 只作为恢复证据。
+
+### 3.3 Executor Compatibility Matrix Domain
+
+本轮已建立后续 Codex 版本矩阵和 Claude-compatible/CatPaw Adapter 共用的确定性语义内核：
+
+- `ExecutorHostScope` 精确绑定 Adapter、实际 Distribution、Adapter Digest、执行器版本、Host Surface、OS/Architecture，以及可选 Model、Permission 与 Configuration Digest，不允许跨 Scope 继承 Evidence。
+- CatPaw 建模为 `ClaudeCompatible Adapter + CatPaw Distribution`，不能继承 Claude Code 或 Codex 的支持声明。
+- `ExecutorCapabilityEvidence` 使用枚举化 Capability、Kind、Outcome 和 Qualifier，并强制绑定原始 Artifact Digest、Schema、Checks、审计时间与安全 Locator。
+- `managed_file_mutation_hooks.v1` Policy 明确 Production 是 Compatible 的严格超集；静态 Probe 不能独立产生 Production。
+- Compiler 对 Missing、Failed 与 Conflicting Evidence 分别处理：部分通过为 `experimental`，明确失败为 `unsupported`，缺失或冲突为 `unverified`；后二者均不得进入生产路径。
+- Evidence 时间只用于审计，不执行固定时间失效算法。Matrix 与 Policy 使用 RFC 8785 SHA-256，输入重排不改变结果。
+- Matrix 重校验必须提供受信 Policy 与完整 Evidence 集，并通过重新编译比较预期摘要；零 Evidence 或自报 Assessment 不能伪造 Production。外部 Evidence Locator 只暴露与 `source.artifactDigest` 精确绑定的内容寻址 Artifact URN，不在 Domain 接受任意网络 URL。
+- 当前尚未实现 Codex Static/Host Evidence 投影、Matrix Store/CLI 或安装前支持查询，因此不能把本 Domain 误述为已完成 Codex 版本矩阵。
 
 ## 4. 当前产品边界
 

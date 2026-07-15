@@ -2,6 +2,7 @@ export * from "./approval/index.js";
 export * from "./actionJournal/index.js";
 export * from "./artifact/index.js";
 export * from "./evidence/index.js";
+export * from "./executorCompatibility/index.js";
 export * from "./gate/index.js";
 export * from "./policy/index.js";
 export * from "./projectDiscovery/index.js";

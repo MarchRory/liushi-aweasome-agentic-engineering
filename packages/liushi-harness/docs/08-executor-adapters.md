@@ -16,7 +16,9 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 **状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Codex `0.144.0-alpha.4` 已在 Windows 交互式 TUI 完成同会话正负路径 Host Smoke；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。
 
-当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply、Installation Revision、自动 Trust/Binding、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
+当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply 与 Installation Revision 已实现；自动 Trust/Binding、Rollback/Uninstall、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
+
+Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。静态 Probe 不具备生产语义；只有同一精确 Scope 的 Contract、Smoke、Negative 与真实 Host Evidence 闭合后，后续 Application 才能形成可消费的支持声明。当前尚未把 Codex Host Smoke 投影为可发布 Matrix Evidence。
 
 ## 2. Adapter 边界
 
@@ -41,7 +43,7 @@ Adapter 不负责：
 
 ```ts
 /** Adapter 对一个执行器能力的支持程度。 */
-export enum CapabilitySupport {
+export enum ExecutorCapabilitySupport {
   /** 能力已通过正向和负向测试，可以进入生产路径。 */
   Verified = "verified",
   /** 能力存在但仅通过 Smoke Test，不能宣称完整保证。 */
@@ -50,6 +52,8 @@ export enum CapabilitySupport {
   Degraded = "degraded",
   /** 执行器不支持该能力且没有安全替代。 */
   Unsupported = "unsupported",
+  /** 缺少证据或证据互相矛盾，不能形成支持声明。 */
+  Unverified = "unverified",
 }
 
 /** 一次执行器调用采用的交互方式。 */
@@ -76,7 +80,7 @@ Capability Matrix 至少包含：
 - Plugin/Package 分发。
 - Windows 路径和 Shell。
 
-每项保存 `support`、检测证据、执行器版本、最后验证时间和已知限制。
+每项保存 `support`、检测证据、可复核 Locator、执行器精确版本、Host Surface、Adapter/Distribution、配置摘要、最后验证时间和已知限制。时间只用于审计，不触发自动失效算法。完整协议见 [执行器兼容性矩阵](./engineering/executorCompatibilityMatrix.md)。
 
 ## 4. Profile
 
