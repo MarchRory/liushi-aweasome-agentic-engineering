@@ -10,6 +10,11 @@ const PREPARE_SCHEMA_VERSION = "liushi.codex-host-smoke.prepare.v5";
 const ACTIVATION_PLAN_SCHEMA_VERSION = "liushi.codex-host-smoke.activation-plan.v2";
 const CODEX_EXEC_ISSUE_URL = "https://github.com/openai/codex/issues/18607";
 const MAX_JSON_BYTES = 1024 * 1024;
+// 与 Codex 能力探测共用版本语法，并单独校验版本标记的边界。
+const CODEX_VERSION_PATTERN = /\d+(?:\.\d+){1,3}(?:[-+][\w.-]+)?/u;
+const CODEX_VERSION_VALUE_PATTERN = new RegExp(`^${CODEX_VERSION_PATTERN.source}$`, "u");
+const CODEX_VERSION_SEARCH_PATTERN = new RegExp(CODEX_VERSION_PATTERN.source, "gu");
+const CODEX_VERSION_ADJACENCY_PATTERN = /[\p{L}\p{N}_./\\+-]/u;
 const POSITIVE_SCENARIO = {
   id: "positive_write_set",
   target: "test/utils.test.ts",
@@ -54,9 +59,38 @@ export function inspectCodexHostSmokeVersion(executable) {
 }
 
 export function assertCodexHostSmokeVersion(manifest, actualVersion) {
-  if (typeof actualVersion !== "string" || !actualVersion.includes(manifest.codexProbe.version)) {
+  const expectedVersion = manifest?.codexProbe?.version;
+  const extractedVersion = extractCodexHostSmokeVersion(actualVersion);
+  if (
+    !isCompleteCodexHostSmokeVersion(expectedVersion) ||
+    extractedVersion === undefined ||
+    extractedVersion !== expectedVersion
+  ) {
     throw new Error("Codex executable 版本已偏离 Prepare Manifest。");
   }
+}
+
+function extractCodexHostSmokeVersion(actualVersion) {
+  if (typeof actualVersion !== "string") return undefined;
+  const matches = [...actualVersion.matchAll(CODEX_VERSION_SEARCH_PATTERN)];
+  if (matches.length !== 1) return undefined;
+
+  const match = matches[0];
+  const version = match[0];
+  const start = match.index ?? -1;
+  if (start < 0) return undefined;
+  const end = start + version.length;
+  if (hasAdjacentVersionCharacter(actualVersion[start - 1])) return undefined;
+  if (hasAdjacentVersionCharacter(actualVersion[end])) return undefined;
+  return version;
+}
+
+function isCompleteCodexHostSmokeVersion(value) {
+  return typeof value === "string" && CODEX_VERSION_VALUE_PATTERN.test(value);
+}
+
+function hasAdjacentVersionCharacter(value) {
+  return value !== undefined && CODEX_VERSION_ADJACENCY_PATTERN.test(value);
 }
 
 export function getCodexHostSmokeScenarios(activationPlan) {

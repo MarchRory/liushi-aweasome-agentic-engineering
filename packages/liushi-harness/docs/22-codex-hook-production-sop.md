@@ -25,7 +25,7 @@ Human 在接入前必须确认：
 liushi-harness hook probe --executor codex [--executable <path-or-command>] --json
 ```
 
-Probe 通过 `shell=false` 对选定 executable 执行 `--version`、`--help` 和 `features list`，每条命令都有固定超时与输出上限，不启动模型、不读取凭据、不写入项目。报告会记录实际 executable 和每条参数；`hookFramework=verified` 只表示功能列表包含格式完整且启用的 `hooks` 行，不证明 PreToolUse、PostToolUse 或 Native stdin 已在 Host 中运行。具体能力只接受帮助文本中独立、非否定的显式声明。报告中的 `verified` 仅表示对应静态证据，`productionVerified` 当前固定为 `false`；找不到、Access Denied、超时、输出超限、非零退出、空输出或未知版本必须按未验证处理。
+Probe 通过 `shell=false` 对选定 executable 执行 `--version`、`--help` 和 `features list`，每条命令都有固定超时与输出上限，不启动模型、不读取凭据、不写入项目。报告会记录实际 executable 和每条参数；`hookFramework=verified` 只表示功能列表包含格式完整且启用的 `hooks` 行，不证明 PreToolUse、PostToolUse 或 Native stdin 已在 Host 中运行。具体能力只接受帮助文本中独立、非否定的显式声明。报告中的 `verified` 仅表示对应静态证据；静态 Probe Schema 的 `productionVerified` 当前固定为 `false`，不属于 Host Result v2。找不到、Access Denied、超时、输出超限、非零退出、空输出或未知版本必须按未验证处理。
 
 在目标仓库或公共层根目录执行：
 
@@ -93,11 +93,11 @@ corepack pnpm@10.23.0 smoke:codex-host:verify-result -- `
   --activation-digest sha256:<digest>
 ```
 
-`verify-result` 是只读、关闭式结果门。它同时校验精确 Hook 配置与 Binding、唯一正向 Git 差异、闭合 Action Journal、对应 Trace、负向授权拒绝和负向目标零写入。正向 Pre/Post 必须属于同一个 executor、session、turn、tool call 和 invocation，并绑定相同工具、目标及输入；负向 Pre 必须来自同一 session、精确指向由 Task ID 唯一派生的挑战目标、使用独立 invocation，且不能出现对应 Post。挑战文件未创建是合法的零写入状态，其他读取错误仍会使验收失败。持久化证据只保存宿主标识摘要，不保存原始 session、turn 或 tool call ID；Action、Command、Correlation 和 Trace/Span 标识从结构化 Workspace/Task invocation scope 摘要派生。只有返回 `productionVerified=true` 才能声明该精确 TUI Host Scope 通过。
+`verify-result` 是只读、关闭式的 Host Result v2 结果门。它同时校验精确 Hook 配置与 Binding、唯一正向 Git 差异、闭合 Action Journal、对应 Trace、负向授权拒绝和负向目标零写入。正向 Pre/Post 必须属于同一个 executor、session、turn、tool call 和 invocation，并绑定相同工具、目标及输入；负向 Pre 必须来自同一 session、精确指向由 Task ID 唯一派生的挑战目标、使用独立 invocation，且不能出现对应 Post。挑战文件未创建是合法的零写入状态，其他读取错误仍会使验收失败。结果返回 `hostEvidenceVerified=true`、`matrixSupportClaim=not_evaluated`、`verifiedAt`、Prepare/Plan/Probe 摘要和 `verificationEnvironment`，不返回 `productionVerified`。运行时实际读取 Node 的 platform/arch，并要求与 Prepare Manifest 精确一致后才通过；持久化证据只保存宿主标识摘要，不保存原始 session、turn 或 tool call ID。Host Result 只是受验来源，不自行声明 Matrix 支持等级。
 
 该门能够防止跨会话拼接证据并发现普通持久化漂移，但当前没有外部签名或远端证明锚点；能够同时改写本地证据和全部摘要的本机高权限攻击者不在此边界内。
 
-2026-07-15 的已验证快照为 Windows x64、Codex `0.144.0-alpha.4`、`gpt-5.6-sol` 和 `unjs/defu@82632b66`。Activation Digest 为 `sha256:c8753d182d522f4e5634a75dcb6df2bcde308b3e34b46042d63e230b5418e020`，规范化结果文件 SHA-256 为 `d2c96e2c48c819536047a433b10b2c400738e2a41456341aeb655ca44c2e923a`，共通过 13 项检查。该快照不是其他 Codex 版本、工具或平台的兼容性声明。
+仓库中记录的真实历史 Host Smoke 属于旧版结果，不能当作 Host Result v2 的可追溯 Artifact。当前实现已升级结果契约和运行时环境绑定，但仓库没有可追溯的真实 v2 Host Artifact；因此不能把旧快照、测试 Fixture 或实现代码转写为其他 Codex 版本、工具、平台或可发布 Matrix 的兼容性声明。
 
 Hook 的原生入口是：
 
@@ -124,11 +124,11 @@ liushi-harness hook handle --executor codex
 - Binding、Digest、Write Set、G2/G4、R4、Action Journal 和 Trace 由 Harness Core 确定性校验。
 - `hook config` 是只读配置投影，`hook handle` 是原生 stdin/stdout Wrapper。
 - `hook probe` 是只读、版本化的静态能力报告，不把静态证据升级为生产支持。
-- `verify-result` 将交互式 TUI 的正向、负向和 Harness 审计证据收敛为单一生产结果门。
+- `verify-result` 将交互式 TUI 的正向、负向和 Harness 审计证据收敛为 Host Result v2 结果门；它提供受验来源，不单独形成 Matrix 支持等级。
 
 当前不能声明：
 
 - 已完成所有 Codex 工具的完整拦截或完整安全隔离。
-- 未经 `verify-result` 的精确 Codex TUI、Claude-compatible、CatPaw、Codex Desktop/App Server 动态验证或自动安装。
+- 未经 Host Result v2 `verify-result` 的精确 Codex TUI、Claude-compatible、CatPaw、Codex Desktop/App Server 动态验证或自动安装。
 - 已在所有企业多仓、公共层和受信任项目环境中完成端到端验证。
 - Hook 已经替代 Human 审批、Git/CI 校验或业务代码评审。

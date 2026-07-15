@@ -14,11 +14,11 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Codex `0.144.0-alpha.4` 已在 Windows 交互式 TUI 完成同会话正负路径 Host Smoke；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。
+**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证和 Codex Compatibility Evidence Projector 的源码实现也已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。实现落地不等于已经存在可追溯的真实 v2 Host Artifact。
 
 当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply 与 Installation Revision 已实现；自动 Trust/Binding、Rollback/Uninstall、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
 
-Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。静态 Probe 不具备生产语义；只有同一精确 Scope 的 Contract、Smoke、Negative 与真实 Host Evidence 闭合后，后续 Application 才能形成可消费的支持声明。当前尚未把 Codex Host Smoke 投影为可发布 Matrix Evidence。
+Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Codex Compatibility Evidence Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并只投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest。它不生成 ContractTest 或 ProductionE2e；当前缺少 Contract Evidence、可追溯的真实 v2 Host Artifact 以及 Matrix Store/CLI，因此尚未形成可发布版本矩阵。
 
 ## 2. Adapter 边界
 
@@ -81,6 +81,8 @@ Capability Matrix 至少包含：
 - Windows 路径和 Shell。
 
 每项保存 `support`、检测证据、可复核 Locator、执行器精确版本、Host Surface、Adapter/Distribution、配置摘要、最后验证时间和已知限制。时间只用于审计，不触发自动失效算法。完整协议见 [执行器兼容性矩阵](./engineering/executorCompatibilityMatrix.md)。
+
+当前 Codex 投影的精确 Scope 只包含 Codex Adapter、Codex CLI Distribution、npm Tarball/Adapter Digest、Codex 版本、Interactive TUI、实测 OS/Architecture 和配置 Digest。Activation Plan 中的 Model 与 Sandbox 信息只服务于 Human 激活流程，不会被推断为 Matrix 的 `modelId` 或 `permissionMode`。
 
 ## 4. Profile
 
@@ -259,7 +261,7 @@ Probe 分三层：
 - Frontier Model 不可用时不静默降级顶层 Agent。
 - Uninstall 不删除 Human 修改文件。
 
-Codex 额外执行完整 E2E；Claude-compatible/CatPaw 先执行 Fixture Smoke 和 Negative Test。
+Codex 后续仍需补齐 Contract Evidence 和真实 Host E2E；当前 Codex Projector 不生成 `contract_test` 或 `production_e2e`。Claude-compatible/CatPaw 仍需各自执行 Fixture Smoke 和 Negative Test，不能继承 Codex 证据。
 
 Instruction、Memory 和 Agent 的完整平台契约分别见 [17 Instruction Projection](./17-instruction-projection.md)、[18 Memory Runtime](./18-memory-runtime-and-curation.md) 和 [19 Agent Registry](./19-agent-registry-and-platform-rendering.md)。
 
@@ -267,9 +269,9 @@ Instruction、Memory 和 Agent 的完整平台契约分别见 [17 Instruction Pr
 
 README 和发布信息只能使用以下措辞：
 
-- `production`：Contract、E2E、负向权限和真实任务均通过。
+- `production`：Contract、E2E、负向权限和真实任务均通过，且 Scope 字段完整。
 - `compatible`：共同 Contract 和 Smoke Test 通过，列出差异。
 - `experimental`：仅部分能力验证，不承诺生产保证。
 - `unsupported`：明确阻止安装对应 Profile。
 
-初始版本预期：Codex `production`，Claude Code `compatible`，CatPaw 在获得真实环境验证前保持 `experimental`。
+当前 Codex Evidence Projector 形成的证据只有部分正向结果，固定 Policy 的最高编译结果为 `experimental`；不得据此声明 Codex `compatible` 或 `production`。Claude-compatible/CatPaw 在各自获得真实环境和完整证据前也不能声明更高等级。

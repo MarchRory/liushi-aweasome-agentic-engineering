@@ -18,19 +18,19 @@ Status: Implementation-aware Architecture Baseline
 
 ## Runtime Design
 
-| 文档                                                               | 评审重点                                            |
-| ------------------------------------------------------------------ | --------------------------------------------------- |
-| [07 Workspace 与多仓组织](./07-workspace-and-multi-repo.md)        | 多仓 Graph、公共层、Read/Write Set、Worktree、Saga  |
-| [08 执行器适配](./08-executor-adapters.md)                         | Codex、Claude-compatible、CatPaw 能力矩阵与支持声明 |
-| [09 Hooks 与 Agent Runtime](./09-hooks-and-agent-runtime.md)       | Canonical Hook、角色权限、失败和降级语义            |
-| [10 模型路由与评估](./10-model-routing-and-evaluation.md)          | 顶层 SOTA、角色路由、升级、Fallback 与 Eval         |
-| [11 Skills 与 Connectors](./11-skills-and-connectors.md)           | Skill 治理、确定性脚本、MCP、Wiki、Obsidian         |
-| [12 验证与 Evidence](./12-verification-and-evidence.md)            | Validator、独立验证、EvidenceBundle、Waiver         |
-| [13 学习与知识治理](./13-learning-and-knowledge.md)                | Candidate、知识作用域、失效、晋升与污染控制         |
-| [16 Rules 与代码合规](./16-rules-and-code-compliance.md)           | Rule Catalog、架构机制、代码指导、执行与例外        |
-| [17 Instruction Projection](./17-instruction-projection.md)        | AGENTS/CLAUDE 指导源、编译、投影、漂移与所有权      |
-| [18 Memory Runtime](./18-memory-runtime-and-curation.md)           | 记忆分层、写入标准、检索、恢复与 Memory Curator     |
-| [19 Agent Registry](./19-agent-registry-and-platform-rendering.md) | Agent Contract、权限、模型、Skill 与平台渲染        |
+| 文档                                                               | 评审重点                                                      |
+| ------------------------------------------------------------------ | ------------------------------------------------------------- |
+| [07 Workspace 与多仓组织](./07-workspace-and-multi-repo.md)        | 多仓 Graph、公共层、Read/Write Set、Worktree、Saga            |
+| [08 执行器适配](./08-executor-adapters.md)                         | Codex、Claude-compatible、CatPaw 能力矩阵、证据投影与支持声明 |
+| [09 Hooks 与 Agent Runtime](./09-hooks-and-agent-runtime.md)       | Canonical Hook、角色权限、失败和降级语义                      |
+| [10 模型路由与评估](./10-model-routing-and-evaluation.md)          | 顶层 SOTA、角色路由、升级、Fallback 与 Eval                   |
+| [11 Skills 与 Connectors](./11-skills-and-connectors.md)           | Skill 治理、确定性脚本、MCP、Wiki、Obsidian                   |
+| [12 验证与 Evidence](./12-verification-and-evidence.md)            | Validator、独立验证、EvidenceBundle、Waiver                   |
+| [13 学习与知识治理](./13-learning-and-knowledge.md)                | Candidate、知识作用域、失效、晋升与污染控制                   |
+| [16 Rules 与代码合规](./16-rules-and-code-compliance.md)           | Rule Catalog、架构机制、代码指导、执行与例外                  |
+| [17 Instruction Projection](./17-instruction-projection.md)        | AGENTS/CLAUDE 指导源、编译、投影、漂移与所有权                |
+| [18 Memory Runtime](./18-memory-runtime-and-curation.md)           | 记忆分层、写入标准、检索、恢复与 Memory Curator               |
+| [19 Agent Registry](./19-agent-registry-and-platform-rendering.md) | Agent Contract、权限、模型、Skill 与平台渲染                  |
 
 ## Operations
 
@@ -66,4 +66,5 @@ Status: Implementation-aware Architecture Baseline
 - [npm Tarball 干净安装 Smoke](./engineering/packageTarballSmoke.md)
 - [固定公开项目 CodingTask Cell Smoke](./engineering/publicProjectSmoke.md)
 - [Codex Host Smoke Prepare](./engineering/codexHostSmokePrepare.md)
+- [Codex 兼容性证据投影](./engineering/codexCompatibilityEvidenceProjection.md)
 - [Managed File 安装协议](./engineering/managedFileInstallation.md)

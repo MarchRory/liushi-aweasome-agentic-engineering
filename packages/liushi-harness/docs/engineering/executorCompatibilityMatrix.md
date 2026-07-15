@@ -30,6 +30,10 @@ Matrix 不允许跨以下字段传播结论：
 
 CatPaw 可以消费 Claude-compatible Adapter，但不能继承 Claude Code 的 Evidence。Windows TUI Evidence 也不能推广到 Linux、Desktop、App Server 或相邻版本。
 
+## Codex 当前投影边界
+
+Codex Compatibility Evidence Projector 当前只投影以下精确 Scope：Codex Adapter、Codex CLI Distribution、npm Tarball/Adapter Digest、Codex 版本、Interactive TUI、实测 OS/Architecture 和平台配置 Digest。它不会从 Activation Plan 推断运行时 Model 或 Permission，因此输出的 `ExecutorHostScope` 不包含 `modelId` 和 `permissionMode`。Host Result v2 的 `matrixSupportClaim=not_evaluated` 只表示它是受验来源，不是 Matrix 的支持等级。
+
 ## Evidence
 
 每份 `ExecutorCapabilityEvidence` 必须包含：
@@ -63,6 +67,8 @@ Repository 与 Runtime Store Locator 必须是无 `..`、无绝对路径、统�
 
 `production` 是 `compatible` 的严格超集，还要求每项 Capability 都有真实 `production_e2e` Evidence，并要求 Scope 明确绑定 Model、Permission 和 Configuration Digest。静态 Probe 的 `verified` 不能单独生成 Production 声明。
 
+当前 Codex 投影固定生成 7 条 Evidence：1 条 `static_probe`、4 条 `smoke_test` 和 2 条 `negative_test`；不生成 `contract_test` 或 `production_e2e`。由于 `managed_file_mutation_hooks.v1` 的 Compatible 要求包含 Contract Evidence，Production 还要求 Model、Permission 和 Production E2E，当前固定 Policy 的最高编译等级只能是 `experimental`，不能声明 `compatible` 或 `production`。
+
 ## 当前边界
 
-当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算。Codex Static Probe 与 Host Smoke 的脱敏 Evidence 投影、Matrix Store/CLI，以及 Claude-compatible/CatPaw Adapter 仍是后续切片。
+当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算，也已实现 Codex Static Probe/Host Result v2 的脱敏 Evidence 投影。投影器会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；输出不含绝对路径及原始 session、turn、tool call 标识。仓库当前没有可追溯的真实 v2 Host Artifact，Matrix Store/CLI、Contract Evidence 和 Claude-compatible/CatPaw Adapter 仍是后续切片。

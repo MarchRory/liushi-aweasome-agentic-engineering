@@ -4,12 +4,19 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { ResultStatus } from "../../src/common/index.js";
+import { ExecutorEvidenceLocatorKind } from "../../src/domain/executorCompatibility/index.js";
+import {
+  CodexCompatibilityEvidenceProjectorAdapter,
+  Rfc8785Sha256DigestAdapter,
+} from "../../src/infrastructure/index.js";
 import { createCodexHostSmokeActivationPlan } from "../../scripts/codexHostSmoke/activation/index.mjs";
 import { createCodexHostSmokeManifest } from "../../scripts/codexHostSmoke/manifest/index.mjs";
 import { verifyCodexHostSmokeResult } from "../../scripts/codexHostSmoke/resultVerification/index.mjs";
 import { calculateDigest } from "../../scripts/publicProjectSmoke/digest/index.mjs";
 
 const temporaryRoots = [];
+const VERIFIED_AT = "2026-07-15T08:09:10.000Z";
 
 afterEach(async () => {
   await Promise.all(
@@ -24,17 +31,86 @@ describe("Codex Host Smoke Result Verification", () => {
     const result = await verifyCodexHostSmokeResult(fixture.input, fixture.dependencies);
 
     expect(result).toMatchObject({
-      schemaVersion: "liushi.codex-host-smoke.result-verification.v1",
+      schemaVersion: "liushi.codex-host-smoke.result-verification.v2",
       status: "verified",
-      productionVerified: true,
+      hostEvidenceVerified: true,
+      matrixSupportClaim: "not_evaluated",
       hostScope: "interactive_tui",
+      verificationEnvironment: { platform: "win32", architecture: "x64" },
+      verifiedAt: VERIFIED_AT,
+      prepareManifestDigest: calculateDigest(fixture.manifest),
+      activationPlanDigest: calculateDigest(fixture.activationPlan),
+      codexProbeDigest: calculateDigest(fixture.manifest.codexProbe),
       activationDigest: fixture.input.activationDigest,
     });
-    expect(result.checks).toContain("positive_action_journal_closed");
-    expect(result.checks).toContain("positive_same_tool_invocation");
-    expect(result.checks).toContain("negative_authorization_denied");
-    expect(result.checks).toContain("negative_exact_target_same_session");
-    expect(result.checks).toContain("negative_no_post");
+    expect(result).not.toHaveProperty("productionVerified");
+    expect(result.checks).toEqual([
+      "packet_digest",
+      "codex_version",
+      "standard_clone_head_detached",
+      "trusted_hook_config",
+      "hook_binding",
+      "positive_exact_git_diff",
+      "positive_action_journal_closed",
+      "positive_apply_patch_trace",
+      "positive_same_tool_invocation",
+      "negative_authorization_denied",
+      "negative_exact_target_same_session",
+      "negative_no_post",
+      "negative_target_unchanged",
+    ]);
+  });
+
+  it("真实 Host Producer 结果能够通过脱敏 Evidence 投影", async () => {
+    const fixture = await createResultFixture();
+    const hostResult = await verifyCodexHostSmokeResult(fixture.input, fixture.dependencies);
+    const projector = new CodexCompatibilityEvidenceProjectorAdapter(
+      new Rfc8785Sha256DigestAdapter(),
+    );
+
+    const projection = projector.project({
+      prepareManifest: fixture.manifest,
+      activationPlan: fixture.activationPlan,
+      hostResult,
+      artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
+    });
+
+    if (projection.status === ResultStatus.Failure) {
+      throw new Error(`${projection.error.message} ${JSON.stringify(projection.error.details)}`, {
+        cause: projection.error,
+      });
+    }
+    expect(projection.status).toBe(ResultStatus.Success);
+    expect(projection.value.evidence).toHaveLength(7);
+    expect(projection.value.artifact.scope).not.toHaveProperty("modelId");
+    expect(projection.value.artifact.scope).not.toHaveProperty("permissionMode");
+  });
+
+  it("拒绝实际采集的平台与 Prepare Manifest 不一致", async () => {
+    const fixture = await createResultFixture();
+    const dependencies = {
+      ...fixture.dependencies,
+      inspectEnvironment: () => ({ platform: "linux", architecture: "x64" }),
+    };
+
+    await expect(verifyCodexHostSmokeResult(fixture.input, dependencies)).rejects.toThrow(
+      "verificationEnvironment.platform 与 Prepare Manifest executionEnvironment.platform 不一致",
+    );
+  });
+
+  it.each([
+    ["架构为空", { platform: "win32", architecture: "" }, "architecture"],
+    ["平台类型无效", { platform: 42, architecture: "x64" }, "platform"],
+  ])("拒绝实际采集的%s", async (_label, environment, field) => {
+    const fixture = await createResultFixture();
+    const dependencies = {
+      ...fixture.dependencies,
+      inspectEnvironment: () => environment,
+    };
+
+    await expect(verifyCodexHostSmokeResult(fixture.input, dependencies)).rejects.toThrow(
+      `verificationEnvironment.${field} 必须是非空字符串`,
+    );
   });
 
   it("缺少正向 Trace 时关闭式拒绝", async () => {
@@ -183,6 +259,15 @@ async function createResultFixture() {
   const manifestFile = join(controlRoot, "prepareManifest.json");
   const intendedHookConfigFile = join(worktreeRoot, ".codex", "hooks.json");
   const codexExecutable = join(root, "codex.exe");
+  const cliEntrypoint = join(
+    consumerRoot,
+    "node_modules",
+    "liushi-harness",
+    "dist",
+    "bootstrap",
+    "cli",
+    "cliEntrypoint.js",
+  );
   await Promise.all([
     mkdir(controlRoot, { recursive: true }),
     mkdir(join(worktreeRoot, ".codex"), { recursive: true }),
@@ -210,7 +295,7 @@ async function createResultFixture() {
     codexExecutable,
     codexHome,
     nodeExecutable: "C:/node.exe",
-    cliEntrypoint: "C:/consumer/cliEntrypoint.js",
+    cliEntrypoint,
     storeRoot,
     worktreeRoot,
     candidateConfigFile,
@@ -229,7 +314,15 @@ async function createResultFixture() {
     package: {
       name: "liushi-harness",
       version: "0.0.0",
-      artifact: { sha256: `sha256:${"1".repeat(64)}` },
+      artifact: {
+        fileName: "liushi-harness-0.0.0.tgz",
+        sha256: `sha256:${"1".repeat(64)}`,
+        npmIntegrity: "sha512-fixture",
+        npmShasum: "1".repeat(40),
+        size: 1,
+        unpackedSize: 2,
+        entryCount: 3,
+      },
     },
     executionEnvironment: { nodeVersion: "v20", platform: "win32", architecture: "x64" },
     paths: {
@@ -247,11 +340,27 @@ async function createResultFixture() {
       clean: true,
       detached: true,
       gitEntryKind: "directory",
-      baselineChecks: [],
+      baselineChecks: [
+        { checkId: "baseline-install", status: "passed" },
+        { checkId: "baseline-test", status: "passed" },
+      ],
     },
     codexProbe: {
+      schemaVersion: "2.0.0",
       executable: codexExecutable,
       version: "0.144.0-alpha.4",
+      overallStatus: "verified",
+      hookFrameworkStatus: "verified",
+      productionVerified: false,
+      commands: [
+        { kind: "version", executable: codexExecutable, args: ["--version"] },
+        { kind: "help", executable: codexExecutable, args: ["--help"] },
+        {
+          kind: "features_list",
+          executable: codexExecutable,
+          args: ["features", "list"],
+        },
+      ],
     },
     candidateHookConfig: { path: candidateConfigFile, digest: candidateConfigDigest },
     activationPlan,
@@ -311,6 +420,8 @@ async function createResultFixture() {
 
   return {
     input: { manifestPath: manifestFile, activationDigest: manifest.activation.digest },
+    manifest,
+    activationPlan,
     storeRoot,
     traceFile,
     reservationFiles,
@@ -333,6 +444,8 @@ async function createResultFixture() {
         positiveContent: "fixture\n// liushi-host-smoke-positive\n",
         negativeContent: "fixture\n",
       }),
+      inspectEnvironment: () => ({ platform: "win32", architecture: "x64" }),
+      now: () => VERIFIED_AT,
     },
   };
 }

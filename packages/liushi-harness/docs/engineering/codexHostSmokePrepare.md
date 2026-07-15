@@ -29,6 +29,8 @@ corepack pnpm@10.23.0 smoke:codex-host:prepare -- `
 
 `--model` 必须由 Human 显式选择并进入 Activation Digest。上例使用当前旗舰 `gpt-5.6-sol`；Host Smoke 的任务很窄，Activation Plan 固定使用 `low` reasoning effort 控制成本。[OpenAI Model guidance](https://developers.openai.com/api/docs/guides/latest-model)
 
+Activation Plan 中的 Model 和 `--sandbox workspace-write` 只用于 Human 激活计划，不会被 Host Result 或 Evidence Projector 推断为 Matrix Scope 的 `modelId` 或 `permissionMode`。
+
 Human 批准前必须使用 Manifest 中的精确 Digest 执行只读复核：
 
 ```powershell
@@ -45,7 +47,7 @@ corepack pnpm@10.23.0 smoke:codex-host:verify -- `
 2. 从当前包执行真实 `npm pack`，由独立 Consumer 安装 Tarball。
 3. 通过本地普通 Clone 创建固定 Revision、Detached 且 Clean 的独立 Working Tree，并要求 `.git` 为真实目录。Codex 当前会静默忽略 linked worktree 根目录中的项目 Hooks，因此 Prepare 禁止使用 `.git` 文件形态。[openai/codex#27133](https://github.com/openai/codex/issues/27133)
 4. 通过安装后的 CLI 建立 G1/G4 自动化模拟 Gate 协议，但不执行 Hook Binding。
-5. 通过安装后的 CLI 对指定 Codex 执行静态 `hook probe`；要求报告 Schema v2、三条命令、`overallStatus=verified`、`hookFramework=verified` 和 `productionVerified=false`。
+5. 通过安装后的 CLI 对指定 Codex 执行静态 `hook probe`；要求报告 Schema v2、三条命令、`overallStatus=verified`、`hookFramework=verified` 和静态 Probe 字段 `productionVerified=false`。
 6. 通过安装后的 CLI 获取原生 Hook Projection，将 Handler 绑定到实际 Node、Tarball CLI Entrypoint 和 Worktree 内的 `.liushi-harness-runtime`。Prepare 将该目录精确加入临时普通 Clone 的 `.git/info/exclude`，使 `workspace-write` 可以写审计状态且不污染业务 Git 差异；不得把 Runtime 放到 Worktree 外或受 Sandbox 保护的 `.codex` 内。
 7. 只将候选配置写入 `control/candidateHooks.json`，并生成 `control/prepareManifest.json`。
 8. 生成 `control/activationPlan.json`，固定 trust 片段、Hook 写入、Binding、交互式 TUI 启动参数、正负场景 Prompt 和回滚边界，但不执行其中任何动作。
@@ -70,7 +72,9 @@ corepack pnpm@10.23.0 smoke:codex-host:verify-result -- `
   --activation-digest sha256:<digest>
 ```
 
-只有该命令返回 `productionVerified=true` 才表示精确 TUI、Codex 版本、项目和 Activation Digest 通过。验证器要求正向目标只有一行差异、Action Journal 完整闭合、Trace 绑定 `apply_patch`，同时要求负向目标零写入并存在 `authorization_denied` Command Receipt；模型自述、UI Active、退出码和单独文件差异均不是充分证据。
+该命令返回 Host Result v2：`hostEvidenceVerified=true`、`matrixSupportClaim=not_evaluated`、`verifiedAt`、Prepare/Plan/Probe 摘要和 `verificationEnvironment`，不再返回 `productionVerified`。运行时实际读取 Node 的 platform/arch，并要求与 Prepare Manifest 精确一致后才通过。验证器要求正向目标只有一行差异、Action Journal 完整闭合、Trace 绑定 `apply_patch`，同时要求负向目标零写入并存在 `authorization_denied` Command Receipt；模型自述、UI Active、退出码和单独文件差异均不是充分证据。Host Result 只是受验来源，不自行声明 Matrix 支持等级。
+
+仓库当前没有可追溯的真实 v2 Host Artifact。历史 Host Smoke 结果属于旧版结果；完成实现、测试 Fixture 或生成协议，不等于已经形成可发布版本矩阵。重新执行 v2 Host 后，还需补 Contract Evidence 和 Matrix Store/CLI。
 
 ## 激活摘要
 

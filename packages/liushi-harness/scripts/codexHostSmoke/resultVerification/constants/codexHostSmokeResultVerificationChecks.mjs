@@ -1,0 +1,15 @@
+export const CODEX_HOST_SMOKE_RESULT_VERIFICATION_CHECKS = Object.freeze([
+  "packet_digest",
+  "codex_version",
+  "standard_clone_head_detached",
+  "trusted_hook_config",
+  "hook_binding",
+  "positive_exact_git_diff",
+  "positive_action_journal_closed",
+  "positive_apply_patch_trace",
+  "positive_same_tool_invocation",
+  "negative_authorization_denied",
+  "negative_exact_target_same_session",
+  "negative_no_post",
+  "negative_target_unchanged",
+]);
