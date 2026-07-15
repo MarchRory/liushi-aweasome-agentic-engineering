@@ -9,6 +9,7 @@ import {
   validateAllowedCliOptions as validateAllowedOptions,
 } from "./cliCommandParsing.js";
 import { parseInitCliCommand } from "./initCliCommandParser.js";
+import { parseExecutorCompatibilityCliCommand } from "./executorCompatibilityCliCommandParser.js";
 import {
   CliOptionName,
   parseAbsolutePath,
@@ -47,6 +48,12 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
   }
   const init = parseInitCliCommand(collected, outputFormat, storeRoot);
   if (init !== undefined) return init;
+  const executorCompatibility = parseExecutorCompatibilityCliCommand(
+    collected,
+    outputFormat,
+    storeRoot,
+  );
+  if (executorCompatibility !== undefined) return executorCompatibility;
   if (isExactCommand(collected.positionals, ["task", "create"])) {
     validateAllowedOptions(
       collected,

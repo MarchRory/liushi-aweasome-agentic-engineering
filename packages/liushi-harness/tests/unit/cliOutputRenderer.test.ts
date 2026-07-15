@@ -10,4 +10,17 @@ describe("CLI 错误退出码", () => {
       CLI_EXIT_CODE_OUTCOME_UNKNOWN,
     );
   });
+
+  it.each([
+    HarnessErrorCode.ExecutorCompatibilityEvidenceNotFound,
+    HarnessErrorCode.ExecutorCompatibilityMatrixNotFound,
+  ])("为 %s 映射 NotFound 退出码", (errorCode) => {
+    expect(mapErrorExitCode(errorCode)).toBe(3);
+  });
+
+  it("为 Executor Compatibility 提交结果未知映射独立退出码", () => {
+    expect(mapErrorExitCode(HarnessErrorCode.ExecutorCompatibilityCommitOutcomeUnknown)).toBe(
+      CLI_EXIT_CODE_OUTCOME_UNKNOWN,
+    );
+  });
 });

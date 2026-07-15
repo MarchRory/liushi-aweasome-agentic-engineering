@@ -40,4 +40,6 @@ export const CLI_USAGE_LINES: readonly string[] = [
   "liushi-harness hook config --executor codex",
   "liushi-harness hook handle --executor codex [--store <path>]",
   "liushi-harness hook probe --executor codex [--executable <path-or-command>] [--json]",
+  "liushi-harness executor compatibility compile --executor codex --prepare <prepare.json> --activation <activation.json> --result <hostResult.json> [--store <path>] [--json]",
+  "liushi-harness executor compatibility query --matrix-digest <sha256:64hex> [--store <path>] [--json]",
 ];

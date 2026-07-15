@@ -67,4 +67,5 @@ Status: Implementation-aware Architecture Baseline
 - [固定公开项目 CodingTask Cell Smoke](./engineering/publicProjectSmoke.md)
 - [Codex Host Smoke Prepare](./engineering/codexHostSmokePrepare.md)
 - [Codex 兼容性证据投影](./engineering/codexCompatibilityEvidenceProjection.md)
+- [Executor Compatibility Store 与 CLI](./engineering/executorCompatibilityStore.md)
 - [Managed File 安装协议](./engineering/managedFileInstallation.md)

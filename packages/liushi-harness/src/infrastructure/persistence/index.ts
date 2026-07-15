@@ -4,3 +4,6 @@ export * from "./fileCommandGatewayStore/index.js";
 export * from "./fileHookBindingStore/index.js";
 export * from "./fileCodingTaskStore/index.js";
 export * from "./fileEvidenceBundleStore/index.js";
+export * from "./executorCompatibilityStoreSupport/index.js";
+export * from "./fileExecutorCompatibilityEvidenceStore/index.js";
+export * from "./fileExecutorCompatibilityMatrixStore/index.js";

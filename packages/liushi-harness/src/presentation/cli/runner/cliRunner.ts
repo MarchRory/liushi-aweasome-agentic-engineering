@@ -1,6 +1,5 @@
 import { isRuleResolutionBlocked } from "#application/index.js";
 import { ActorKind, HarnessError, HarnessErrorCode, ResultStatus } from "#common/index.js";
-
 import { parseCliArguments, requestsJsonOutput } from "../parser/index.js";
 import {
   CliCommand,
@@ -18,6 +17,7 @@ import {
 } from "../contracts/index.js";
 import {
   executeCellRun,
+  executeExecutorCompatibilityCommand,
   executeHookBind,
   executeHookConfig,
   executeHookHandle,
@@ -120,6 +120,9 @@ async function executeCommand(
       return executeHookProbe(command, createApplication(command, dependencies), dependencies);
     case CliCommand.HookHandle:
       return executeHookHandle(command, createApplication(command, dependencies), dependencies);
+    case CliCommand.ExecutorCompatibilityCompile:
+    case CliCommand.ExecutorCompatibilityQuery:
+      return executeExecutorCompatibilityCommand(command, dependencies);
   }
 }
 

@@ -190,6 +190,8 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.ActionNotFound:
     case HarnessErrorCode.CodingTaskNotFound:
     case HarnessErrorCode.EvidenceBundleNotFound:
+    case HarnessErrorCode.ExecutorCompatibilityEvidenceNotFound:
+    case HarnessErrorCode.ExecutorCompatibilityMatrixNotFound:
     case HarnessErrorCode.InstallationRevisionNotFound:
       return CLI_EXIT_CODE_NOT_FOUND;
     case HarnessErrorCode.TaskAlreadyExists:
@@ -216,6 +218,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.ActionExecutionLockReleaseUnknown:
     case HarnessErrorCode.CommandGatewayCommitOutcomeUnknown:
     case HarnessErrorCode.EvidenceBundleCommitOutcomeUnknown:
+    case HarnessErrorCode.ExecutorCompatibilityCommitOutcomeUnknown:
     case HarnessErrorCode.InstallationCommitOutcomeUnknown:
       return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }

@@ -33,7 +33,7 @@ Codex Compatibility Evidence Projector 把已经完成受验的 Codex Host Packe
 
 因此 Locator 不能夹带 Workspace、Task、PlanRisk、Actor、Model、绝对路径、`..` 或 Secret；未知 Kind 关闭式失败。
 
-当前不存在单独的公开投影 CLI 或 Matrix Store。Host Smoke 的准备、Human 激活和结果验证入口仍见 [Codex Host Smoke Prepare](./codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](../22-codex-hook-production-sop.md)。
+当前不公开绕过 Application 的单独投影 CLI。公开的 `executor compatibility compile` 只接收三份原始 Host JSON，并在投影成功后使用固定 Policy 编译和持久化；`query` 要求受信 Matrix Digest，重新校验 Artifact Schema、确定性重投影 Evidence 并用源码固定 Policy 编译。Host Smoke 的准备、Human 激活和结果验证入口仍见 [Codex Host Smoke Prepare](./codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](../22-codex-hook-production-sop.md)，Store 协议见 [Executor Compatibility Store 与 CLI](./executorCompatibilityStore.md)。
 
 ## 3. 关闭式校验链
 
@@ -140,11 +140,11 @@ Artifact 不保存 Manifest/Plan 的绝对路径，不保存原始 session、tur
 
 ## 9. 当前状态与下一步
 
-当前已完成 Host Result v2 运行时环境绑定和 Codex Evidence Projector 的源码实现。当前未完成的是可追溯真实 v2 Host Artifact 和可发布版本矩阵，不应把实现落地当成发布证据。
+当前已完成 Host Result v2 运行时环境绑定、Codex Evidence Projector、内容寻址 Evidence/Matrix Store 和重算查询 CLI。当前未完成的是可追溯真实 v2 Host Artifact、同 Scope Contract Evidence 和可发布版本矩阵，不应把实现落地当成发布证据。
 
 下一步按以下顺序推进：
 
 1. 重新执行 v2 Host Smoke，保存可追溯且脱敏的真实 Host Artifact。
-2. 为同一精确 Scope 补充 Contract Evidence，并重新运行固定 Policy 编译。
-3. 实现 Matrix Store/CLI，使 Evidence、Policy 和 Matrix 可以持久化、重算和查询。
+2. 为同一精确 Scope 补充 Contract Evidence，并通过现有 CLI 重新运行固定 Policy 编译。
+3. 设计安装前支持门如何消费精确 `matrixDigest`，保持 Human Gate 和失败关闭语义。
 4. 在 Codex 边界闭合后，再分别为 Claude-compatible 和 CatPaw 建立独立 Adapter、Scope 和 Evidence。

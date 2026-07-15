@@ -1,5 +1,6 @@
 export * from "./constants/index.js";
 export type * from "./contracts/index.js";
+export * from "./evidenceRecords/index.js";
 export * from "./enums/index.js";
 export * from "./locators/index.js";
 export * from "./platform/index.js";

@@ -9,6 +9,7 @@ import type {
   CanonicalHookDispatcher,
   CodexHookHandler,
   CheckRuntimeHealthUseCase,
+  CompileCodexExecutorCompatibilityUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
@@ -26,6 +27,7 @@ import type {
   ListTraceObservationsUseCase,
   ProposeArtifactUseCase,
   ProbeCodexCapabilitiesUseCase,
+  QueryExecutorCompatibilityUseCase,
   CreateInstallPlanUseCase,
   RecordApprovalUseCase,
   RecordActionIntentUseCase,
@@ -64,6 +66,10 @@ export interface HarnessApplication {
   handleCodexHook: CodexHookHandler;
   /** Codex 执行器只读能力探测。 */
   probeCodexCapabilities: ProbeCodexCapabilitiesUseCase;
+  /** 编译并持久化 Codex Executor Compatibility Matrix。 */
+  compileCodexExecutorCompatibility: CompileCodexExecutorCompatibilityUseCase;
+  /** 按 Matrix Digest 读取并重新证明 Executor Compatibility。 */
+  queryExecutorCompatibility: QueryExecutorCompatibilityUseCase;
   /** 生成并持久化不修改 Repository 的 G0 Managed Files InstallPlan。 */
   createInstallPlan: CreateInstallPlanUseCase;
   /** 应用 Human 精确批准的 G0 Managed Files InstallPlan。 */

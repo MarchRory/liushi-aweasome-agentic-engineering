@@ -1,7 +1,9 @@
-import type { ContentDigest, HarnessError, Result } from "#common/index.js";
 import type {
-  ExecutorCapabilityEvidence,
-  ExecutorEvidenceLocatorKind,
+  ExecutorCompatibilityEvidenceProjection,
+  ProjectCodexCompatibilityEvidenceInput as ApplicationProjectCodexCompatibilityEvidenceInput,
+} from "#application/ports/index.js";
+import type { ContentDigest } from "#common/index.js";
+import type {
   ExecutorEvidenceOutcome,
   ExecutorHostScope,
 } from "#domain/executorCompatibility/index.js";
@@ -48,32 +50,12 @@ export interface CodexCompatibilityEvidenceArtifact {
   readonly observations: readonly CodexCompatibilityObservation[];
 }
 
-/** Codex 兼容性证据投影的未信任边界输入。 */
-export interface ProjectCodexCompatibilityEvidenceInput {
-  /** Host Smoke Prepare Manifest 原始 JSON 值。 */
-  readonly prepareManifest: unknown;
-  /** Host Smoke Activation Plan 原始 JSON 值。 */
-  readonly activationPlan: unknown;
-  /** verify-result v2 原始 JSON 值。 */
-  readonly hostResult: unknown;
-  /** 未来持久化脱敏 Artifact 的 Locator 存储边界。 */
-  readonly artifactLocatorKind: ExecutorEvidenceLocatorKind;
-}
+/** Infrastructure 校验器与 Application Port 共享同一未信任输入契约。 */
+export type ProjectCodexCompatibilityEvidenceInput =
+  ApplicationProjectCodexCompatibilityEvidenceInput;
 
 /** Codex 兼容性证据投影的确定性输出。 */
-export interface CodexCompatibilityEvidenceProjection {
+export interface CodexCompatibilityEvidenceProjection extends ExecutorCompatibilityEvidenceProjection {
   /** 不包含绝对路径和原始宿主标识的 Artifact。 */
   readonly artifact: CodexCompatibilityEvidenceArtifact;
-  /** 脱敏 Artifact 的 RFC 8785 摘要。 */
-  readonly artifactDigest: ContentDigest;
-  /** 可以交给 Domain Compiler 的规范 Evidence。 */
-  readonly evidence: readonly ExecutorCapabilityEvidence[];
-}
-
-/** Codex 兼容性证据投影器端口。 */
-export interface CodexCompatibilityEvidenceProjector {
-  /** 校验受验来源并输出脱敏 Artifact 与规范 Evidence。 */
-  project(
-    input: ProjectCodexCompatibilityEvidenceInput,
-  ): Result<CodexCompatibilityEvidenceProjection, HarnessError>;
 }

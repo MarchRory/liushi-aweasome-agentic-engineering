@@ -42,6 +42,8 @@ describe("composition root", () => {
       "FileCodingTaskRepository",
       "FileCommandReservationStore",
       "FileEvidenceBundleStore",
+      "FileExecutorCompatibilityEvidenceStore",
+      "FileExecutorCompatibilityMatrixStore",
       "FileHookBindingStore",
       "FileInstallPlanStore",
       "FileInstallationRevisionStore",

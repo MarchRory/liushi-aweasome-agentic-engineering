@@ -45,7 +45,7 @@
 - `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出与 `hooks` 功能开关，并通过 `--executable` 选择实际 Codex；找不到、Access Denied、超时、非零退出、空输出或未知版本均不会被标记为生产支持。
 - `init --target codex --root <path> --workspace <id> --repository <id> --dry-run` 可生成并持久化 G0 InstallPlan；命令拒绝 Runtime Store 与 Repository 的直接或符号链接重叠，不写 `.codex/hooks.json` 或 Manifest，Existing Human File 和未经 Runtime Revision 证明的 Manifest Claim 均保持 `Conflict`。
 - `init --apply` 已实现 G0 Human 明确 Apply：在 Repository Lock 内验证精确 InstallPlan 和同一 Approval，完成全量 preflight/preimage 后先持久化 Installation Revision Intent，再逐文件、Manifest 原子写入并记录 checkpoint，后置验证后提交 `Committed` Revision。
-- Executor Compatibility Matrix Domain 已实现 Adapter/Distribution 分离、精确版本/Host/OS/模型/权限/配置 Scope、分级 Evidence、可复核 Locator、固定支持 Policy 与确定性 Digest 编译；Codex Compatibility Evidence Projector 已实现 Prepare v5、Activation Plan v2 和 Host Result v2 的关闭式校验，并输出不含绝对路径及原始宿主标识的 7 条保守 Evidence。当前投影没有 ContractTest、ProductionE2e、Model 或 Permission Scope，因此固定 Policy 的最高结果是 `experimental`，不能声明 `compatible` 或 `production`；CatPaw 也不能继承 Claude Code 的声明。
+- Executor Compatibility Matrix Domain 已实现 Adapter/Distribution 分离、精确版本/Host/OS/模型/权限/配置 Scope、分级 Evidence、可复核 Locator、固定支持 Policy 与确定性 Digest 编译；Codex Compatibility Evidence Projector 已实现 Prepare v5、Activation Plan v2 和 Host Result v2 的关闭式校验，并输出不含绝对路径及原始宿主标识的 7 条保守 Evidence。内容寻址 Evidence/Matrix Store 与 `executor compatibility compile/query` CLI 已实现，Query 会锚定源码固定 Policy，从脱敏 Artifact 确定性重投影 Evidence 后重编译。`matrixDigest` 必须来自受信 Compile、Human Approval 或后续发布清单，内容寻址不替代身份认证。当前投影没有 ContractTest、ProductionE2e、Model 或 Permission Scope，因此固定 Policy 的最高结果是 `experimental`，不能声明 `compatible` 或 `production`；CatPaw 也不能继承 Claude Code 的声明。
 - Runtime Store 的 `Committed` Installation Revision 是所有权证据，Repository Manifest 自声明不可信；相同已提交 Approval 返回 `Reused`，物理现场已完成但 checkpoint 未闭合时只补齐元数据。Partial、Mixed、Unknown 和漂移状态必须 Human 介入，不盲目重试或自动回滚。
 - Rollback、Uninstall 和 CLI recovery 当前未实现；`actor-id` 只是审计身份声明，不是认证机制，企业使用须由外部受信任包装器或身份系统注入。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
@@ -59,7 +59,7 @@
 - 固定公开项目 Smoke 已从真实 npm Tarball 独立安装启动生产 CLI，在 `unjs/defu@82632b66` 完成预编排单文件 Mutation 的 G1/G4 Gate 协议、受管 Worktree、单一 Checkpoint、离线安装、完整测试、Passed Evidence、PRReadyArtifact 与跨进程幂等复用。该结果不代表 Agent 已能自主理解需求或生成代码。
 - Codex Host Result 已升级为 v2：删除 `productionVerified`，返回 `hostEvidenceVerified=true`、`matrixSupportClaim=not_evaluated`、`verifiedAt`、Prepare/Plan/Probe 摘要和 `verificationEnvironment`。`verify-result` 运行时实际读取 Node 的 platform/arch，并要求与 Prepare Manifest 精确一致后才通过；Host Result 只是受验来源，不自行声明 Matrix 支持等级。仓库当前没有可追溯的真实 v2 Host Artifact，历史 Host Smoke 结果属于旧版结果，不能直接转为可发布版本矩阵。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、G0 Rollback/Uninstall、Codex 可发布版本矩阵、Codex v2 Host 的可追溯重验、Contract Evidence、Matrix Store/CLI、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、G0 Rollback/Uninstall、Codex 可发布版本矩阵、Codex v2 Host 的可追溯重验、Contract Evidence、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
@@ -128,7 +128,7 @@ liushi-harness hook probe --executor codex [--executable <path-or-command>] --js
 
 `cell run` 的 `--workspace`、`--repository`、`--root` 和 `--verification-mode` 均为必填。生产 Bootstrap 只在显式传入 `local_command` 时启用本地命令；`fail_closed_mock` 不执行本地命令。Manifest 的 Create Workspace/Repository 以及 Provision、全部 Implementation、Submission Repository Root 必须与 CLI 绑定精确一致；Verification Worktree Root 必须等于从绑定 Repository Root 和受管 `worktreeBinding.relativePath` 推导的唯一规范路径。缺少绑定或任一不匹配都会在任何服务调用前 fail closed。Manifest 自报授权仍不能替代权威 Human Gate 重算。固定公开项目 Cell Smoke 只覆盖外部预编排 Mutation 的 CLI 正路径，不代表真实 Human 决策、Agent 自主编码或企业项目接入；Codex Host Result v2 仍需通过独立 `verify-result` 形成受验来源，不能直接视为 Matrix 支持声明。
 
-默认 Runtime Store 为 `~/.liushi-harness`。可以通过 `LIUSHI_HARNESS_HOME` 或单次命令的 `--store <path>` 覆盖。
+默认 Runtime Store 为 `~/.liushi-harness`。它属于受信本地状态边界，目录及其祖先必须由运行 Harness 的 OS 主体独占，不能授予 Repository 代码或 Coding Agent 写权限。可以通过 `LIUSHI_HARNESS_HOME` 或单次命令的 `--store <path>` 覆盖，但覆盖路径同样必须满足该边界，不能放进不受信 Repository。
 
 ## Development
 
@@ -163,7 +163,7 @@ Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件�
 
 固定公开项目的 CLI 正路径、证据字段与 HTT 边界见 [固定公开项目 CodingTask Cell Smoke](./docs/engineering/publicProjectSmoke.md)。
 
-真实 Codex Host 验收的只读准备和关闭式结果门见 [Codex Host Smoke Prepare](./docs/engineering/codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)；来源到脱敏 Evidence 的校验链见 [Codex 兼容性证据投影](./docs/engineering/codexCompatibilityEvidenceProjection.md)。
+真实 Codex Host 验收的只读准备和关闭式结果门见 [Codex Host Smoke Prepare](./docs/engineering/codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)；来源到脱敏 Evidence 的校验链见 [Codex 兼容性证据投影](./docs/engineering/codexCompatibilityEvidenceProjection.md)，持久化与重算查询协议见 [Executor Compatibility Store 与 CLI](./docs/engineering/executorCompatibilityStore.md)。
 
 Managed File 的所有权、零写入 dry-run、G0 和后续恢复边界见 [Managed File 安装协议](./docs/engineering/managedFileInstallation.md)。
 

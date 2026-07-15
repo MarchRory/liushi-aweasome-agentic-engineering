@@ -34,6 +34,10 @@ export enum CliCommand {
   InitDryRun = "init.dry_run",
   /** 以 Human G0 批准应用精确安装计划。 */
   InitApply = "init.apply",
+  /** 编译并持久化 Codex Executor Compatibility Matrix。 */
+  ExecutorCompatibilityCompile = "executor.compatibility.compile",
+  /** 按精确摘要查询 Executor Compatibility Matrix。 */
+  ExecutorCompatibilityQuery = "executor.compatibility.query",
 }
 
 /** CLI 输出格式。 */

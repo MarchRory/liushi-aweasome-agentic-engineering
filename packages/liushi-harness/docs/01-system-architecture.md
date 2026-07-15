@@ -310,6 +310,8 @@ flowchart LR
 
 对应控制：结构化 Schema、来源标签、Digest 绑定、Hook Trust、文件锁、幂等键、Human Gate 和候选隔离。
 
+Runtime Store 是受信本地状态边界。默认目录 `~/.liushi-harness` 及其祖先必须由运行 Harness 的 OS 主体独占，不能授予 Repository 内容、Coding Agent 或其他不受信进程写权限。路径规范化和链接检查会拒绝操作开始前已经存在或能够观察到的 symlink/junction 逃逸，但跨平台 Node 文件 API 不能把路径证明与后续 I/O 绑定到同一个目录句柄，因此不把“同一 OS 主体恶意并发替换目录”列入可防御威胁。自定义 `--store` 不得放入不受信 Repository；需要对同主体本地攻击者建立硬隔离时，必须由 Sandbox、独立 OS 身份或平台 ACL 提供。
+
 ## 9. 复用与自研边界
 
 直接复用：

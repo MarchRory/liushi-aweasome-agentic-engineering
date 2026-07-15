@@ -66,6 +66,14 @@ export enum CliOptionName {
   Apply = "--apply",
   /** 显式批准的 InstallPlan 摘要。 */
   PlanDigest = "--plan-digest",
+  /** 指定 Host Smoke Prepare Manifest 原始 JSON 文件。 */
+  Prepare = "--prepare",
+  /** 指定 Human Activation Plan 原始 JSON 文件。 */
+  Activation = "--activation",
+  /** 指定 Host Result 原始 JSON 文件。 */
+  Result = "--result",
+  /** 指定 Executor Compatibility Matrix Digest。 */
+  MatrixDigest = "--matrix-digest",
 }
 
 const CLI_OPTION_BY_NAME = new Map<string, CliOptionName>(

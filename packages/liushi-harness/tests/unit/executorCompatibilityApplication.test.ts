@@ -1,0 +1,529 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  CompileCodexExecutorCompatibilityUseCase,
+  ExecutorCompatibilityWriteDisposition,
+  QueryExecutorCompatibilityUseCase,
+  type CodexCompatibilityEvidenceProjectorPort,
+  type ExecutorCompatibilityEvidenceProjection,
+  type ExecutorCompatibilityEvidenceWriteResult,
+  type ExecutorCompatibilityEvidenceStore,
+  type ExecutorCompatibilityMatrixRecord,
+  type ExecutorCompatibilityMatrixWriteResult,
+  type ExecutorCompatibilityMatrixStore,
+  type ProjectCodexCompatibilityEvidenceInput,
+} from "../../src/application/index.js";
+import {
+  failure,
+  HarnessError,
+  HarnessErrorCode,
+  ResultStatus,
+  success,
+  type ContentDigest,
+  type Result,
+} from "../../src/common/index.js";
+import {
+  EXECUTOR_CAPABILITY_EVIDENCE_SCHEMA_VERSION,
+  ExecutorAdapterKind,
+  ExecutorArchitecture,
+  ExecutorCapability,
+  ExecutorCapabilityQualifierKind,
+  ExecutorDistribution,
+  ExecutorEvidenceKind,
+  ExecutorEvidenceLocatorKind,
+  ExecutorEvidenceOutcome,
+  ExecutorHostSurface,
+  ExecutorOperatingSystem,
+  ExecutorSupportLevel,
+  compileExecutorCompatibilityMatrix,
+  createExecutorCapabilityEvidenceDigestInput,
+  createExecutorCompatibilityMatrixDigestInput,
+  createExecutorCompatibilityPolicyDigestInput,
+  createManagedFileMutationHookPolicy,
+  type ExecutorCapabilityEvidence,
+  type ExecutorCompatibilityPolicy,
+  type ExecutorHostScope,
+} from "../../src/domain/executorCompatibility/index.js";
+import {
+  CodexCompatibilityEvidenceProjectorAdapter,
+  Rfc8785Sha256DigestAdapter,
+} from "../../src/infrastructure/index.js";
+
+const digestAdapter = new Rfc8785Sha256DigestAdapter();
+
+describe("Executor Compatibility Application", () => {
+  it("现有 Codex Projector Adapter 结构化满足 Application Port", () => {
+    const projector: CodexCompatibilityEvidenceProjectorPort =
+      new CodexCompatibilityEvidenceProjectorAdapter(digestAdapter);
+
+    expect(projector).toBeInstanceOf(CodexCompatibilityEvidenceProjectorAdapter);
+  });
+
+  it("Compile 强制 RuntimeStore Locator 并按 Projection、Matrix 顺序持久化", async () => {
+    const events: string[] = [];
+    const projection = createProjection();
+    const projector = new SpyProjector(success(projection), events);
+    const evidenceStore = new SpyEvidenceStore(events);
+    const matrixStore = new SpyMatrixStore(events);
+    const useCase = new CompileCodexExecutorCompatibilityUseCase(
+      projector,
+      evidenceStore,
+      matrixStore,
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(createCompileInput());
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Failure) throw result.error;
+    expect(projector.inputs).toEqual([
+      expect.objectContaining({ artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore }),
+    ]);
+    expect(events).toEqual(["project", "evidence.persist", "matrix.persist"]);
+    expect(evidenceStore.persisted).toEqual([projection]);
+    expect(matrixStore.persisted[0]).toMatchObject({
+      matrix: result.value.matrix,
+      policy: createManagedFileMutationHookPolicy(),
+    });
+    expect(result.value.evidencePersistence).toEqual(createEvidenceWriteResult(projection));
+    expect(result.value.matrixPersistence).toEqual(
+      createMatrixWriteResult(result.value.matrix.matrixDigest),
+    );
+  });
+
+  it("Compile 在投影失败后停止且透传原错误", async () => {
+    const projectionError = new HarnessError(HarnessErrorCode.InvalidInput, "投影失败。");
+    const projector = new SpyProjector(failure(projectionError));
+    const evidenceStore = new SpyEvidenceStore();
+    const matrixStore = new SpyMatrixStore();
+    const useCase = new CompileCodexExecutorCompatibilityUseCase(
+      projector,
+      evidenceStore,
+      matrixStore,
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(createCompileInput());
+
+    expect(result).toEqual(failure(projectionError));
+    expect(evidenceStore.persisted).toEqual([]);
+    expect(matrixStore.persisted).toEqual([]);
+  });
+
+  it("Compile 在 Evidence 持久化失败后不写入 Matrix", async () => {
+    const persistenceError = new HarnessError(HarnessErrorCode.IoFailure, "Evidence 写入失败。");
+    const evidenceStore = new SpyEvidenceStore();
+    evidenceStore.persistResult = failure(persistenceError);
+    const matrixStore = new SpyMatrixStore();
+    const useCase = new CompileCodexExecutorCompatibilityUseCase(
+      new SpyProjector(success(createProjection())),
+      evidenceStore,
+      matrixStore,
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(createCompileInput());
+
+    expect(result).toEqual(failure(persistenceError));
+    expect(evidenceStore.persisted).toHaveLength(1);
+    expect(matrixStore.persisted).toEqual([]);
+  });
+
+  it("Compile 在 Matrix 持久化失败时不返回成功声明", async () => {
+    const persistenceError = new HarnessError(
+      HarnessErrorCode.ExecutorCompatibilityCommitOutcomeUnknown,
+      "Matrix 提交结果未知。",
+    );
+    const matrixStore = new SpyMatrixStore();
+    matrixStore.persistResult = failure(persistenceError);
+    const useCase = new CompileCodexExecutorCompatibilityUseCase(
+      new SpyProjector(success(createProjection())),
+      new SpyEvidenceStore(),
+      matrixStore,
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(createCompileInput());
+
+    expect(result).toEqual(failure(persistenceError));
+    expect(matrixStore.persisted).toHaveLength(1);
+  });
+
+  it("Query 在 Policy Gate 拒绝摘要自洽但非源码固定 Policy，且不加载 Projection", async () => {
+    const projection = createProjection();
+    const policy = createAlternativePolicy();
+    const record = createMatrixRecord(projection, policy);
+    const trustedPolicy = createManagedFileMutationHookPolicy();
+    const projector = new SpyProjector();
+    const evidenceStore = new SpyEvidenceStore([], undefined, projection.evidence);
+    const useCase = new QueryExecutorCompatibilityUseCase(
+      projector,
+      evidenceStore,
+      new SpyMatrixStore([], record),
+      digestAdapter,
+    );
+
+    expect(record.policy).toEqual(policy);
+    expect(record.policy).not.toEqual(trustedPolicy);
+    expect(record.matrix.policyDigest).toBe(
+      calculateDigest(createExecutorCompatibilityPolicyDigestInput(policy)),
+    );
+    expect(record.matrix.matrixDigest).toBe(
+      calculateDigest(createExecutorCompatibilityMatrixDigestInput(record.matrix)),
+    );
+
+    const result = await useCase.execute(record.matrix.matrixDigest);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        code: HarnessErrorCode.CorruptStore,
+        details: {
+          storedPolicyDigest: record.matrix.policyDigest,
+          trustedPolicyDigest: calculateDigest(
+            createExecutorCompatibilityPolicyDigestInput(trustedPolicy),
+          ),
+        },
+      },
+    });
+    expect(evidenceStore.projectionLoads).toEqual([]);
+    expect(evidenceStore.loaded).toEqual([]);
+    expect(projector.verifiedProjections).toEqual([]);
+  });
+
+  it("Query 将 Matrix 引用的 Evidence 缺失归类为 CorruptStore", async () => {
+    const record = createMatrixRecord();
+    const notFound = new HarnessError(
+      HarnessErrorCode.ExecutorCompatibilityEvidenceNotFound,
+      "Evidence 不存在。",
+      { evidenceDigest: record.matrix.evidenceDigests[0]! },
+    );
+    const evidenceStore = new SpyEvidenceStore();
+    evidenceStore.loadFailure = notFound;
+    const useCase = new QueryExecutorCompatibilityUseCase(
+      new SpyProjector(),
+      evidenceStore,
+      new SpyMatrixStore([], record),
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(record.matrix.matrixDigest);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        code: HarnessErrorCode.CorruptStore,
+        details: { evidenceDigest: record.matrix.evidenceDigests[0] },
+      },
+    });
+    expect(evidenceStore.loaded).toEqual(record.matrix.evidenceDigests);
+  });
+
+  it("Query 通过完整内容比对拒绝 Matrix 内容篡改", async () => {
+    const record = createMatrixRecord();
+    const tamperedRecord: ExecutorCompatibilityMatrixRecord = {
+      ...record,
+      matrix: { ...record.matrix, supportLevel: ExecutorSupportLevel.Unsupported },
+    };
+    const useCase = new QueryExecutorCompatibilityUseCase(
+      new SpyProjector(),
+      new SpyEvidenceStore([], undefined, recordEvidence(record)),
+      new SpyMatrixStore([], tamperedRecord),
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(record.matrix.matrixDigest);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.CorruptStore },
+    });
+  });
+
+  it("Query 将 Evidence 摘要不一致的重编译失败归类为 CorruptStore", async () => {
+    const projection = createProjection();
+    const record = createMatrixRecord(projection);
+    const original = projection.evidence[0];
+    if (original === undefined) throw new Error("测试 Evidence 缺失。");
+    const tamperedEvidence = { ...original, outcome: ExecutorEvidenceOutcome.Failed };
+    const useCase = new QueryExecutorCompatibilityUseCase(
+      new SpyProjector(),
+      new SpyEvidenceStore([], undefined, [tamperedEvidence]),
+      new SpyMatrixStore([], record),
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(record.matrix.matrixDigest);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.CorruptStore },
+    });
+  });
+
+  it("Query 成功返回本次重编译 Matrix 与 recomputed 标记", async () => {
+    const projection = createProjection();
+    const record = createMatrixRecord(projection);
+    const evidenceStore = new SpyEvidenceStore([], undefined, projection.evidence);
+    const useCase = new QueryExecutorCompatibilityUseCase(
+      new SpyProjector(),
+      evidenceStore,
+      new SpyMatrixStore([], record),
+      digestAdapter,
+    );
+
+    const result = await useCase.execute(record.matrix.matrixDigest);
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Failure) throw result.error;
+    expect(result.value).toEqual({ matrix: record.matrix, recomputed: true });
+    expect(result.value.matrix).not.toBe(record.matrix);
+    expect(evidenceStore.loaded).toEqual(record.matrix.evidenceDigests);
+  });
+});
+
+class SpyProjector implements CodexCompatibilityEvidenceProjectorPort {
+  public readonly inputs: ProjectCodexCompatibilityEvidenceInput[] = [];
+  public readonly verifiedProjections: ExecutorCompatibilityEvidenceProjection[] = [];
+
+  public constructor(
+    private readonly result: Result<
+      ExecutorCompatibilityEvidenceProjection,
+      HarnessError
+    > = success(createProjection()),
+    private readonly events: string[] = [],
+  ) {}
+
+  public project(
+    input: ProjectCodexCompatibilityEvidenceInput,
+  ): Result<ExecutorCompatibilityEvidenceProjection, HarnessError> {
+    this.events.push("project");
+    this.inputs.push(input);
+    return this.result;
+  }
+
+  public verifyPersistedProjection(
+    projection: ExecutorCompatibilityEvidenceProjection,
+  ): Result<ExecutorCompatibilityEvidenceProjection, HarnessError> {
+    this.events.push("project.verify");
+    this.verifiedProjections.push(projection);
+    return success(projection);
+  }
+}
+
+class SpyEvidenceStore implements ExecutorCompatibilityEvidenceStore {
+  public readonly persisted: ExecutorCompatibilityEvidenceProjection[] = [];
+  public readonly loaded: ContentDigest[] = [];
+  public readonly projectionLoads: ContentDigest[][] = [];
+  public persistResult: Result<ExecutorCompatibilityEvidenceWriteResult, HarnessError> | undefined;
+  public loadFailure: HarnessError | undefined;
+  private readonly evidenceByDigest: ReadonlyMap<ContentDigest, ExecutorCapabilityEvidence>;
+
+  public constructor(
+    private readonly events: string[] = [],
+    loadFailure?: HarnessError,
+    evidence: readonly ExecutorCapabilityEvidence[] = [],
+  ) {
+    this.loadFailure = loadFailure;
+    this.evidenceByDigest = new Map(evidence.map((item) => [item.evidenceDigest, item]));
+  }
+
+  public persist(
+    projection: ExecutorCompatibilityEvidenceProjection,
+  ): Promise<Result<ExecutorCompatibilityEvidenceWriteResult, HarnessError>> {
+    this.events.push("evidence.persist");
+    this.persisted.push(projection);
+    return Promise.resolve(this.persistResult ?? success(createEvidenceWriteResult(projection)));
+  }
+
+  public load(
+    evidenceDigest: ContentDigest,
+  ): Promise<Result<ExecutorCapabilityEvidence, HarnessError>> {
+    this.events.push("evidence.load");
+    this.loaded.push(evidenceDigest);
+    if (this.loadFailure !== undefined) return Promise.resolve(failure(this.loadFailure));
+    const evidence = this.evidenceByDigest.get(evidenceDigest);
+    return Promise.resolve(
+      evidence === undefined
+        ? failure(
+            new HarnessError(
+              HarnessErrorCode.ExecutorCompatibilityEvidenceNotFound,
+              "Evidence 不存在。",
+            ),
+          )
+        : success(evidence),
+    );
+  }
+
+  public async loadProjection(
+    evidenceDigests: readonly ContentDigest[],
+  ): Promise<Result<ExecutorCompatibilityEvidenceProjection, HarnessError>> {
+    this.projectionLoads.push([...evidenceDigests]);
+    const evidence: ExecutorCapabilityEvidence[] = [];
+    for (const evidenceDigest of evidenceDigests) {
+      const loaded = await this.load(evidenceDigest);
+      if (loaded.status === ResultStatus.Failure) return loaded;
+      evidence.push(loaded.value);
+    }
+    const first = evidence[0];
+    if (first === undefined) {
+      return failure(new HarnessError(HarnessErrorCode.CorruptStore, "Projection 为空。"));
+    }
+    return success({
+      artifact: { kind: "spy-artifact" },
+      artifactDigest: first.source.artifactDigest,
+      evidence,
+    });
+  }
+}
+
+class SpyMatrixStore implements ExecutorCompatibilityMatrixStore {
+  public readonly persisted: ExecutorCompatibilityMatrixRecord[] = [];
+  public readonly loaded: ContentDigest[] = [];
+  public persistResult: Result<ExecutorCompatibilityMatrixWriteResult, HarnessError> | undefined;
+
+  public constructor(
+    private readonly events: string[] = [],
+    private readonly record?: ExecutorCompatibilityMatrixRecord,
+  ) {}
+
+  public persist(
+    record: ExecutorCompatibilityMatrixRecord,
+  ): Promise<Result<ExecutorCompatibilityMatrixWriteResult, HarnessError>> {
+    this.events.push("matrix.persist");
+    this.persisted.push(record);
+    return Promise.resolve(
+      this.persistResult ?? success(createMatrixWriteResult(record.matrix.matrixDigest)),
+    );
+  }
+
+  public load(
+    matrixDigest: ContentDigest,
+  ): Promise<Result<ExecutorCompatibilityMatrixRecord, HarnessError>> {
+    this.events.push("matrix.load");
+    this.loaded.push(matrixDigest);
+    return Promise.resolve(
+      this.record === undefined
+        ? failure(
+            new HarnessError(
+              HarnessErrorCode.ExecutorCompatibilityMatrixNotFound,
+              "Matrix 不存在。",
+            ),
+          )
+        : success(this.record),
+    );
+  }
+}
+
+function createCompileInput() {
+  return {
+    prepareManifest: { kind: "prepare" },
+    activationPlan: { kind: "activation" },
+    hostResult: { kind: "result" },
+  };
+}
+
+function createProjection(): ExecutorCompatibilityEvidenceProjection {
+  const artifact = { kind: "redacted-codex-artifact" };
+  const artifactDigest = calculateDigest(artifact);
+  const scope = createScope();
+  const withoutDigest: Omit<ExecutorCapabilityEvidence, "evidenceDigest"> = {
+    schemaVersion: EXECUTOR_CAPABILITY_EVIDENCE_SCHEMA_VERSION,
+    scope,
+    capability: ExecutorCapability.CommandHookHandler,
+    kind: ExecutorEvidenceKind.StaticProbe,
+    outcome: ExecutorEvidenceOutcome.Passed,
+    qualifiers: [
+      {
+        kind: ExecutorCapabilityQualifierKind.CanonicalAction,
+        value: "file_mutation",
+      },
+    ],
+    source: {
+      artifactDigest,
+      locator: {
+        kind: ExecutorEvidenceLocatorKind.RuntimeStore,
+        value: "executorCompatibility/codex/evidence.json",
+      },
+      schemaVersion: "1.0.0",
+      checkIds: ["codex.version"],
+      observedAt: "2026-07-15T00:00:00.000Z",
+    },
+  };
+  return {
+    artifact,
+    artifactDigest,
+    evidence: [
+      {
+        ...withoutDigest,
+        evidenceDigest: calculateDigest(createExecutorCapabilityEvidenceDigestInput(withoutDigest)),
+      },
+    ],
+  };
+}
+
+function createScope(): ExecutorHostScope {
+  return {
+    adapterKind: ExecutorAdapterKind.Codex,
+    distribution: ExecutorDistribution.CodexCli,
+    adapterDigest: calculateDigest({ adapter: "codex" }),
+    executorVersion: "0.144.0-alpha.4",
+    surface: ExecutorHostSurface.InteractiveTui,
+    operatingSystem: ExecutorOperatingSystem.Windows,
+    architecture: ExecutorArchitecture.X64,
+    configurationDigest: calculateDigest({ hooks: "managed-file-mutation" }),
+  };
+}
+
+function createMatrixRecord(
+  projection: ExecutorCompatibilityEvidenceProjection = createProjection(),
+  policy: ExecutorCompatibilityPolicy = createManagedFileMutationHookPolicy(),
+): ExecutorCompatibilityMatrixRecord {
+  const firstEvidence = projection.evidence[0];
+  if (firstEvidence === undefined) throw new Error("测试 Evidence 缺失。");
+  const compiled = compileExecutorCompatibilityMatrix(
+    { scope: firstEvidence.scope, policy, evidence: projection.evidence },
+    digestAdapter,
+  );
+  if (compiled.status === ResultStatus.Failure) throw compiled.error;
+  return { matrix: compiled.value, policy };
+}
+
+function createAlternativePolicy(): ExecutorCompatibilityPolicy {
+  const policy = createManagedFileMutationHookPolicy();
+  return { ...policy, policyId: `${policy.policyId}.alternate` };
+}
+
+function recordEvidence(
+  record: ExecutorCompatibilityMatrixRecord,
+): readonly ExecutorCapabilityEvidence[] {
+  const projection = createProjection();
+  return projection.evidence.filter((item) =>
+    record.matrix.evidenceDigests.includes(item.evidenceDigest),
+  );
+}
+
+function createEvidenceWriteResult(
+  projection: ExecutorCompatibilityEvidenceProjection,
+): ExecutorCompatibilityEvidenceWriteResult {
+  return {
+    disposition: ExecutorCompatibilityWriteDisposition.Persisted,
+    artifactDigest: projection.artifactDigest,
+    evidenceDigests: projection.evidence.map((item) => item.evidenceDigest),
+  };
+}
+
+function createMatrixWriteResult(
+  matrixDigest: ContentDigest,
+): ExecutorCompatibilityMatrixWriteResult {
+  return {
+    disposition: ExecutorCompatibilityWriteDisposition.Persisted,
+    matrixDigest,
+  };
+}
+
+function calculateDigest(input: unknown): ContentDigest {
+  const result = digestAdapter.calculate(input);
+  if (result.status === ResultStatus.Failure) throw result.error;
+  return result.value;
+}

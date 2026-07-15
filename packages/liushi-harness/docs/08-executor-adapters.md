@@ -14,11 +14,11 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证和 Codex Compatibility Evidence Projector 的源码实现也已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。实现落地不等于已经存在可追溯的真实 v2 Host Artifact。
+**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Compatibility Evidence Projector、内容寻址 Evidence/Matrix Store 和重算查询 CLI 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。实现落地不等于已经存在可追溯的真实 v2 Host Artifact。
 
 当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply 与 Installation Revision 已实现；自动 Trust/Binding、Rollback/Uninstall、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
 
-Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Codex Compatibility Evidence Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并只投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest。它不生成 ContractTest 或 ProductionE2e；当前缺少 Contract Evidence、可追溯的真实 v2 Host Artifact 以及 Matrix Store/CLI，因此尚未形成可发布版本矩阵。
+Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Codex Compatibility Evidence Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并只投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest。Application 与 File Store 会按精确 Digest 持久化并在查询时重新编译；它仍不生成 ContractTest 或 ProductionE2e。当前缺少 Contract Evidence 和可追溯的真实 v2 Host Artifact，因此尚未形成可发布版本矩阵。
 
 ## 2. Adapter 边界
 

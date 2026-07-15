@@ -69,6 +69,7 @@ import type { HarnessApplication, HarnessApplicationOptions } from "./compositio
 import {
   createCodingTaskCellApplication,
   createCodingTaskAuthorizationResolver,
+  createExecutorCompatibilityApplication,
   createManagedFileInstallationApplication,
   createUnresolvedProvisionGuard,
   createVerificationExecutor,
@@ -124,12 +125,9 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const traceObservationStore = new FileTraceObservationStore(options.storeRoot, { lockManager });
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
+  const storeDependencies = { digest, lockManager, parentDirectoryDurability };
   const unresolvedProvisionGuard = createUnresolvedProvisionGuard(actionJournalRepository, digest);
-  const evidenceBundleStore = new FileEvidenceBundleStore(options.storeRoot, {
-    lockManager,
-    parentDirectoryDurability,
-    digest,
-  });
+  const evidenceBundleStore = new FileEvidenceBundleStore(options.storeRoot, storeDependencies);
   const projectFileSystem = new NodeProjectFileSystemAdapter();
   const projectConfigParser = new StructuredProjectConfigParserAdapter();
   const applicationCommandGateway = new ApplicationCommandGateway(commandReservationStore, delay);
@@ -257,6 +255,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     probeCodexCapabilities: new ProbeCodexCapabilitiesUseCase(
       new CodexCapabilityProbeAdapter(commandRunner),
     ),
+    ...createExecutorCompatibilityApplication(options.storeRoot, storeDependencies),
     // prettier-ignore
     ...createManagedFileInstallationApplication(options, { digest, clock, lockManager, parentDirectoryDurability, repositoryLock }),
     getActionJournal: new GetActionJournalUseCase(actionJournalRepository),

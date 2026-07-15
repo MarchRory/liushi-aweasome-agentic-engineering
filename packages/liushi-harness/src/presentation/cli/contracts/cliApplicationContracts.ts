@@ -4,11 +4,13 @@ import type {
   CodingTaskCellService,
   CheckRuntimeHealthUseCase,
   CodexHookHandler,
+  CompileCodexExecutorCompatibilityUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
   ProposeArtifactUseCase,
   ProbeCodexCapabilitiesUseCase,
+  QueryExecutorCompatibilityUseCase,
   RecordApprovalUseCase,
   ResolveRulesUseCase,
   ScanProjectUseCase,
@@ -72,6 +74,10 @@ export interface CliApplication {
   resolveRules: ResolveRulesUseCase;
   /** 显式多仓只读 Project Discovery Use Case。 */
   scanProject: ScanProjectUseCase;
+  /** Codex Executor Compatibility 编译 Use Case。 */
+  compileCodexExecutorCompatibility: CompileCodexExecutorCompatibilityUseCase;
+  /** Executor Compatibility 精确查询 Use Case。 */
+  queryExecutorCompatibility: QueryExecutorCompatibilityUseCase;
 }
 
 /** 按 Store Root 创建 Use Cases 的工厂。 */

@@ -3,6 +3,10 @@ import type { HarnessErrorCode } from "#common/index.js";
 
 import type { CliVerificationMode } from "../enums/index.js";
 import type { BaseCliCommand, CliCommand } from "./cliCommandContracts.js";
+import type {
+  ExecutorCompatibilityCompileCliCommand,
+  ExecutorCompatibilityQueryCliCommand,
+} from "./cliExecutorCompatibilityContracts.js";
 import type { InitApplyCliCommand, InitDryRunCliCommand } from "./cliInstallationContracts.js";
 
 /** CLI 接受的 Human Approval 决策值。 */
@@ -201,7 +205,9 @@ export type ParsedCliCommand =
   | HookConfigCliCommand
   | HookProbeCliCommand
   | InitDryRunCliCommand
-  | InitApplyCliCommand;
+  | InitApplyCliCommand
+  | ExecutorCompatibilityCompileCliCommand
+  | ExecutorCompatibilityQueryCliCommand;
 
 /** CLI JSON 失败信息。 */
 export interface CliErrorPayload {

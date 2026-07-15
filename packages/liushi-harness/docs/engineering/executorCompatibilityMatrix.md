@@ -9,9 +9,9 @@ Executor Compatibility Matrix 把平台原生 Probe、Contract Test、Smoke Test
 ## 分层边界
 
 - Domain 只定义规范能力、证据等级、支持 Policy、精确 Host Scope 和确定性编译算法。
-- Application 后续负责选择受信任 Policy、读取 Evidence 和持久化 Matrix。
-- Infrastructure 负责解析 Codex、Claude Code 或 CatPaw 的原生命令、事件和配置，并投影为规范 Evidence。
-- Presentation 只处理 CLI 参数和 JSON 输出，不解释平台原生字段。
+- Application 选择受信任 Policy，编排 Evidence/Matrix 持久化，并在查询时重新编译。
+- Infrastructure 负责解析 Codex、Claude Code 或 CatPaw 的原生命令、事件和配置，投影为规范 Evidence，并实现内容寻址 File Store。
+- Presentation 只处理原始来源文件、精确 Matrix Digest、JSON 和摘要输出，不解释平台原生字段。
 
 平台专属 JSON、事件名、工具名和 Shell 转义不得进入 Domain。Codex `PreToolUse`、Claude-compatible Hook 事件和 CatPaw 差异分别留在各自 Adapter 中。
 
@@ -71,4 +71,4 @@ Repository 与 Runtime Store Locator 必须是无 `..`、无绝对路径、统�
 
 ## 当前边界
 
-当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算，也已实现 Codex Static Probe/Host Result v2 的脱敏 Evidence 投影。投影器会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；输出不含绝对路径及原始 session、turn、tool call 标识。仓库当前没有可追溯的真实 v2 Host Artifact，Matrix Store/CLI、Contract Evidence 和 Claude-compatible/CatPaw Adapter 仍是后续切片。
+当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算，也已实现 Codex Static Probe/Host Result v2 的脱敏 Evidence 投影、内容寻址 Evidence/Matrix Store，以及 `executor compatibility compile/query` CLI。Query 会要求持久化 Policy 与源码固定 Policy 一致，从 Codex Artifact 确定性重投影全部 Evidence，再以 Domain Compiler 重编译并比对精确 Matrix。投影器会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；输出不含绝对路径及原始 session、turn、tool call 标识。内容寻址用于证明受信 `matrixDigest` 下的完整性，不替代 Human Approval、受信发布清单或未来 Attestation。仓库当前没有可追溯的真实 v2 Host Artifact；Contract Evidence 和 Claude-compatible/CatPaw Adapter 仍是后续切片。
