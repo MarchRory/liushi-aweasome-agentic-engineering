@@ -14,9 +14,9 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。适配器已通过单元测试、架构测试和真实 Task/PlanRisk Fixture 集成测试，但尚未在用户受信任的 Codex 项目中执行安装和端到端 Smoke Test，因此发布口径仍为“代码已验证，平台生产启用待 Human 验证”。
+**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Codex `0.144.0-alpha.4` 已在 Windows 交互式 TUI 完成同会话正负路径 Host Smoke；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。
 
-当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`.codex/hooks.json` 的写入、信任和撤销由 Human 执行。只读 `hook probe` 已实现静态版本/帮助探测，但不能替代真实受信任项目 Smoke；安装协议、Role Invocation Runtime、Claude-compatible/CatPaw Adapter 仍未实现。
+当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply、Installation Revision、自动 Trust/Binding、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
 
 ## 2. Adapter 边界
 

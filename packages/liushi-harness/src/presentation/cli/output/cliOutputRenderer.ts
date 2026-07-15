@@ -102,6 +102,15 @@ export function writeSuccess<T>(
       writeCodingTaskCellSummary(dependencies, data);
       return;
     }
+    if (command === CliCommand.InitDryRun) {
+      const plan = data["plan"];
+      if (isRecord(plan)) {
+        dependencies.writer.stdout(
+          `InstallPlan ${String(plan["planId"])}: digest=${String(plan["planDigest"])} files=${countEntries(plan["files"])} repositoryMutated=${String(data["repositoryMutated"])} planPersisted=${String(data["planPersisted"])}.\n`,
+        );
+      }
+      return;
+    }
     const taskId = String(data["taskId"]);
     const workspaceId = String(data["workspaceId"]);
     if (command === CliCommand.TaskCreate) {

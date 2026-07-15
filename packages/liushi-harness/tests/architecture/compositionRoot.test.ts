@@ -35,6 +35,7 @@ describe("composition root", () => {
     expect([...concreteAdapterClassNames].sort()).toEqual([
       "CodexCapabilityProbeAdapter",
       "CodexHookAdapter",
+      "CodexInstallProfileProjectorAdapter",
       "ExclusiveFileLockManager",
       "FileActionExecutionLockAdapter",
       "FileActionJournalRepository",
@@ -42,6 +43,7 @@ describe("composition root", () => {
       "FileCommandReservationStore",
       "FileEvidenceBundleStore",
       "FileHookBindingStore",
+      "FileInstallPlanStore",
       "FileParentDirectoryDurability",
       "FileRuntimeHealthAdapter",
       "FileSnapshotStore",
@@ -55,6 +57,7 @@ describe("composition root", () => {
       "NodeGitCheckpointAdapter",
       "NodeHookInputReaderAdapter",
       "NodeJsonDocumentReaderAdapter",
+      "NodeManagedFileStateReaderAdapter",
       "NodeProjectFileSystemAdapter",
       "NodeRepositoryLockAdapter",
       "NodeVerificationExecutorAdapter",

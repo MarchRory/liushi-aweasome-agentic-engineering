@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ResultStatus } from "../../src/common/index.js";
+import { InstallationTarget } from "../../src/domain/index.js";
 import {
   CLI_USAGE_LINES,
   CliCommand,
@@ -15,6 +16,50 @@ const TASK_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const ARTIFACT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB0";
 
 describe("CLI argument parser", () => {
+  it("严格解析 init --dry-run 的受管文件参数", () => {
+    const root = resolve("repository");
+    expect(
+      parseCliArguments([
+        "init",
+        "--target",
+        "codex",
+        "--root",
+        root,
+        "--workspace",
+        "workspace-1",
+        "--repository",
+        "repository-1",
+        "--dry-run",
+        "--json",
+      ]),
+    ).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        command: CliCommand.InitDryRun,
+        target: InstallationTarget.Codex,
+        root,
+        workspaceId: "workspace-1",
+        repositoryId: "repository-1",
+        dryRun: true,
+      },
+    });
+  });
+
+  it("拒绝省略 init --dry-run", () => {
+    expect(
+      parseCliArguments([
+        "init",
+        "--target",
+        "codex",
+        "--root",
+        resolve("repository"),
+        "--workspace",
+        "workspace-1",
+        "--repository",
+        "repository-1",
+      ]).status,
+    ).toBe(ResultStatus.Failure);
+  });
   it("严格解析 cell run 的 file、store 与 JSON 选项", () => {
     const repositoryRoot = resolve("repository");
     expect(

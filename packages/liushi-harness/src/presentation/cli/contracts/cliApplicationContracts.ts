@@ -11,6 +11,7 @@ import type {
   RecordApprovalUseCase,
   ResolveRulesUseCase,
   ScanProjectUseCase,
+  CreateInstallPlanUseCase,
 } from "#application/index.js";
 
 import type { HookInputReader, JsonDocumentReader } from "../input/index.js";
@@ -42,6 +43,8 @@ export interface HookConfigProjector {
 
 /** CLI 可调用的 Application Use Cases。 */
 export interface CliApplication {
+  /** G0 托管文件 dry-run InstallPlan Use Case。 */
+  createInstallPlan: CreateInstallPlanUseCase;
   /** 串行 CodingTask Cell。 */
   runCodingTaskCell: CodingTaskCellService;
   /** Runtime 健康检查 Use Case。 */

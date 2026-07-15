@@ -25,6 +25,7 @@ export const CLI_EXIT_CODE_OUTCOME_UNKNOWN = 8;
 
 /** CLI 首个纵向切片支持的使用方式。 */
 export const CLI_USAGE_LINES: readonly string[] = [
+  "liushi-harness init --target codex --root <absolute-path> --workspace <id> --repository <id> --dry-run [--actor-id <id>] [--store <path>] [--json]",
   "liushi-harness doctor [--store <path>] [--json]",
   "liushi-harness task create --workspace <id> [--source <text>] [--actor-id <id>] [--store <path>] [--json]",
   "liushi-harness task status --workspace <id> --task <ulid> [--store <path>] [--json]",

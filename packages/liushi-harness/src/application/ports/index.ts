@@ -23,3 +23,6 @@ export * from "./fileMutation/index.js";
 export type * from "./gitCheckpoint/index.js";
 export * from "./repositoryRootResolver/index.js";
 export * from "./worktreeProvisionRecoveryInspector/index.js";
+export type * from "./installPlanStore/index.js";
+export type * from "./installProfileProjector/index.js";
+export type * from "./managedFileStateReader/index.js";

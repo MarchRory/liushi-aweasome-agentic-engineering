@@ -1,7 +1,6 @@
 import {
   ApplicationCommandGateway,
   CodingTaskCommandHandler,
-  TaskBackedCodingTaskAuthorizationPolicy,
   ActionHookAuthorizationPolicy,
   BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
@@ -33,7 +32,6 @@ import {
   VerificationCommandHandler,
   ImplementationCommandHandler,
   ImplementationSubmissionHandler,
-  UnresolvedWorktreeProvisionGuard,
   WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
@@ -54,8 +52,6 @@ import {
   FileCodingTaskRepository,
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
-  MockVerificationExecutorAdapter,
-  NodeVerificationExecutorAdapter,
   NodeFileMutationExecutorAdapter,
   NodeGitCheckpointAdapter,
   NodeRepositoryLockAdapter,
@@ -70,8 +66,14 @@ import {
   NodeCodingTaskCellRuntimePathAdapter,
 } from "#infrastructure/index.js";
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
-import { VerificationExecutionMode } from "./enums/index.js";
-import { createCodingTaskCellApplication, createWorktreeApplication } from "./factory/index.js";
+import {
+  createCodingTaskCellApplication,
+  createCodingTaskAuthorizationResolver,
+  createInstallationPlanningApplication,
+  createUnresolvedProvisionGuard,
+  createVerificationExecutor,
+  createWorktreeApplication,
+} from "./factory/index.js";
 /** 唯一 Composition Root，负责构造具体 Adapter 和 Use Case。 */
 export function createHarnessApplication(options: HarnessApplicationOptions): HarnessApplication {
   if (options.storeRoot.trim().length === 0) {
@@ -84,6 +86,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const taskIdGenerator = options.taskIdGenerator ?? new UlidGenerator();
   const eventIdGenerator = options.eventIdGenerator ?? new UlidGenerator();
   const artifactIdGenerator = options.artifactIdGenerator ?? new UlidGenerator();
+  const installPlanIdGenerator = options.installPlanIdGenerator ?? new UlidGenerator();
   const decisionRequestIdGenerator = options.decisionRequestIdGenerator ?? new UlidGenerator();
   const approvalIdGenerator = options.approvalIdGenerator ?? new UlidGenerator();
   const repositoryLockIdGenerator = options.repositoryLockIdGenerator ?? new UlidGenerator();
@@ -106,9 +109,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     lockManager,
     parentDirectoryDurability,
   });
-  const codingTaskAuthorizationResolver =
-    options.codingTaskAuthorizationResolver ??
-    new TaskBackedCodingTaskAuthorizationPolicy(taskRepository, clock);
+  const codingTaskAuthorizationResolver = createCodingTaskAuthorizationResolver(
+    options.codingTaskAuthorizationResolver,
+    taskRepository,
+    clock,
+  );
   const actionJournalRepository = new FileActionJournalRepository(options.storeRoot, {
     lockManager,
     parentDirectoryDurability,
@@ -120,10 +125,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const traceObservationStore = new FileTraceObservationStore(options.storeRoot, { lockManager });
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
-  const unresolvedProvisionGuard = new UnresolvedWorktreeProvisionGuard(
-    actionJournalRepository,
-    digest,
-  );
+  const unresolvedProvisionGuard = createUnresolvedProvisionGuard(actionJournalRepository, digest);
   const evidenceBundleStore = new FileEvidenceBundleStore(options.storeRoot, {
     lockManager,
     parentDirectoryDurability,
@@ -173,11 +175,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     clock,
     unresolvedProvisionGuard,
   });
-  const verificationExecutor =
-    options.verificationExecutor ??
-    (options.verificationExecutionMode === VerificationExecutionMode.LocalCommand
-      ? new NodeVerificationExecutorAdapter(commandRunner, clock)
-      : new MockVerificationExecutorAdapter(clock));
+  // prettier-ignore
+  const verificationExecutor = createVerificationExecutor(options.verificationExecutor, options.verificationExecutionMode, commandRunner, clock);
   const verificationRunner = new RunVerificationUseCase(verificationExecutor, digest, clock);
   const runAndPersistVerification = new RunAndPersistVerificationUseCase(
     verificationRunner,
@@ -259,6 +258,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     probeCodexCapabilities: new ProbeCodexCapabilitiesUseCase(
       new CodexCapabilityProbeAdapter(commandRunner),
     ),
+    // prettier-ignore
+    createInstallPlan: createInstallationPlanningApplication(options.storeRoot, options.packageVersion ?? "development", digest, clock, installPlanIdGenerator, lockManager, parentDirectoryDurability),
     getActionJournal: new GetActionJournalUseCase(actionJournalRepository),
     listRecoverableActions: new ListRecoverableActionsUseCase(actionJournalRepository),
     listTraceObservations: new ListTraceObservationsUseCase(traceObservationStore),

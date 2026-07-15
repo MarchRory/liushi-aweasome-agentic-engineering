@@ -14,3 +14,5 @@ export * from "./gitCheckpoint/index.js";
 export * from "./repositoryRootResolver/index.js";
 export * from "./worktreeProvisionRecovery/index.js";
 export * from "./codingTaskCellRuntimePath/index.js";
+export * from "./managedFileReader/index.js";
+export * from "./fileInstallPlanStore/index.js";

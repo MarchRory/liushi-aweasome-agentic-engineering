@@ -6,7 +6,7 @@
 
 `liushi-harness` 的 Workflow 是本地优先、Human-gated、可审计、可恢复的需求交付语义内核。它编排从 PRD 输入到每个 Repository 达到 PR-ready 的完整生命周期，但不是通用 DAG、低代码平台或模型聊天外壳。
 
-当前实现仍属于 Harness 前置机制：持久化 Command Gateway/Receipt、Revision/Context、Golden Replay、Timeline、Action Journal、JournaledActionRunner、Trace、Canonical Hook Core、RequirementWorkflow Domain/Store/Command，以及 CodingTask Domain/Store/Command、权威授权、单一纵向 CodingTask CLI Cell、Managed Worktree Provision/Inspector、未知 Provision Human 对账、未闭合 Provision 下游 Guard、Repository Lock、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted、版本化 Verification Command、G8 Profile-backed 单仓影响面、Local Command Runner、EvidenceBundle Store 和单仓 PRReadyArtifact 权威装配已落地。现有 CLI 写命令尚未全部迁移到 Gateway，平台安装、实时 Span、OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、Import Graph、多仓影响传播、失败重试和 Studio 均未实现。
+当前实现仍属于 Harness 前置机制：持久化 Command Gateway/Receipt、Revision/Context、Golden Replay、Timeline、Action Journal、JournaledActionRunner、Trace、Canonical Hook Core、RequirementWorkflow Domain/Store/Command，以及 CodingTask Domain/Store/Command、权威授权、单一纵向 CodingTask CLI Cell、Managed Worktree Provision/Inspector、未知 Provision Human 对账、未闭合 Provision 下游 Guard、Repository Lock、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted、版本化 Verification Command、G8 Profile-backed 单仓影响面、Local Command Runner、EvidenceBundle Store、单仓 PRReadyArtifact 权威装配和 G0 InstallPlan dry-run 已落地。现有 CLI 写命令尚未全部迁移到 Gateway，平台 G0 Apply/Revision、实时 Span、OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、Import Graph、多仓影响传播、失败重试和 Studio 均未实现。
 
 六角色评审后的核心结论：
 

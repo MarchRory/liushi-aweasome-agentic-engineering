@@ -12,7 +12,7 @@
 
 ### 1.1 当前可执行范围
 
-**状态：完整 SOP 设计已完成，确定性 Bootstrap、单仓 CodingTask CLI Cell 和 Codex Hook 前置子集可执行。** 当前可以安装 npm 包、检查 Runtime Store、创建与查询 Task、提交 Artifact、记录 Human Approval、解析 Rule、扫描多仓、通过 G8 编译 ProjectProfile Bundle，并以显式可信单仓绑定运行预编排 Mutation、Local Verification 和 PRReadyArtifact 装配；还可以执行只读 Codex Capability Probe、生成待审阅 Hook 配置和绑定已批准 PlanRisk。完整 RequirementWorkflow Runtime、真实项目 Codex Host Hook Smoke、Agent 自主编码、自动安装/写入、失败修复循环、Skills、Connectors、Memory 和 Learning 尚未实现，因此面向真实需求的端到端自动交付仍是目标 SOP，不是当前生产能力声明。
+**状态：完整 SOP 设计已完成，确定性 Bootstrap、单仓 CodingTask CLI Cell、Codex Hook 前置子集和 Managed File dry-run 可执行。** 当前可以安装 npm 包、检查 Runtime Store、创建与查询 Task、提交 Artifact、记录 Human Approval、解析 Rule、扫描多仓、通过 G8 编译 ProjectProfile Bundle，并以显式可信单仓绑定运行预编排 Mutation、Local Verification 和 PRReadyArtifact 装配；还可以执行 Codex Capability Probe、生成待审阅 Hook 配置、绑定已批准 PlanRisk，并通过 `init --target codex --dry-run` 生成零 Repository 写入的 G0 InstallPlan。完整 RequirementWorkflow Runtime、Agent 自主编码、G0 Apply、自动安装/写入、失败修复循环、Skills、Connectors、Memory 和 Learning 尚未实现，因此面向真实需求的端到端自动交付仍是目标 SOP，不是当前生产能力声明。
 
 ## 2. 责任角色
 

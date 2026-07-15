@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isBestEffortDirectorySyncError,
   normalizePathIdentity,
+  pathsOverlap,
   samePathIdentity,
 } from "../../src/infrastructure/system/index.js";
 
@@ -16,6 +17,25 @@ describe("平台兼容层", () => {
 
   it("按注入的 POSIX 平台规则保留路径大小写", () => {
     expect(samePathIdentity("/workspace/Project", "/workspace/project", "linux")).toBe(false);
+  });
+
+  it("按 Windows 路径身份识别大小写别名和祖先关系", () => {
+    expect(pathsOverlap("C:/Repository", "c:/repository/.runtime", "win32")).toBe(true);
+    expect(pathsOverlap("C:/Repository", "C:/Runtime", "win32")).toBe(false);
+  });
+
+  it("保留 POSIX 根路径并识别其祖先关系", () => {
+    expect(normalizePathIdentity("/", "linux")).toBe("/");
+    expect(pathsOverlap("/", "/repository", "linux")).toBe(true);
+  });
+
+  it("保留 Windows 盘符根与 UNC 根并识别其祖先关系", () => {
+    expect(normalizePathIdentity("C:\\", "win32")).toBe("c:\\");
+    expect(pathsOverlap("C:\\", "C:\\repository", "win32")).toBe(true);
+    expect(normalizePathIdentity("\\\\Server\\Share\\", "win32")).toBe("\\\\server\\share\\");
+    expect(pathsOverlap("\\\\Server\\Share\\", "\\\\server\\share\\repository", "win32")).toBe(
+      true,
+    );
   });
 
   it.each(["EISDIR", "EPERM", "EINVAL", "ENOTSUP", "EACCES"])(

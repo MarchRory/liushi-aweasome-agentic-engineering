@@ -4,8 +4,13 @@ import { DEFAULT_CLI_ACTOR_ID } from "../../constants/index.js";
 import { CliCommand, CliOutputFormat, type ParsedCliCommand } from "../../contracts/index.js";
 import type { CollectedCliArguments } from "../collection/index.js";
 import {
+  isExactCliCommand as isExactCommand,
+  requireCliOptionValue as requireValue,
+  validateAllowedCliOptions as validateAllowedOptions,
+} from "./cliCommandParsing.js";
+import { parseInitCliCommand } from "./initCliCommandParser.js";
+import {
   CliOptionName,
-  createInvalidCliOptionError,
   parseAbsolutePath,
   parseCliApprovalDecision,
   parseCliVerificationMode,
@@ -40,6 +45,8 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
       ...(storeRoot === undefined ? {} : { storeRoot }),
     };
   }
+  const init = parseInitCliCommand(collected, outputFormat, storeRoot);
+  if (init !== undefined) return init;
   if (isExactCommand(collected.positionals, ["task", "create"])) {
     validateAllowedOptions(
       collected,
@@ -261,29 +268,4 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
   throw new HarnessError(HarnessErrorCode.InvalidInput, "Unsupported CLI command.", {
     command: collected.positionals.join(" "),
   });
-}
-
-function validateAllowedOptions(
-  collected: CollectedCliArguments,
-  allowed: ReadonlySet<CliOptionName>,
-): void {
-  for (const option of [...collected.flags, ...collected.values.keys()]) {
-    if (!allowed.has(option)) {
-      throw createInvalidCliOptionError(option, "Option is not valid for this command.");
-    }
-  }
-}
-
-function requireValue(collected: CollectedCliArguments, option: CliOptionName): string {
-  const value = collected.values.get(option);
-  if (value === undefined) {
-    throw createInvalidCliOptionError(option, "Required option is missing.");
-  }
-  return value;
-}
-
-function isExactCommand(actual: readonly string[], expected: readonly string[]): boolean {
-  return (
-    actual.length === expected.length && actual.every((value, index) => value === expected[index])
-  );
 }

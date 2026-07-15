@@ -2,40 +2,8 @@ import type { HookExecutorKind } from "#application/index.js";
 import type { HarnessErrorCode } from "#common/index.js";
 
 import type { CliVerificationMode } from "../enums/index.js";
-
-/** CLI 支持的规范命令标识。 */
-export enum CliCommand {
-  /** 尚未成功解析命令。 */
-  Unknown = "unknown",
-  /** 显示 CLI 使用方式。 */
-  Help = "help",
-  /** 检查 Runtime Store。 */
-  Doctor = "doctor",
-  /** 创建 Task。 */
-  TaskCreate = "task.create",
-  /** 查询 Task 状态。 */
-  TaskStatus = "task.status",
-  /** 提交一个经过 Schema 与 Gate 校验的 Artifact。 */
-  ArtifactPropose = "artifact.propose",
-  /** 对精确 DecisionRequest 记录 Human 决策。 */
-  ApprovalDecide = "approval.decide",
-  /** 只读解析 Project Rule Catalog。 */
-  RulesResolve = "rules.resolve",
-  /** 对显式多仓执行只读 Project Discovery。 */
-  ProjectScan = "project.scan",
-  /** 将已批准的 ProjectProfileProposal 编译为完整 Bundle。 */
-  ProfileCompile = "profile.compile",
-  /** 串行执行已获 Human Gate 授权的 CodingTask 编码 Cell。 */
-  CellRun = "cell.run",
-  /** 将人工确认的 Task/PlanRisk 绑定到执行器工作区。 */
-  HookBind = "hook.bind",
-  /** 处理执行器通过 Stdin 传入的一次 Hook。 */
-  HookHandle = "hook.handle",
-  /** 输出供 Human 审阅后写入的 Codex hooks.json 投影。 */
-  HookConfig = "hook.config",
-  /** 只读探测 Codex 执行器能力。 */
-  HookProbe = "hook.probe",
-}
+import type { BaseCliCommand, CliCommand } from "./cliCommandContracts.js";
+import type { InitDryRunCliCommand } from "./cliInstallationContracts.js";
 
 /** CLI 接受的 Human Approval 决策值。 */
 export enum CliApprovalDecision {
@@ -47,14 +15,6 @@ export enum CliApprovalDecision {
   Waived = "waived",
 }
 
-/** CLI 输出面向 Human 或稳定 JSON Consumer。 */
-export enum CliOutputFormat {
-  /** 输出简洁 Human 文本。 */
-  Human = "human",
-  /** 输出带 Schema Version 的单行 JSON。 */
-  Json = "json",
-}
-
 /** CLI JSON Envelope 的结果类别。 */
 export enum CliResponseStatus {
   /** 命令成功。 */
@@ -63,14 +23,6 @@ export enum CliResponseStatus {
   Blocked = "blocked",
   /** 命令失败。 */
   Failure = "failure",
-}
-
-/** 所有已解析命令共享的输出和 Store 选项。 */
-interface BaseCliCommand {
-  /** 当前输出格式。 */
-  outputFormat: CliOutputFormat;
-  /** 可选 Runtime Store 覆盖路径。 */
-  storeRoot?: string;
 }
 
 /** Help 命令。 */
@@ -247,7 +199,8 @@ export type ParsedCliCommand =
   | HookBindCliCommand
   | HookHandleCliCommand
   | HookConfigCliCommand
-  | HookProbeCliCommand;
+  | HookProbeCliCommand
+  | InitDryRunCliCommand;
 
 /** CLI JSON 失败信息。 */
 export interface CliErrorPayload {

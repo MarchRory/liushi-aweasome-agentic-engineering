@@ -25,6 +25,7 @@ import type {
   ListTraceObservationsUseCase,
   ProposeArtifactUseCase,
   ProbeCodexCapabilitiesUseCase,
+  CreateInstallPlanUseCase,
   RecordApprovalUseCase,
   RecordActionIntentUseCase,
   RecordActionObservationUseCase,
@@ -62,6 +63,8 @@ export interface HarnessApplication {
   handleCodexHook: CodexHookHandler;
   /** Codex 执行器只读能力探测。 */
   probeCodexCapabilities: ProbeCodexCapabilitiesUseCase;
+  /** 生成并持久化不修改 Repository 的 G0 Managed Files InstallPlan。 */
+  createInstallPlan: CreateInstallPlanUseCase;
   /** 将人工确认的 Task/PlanRisk 绑定到执行器工作区。 */
   bindHookWorkspace: BindHookWorkspaceUseCase;
   /** Runtime Store 健康检查。 */
@@ -134,6 +137,8 @@ export interface HarnessApplication {
 export interface HarnessApplicationOptions {
   /** Runtime Store 根目录。 */
   storeRoot: string;
+  /** 可选包版本测试覆盖；生产 Bootstrap 从 package.json 注入。 */
+  packageVersion?: string;
   /** 可选测试 Clock。 */
   clock?: Clock;
   /** 可选并发协调 Delay。 */
@@ -144,6 +149,8 @@ export interface HarnessApplicationOptions {
   eventIdGenerator?: IdGenerator;
   /** 可选 Artifact ID Generator。 */
   artifactIdGenerator?: IdGenerator;
+  /** 可选 InstallPlan ID Generator。 */
+  installPlanIdGenerator?: IdGenerator;
   /** 可选 DecisionRequest ID Generator。 */
   decisionRequestIdGenerator?: IdGenerator;
   /** 可选 Approval ID Generator。 */

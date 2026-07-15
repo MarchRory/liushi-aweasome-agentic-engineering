@@ -23,6 +23,7 @@ import {
   executeHookHandle,
   executeHookProbe,
   executeProjectScan,
+  executeInitDryRun,
 } from "./commands/index.js";
 import {
   CLI_EXIT_CODE_SUCCESS,
@@ -76,6 +77,9 @@ async function executeCommand(
   command: ParsedCliCommand,
   dependencies: RunCliDependencies,
 ): Promise<number> {
+  if (command.command === CliCommand.InitDryRun) {
+    return executeInitDryRun(command, createApplication(command, dependencies), dependencies);
+  }
   switch (command.command) {
     case CliCommand.Help:
       writeSuccess(dependencies, command.outputFormat, command.command, {

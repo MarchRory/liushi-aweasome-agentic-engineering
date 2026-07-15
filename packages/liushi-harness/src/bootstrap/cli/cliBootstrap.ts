@@ -11,6 +11,7 @@ import {
   createCodexHookProjection,
   StaticRepositoryRootResolverAdapter,
 } from "#infrastructure/index.js";
+import packageJson from "../../../package.json" with { type: "json" };
 import { createHarnessApplication, VerificationExecutionMode } from "../compositionRoot/index.js";
 import { resolveHarnessRuntimeConfig } from "../runtimeConfig/index.js";
 
@@ -40,10 +41,12 @@ export async function runCliBootstrap(args: readonly string[]): Promise<number> 
 export function createProductionCliApplicationFactory(): CliApplicationFactory {
   return {
     create(storeRoot: string, startupConfig?: CliApplicationStartupConfig) {
-      if (startupConfig === undefined) return createHarnessApplication({ storeRoot });
+      if (startupConfig === undefined)
+        return createHarnessApplication({ storeRoot, packageVersion: packageJson.version });
       const repositoryBinding = startupConfig.repositoryBinding;
       return createHarnessApplication({
         storeRoot,
+        packageVersion: packageJson.version,
         repositoryRootResolver: new StaticRepositoryRootResolverAdapter([repositoryBinding]),
         codingTaskCellRuntimeBinding: repositoryBinding,
         verificationExecutionMode: mapVerificationExecutionMode(startupConfig.verificationMode),

@@ -1,7 +1,11 @@
 import { isAbsolute, resolve } from "node:path";
 
-import { HookExecutorKind } from "#application/index.js";
-import { HarnessError, HarnessErrorCode } from "#common/index.js";
+import {
+  HookExecutorKind,
+  parseInstallationTarget,
+  type CreateInstallPlanInput,
+} from "#application/index.js";
+import { HarnessError, HarnessErrorCode, ResultStatus } from "#common/index.js";
 
 import { CliApprovalDecision } from "../../contracts/index.js";
 import { CliVerificationMode } from "../../enums/index.js";
@@ -54,6 +58,10 @@ export enum CliOptionName {
   Executor = "--executor",
   /** 指定 Capability Probe 实际执行的可执行文件。 */
   Executable = "--executable",
+  /** 指定安装目标执行器。 */
+  Target = "--target",
+  /** 仅创建 Runtime Store InstallPlan。 */
+  DryRun = "--dry-run",
 }
 
 const CLI_OPTION_BY_NAME = new Map<string, CliOptionName>(
@@ -67,7 +75,6 @@ const CLI_APPROVAL_DECISION_BY_NAME = new Map<string, CliApprovalDecision>(
 const CLI_VERIFICATION_MODE_BY_NAME = new Map<string, CliVerificationMode>(
   Object.values(CliVerificationMode).map((mode) => [mode, mode]),
 );
-
 /** 将外部长选项字符串解析为封闭 CliOptionName。 */
 export function parseCliOptionName(value: string): CliOptionName {
   const option = CLI_OPTION_BY_NAME.get(value);
@@ -81,7 +88,18 @@ export function parseCliOptionName(value: string): CliOptionName {
 
 /** 判断 CLI 选项后是否必须紧跟非空值。 */
 export function cliOptionRequiresValue(option: CliOptionName): boolean {
-  return option !== CliOptionName.Json && option !== CliOptionName.Help;
+  return (
+    option !== CliOptionName.Json &&
+    option !== CliOptionName.Help &&
+    option !== CliOptionName.DryRun
+  );
+}
+
+/** 将外部安装目标解析为领域唯一的封闭枚举。 */
+export function parseCliInstallationTarget(value: string): CreateInstallPlanInput["target"] {
+  const target = parseInstallationTarget(value);
+  if (target.status === ResultStatus.Failure) throw target.error;
+  return target.value;
 }
 
 /** 将外部 Human 决策字符串解析为封闭 CliApprovalDecision。 */
