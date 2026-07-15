@@ -1,5 +1,4 @@
-import { lstat, readFile, realpath } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { lstat, readFile } from "node:fs/promises";
 
 import type { ContentDigestPort, ManagedFileStateReader } from "#application/ports/index.js";
 import {
@@ -14,6 +13,7 @@ import {
 import {
   MANAGED_FILES_MANIFEST_PATH,
   ManagedFileActualKind,
+  bindManagedManifestSnapshot,
   createMissingManagedManifest,
   parseManagedManifest,
   type ActualManagedFileState,
@@ -21,7 +21,8 @@ import {
 } from "#domain/installation/index.js";
 import {
   normalizePathIdentity,
-  samePathIdentity,
+  resolveRepositoryRoot,
+  resolveSafeRepositoryTarget,
 } from "#infrastructure/system/platformCompatibility/index.js";
 
 /** 基于 lstat 的只读 Repository 受管文件读取器，拒绝所有符号链接。 */
@@ -44,7 +45,7 @@ export class NodeManagedFileStateReaderAdapter implements ManagedFileStateReader
     root: string,
     path: string,
   ): Promise<Result<ActualManagedFileState, HarnessErrorType>> {
-    const target = await resolveSafeTarget(root, path);
+    const target = await resolveSafeRepositoryTarget(root, path);
     if (target.status === ResultStatus.Failure) return target;
     try {
       const stat = await lstat(target.value);
@@ -72,7 +73,7 @@ export class NodeManagedFileStateReaderAdapter implements ManagedFileStateReader
   public async readManifest(
     root: string,
   ): Promise<Result<ManagedManifestSnapshot, HarnessErrorType>> {
-    const target = await resolveSafeTarget(root, MANAGED_FILES_MANIFEST_PATH);
+    const target = await resolveSafeRepositoryTarget(root, MANAGED_FILES_MANIFEST_PATH);
     if (target.status === ResultStatus.Failure) return target;
     try {
       const stat = await lstat(target.value);
@@ -83,9 +84,11 @@ export class NodeManagedFileStateReaderAdapter implements ManagedFileStateReader
             "Managed file manifest is not a regular file.",
           ),
         );
+      let content: string;
       let parsed: unknown;
       try {
-        parsed = JSON.parse(await readFile(target.value, "utf8"));
+        content = await readFile(target.value, "utf8");
+        parsed = JSON.parse(content) as unknown;
       } catch (error) {
         return failure(
           new HarnessError(
@@ -96,7 +99,12 @@ export class NodeManagedFileStateReaderAdapter implements ManagedFileStateReader
           ),
         );
       }
-      return parseManagedManifest(parsed);
+      const manifest = parseManagedManifest(parsed);
+      if (manifest.status === ResultStatus.Failure) return manifest;
+      const digest = this.digest.calculate(content);
+      return digest.status === ResultStatus.Failure
+        ? digest
+        : success(bindManagedManifestSnapshot(manifest.value, content, digest.value));
     } catch (error) {
       return isNodeError(error) && error.code === "ENOENT"
         ? success(createMissingManagedManifest())
@@ -112,111 +120,6 @@ export class NodeManagedFileStateReaderAdapter implements ManagedFileStateReader
   }
 }
 
-async function resolveSafeTarget(
-  root: string,
-  path: string,
-): Promise<Result<string, HarnessErrorType>> {
-  if (!isSafeRelativePath(path))
-    return failure(
-      new HarnessError(
-        HarnessErrorCode.InvalidInput,
-        "Repository root or managed path is invalid.",
-        { path },
-      ),
-    );
-  try {
-    const resolvedRoot = await resolveRepositoryRoot(root);
-    if (resolvedRoot.status === ResultStatus.Failure) return resolvedRoot;
-    const realRoot = resolvedRoot.value;
-    let current = realRoot;
-    const parts = path.split("/");
-    for (const part of parts.slice(0, -1)) {
-      current = resolve(current, part);
-      try {
-        const stat = await lstat(current);
-        if (stat.isSymbolicLink() || !stat.isDirectory())
-          return failure(
-            new HarnessError(
-              HarnessErrorCode.OperationForbidden,
-              "Managed file parent path is unsupported.",
-              { path },
-            ),
-          );
-      } catch (error) {
-        if (isNodeError(error) && error.code === "ENOENT") break;
-        throw error;
-      }
-    }
-    const candidate = resolve(realRoot, ...parts);
-    return isWithin(realRoot, candidate)
-      ? success(candidate)
-      : failure(
-          new HarnessError(
-            HarnessErrorCode.OperationForbidden,
-            "Managed file path escapes repository root.",
-            { path },
-          ),
-        );
-  } catch (error) {
-    return failure(
-      error instanceof HarnessError
-        ? error
-        : new HarnessError(
-            HarnessErrorCode.IoFailure,
-            "Unable to validate repository root.",
-            { root },
-            error,
-          ),
-    );
-  }
-}
-
-async function resolveRepositoryRoot(root: string): Promise<Result<string, HarnessErrorType>> {
-  if (!isAbsolute(root))
-    return failure(
-      new HarnessError(HarnessErrorCode.InvalidInput, "Repository root must be absolute."),
-    );
-  try {
-    const rootStat = await lstat(root);
-    if (rootStat.isSymbolicLink() || !rootStat.isDirectory())
-      return failure(
-        new HarnessError(
-          HarnessErrorCode.OperationForbidden,
-          "Repository root must be an existing non-symbolic directory.",
-        ),
-      );
-    const realRoot = await realpath(root);
-    return samePathIdentity(realRoot, resolve(root))
-      ? success(realRoot)
-      : failure(
-          new HarnessError(
-            HarnessErrorCode.OperationForbidden,
-            "Repository root must not resolve through a symbolic link.",
-          ),
-        );
-  } catch (error) {
-    return failure(
-      new HarnessError(
-        HarnessErrorCode.IoFailure,
-        "Unable to validate repository root.",
-        {},
-        error,
-      ),
-    );
-  }
-}
-
-function isSafeRelativePath(value: string): boolean {
-  return (
-    value.length > 0 &&
-    !value.includes("\\") &&
-    !value.split("/").some((part) => part.length === 0 || part === "." || part === "..")
-  );
-}
-function isWithin(root: string, value: string): boolean {
-  const part = relative(root, value);
-  return part.length > 0 && !part.startsWith(`..${sep}`) && part !== ".." && !isAbsolute(part);
-}
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
 }

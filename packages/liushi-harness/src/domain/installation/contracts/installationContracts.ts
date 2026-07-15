@@ -77,13 +77,37 @@ export interface PersistedManagedFileState {
   readonly metadata: ManagedFileMetadata;
 }
 
-/** Manifest 的严格读取结果。 */
-export interface ManagedManifestSnapshot {
-  /** 清单读取状态。 */
-  readonly state: ManagedManifestState;
+/** 已从未知输入严格解析、尚未绑定现场原文的 Manifest。 */
+export interface ParsedManagedManifestSnapshot {
+  /** 已解析清单固定为存在状态。 */
+  readonly state: ManagedManifestState.Present;
   /** 已验证的条目。 */
   readonly entries: readonly PersistedManagedFileState[];
 }
+
+/** 已绑定现场原文及摘要的 Manifest 快照。 */
+export interface PresentManagedManifestSnapshot extends ParsedManagedManifestSnapshot {
+  /** 现场读取到的完整 UTF-8 原文。 */
+  readonly content: string;
+  /** 经外部校验的现场原文 SHA-256 摘要。 */
+  readonly digest: ContentDigest;
+}
+
+/** 明确不存在且不携带伪造内容或摘要的 Manifest 快照。 */
+export interface MissingManagedManifestSnapshot {
+  /** 清单不存在。 */
+  readonly state: ManagedManifestState.Missing;
+  /** 缺失清单没有条目。 */
+  readonly entries: readonly [];
+  /** 缺失清单禁止携带内容。 */
+  readonly content?: never;
+  /** 缺失清单禁止携带摘要。 */
+  readonly digest?: never;
+}
+
+/** 安装计划绑定的完整 Manifest 前置状态。 */
+export type ManagedManifestSnapshot =
+  MissingManagedManifestSnapshot | PresentManagedManifestSnapshot;
 
 /** 单个受管文件的完整计划状态。 */
 export interface FileInstallPlan {
@@ -121,6 +145,8 @@ export interface InstallPlan {
   readonly createdBy: string;
   /** Apply 所需的人类 Gate。 */
   readonly requiredGate: ManagedFileGateId;
+  /** 计划生成时完整的 Manifest 前置状态。 */
+  readonly manifest: ManagedManifestSnapshot;
   /** 按路径稳定排序的文件计划。 */
   readonly files: readonly FileInstallPlan[];
 }

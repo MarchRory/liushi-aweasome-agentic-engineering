@@ -16,11 +16,13 @@ import {
   InstallationTarget,
   ManagedFileActualKind,
   ManagedFileGateId,
+  ManagedManifestState,
   ManagedOwnershipProvenance,
   INSTALL_PLAN_SCHEMA_VERSION,
   calculateInstallPlanDigest,
   compareManagedFilePath,
   isValidManagedFilePath,
+  parseManagedManifest,
   planManagedFile,
   type InstallPlan,
 } from "#domain/installation/index.js";
@@ -87,6 +89,20 @@ const persistedSchema = z
     metadata: metadataSchema,
   })
   .strict();
+const missingManifestSchema = z
+  .object({
+    state: z.literal(ManagedManifestState.Missing),
+    entries: z.array(z.never()).length(0),
+  })
+  .strict();
+const presentManifestSchema = z
+  .object({
+    state: z.literal(ManagedManifestState.Present),
+    entries: z.array(persistedSchema),
+    content: z.string(),
+    digest: digestSchema,
+  })
+  .strict();
 const fileSchema = z
   .object({
     path: managedPathSchema,
@@ -119,6 +135,7 @@ const planSchema = z
     createdAt: z.string().datetime(),
     createdBy: z.string().min(1),
     requiredGate: z.literal(ManagedFileGateId.G0ManagedFiles),
+    manifest: z.discriminatedUnion("state", [missingManifestSchema, presentManifestSchema]),
     files: z.array(fileSchema).min(1),
   })
   .strict();
@@ -131,6 +148,8 @@ export function verifyInstallPlanIntegrity(
 ): Result<InstallPlan, HarnessErrorType> {
   const parsed = parsePlan(input, platform);
   if (parsed.status === ResultStatus.Failure) return parsed;
+  const manifest = verifyManifestSnapshot(parsed.value, digest);
+  if (manifest.status === ResultStatus.Failure) return manifest;
   for (const entry of parsed.value.files) {
     const desiredDigest = digest.calculate(entry.desired.content);
     if (
@@ -179,8 +198,32 @@ function omitDigest(plan: InstallPlan): Omit<InstallPlan, "planDigest"> {
     createdAt: plan.createdAt,
     createdBy: plan.createdBy,
     requiredGate: plan.requiredGate,
+    manifest: plan.manifest,
     files: plan.files,
   };
+}
+
+function verifyManifestSnapshot(
+  plan: InstallPlan,
+  digest: ContentDigestPort,
+): Result<void, HarnessErrorType> {
+  if (plan.manifest.state === ManagedManifestState.Missing) return success(undefined);
+  const calculated = digest.calculate(plan.manifest.content);
+  if (calculated.status === ResultStatus.Failure || calculated.value !== plan.manifest.digest)
+    return corruptPlan("Managed manifest content digest is invalid.");
+  let raw: unknown;
+  try {
+    raw = JSON.parse(plan.manifest.content) as unknown;
+  } catch {
+    return corruptPlan("Managed manifest content is invalid JSON.");
+  }
+  const parsed = parseManagedManifest(raw);
+  if (
+    parsed.status === ResultStatus.Failure ||
+    JSON.stringify(parsed.value.entries) !== JSON.stringify(plan.manifest.entries)
+  )
+    return corruptPlan("Managed manifest entries do not match its bound content.");
+  return success(undefined);
 }
 
 function addDigestKindIssue(

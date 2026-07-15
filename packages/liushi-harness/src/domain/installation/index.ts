@@ -4,4 +4,6 @@ export * from "./digest/index.js";
 export * from "./enums/index.js";
 export * from "./identifiers/index.js";
 export * from "./planning/index.js";
+export * from "./revision/index.js";
+export * from "./serialization/index.js";
 export * from "./validation/index.js";

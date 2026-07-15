@@ -49,3 +49,49 @@ export enum ManagedOwnershipProvenance {
   /** 已由 Runtime Store 中成功提交的 Installation Revision 证明。 */
   VerifiedRevision = "verified_revision",
 }
+
+/** Installation Revision 阶段日志允许追加的封闭事件类别。 */
+export enum InstallationRevisionEventType {
+  /** 一个可写文件已原子应用。 */
+  FileApplied = "file_applied",
+  /** 受管 Manifest 已原子应用。 */
+  ManifestApplied = "manifest_applied",
+  /** 全部 Apply 后置条件已经验证。 */
+  PostconditionsVerified = "postconditions_verified",
+  /** Installation Revision 已最终提交。 */
+  Committed = "committed",
+}
+
+/** Installation Revision 从阶段日志归约得到的当前状态。 */
+export enum InstallationRevisionStatus {
+  /** 副作用前 Intent 已持久化。 */
+  IntentPersisted = "intent_persisted",
+  /** 一个或多个受管文件正在按计划应用。 */
+  FilesApplying = "files_applying",
+  /** Manifest 已应用。 */
+  ManifestApplied = "manifest_applied",
+  /** 后置条件已经验证。 */
+  PostconditionsVerified = "postconditions_verified",
+  /** Revision 已最终提交。 */
+  Committed = "committed",
+}
+
+/** 中断后的现场状态允许采取的封闭恢复处置。 */
+export enum InstallationRecoveryDisposition {
+  /** 现场仍完全等于前置状态，允许从头重启。 */
+  RestartPermitted = "restart_permitted",
+  /** 所有目标和 Manifest 均已完成。 */
+  Complete = "complete",
+  /** 现场只包含前置或目标状态，允许按 Intent 回滚。 */
+  RollbackPermitted = "rollback_permitted",
+  /** 发现不一致或未知漂移，必须由 Human 处理。 */
+  HumanRequired = "human_required",
+}
+
+/** 幂等 Apply 调用对副作用的处置结果。 */
+export enum InstallationApplyDisposition {
+  /** 本次调用执行了 Apply。 */
+  Applied = "applied",
+  /** 本次调用复用了已经完成的 Apply。 */
+  Reused = "reused",
+}

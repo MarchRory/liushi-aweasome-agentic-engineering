@@ -115,6 +115,7 @@ export class CreateInstallPlanUseCase {
       createdAt: this.clock.now().toISOString(),
       createdBy: valid.value.actorId,
       requiredGate: ManagedFileGateId.G0ManagedFiles,
+      manifest: manifest.value,
       files,
     } satisfies Omit<InstallPlan, "planDigest">;
     const planDigest = calculateInstallPlanDigest((value) => this.digest.calculate(value), base);

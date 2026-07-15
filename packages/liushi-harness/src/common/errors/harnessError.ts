@@ -50,6 +50,12 @@ export enum HarnessErrorCode {
   EvidenceBundleCommitOutcomeUnknown = "evidence_bundle_commit_outcome_unknown",
   /** Command Handler 已执行但 Receipt 无法可靠落盘，禁止自动重试。 */
   CommandGatewayCommitOutcomeUnknown = "command_gateway_commit_outcome_unknown",
+  /** 请求的 Installation Revision 不存在。 */
+  InstallationRevisionNotFound = "installation_revision_not_found",
+  /** Installation 已出现部分副作用，必须先由恢复流程分类或由 Human 决策。 */
+  InstallationRecoveryRequired = "installation_recovery_required",
+  /** Installation checkpoint 已开始持久化但提交结果未知，禁止自动重试。 */
+  InstallationCommitOutcomeUnknown = "installation_commit_outcome_unknown",
 }
 
 /** Harness 跨层返回的可分类错误。 */

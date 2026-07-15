@@ -7,12 +7,18 @@ import {
   failure,
   parseContentDigest,
   success,
+  type ContentDigest,
   type Result,
 } from "#common/index.js";
 import { parseRepositoryId } from "#domain/workspace/index.js";
 
 import { MANAGED_FILE_MANIFEST_SCHEMA_VERSION } from "../constants/index.js";
-import type { ManagedFileOriginalState, ManagedManifestSnapshot } from "../contracts/index.js";
+import type {
+  ManagedFileOriginalState,
+  ManagedManifestSnapshot,
+  ParsedManagedManifestSnapshot,
+  PresentManagedManifestSnapshot,
+} from "../contracts/index.js";
 import {
   ManagedFileActualKind,
   ManagedManifestState,
@@ -65,7 +71,7 @@ const manifestSchema = z
 /** 严格校验仓库 managed-files.json，重复路径和未知字段均失败关闭。 */
 export function parseManagedManifest(
   input: unknown,
-): Result<ManagedManifestSnapshot, HarnessError> {
+): Result<ParsedManagedManifestSnapshot, HarnessError> {
   const parsed = manifestSchema.safeParse(input);
   if (!parsed.success)
     return failure(
@@ -114,6 +120,15 @@ export function parseManagedManifest(
     });
   }
   return success({ state: ManagedManifestState.Present, entries });
+}
+
+/** 将严格解析结果与同一次现场读取的原文和外部校验摘要绑定。 */
+export function bindManagedManifestSnapshot(
+  parsed: ParsedManagedManifestSnapshot,
+  content: string,
+  digest: ContentDigest,
+): PresentManagedManifestSnapshot {
+  return { ...parsed, content, digest };
 }
 
 function invalidManifest(): Result<never, HarnessError> {

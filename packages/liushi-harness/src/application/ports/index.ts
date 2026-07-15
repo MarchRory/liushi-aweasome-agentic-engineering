@@ -25,4 +25,7 @@ export * from "./repositoryRootResolver/index.js";
 export * from "./worktreeProvisionRecoveryInspector/index.js";
 export type * from "./installPlanStore/index.js";
 export type * from "./installProfileProjector/index.js";
+export * from "./installationRevisionStore/index.js";
+export type * from "./managedFileMutation/index.js";
 export type * from "./managedFileStateReader/index.js";
+export type * from "./managedOwnershipVerifier/index.js";

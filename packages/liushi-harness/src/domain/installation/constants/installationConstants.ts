@@ -1,5 +1,7 @@
 /** InstallPlan 的持久化 schema 版本。 */
 export const INSTALL_PLAN_SCHEMA_VERSION = 1;
+/** Installation Revision 持久化 schema 版本。 */
+export const INSTALLATION_REVISION_SCHEMA_VERSION = 1;
 /** 仓库受管文件所有权清单的 schema 版本。 */
 export const MANAGED_FILE_MANIFEST_SCHEMA_VERSION = 1;
 /** 首个 Codex 受管文件的仓库相对路径。 */

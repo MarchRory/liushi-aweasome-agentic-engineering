@@ -10,6 +10,7 @@ import {
   InstallationTarget,
   ManagedFileActualKind,
   ManagedFileGateId,
+  ManagedManifestState,
   ManagedOwnershipProvenance,
   parseInstallationRevisionId,
   parseRepositoryId,
@@ -228,6 +229,7 @@ function createPlan(root = "C:\\repository") {
     createdAt: "2026-07-15T00:00:00.000Z",
     createdBy: "actor",
     requiredGate: ManagedFileGateId.G0ManagedFiles,
+    manifest: { state: ManagedManifestState.Missing, entries: [] } as const,
     files: [
       {
         path: ".codex/hooks.json",
@@ -258,6 +260,7 @@ function recalculatePlan(plan: InstallPlan): InstallPlan {
     createdAt: plan.createdAt,
     createdBy: plan.createdBy,
     requiredGate: plan.requiredGate,
+    manifest: plan.manifest,
     files: plan.files,
   };
   const digest = new Rfc8785Sha256DigestAdapter().calculate(base);
