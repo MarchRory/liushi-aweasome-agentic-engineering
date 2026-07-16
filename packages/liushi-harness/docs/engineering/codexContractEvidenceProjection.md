@@ -1,6 +1,6 @@
 # Codex Contract Evidence 投影
 
-**状态：已实现。固定 Suite 通过生产 `CodexHookAdapter` 运行，输出独立、脱敏、内容寻址的 Contract Artifact 与五条 `contract_test` Evidence；它不是 Host 验收、Tarball Attestation 或 Production 声明。**
+**状态：已实现。固定 Suite 通过生产 `NodeHookInputReaderAdapter` 与 `CodexHookAdapter` 运行，输出独立、脱敏、内容寻址的 Contract Artifact 与五条 `contract_test` Evidence；它不是 Host 验收、Tarball Attestation 或 Production 声明。**
 
 ## 1. 目标与边界
 
@@ -27,7 +27,7 @@ Contract Suite 的实现和测试 Fixture 只证明确定性契约行为。窄�
 
 ## 3. 生产 Adapter 与窄端口 doubles
 
-Suite 固定要求构造函数精确等于生产 `CodexHookAdapter`。每个 Case 都通过该 Adapter 接收 Codex 原生 PreToolUse/PostToolUse 输入，再观察 Adapter 交给 Canonical 层的 Command、Payload 和原生响应映射。
+Suite 固定要求构造函数精确等于生产 `CodexHookAdapter`。Native Input Case 先把分块 JSON 交给位于 Infrastructure 的生产 `NodeHookInputReaderAdapter`，再把读取结果交给生产 Adapter；其他 Case 直接观察 Adapter 交给 Canonical 层的 Command、Payload 和原生响应映射。Reader 通过可注入的 `AsyncIterable` 隔离测试输入，生产默认值仍是 `process.stdin`，Contract 不读取真实终端。
 
 为了让 Contract 可重复运行，`CodexContractRuntimeHarness` 只在以下窄端口提供确定性 doubles：
 
@@ -41,17 +41,17 @@ Suite 固定要求构造函数精确等于生产 `CodexHookAdapter`。每个 Cas
 
 ## 4. 固定 Suite、Case 与 Check
 
-Suite 标识为 `managed_file_mutation_hooks.codex.contract.v1`，定义版本为 `1.0.0`。Suite、五个 Case 和每个 `checkIds` 数组在运行时深层冻结；顺序属于协议语义，调用方不能扩展、删除或重排。
+Suite 标识为 `managed_file_mutation_hooks.codex.contract.v2`，定义版本为 `2.0.0`。Suite、五个 Case 和每个 `checkIds` 数组在运行时深层冻结；顺序属于协议语义，调用方不能扩展、删除或重排。
 
-五个 Case 共包含十四个固定 Check：
+五个 Case 共包含十八个固定 Check：
 
-| Case ID                         | Capability             | 固定 Check ID                                                                                          |
-| ------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| `codex.command_hook_handler.v1` | `command_hook_handler` | `command.adapter_success.v1`、`command.envelope_projection.v1`、`command.payload_projection.v1`        |
-| `codex.native_hook_input.v1`    | `native_hook_input`    | `native.pre_input_accepted.v1`、`native.post_input_accepted.v1`、`native.invalid_input_fail_closed.v1` |
-| `codex.pre_file_mutation.v1`    | `pre_file_mutation`    | `pre.native_input_accepted.v1`、`pre.canonical_projection.v1`、`pre.allow_mapping.v1`                  |
-| `codex.post_file_mutation.v1`   | `post_file_mutation`   | `post.native_input_accepted.v1`、`post.canonical_projection.v1`、`post.additional_context_mapping.v1`  |
-| `codex.deny_file_mutation.v1`   | `deny_file_mutation`   | `deny.unauthorized_target_projection.v1`、`deny.native_response_mapping.v1`                            |
+| Case ID                         | Capability             | 固定 Check ID                                                                                                                                                                                                         |
+| ------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codex.command_hook_handler.v2` | `command_hook_handler` | `command.adapter_success.v2`、`command.envelope_projection.v2`、`command.payload_projection.v2`、`command.deterministic_replay.v2`                                                                                    |
+| `codex.native_hook_input.v2`    | `native_hook_input`    | `native.chunked_json_stdin.v2`、`native.pre_input_accepted.v2`、`native.post_input_accepted.v2`、`native.invalid_json_fail_closed.v2`、`native.empty_input_fail_closed.v2`、`native.invalid_structure_fail_closed.v2` |
+| `codex.pre_file_mutation.v2`    | `pre_file_mutation`    | `pre.native_input_accepted.v2`、`pre.canonical_projection.v2`、`pre.allow_mapping.v2`                                                                                                                                 |
+| `codex.post_file_mutation.v2`   | `post_file_mutation`   | `post.native_input_accepted.v2`、`post.canonical_projection.v2`、`post.additional_context_mapping.v2`                                                                                                                 |
+| `codex.deny_file_mutation.v2`   | `deny_file_mutation`   | `deny.unauthorized_target_projection.v2`、`deny.native_response_mapping.v2`                                                                                                                                           |
 
 每个 Check 只有 `passed` 或 `failed`。一个 Case 的全部 Check 都为 `passed` 时，Case 才机械聚合为 `passed`；任一 Check 失败时，该 Case 聚合为 `failed`。Artifact 必须精确保存完整 Suite Definition、Definition Digest、五个 Case、全部 Check 及固定顺序。
 
@@ -59,20 +59,20 @@ Suite 标识为 `managed_file_mutation_hooks.codex.contract.v1`，定义版本�
 
 Host Projection 的四条 `smoke_test` 与两条 `negative_test` 必须拥有同一个非空 `observedAt`。Application 把该唯一值作为 `observationAnchor` 传入 Contract Projector；Contract Clock 的每次读取都返回这一固定时间，五条 Contract Evidence 的 `source.observedAt` 也必须全部等于它。
 
-因此，Contract Suite 不读取墙上时钟。相同 `scope`、`hostArtifactDigest`、`observationAnchor`、Locator Kind 与固定 Suite 定义会得到逐字段相同的 Artifact、Artifact Digest 和 Evidence。
+因此，Contract Suite 不读取墙上时钟。Command Handler Case 还会把同一原生输入交给两个隔离 Harness，并比较完整 Canonical Command 与 Payload 的稳定摘要。相同 `scope`、`hostArtifactDigest`、`observationAnchor`、Locator Kind 与固定 Suite 定义会得到逐字段相同的 Artifact、Artifact Digest 和 Evidence。
 
 ## 6. Failed Evidence 是有效结果
 
 Contract Check 不成立与 Projector 执行失败是两个不同状态：
 
-- 输入 Schema、Scope、Suite 定义、摘要、运行时基础设施或持久化复验无效时，Projector 返回失败，不输出部分 Projection。
+- 输入 Schema、Scope、Suite 定义、摘要、运行时基础设施或持久化复验无效时，Projector 返回失败，不输出部分 Projection。生产 Reader 或 Adapter 抛出的异常必须终止 Suite，并由 Projector 返回 `invalid_input`；异常不能被转换为某个通过或失败的 Contract Check。
 - Suite 正常完成但某个 Check 不成立时，Projector 仍返回完整、有效的 Artifact，并把对应 Case 投影为 `outcome=failed` 的 `contract_test` Evidence。
 
 Failed Evidence 不能被丢弃或改写成“缺少证据”。当其与同 Scope 的 Host Evidence 一起进入 Matrix Compiler 时，明确且无冲突的 Contract 失败会形成 `unsupported`；这正是兼容性结论，不是测试框架异常。
 
 ## 7. 脱敏 Artifact 与五条 Evidence
 
-Contract Artifact 使用严格 Schema `liushi.codex-hook-contract-evidence.v1`，只保存：
+Contract Artifact 使用严格 Schema `liushi.codex-hook-contract-evidence.v2`，只保存：
 
 - 固定 Profile 与精确 Scope。
 - 父 `hostArtifactDigest`。
@@ -99,9 +99,10 @@ Contract Artifact 以 RFC 8785 SHA-256 内容寻址，Locator 由 Digest 确定�
 1. Host Projector 校验原始来源并生成独立 Host Artifact 与七条 Evidence。
 2. 校验七条 Evidence 的能力/Kind 精确集合、唯一摘要、内部 Scope 和动态观察锚点。
 3. 用 Host Projection 派生四项 Contract 输入，运行固定 Suite，生成独立 Contract Artifact 与五条 Evidence。
-4. 校验五条 Evidence 的能力/Kind 精确集合、Artifact Digest、精确 Scope 和 `observationAnchor`。
-5. 合并为恰好十二条唯一 Evidence，并拒绝 Scope 漂移或任何 `production_e2e`。
-6. 用源码固定 Policy 编译 Matrix；先持久化 Host Projection，再持久化 Contract Projection，最后发布 Matrix 与 Policy。
+4. 使用与 Query 相同的 exact-schema Projection Set Verifier 重新验证两个来源，并在任何持久化之前校验父 `hostArtifactDigest`、精确 Scope 和 `observationAnchor`。
+5. 只使用集合验证器返回的可信 Projection，继续校验五条 Evidence 的能力/Kind 精确集合与 Artifact Digest。
+6. 合并为恰好十二条唯一 Evidence，并拒绝 Scope 漂移或任何 `production_e2e`。
+7. 用源码固定 Policy 编译 Matrix；先持久化 Host Projection，再持久化 Contract Projection，最后发布 Matrix 与 Policy。
 
 Host 与 Contract Artifact 各有自己的 `artifactDigest`，各自的 Evidence 只绑定自己的来源 Artifact。Contract Artifact 额外保存父 `hostArtifactDigest`，形成独立内容寻址、显式父子绑定的双 Artifact 链。
 
@@ -112,7 +113,7 @@ Compile 成功输出使用按 Host、Contract 固定顺序排列的 `evidencePer
 `executor compatibility query` 不按模糊类型或“最新”记录选择来源。生产 Composition Root 固定注册 exact-schema allowlist：
 
 - `liushi.codex-compatibility-evidence.v1` 恰好一份。
-- `liushi.codex-hook-contract-evidence.v1` 恰好一份。
+- `liushi.codex-hook-contract-evidence.v2` 恰好一份。
 
 缺失、重复、未知、非字符串或来源复验失败的 Schema 都按 `corrupt_store` 关闭式拒绝。两个来源先分别由专属 verifier 重新解析 Artifact、重算 Artifact/Evidence Digest 并确定性重投影；随后集合级校验还必须同时满足：
 
@@ -121,7 +122,7 @@ Compile 成功输出使用按 Host、Contract 固定顺序排列的 `evidencePer
 - Contract 的 `observationAnchor` 精确等于 Host Smoke/Negative Evidence 的唯一 `observedAt`。
 - 五条 Contract Evidence 的 `observedAt` 全部等于该锚点。
 
-只有 exact-schema、父摘要、Scope 和观察锚点全部闭合后，Query 才合并十二条 Evidence，使用源码固定 Policy 重编译，并要求重编译 Matrix 与持久化 Matrix 完全一致。
+Compile 与 Query 由生产 Composition Root 注入同一个集合验证器实例。只有 exact-schema、父摘要、Scope 和观察锚点全部闭合后，Compile 才能开始 Domain 编译与持久化，Query 才能合并十二条 Evidence、使用源码固定 Policy 重编译，并要求重编译 Matrix 与持久化 Matrix 完全一致。
 
 ## 10. Compatible 与 Production 边界
 
@@ -142,9 +143,9 @@ Compile 成功输出使用按 Host、Contract 固定顺序排列的 `evidencePer
 
 现有验证覆盖以下边界：
 
-- Unit：Suite Definition 深层不可变、五条 Passed Evidence、单 Check 故障生成单条 Failed Evidence、确定性重放、Scope/配置拒绝、持久化复验、重排容忍、摘要/Case/Check/Suite 篡改拒绝和脱敏检查。
-- Runtime Integration：固定五个 Case 必须通过生产 `CodexHookAdapter`；受控 Post 映射故障只机械影响对应 Case。
-- Application Unit：Host/Contract 顺序持久化、Contract 失败编译为 Unsupported、任一投影/持久化失败停止 Matrix 发布，以及 Scope/观察锚点漂移拒绝。
+- Unit：Suite Definition 深层不可变、生产 Reader 的字符串/Buffer 分块合并及关闭式失败、五条 Passed Evidence、单 Check 故障生成单条 Failed Evidence、确定性重放、Scope/配置拒绝、持久化复验、重排容忍、摘要/Case/Check/Suite 篡改拒绝和脱敏检查。
+- Runtime Integration：固定五个 Case 必须通过生产 `NodeHookInputReaderAdapter` 与 `CodexHookAdapter`；覆盖分块 JSON、Pre/Post、非法 JSON、空输入、结构错误和 Adapter 抛错；受控 Post 映射故障只机械影响对应 Case。
+- Application Unit：写入前集合复验、错误父 Host Digest 零写入、只使用复验返回值、Host/Contract 顺序持久化、Contract 失败编译为 Unsupported、任一投影/持久化失败停止 Matrix 发布，以及 Scope/观察锚点漂移拒绝。
 - Composition Root Integration：合成且受验输入编译十二条 Evidence 为 Compatible、跨实例 Query、双 Artifact 恢复和父 Host Digest 漂移拒绝。
 - CLI E2E：首次编译、两项 `evidencePersistences`、幂等复用、按 Digest 查询、Matrix 篡改拒绝与 Not Found 退出码。
 

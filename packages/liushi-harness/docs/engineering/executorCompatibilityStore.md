@@ -33,7 +33,7 @@
 ## 3. 复用依据
 
 - 现有 `CodexCompatibilityEvidenceProjectorAdapter` 继续校验 Host v2 原始来源并生成脱敏 Host Artifact 与七条规范 Evidence。
-- `CodexContractEvidenceProjectorAdapter` 通过生产 `CodexHookAdapter` 和窄端口 doubles 运行固定五 Case Suite，生成独立 Contract Artifact 与五条 ContractTest。
+- `CodexContractEvidenceProjectorAdapter` 通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 和窄端口 doubles 运行固定五 Case v2 Suite，生成独立 Contract Artifact 与五条 ContractTest。
 - `SchemaRoutedExecutorCompatibilityProjectionSetVerifierAdapter` 固化 Host/Contract exact-schema allowlist 与跨来源父子绑定。
 - 现有 `compileExecutorCompatibilityMatrix` 继续执行输入校验、Evidence Digest 重算、确定性编译和 Matrix 完整重验。
 - `canonicalize` 与 `Rfc8785Sha256DigestAdapter` 提供跨进程稳定的 JSON 摘要。
@@ -54,13 +54,13 @@ flowchart LR
   hostEvidence --> contractProjector
   contractProjector --> contractArtifact["Contract Artifact"]
   contractProjector --> contractEvidence["5 条 ContractTest"]
+  hostArtifact --> projectionVerifier["共享 Projection Set Verifier"]
+  contractArtifact --> projectionVerifier
+  hostEvidence --> projectionVerifier
+  contractEvidence --> projectionVerifier
   policy["源码固定 Policy"] --> compiler["Domain Matrix Compiler"]
-  hostEvidence --> compiler
-  contractEvidence --> compiler
-  hostArtifact --> evidenceStore["Evidence Store"]
-  contractArtifact --> evidenceStore
-  hostEvidence --> evidenceStore
-  contractEvidence --> evidenceStore
+  projectionVerifier --> compiler
+  projectionVerifier --> evidenceStore["Evidence Store"]
   compiler --> matrixStore["Matrix Store 最后发布"]
   policy --> matrixStore
   query["按受信 matrixDigest 查询"] --> matrixStore
@@ -83,6 +83,7 @@ CLI 到 Host Projector 的输入仍是不受信任数据。只有 Host Projector
 ### 5.2 Application
 
 - `CompileCodexExecutorCompatibilityUseCase` 先调用 Host Projector，再用 Host 的精确 Scope、Artifact Digest 和唯一动态观察时间调用 Contract Projector。
+- Compile 与 Query 共享同一个 `ExecutorCompatibilityEvidenceProjectionSetVerifierPort` 实例。Compile 在 Domain 编译和任何 Store 写入前完成来源复验与跨来源父子绑定，并且后续只使用 verifier 返回的 Projection。
 - Application 要求 Host 恰好七条、Contract 恰好五条，并校验 exact scope、`hostArtifactDigest`、`observationAnchor`、Artifact 归属和十二条摘要唯一性。
 - 编译成功后按 Host、Contract 顺序持久化两项 Projection，最后持久化 Matrix 与完整 Policy。
 - `QueryExecutorCompatibilityUseCase` 按精确 Digest 加载 Matrix、Policy 和全部 Evidence，再调用 Domain Compiler 重编译。
@@ -145,11 +146,12 @@ liushi-harness executor compatibility compile `
 1. 受限 JSON Reader 读取三份原始文档。
 2. Codex Host Projector 完整验证来源并生成独立 Host Artifact 与七条 Evidence。
 3. Application 从 Host Projection 派生受信 Contract 输入，固定 Suite 生成独立 Contract Artifact 与五条 ContractTest。
-4. Application 校验 7+5 的精确集合、同 Scope、父 Host Digest、统一 `observationAnchor`，且不含 ProductionE2e。
-5. Application 使用源码固定 Policy 编译 Matrix；全部十二条 Evidence Passed 时，合成/受验输入编译为 Compatible，明确 Failed Contract Evidence 编译为 Unsupported。
-6. Evidence Store 先持久化 Host Projection，再持久化 Contract Projection。
-7. Matrix Store 最后持久化 Matrix 与完整 Policy。
-8. CLI 输出 Matrix Digest、精确 Scope、Profile、Support Level、两项 `evidencePersistences` 和 `matrixPersistence`。
+4. 共享 Projection Set Verifier 重新验证两个来源，关闭式校验 exact Schema、父 Host Digest、同 Scope 和统一 `observationAnchor`；任一失败时 Evidence/Matrix Store 保持零写入。
+5. Application 只使用 verifier 返回的 Projection，校验 7+5 的精确集合、Artifact 归属、十二条唯一摘要，且不含 ProductionE2e。
+6. Application 使用源码固定 Policy 编译 Matrix；全部十二条 Evidence Passed 时，合成/受验输入编译为 Compatible，明确 Failed Contract Evidence 编译为 Unsupported。
+7. Evidence Store 先持久化 Host Projection，再持久化 Contract Projection。
+8. Matrix Store 最后持久化 Matrix 与完整 Policy。
+9. CLI 输出 Matrix Digest、精确 Scope、Profile、Support Level、两项 `evidencePersistences` 和 `matrixPersistence`。
 
 Artifact 或 Evidence 已写而 Matrix 未写时，这些记录是安全的内容寻址孤儿。后续相同输入可以幂等复用；它们不能通过 Query 暴露为 Matrix 声明。
 
@@ -190,8 +192,8 @@ Matrix、Policy、Evidence 或来源 Artifact 任一缺失、篡改、Scope 漂�
 
 ## 10. 完成门
 
-- Unit：Host/Contract Projector 失败、Contract Failed Evidence、双 Projection 持久化顺序、exact-schema Query、父摘要/Scope/观察锚点漂移和篡改拒绝。
-- Integration：生产 `CodexHookAdapter` 固定 Suite、12 条 Evidence 编译、双 Artifact 跨实例读取、跨进程 Lock、并发幂等、原子写、目录耐久性、真实链接逃逸、Golden Digest 和完整摘要链。
+- Unit：生产 Hook Input Reader、Host/Contract Projector 失败、Adapter 异常、Contract Failed Evidence、写入前集合复验、错误父摘要零写入、双 Projection 持久化顺序、exact-schema Query、Scope/观察锚点漂移和篡改拒绝。
+- Integration：生产 `NodeHookInputReaderAdapter` 与 `CodexHookAdapter` 固定 Suite、12 条 Evidence 编译、双 Artifact 跨实例读取、跨进程 Lock、并发幂等、原子写、目录耐久性、真实链接逃逸、Golden Digest 和完整摘要链。
 - CLI E2E：合成契约 Fixture 编译、两项 `evidencePersistences`、二次幂等、按 Digest 查询、Not Found 与 Corrupt Store 退出码；Fixture 不代表真实 Host 验收。
 - Architecture：层级方向、纯 Barrel、lower camelCase、中文 TSDoc、文件与函数复杂度门全部通过。
 - TypeScript 当前版本与 TypeScript 6 兼容检查、ESLint、Prettier、Build 和 Tarball Smoke 全部通过。

@@ -77,6 +77,6 @@ Repository 与 Runtime Store Locator 必须是无 `..`、无绝对路径、统�
 
 ## 当前边界
 
-当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算，也已实现 Codex Host 7 条 Evidence、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址持久化，以及 `executor compatibility compile/query` CLI。Query 的 exact-schema allowlist 要求 Host/Contract Schema 各恰好一份；来源专属 verifier 重投影后，还会校验父 Host Artifact Digest、精确 Scope 与动态观察锚点，再合并 12 条 Evidence 交给 Domain Compiler。
+当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算，也已实现 Codex Host 7 条 Evidence、固定 v2 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址持久化，以及 `executor compatibility compile/query` CLI。Compile 与 Query 共享的 exact-schema Projection Set Verifier 要求 Host/Contract Schema 各恰好一份；来源专属 verifier 重投影后，还会校验父 Host Artifact Digest、精确 Scope 与动态观察锚点。Compile 在任何持久化前完成该校验并只消费复验返回值，Query 则合并 12 条 Evidence 交给 Domain Compiler 重算。
 
-Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；Contract Suite 则通过生产 `CodexHookAdapter` 与窄端口 doubles 验证五项固定 Case。两种 Artifact 都不含绝对路径及原始 session、turn、tool call 标识。内容寻址用于证明受信 `matrixDigest` 下的完整性，不替代 Human Approval、受信发布清单或 Attestation。仓库当前没有可追溯的真实 v2 Host Artifact；Claude-compatible/CatPaw Adapter 与可发布版本矩阵仍是后续切片。
+Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；Contract Suite v2 则通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 与窄端口 doubles 验证五项固定 Case。两种 Artifact 都不含绝对路径及原始 session、turn、tool call 标识。内容寻址用于证明受信 `matrixDigest` 下的完整性，不替代 Human Approval、受信发布清单或 Attestation。仓库当前没有可追溯的真实 v2 Host Artifact；Claude-compatible/CatPaw Adapter 与可发布版本矩阵仍是后续切片。

@@ -14,11 +14,11 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Host 7 条 Evidence Projector、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Evidence/Matrix Store 和重算查询 CLI 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。实现落地不等于已经存在可追溯的真实 v2 Host Artifact。
+**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Host 7 条 Evidence Projector、固定 v2 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Evidence/Matrix Store 和重算查询 CLI 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。实现落地不等于已经存在可追溯的真实 v2 Host Artifact。
 
 当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply 与 Installation Revision 已实现；自动 Trust/Binding、Rollback/Uninstall、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
 
-Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest；Application 随后通过生产 `CodexHookAdapter` 与窄端口 doubles 运行固定五 Case Suite，生成独立 Contract Artifact 与 5 条 ContractTest。合成 Fixture 或通过投影契约校验的受验输入在 12 条 Evidence 全部 Passed 时编译为 Compatible，Contract Check 的有效 Failed Evidence 则形成 Unsupported。当前仍没有可追溯的真实 v2 Host Artifact，因此不能声明某个真实 Codex 版本 Compatible，也尚未形成可发布版本矩阵。
+Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest；Application 随后通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 与窄端口 doubles 运行固定五 Case v2 Suite，生成独立 Contract Artifact 与 5 条 ContractTest。Compile 与 Query 共用 Projection Set Verifier，并在任何持久化前校验 exact Schema、父 Host Digest、Scope 和观察锚点。合成 Fixture 或通过投影契约校验的受验输入在 12 条 Evidence 全部 Passed 时编译为 Compatible，Contract Check 的有效 Failed Evidence 则形成 Unsupported。当前仍没有可追溯的真实 v2 Host Artifact，因此不能声明某个真实 Codex 版本 Compatible，也尚未形成可发布版本矩阵。
 
 ## 2. Adapter 边界
 
@@ -261,7 +261,7 @@ Probe 分三层：
 - Frontier Model 不可用时不静默降级顶层 Agent。
 - Uninstall 不删除 Human 修改文件。
 
-上述列表是跨 Adapter 的完整目标契约；当前 `managed_file_mutation_hooks.v1` 已实现一个更窄且冻结的 Codex Suite，固定覆盖 Command Handler、Native Hook Input、Pre/Post File Mutation 和 Deny File Mutation 五个 Case。Suite 必须使用生产 `CodexHookAdapter`，窄端口 doubles 只提供确定性 Dispatcher、Binding/Task/Action Reader 与 Clock，不承载任何生产结果，也不构成真实 Host 验收。固定 Case、Check、Failed Evidence 与脱敏协议见 [Codex Contract Evidence 投影](./engineering/codexContractEvidenceProjection.md)。
+上述列表是跨 Adapter 的完整目标契约；当前 `managed_file_mutation_hooks.v1` 已实现一个更窄且冻结的 Codex Suite，固定覆盖 Command Handler、Native Hook Input、Pre/Post File Mutation 和 Deny File Mutation 五个 Case。Suite v2 必须使用生产 `NodeHookInputReaderAdapter` 与 `CodexHookAdapter`，窄端口 doubles 只提供确定性 Dispatcher、Binding/Task/Action Reader 与 Clock，不承载任何生产结果，也不构成真实 Host 验收。固定 Case、Check、Failed Evidence 与脱敏协议见 [Codex Contract Evidence 投影](./engineering/codexContractEvidenceProjection.md)。
 
 当前 Contract Projector 生成 5 条 `contract_test`，Host Projector 仍只生成 7 条 Static/Smoke/Negative Evidence；两者都不生成 `production_e2e`。Claude-compatible/CatPaw 仍需各自执行 Fixture Smoke、Negative Test 和 Contract Test，不能继承 Codex 证据。
 
