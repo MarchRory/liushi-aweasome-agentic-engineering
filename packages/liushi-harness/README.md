@@ -45,7 +45,7 @@
 - `hook probe --executor codex --json` 可只读探测 Codex 版本、帮助输出与 `hooks` 功能开关，并通过 `--executable` 选择实际 Codex；找不到、Access Denied、超时、非零退出、空输出或未知版本均不会被标记为生产支持。
 - `init --target codex --root <path> --workspace <id> --repository <id> --dry-run` 可生成并持久化 G0 InstallPlan；命令拒绝 Runtime Store 与 Repository 的直接或符号链接重叠，不写 `.codex/hooks.json` 或 Manifest，Existing Human File 和未经 Runtime Revision 证明的 Manifest Claim 均保持 `Conflict`。
 - `init --apply` 已实现 G0 Human 明确 Apply：在 Repository Lock 内验证精确 InstallPlan 和同一 Approval，完成全量 preflight/preimage 后先持久化 Installation Revision Intent，再逐文件、Manifest 原子写入并记录 checkpoint，后置验证后提交 `Committed` Revision。
-- Executor Compatibility Matrix Domain 已实现 Adapter/Distribution 分离、精确版本/Host/OS/模型/权限/配置 Scope、分级 Evidence、可复核 Locator、固定支持 Policy 与确定性 Digest 编译；Codex Compatibility Evidence Projector 已实现 Prepare v5、Activation Plan v2 和 Host Result v2 的关闭式校验，并输出不含绝对路径及原始宿主标识的 7 条保守 Evidence。内容寻址 Evidence/Matrix Store 与 `executor compatibility compile/query` CLI 已实现，Query 会锚定源码固定 Policy，从脱敏 Artifact 确定性重投影 Evidence 后重编译。`matrixDigest` 必须来自受信 Compile、Human Approval 或后续发布清单，内容寻址不替代身份认证。当前投影没有 ContractTest、ProductionE2e、Model 或 Permission Scope，因此固定 Policy 的最高结果是 `experimental`，不能声明 `compatible` 或 `production`；CatPaw 也不能继承 Claude Code 的声明。
+- Executor Compatibility Matrix Domain 已实现 Adapter/Distribution 分离、精确版本/Host/OS/模型/权限/配置 Scope、分级 Evidence、可复核 Locator、固定支持 Policy 与确定性 Digest 编译。Codex Host Projector 会关闭式校验 Prepare v5、Activation Plan v2 和 Host Result v2，并生成不含绝对路径及原始宿主标识的 7 条 Evidence；Application 再通过生产 `CodexHookAdapter` 与窄端口 doubles 运行固定五 Case Contract Suite，生成独立 Contract Artifact 与 5 条 ContractTest。Compile 持久化两种内容寻址 Artifact，并按 Host、Contract 顺序返回 `evidencePersistences`；Query 通过 exact-schema allowlist、父 Host Digest、精确 Scope 与统一观察锚点重验 12 条 Evidence。合成/受验输入全部 Passed 时编译 `compatible`，有效 Failed Contract Evidence 编译 `unsupported`。仓库没有可追溯的真实 Host Result v2 Artifact，不能据此声明真实 Codex 版本 Compatible 或形成发布矩阵；没有 ProductionE2e、`modelId`、`permissionMode` 和 Tarball Attestation 时绝不声明 Production。
 - Runtime Store 的 `Committed` Installation Revision 是所有权证据，Repository Manifest 自声明不可信；相同已提交 Approval 返回 `Reused`，物理现场已完成但 checkpoint 未闭合时只补齐元数据。Partial、Mixed、Unknown 和漂移状态必须 Human 介入，不盲目重试或自动回滚。
 - Rollback、Uninstall 和 CLI recovery 当前未实现；`actor-id` 只是审计身份声明，不是认证机制，企业使用须由外部受信任包装器或身份系统注入。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
@@ -59,7 +59,7 @@
 - 固定公开项目 Smoke 已从真实 npm Tarball 独立安装启动生产 CLI，在 `unjs/defu@82632b66` 完成预编排单文件 Mutation 的 G1/G4 Gate 协议、受管 Worktree、单一 Checkpoint、离线安装、完整测试、Passed Evidence、PRReadyArtifact 与跨进程幂等复用。该结果不代表 Agent 已能自主理解需求或生成代码。
 - Codex Host Result 已升级为 v2：删除 `productionVerified`，返回 `hostEvidenceVerified=true`、`matrixSupportClaim=not_evaluated`、`verifiedAt`、Prepare/Plan/Probe 摘要和 `verificationEnvironment`。`verify-result` 运行时实际读取 Node 的 platform/arch，并要求与 Prepare Manifest 精确一致后才通过；Host Result 只是受验来源，不自行声明 Matrix 支持等级。仓库当前没有可追溯的真实 v2 Host Artifact，历史 Host Smoke 结果属于旧版结果，不能直接转为可发布版本矩阵。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、G0 Rollback/Uninstall、Codex 可发布版本矩阵、Codex v2 Host 的可追溯重验、Contract Evidence、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、G0 Rollback/Uninstall、Codex 可发布版本矩阵、Codex v2 Host 的可追溯重验、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
@@ -91,6 +91,9 @@
 - [20 文档与实现状态矩阵](./docs/20-implementation-status-matrix.md)
 - [21 需求生命周期 Workflow 产品与技术方案](./docs/21-requirement-workflow-runtime.md)
 - [22 Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)
+- [Codex Host 兼容性证据投影](./docs/engineering/codexCompatibilityEvidenceProjection.md)
+- [Codex Contract Evidence 投影](./docs/engineering/codexContractEvidenceProjection.md)
+- [Executor Compatibility Store 与 CLI](./docs/engineering/executorCompatibilityStore.md)
 - [Worktree Provision 未知状态恢复](./docs/engineering/worktreeProvisionRecovery.md)
 
 ## CLI
@@ -109,6 +112,8 @@ liushi-harness profile compile --workspace <workspace-id> --task <task-ulid> --a
 liushi-harness init --target codex --root <absolute-path> --workspace <workspace-id> --repository <repository-id> --dry-run [--store <path>] [--json]
 liushi-harness init --apply <plan-ulid> --plan-digest <sha256> --workspace <id> --repository <id> --actor-id <id> --idempotency-key <key> [--store <path>] [--json]
 liushi-harness cell run --file .\codingTaskCell.json --workspace <workspace-id> --repository <repository-id> --root <absolute-repository-root> --verification-mode <fail_closed_mock|local_command> --json
+liushi-harness executor compatibility compile --executor codex --prepare <prepareManifest.json> --activation <activationPlan.json> --result <hostResult.json> [--store <path>] [--json]
+liushi-harness executor compatibility query --matrix-digest <sha256> [--store <path>] [--json]
 liushi-harness hook config --executor codex > .codex/hooks.json
 liushi-harness hook bind --root <repository-root> --workspace <workspace-id> --task <task-ulid> --artifact <plan-risk-artifact-ulid> --artifact-digest <sha256:digest> --actor-id <human-id>
 liushi-harness hook probe --executor codex [--executable <path-or-command>] --json
@@ -119,6 +124,8 @@ liushi-harness hook probe --executor codex [--executable <path-or-command>] --js
 `init --apply` 是 G0 Human 明确动作，必须同时提交精确的计划 ID/Digest、Workspace、Repository、`actor-id` 和 `idempotency-key`；成功 JSON 的 `data` 包含 `revisionId`、`disposition`、`status=committed` 和 `repositoryMutated`。`actor-id` 只用于审计身份声明，不提供认证或授权；企业接入必须由外部受信任包装器或身份系统注入。
 
 `hook probe` 通过 `shell=false` 对选定 executable 运行 `--version`、`--help` 和 `features list`，每条命令都有固定超时与输出上限，并在报告中记录实际 executable 与参数。`hookFramework=verified` 只表示功能列表包含格式完整且启用的 `hooks` 行；PreToolUse、PostToolUse 和 Native stdin 仍只接受帮助文本中独立、非否定的显式声明。该命令不启动模型、不读取凭据、不写入项目，静态 Probe Schema 的 `productionVerified` 固定为 `false`；它是静态 Probe 的字段，不属于 Host Result v2，也不能替代真实受信任项目的 Hook Smoke/Negative Test。
+
+`executor compatibility compile` 只接收三份原始 Host JSON；调用方不能提交 Contract Result 或任意 Passed Evidence。Application 先持久化独立 Host/Contract Projection，再发布 Matrix。成功 JSON 的 `data.evidencePersistences` 是按 Host、Contract 固定排序的二元组；旧字段 `evidencePersistence` 已移除。`query` 只按精确 `matrixDigest` 恢复两种 Artifact、重投影 12 条 Evidence 并重新编译，不选择“最新”记录。合成 Fixture 的 Compatible 结果不是实际 Host 验收或真实版本声明。
 
 `rules resolve` 是报告型命令，不扫描或修改项目，也不激活 Candidate Rule。可执行 Bundle 返回 JSON `status=success` 和退出码 `0`；不可执行 Bundle 仍将完整诊断写入 stdout，但返回 JSON `status=blocked` 和退出码 `4`，从进程边界阻断后续流水线。
 
@@ -163,7 +170,7 @@ Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件�
 
 固定公开项目的 CLI 正路径、证据字段与 HTT 边界见 [固定公开项目 CodingTask Cell Smoke](./docs/engineering/publicProjectSmoke.md)。
 
-真实 Codex Host 验收的只读准备和关闭式结果门见 [Codex Host Smoke Prepare](./docs/engineering/codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)；来源到脱敏 Evidence 的校验链见 [Codex 兼容性证据投影](./docs/engineering/codexCompatibilityEvidenceProjection.md)，持久化与重算查询协议见 [Executor Compatibility Store 与 CLI](./docs/engineering/executorCompatibilityStore.md)。
+真实 Codex Host 验收的只读准备和关闭式结果门见 [Codex Host Smoke Prepare](./docs/engineering/codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](./docs/22-codex-hook-production-sop.md)；Host 来源到 7 条脱敏 Evidence 的校验链见 [Codex Host 兼容性证据投影](./docs/engineering/codexCompatibilityEvidenceProjection.md)，固定五 Case、Failed Evidence 与独立 Contract Artifact 见 [Codex Contract Evidence 投影](./docs/engineering/codexContractEvidenceProjection.md)，双 Artifact 持久化与重算查询协议见 [Executor Compatibility Store 与 CLI](./docs/engineering/executorCompatibilityStore.md)。
 
 Managed File 的所有权、零写入 dry-run、G0 和后续恢复边界见 [Managed File 安装协议](./docs/engineering/managedFileInstallation.md)。
 

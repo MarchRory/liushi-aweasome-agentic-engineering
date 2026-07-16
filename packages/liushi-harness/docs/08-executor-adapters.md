@@ -14,11 +14,11 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Compatibility Evidence Projector、内容寻址 Evidence/Matrix Store 和重算查询 CLI 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。实现落地不等于已经存在可追溯的真实 v2 Host Artifact。
+**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Host 7 条 Evidence Projector、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Evidence/Matrix Store 和重算查询 CLI 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。实现落地不等于已经存在可追溯的真实 v2 Host Artifact。
 
 当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply 与 Installation Revision 已实现；自动 Trust/Binding、Rollback/Uninstall、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
 
-Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Codex Compatibility Evidence Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并只投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest。Application 与 File Store 会按精确 Digest 持久化并在查询时重新编译；它仍不生成 ContractTest 或 ProductionE2e。当前缺少 Contract Evidence 和可追溯的真实 v2 Host Artifact，因此尚未形成可发布版本矩阵。
+Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest；Application 随后通过生产 `CodexHookAdapter` 与窄端口 doubles 运行固定五 Case Suite，生成独立 Contract Artifact 与 5 条 ContractTest。合成 Fixture 或通过投影契约校验的受验输入在 12 条 Evidence 全部 Passed 时编译为 Compatible，Contract Check 的有效 Failed Evidence 则形成 Unsupported。当前仍没有可追溯的真实 v2 Host Artifact，因此不能声明某个真实 Codex 版本 Compatible，也尚未形成可发布版本矩阵。
 
 ## 2. Adapter 边界
 
@@ -247,7 +247,7 @@ Probe 分三层：
 
 ## 13. Contract Test
 
-所有 Adapter 运行同一套 Contract：
+完整目标要求所有 Adapter 运行同一套 Contract：
 
 - 能力结果可序列化且带证据。
 - Install `--dry-run` 不写文件。
@@ -261,7 +261,9 @@ Probe 分三层：
 - Frontier Model 不可用时不静默降级顶层 Agent。
 - Uninstall 不删除 Human 修改文件。
 
-Codex 后续仍需补齐 Contract Evidence 和真实 Host E2E；当前 Codex Projector 不生成 `contract_test` 或 `production_e2e`。Claude-compatible/CatPaw 仍需各自执行 Fixture Smoke 和 Negative Test，不能继承 Codex 证据。
+上述列表是跨 Adapter 的完整目标契约；当前 `managed_file_mutation_hooks.v1` 已实现一个更窄且冻结的 Codex Suite，固定覆盖 Command Handler、Native Hook Input、Pre/Post File Mutation 和 Deny File Mutation 五个 Case。Suite 必须使用生产 `CodexHookAdapter`，窄端口 doubles 只提供确定性 Dispatcher、Binding/Task/Action Reader 与 Clock，不承载任何生产结果，也不构成真实 Host 验收。固定 Case、Check、Failed Evidence 与脱敏协议见 [Codex Contract Evidence 投影](./engineering/codexContractEvidenceProjection.md)。
+
+当前 Contract Projector 生成 5 条 `contract_test`，Host Projector 仍只生成 7 条 Static/Smoke/Negative Evidence；两者都不生成 `production_e2e`。Claude-compatible/CatPaw 仍需各自执行 Fixture Smoke、Negative Test 和 Contract Test，不能继承 Codex 证据。
 
 Instruction、Memory 和 Agent 的完整平台契约分别见 [17 Instruction Projection](./17-instruction-projection.md)、[18 Memory Runtime](./18-memory-runtime-and-curation.md) 和 [19 Agent Registry](./19-agent-registry-and-platform-rendering.md)。
 
@@ -274,4 +276,6 @@ README 和发布信息只能使用以下措辞：
 - `experimental`：仅部分能力验证，不承诺生产保证。
 - `unsupported`：明确阻止安装对应 Profile。
 
-当前 Codex Evidence Projector 形成的证据只有部分正向结果，固定 Policy 的最高编译结果为 `experimental`；不得据此声明 Codex `compatible` 或 `production`。Claude-compatible/CatPaw 在各自获得真实环境和完整证据前也不能声明更高等级。
+当前公开 Codex Compile 在合成/受验输入正常且 12 条 Evidence 全部 Passed 时可编译 `compatible`，但仓库没有可追溯的真实 Host Result v2 Artifact，因此不得声明任何真实 Codex 版本已经 `compatible`，也不能形成发布版本矩阵。Contract Check 的有效 Failed Evidence 会编译为 `unsupported`，不能丢弃为“未测试”。
+
+当前没有 `production_e2e`，精确 Scope 没有 `modelId` 或 `permissionMode`，Package/Adapter Digest 也不是 Tarball Attestation，绝不声明 Codex `production`。Claude-compatible/CatPaw 在各自获得真实环境和完整证据前也不能声明更高等级。

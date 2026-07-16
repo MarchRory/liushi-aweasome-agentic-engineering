@@ -66,6 +66,7 @@ Status: Implementation-aware Architecture Baseline
 - [npm Tarball 干净安装 Smoke](./engineering/packageTarballSmoke.md)
 - [固定公开项目 CodingTask Cell Smoke](./engineering/publicProjectSmoke.md)
 - [Codex Host Smoke Prepare](./engineering/codexHostSmokePrepare.md)
-- [Codex 兼容性证据投影](./engineering/codexCompatibilityEvidenceProjection.md)
+- [Codex Host 兼容性证据投影](./engineering/codexCompatibilityEvidenceProjection.md)
+- [Codex Contract Evidence 投影](./engineering/codexContractEvidenceProjection.md)
 - [Executor Compatibility Store 与 CLI](./engineering/executorCompatibilityStore.md)
 - [Managed File 安装协议](./engineering/managedFileInstallation.md)

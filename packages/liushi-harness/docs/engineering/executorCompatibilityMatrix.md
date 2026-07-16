@@ -32,7 +32,9 @@ CatPaw 可以消费 Claude-compatible Adapter，但不能继承 Claude Code 的 
 
 ## Codex 当前投影边界
 
-Codex Compatibility Evidence Projector 当前只投影以下精确 Scope：Codex Adapter、Codex CLI Distribution、npm Tarball/Adapter Digest、Codex 版本、Interactive TUI、实测 OS/Architecture 和平台配置 Digest。它不会从 Activation Plan 推断运行时 Model 或 Permission，因此输出的 `ExecutorHostScope` 不包含 `modelId` 和 `permissionMode`。Host Result v2 的 `matrixSupportClaim=not_evaluated` 只表示它是受验来源，不是 Matrix 的支持等级。
+Codex Host Compatibility Evidence Projector 只投影以下精确 Scope：Codex Adapter、Codex CLI Distribution、npm Tarball/Adapter Digest、Codex 版本、Interactive TUI、实测 OS/Architecture 和平台配置 Digest。它不会从 Activation Plan 推断运行时 Model 或 Permission，因此输出的 `ExecutorHostScope` 不包含 `modelId` 和 `permissionMode`。Host Result v2 的 `matrixSupportClaim=not_evaluated` 只表示它是受验来源，不是 Matrix 的支持等级；`adapterDigest` 也只是内容身份，不是 Tarball Attestation。
+
+Host Projector 固定生成 7 条 Host Evidence。公开 Application Compile 会再把该 Projection 的精确 `scope`、Host `artifactDigest` 与唯一动态 `observedAt` 交给 [Codex Contract Evidence 投影](./codexContractEvidenceProjection.md)，生成独立 Contract Artifact 与 5 条 `contract_test` Evidence。两种 Projector 的来源和职责不能合并描述。
 
 ## Evidence
 
@@ -67,8 +69,14 @@ Repository 与 Runtime Store Locator 必须是无 `..`、无绝对路径、统�
 
 `production` 是 `compatible` 的严格超集，还要求每项 Capability 都有真实 `production_e2e` Evidence，并要求 Scope 明确绑定 Model、Permission 和 Configuration Digest。静态 Probe 的 `verified` 不能单独生成 Production 声明。
 
-当前 Codex 投影固定生成 7 条 Evidence：1 条 `static_probe`、4 条 `smoke_test` 和 2 条 `negative_test`；不生成 `contract_test` 或 `production_e2e`。由于 `managed_file_mutation_hooks.v1` 的 Compatible 要求包含 Contract Evidence，Production 还要求 Model、Permission 和 Production E2E，当前固定 Policy 的最高编译等级只能是 `experimental`，不能声明 `compatible` 或 `production`。
+当前公开 Codex Compile 合并两份独立 Projection：Host Artifact 提供 1 条 `static_probe`、4 条 `smoke_test` 和 2 条 `negative_test`，Contract Artifact 提供覆盖五项能力的 5 条 `contract_test`，合计恰好 12 条唯一 Evidence。Application 在编译前校验 Host/Contract 的 exact scope、Contract 的 `hostArtifactDigest`、统一 `observationAnchor`，并拒绝任何 `production_e2e`。
+
+在合成 Fixture 或通过投影契约校验的受验输入中，12 条 Evidence 全部为 `passed` 时固定 Policy 编译为 `compatible`；任一 Contract Check 正常完成但不成立时，会保留有效 Failed Evidence，并形成 `unsupported`。Fixture 不是实际 Host 验收，仓库又没有可追溯的真实 Host Result v2 Artifact，因此不能据此声明某个真实 Codex 版本已经 `compatible`，也不能形成可发布版本矩阵。
+
+`production` 仍不可达：当前没有 `production_e2e`，Scope 没有 `modelId` 或 `permissionMode`，Package/Adapter Digest 也不构成 Tarball Attestation。任何文档和发布信息都不得把 Compatible 编译路径写成 Production。
 
 ## 当前边界
 
-当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算，也已实现 Codex Static Probe/Host Result v2 的脱敏 Evidence 投影、内容寻址 Evidence/Matrix Store，以及 `executor compatibility compile/query` CLI。Query 会要求持久化 Policy 与源码固定 Policy 一致，从 Codex Artifact 确定性重投影全部 Evidence，再以 Domain Compiler 重编译并比对精确 Matrix。投影器会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；输出不含绝对路径及原始 session、turn、tool call 标识。内容寻址用于证明受信 `matrixDigest` 下的完整性，不替代 Human Approval、受信发布清单或未来 Attestation。仓库当前没有可追溯的真实 v2 Host Artifact；Contract Evidence 和 Claude-compatible/CatPaw Adapter 仍是后续切片。
+当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算，也已实现 Codex Host 7 条 Evidence、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址持久化，以及 `executor compatibility compile/query` CLI。Query 的 exact-schema allowlist 要求 Host/Contract Schema 各恰好一份；来源专属 verifier 重投影后，还会校验父 Host Artifact Digest、精确 Scope 与动态观察锚点，再合并 12 条 Evidence 交给 Domain Compiler。
+
+Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；Contract Suite 则通过生产 `CodexHookAdapter` 与窄端口 doubles 验证五项固定 Case。两种 Artifact 都不含绝对路径及原始 session、turn、tool call 标识。内容寻址用于证明受信 `matrixDigest` 下的完整性，不替代 Human Approval、受信发布清单或 Attestation。仓库当前没有可追溯的真实 v2 Host Artifact；Claude-compatible/CatPaw Adapter 与可发布版本矩阵仍是后续切片。

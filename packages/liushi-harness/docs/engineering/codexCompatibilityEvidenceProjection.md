@@ -1,8 +1,10 @@
-# Codex 兼容性证据投影
+# Codex Host 兼容性证据投影
 
 ## 1. 目标与边界
 
-Codex Compatibility Evidence Projector 把已经完成受验的 Codex Host Packet 转换为可以交给 Executor Compatibility Matrix Domain 的脱敏 Artifact 和规范 Evidence。它属于 Infrastructure 层的来源投影器，不执行 TUI、不执行模型调用、不写入项目，也不自行计算 Matrix 支持等级。
+Codex Compatibility Evidence Projector 把已经完成受验的 Codex Host Packet 转换为可以交给 Executor Compatibility Matrix Domain 的脱敏 Host Artifact 和七条规范 Host Evidence。它属于 Infrastructure 层的来源投影器，不执行 TUI、不执行模型调用、不写入项目，也不自行计算 Matrix 支持等级。
+
+**本文只说明 Host Projector 的 7 条 Evidence。** 公开 Application Compile 会在 Host Projection 成功后继续运行独立的 [Codex Contract Evidence 投影](./codexContractEvidenceProjection.md)，再接入 5 条 `contract_test`；Contract Suite、双 Artifact 和 12 条 Evidence 的合成不属于本文投影器的职责。
 
 当前投影只服务于 `managed_file_mutation_hooks.v1`，并且只接受以下三个来源契约：
 
@@ -33,7 +35,7 @@ Codex Compatibility Evidence Projector 把已经完成受验的 Codex Host Packe
 
 因此 Locator 不能夹带 Workspace、Task、PlanRisk、Actor、Model、绝对路径、`..` 或 Secret；未知 Kind 关闭式失败。
 
-当前不公开绕过 Application 的单独投影 CLI。公开的 `executor compatibility compile` 只接收三份原始 Host JSON，并在投影成功后使用固定 Policy 编译和持久化；`query` 要求受信 Matrix Digest，重新校验 Artifact Schema、确定性重投影 Evidence 并用源码固定 Policy 编译。Host Smoke 的准备、Human 激活和结果验证入口仍见 [Codex Host Smoke Prepare](./codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](../22-codex-hook-production-sop.md)，Store 协议见 [Executor Compatibility Store 与 CLI](./executorCompatibilityStore.md)。
+当前不公开绕过 Application 的单独投影 CLI。公开的 `executor compatibility compile` 只接收三份原始 Host JSON；Host 投影成功后，Application 从 Host Projection 派生精确 `scope`、Host `artifactDigest` 和唯一动态 `observedAt`，运行固定 Contract Suite，再用两份独立 Artifact 的 12 条 Evidence 编译和持久化。`query` 要求受信 Matrix Digest，按 exact-schema allowlist 分别复验 Host 与 Contract Artifact、重投影全部 Evidence，并用源码固定 Policy 编译。Host Smoke 的准备、Human 激活和结果验证入口仍见 [Codex Host Smoke Prepare](./codexHostSmokePrepare.md) 与 [Codex Hook 生产接入 SOP](../22-codex-hook-production-sop.md)，Store 协议见 [Executor Compatibility Store 与 CLI](./executorCompatibilityStore.md)。
 
 ## 3. 关闭式校验链
 
@@ -81,7 +83,7 @@ Host Result v2 删除了 `productionVerified`。静态 Probe 的 `productionVeri
 
 当前精确 Scope 不包含 `modelId` 和 `permissionMode`。Activation Plan 的 Model 和 `--sandbox workspace-write` 只用于 Human 激活流程；投影器不从这些字段推断运行时 Model 或 Permission，也不把它们填入 Scope。未知 Node platform/arch 关闭式失败，不降级为模糊平台。
 
-## 6. 脱敏 Artifact 与 Evidence
+## 6. 脱敏 Host Artifact 与 Evidence
 
 ### 6.1 Artifact 内容
 
@@ -94,7 +96,7 @@ Host Result v2 删除了 `productionVerified`。静态 Probe 的 `productionVeri
 
 Artifact 不保存 Manifest/Plan 的绝对路径，不保存原始 session、turn、tool call ID，不保存 Secret，也不复制模型对话或原始 Hook 输入。规范 Evidence 只引用由 Locator Kind 和 Artifact Digest 确定生成的内容寻址 Locator，不复制调用方字符串。
 
-### 6.2 固定的 7 条 Evidence
+### 6.2 固定的 7 条 Host Evidence
 
 同一条 `host_smoke` Observation 会按固定定义拆成多项规范 Evidence，但不会扩展来源没有证明的能力：
 
@@ -108,18 +110,19 @@ Artifact 不保存 Manifest/Plan 的绝对路径，不保存原始 session、tur
 |    6 | `pre_file_mutation`    | `negative_test` | `negative_authorization_denied`、`negative_exact_target_same_session`、`negative_no_post`       |
 |    7 | `deny_file_mutation`   | `negative_test` | `negative_authorization_denied`、`negative_no_post`、`negative_target_unchanged`                |
 
-投影器绝不生成 `contract_test` 或 `production_e2e`。它也不把静态 Probe 的 `verified`、Host Result 的 `hostEvidenceVerified` 或历史结果门单独改写成 Production 声明。
+Host Projector 绝不生成 `contract_test` 或 `production_e2e`。它也不把静态 Probe 的 `verified`、Host Result 的 `hostEvidenceVerified` 或历史结果门单独改写成 Production 声明。`contract_test` 只能由独立 Contract Artifact 投影，不能伪装成 Host Result 的一部分。
 
 ## 7. 支持等级边界
 
 当前固定 Policy 是 `managed_file_mutation_hooks.v1`：
 
-- `compatible` 需要完整的 Static、Contract、Smoke 和 Negative 要求。当前投影没有 ContractTest，因此不能达到 `compatible`。
-- `production` 还需要每项能力的 `production_e2e`，并要求 Scope 绑定 Model、Permission 和 Configuration Digest。当前投影不生成 ProductionE2e，且 Model/Permission 未绑定，因此不能达到 `production`。
-- 7 条 Evidence 有通过结果，只能使当前 Policy 编译的最高等级为 `experimental`。
+- 单独把本文 7 条 Host Evidence 交给 Compiler 时，缺少 ContractTest，最高只能得到 `experimental`。
+- 公开 Application Compile 会接入独立 Contract Artifact 的 5 条 ContractTest；合成或通过投影契约校验的受验输入在 12 条 Evidence 全部 `passed` 时可编译为 `compatible`。
+- Contract Check 正常完成但失败时会保留有效 Failed Evidence，完整集合形成 `unsupported`，不会伪装成 Host 投影失败或缺失。
+- `production` 还需要每项能力的 `production_e2e`，并要求 Scope 绑定 Model、Permission 和 Configuration Digest。当前没有 ProductionE2e，Scope 也没有 `modelId` 或 `permissionMode`；Package Digest 不是 Tarball Attestation。
 - Host Result 的 `matrixSupportClaim=not_evaluated` 不改变上述编译过程；最终等级只能由受信 Policy、完整 Evidence 集和 Matrix Compiler 决定。
 
-因此，当前不能把投影器实现、旧版 Host Smoke 结果或单独的 Host Result v2 写成 Codex 版本矩阵、`compatible` 或 `production` 声明。
+因此，当前不能把 Host Projector 实现、测试 Fixture、旧版 Host Smoke 结果或单独的 Host Result v2 写成某个真实 Codex 版本的 `compatible` 或 `production` 声明。仓库没有可追溯的真实 Host Result v2 Artifact，仍不能形成可发布版本矩阵。
 
 ## 8. 失败条件
 
@@ -140,11 +143,11 @@ Artifact 不保存 Manifest/Plan 的绝对路径，不保存原始 session、tur
 
 ## 9. 当前状态与下一步
 
-当前已完成 Host Result v2 运行时环境绑定、Codex Evidence Projector、内容寻址 Evidence/Matrix Store 和重算查询 CLI。当前未完成的是可追溯真实 v2 Host Artifact、同 Scope Contract Evidence 和可发布版本矩阵，不应把实现落地当成发布证据。
+当前已完成 Host Result v2 运行时环境绑定、Host 7 条 Evidence Projector、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Store 和重算查询 CLI。当前未完成的是可追溯真实 v2 Host Artifact 与可发布版本矩阵，不应把实现落地或合成 Fixture 当成发布证据。
 
 下一步按以下顺序推进：
 
 1. 重新执行 v2 Host Smoke，保存可追溯且脱敏的真实 Host Artifact。
-2. 为同一精确 Scope 补充 Contract Evidence，并通过现有 CLI 重新运行固定 Policy 编译。
+2. 通过现有 Compile 路径生成同 Scope Contract Artifact，并保留双 Artifact 与 Matrix Digest 的可追溯记录。
 3. 设计安装前支持门如何消费精确 `matrixDigest`，保持 Human Gate 和失败关闭语义。
 4. 在 Codex 边界闭合后，再分别为 Claude-compatible 和 CatPaw 建立独立 Adapter、Scope 和 Evidence。
