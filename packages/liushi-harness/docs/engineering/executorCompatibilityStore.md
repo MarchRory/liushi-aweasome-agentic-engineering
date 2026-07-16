@@ -1,6 +1,6 @@
 # Executor Compatibility Store 与 CLI
 
-**状态：已实现。Host/Contract 双 Artifact、12 条 Evidence、内容寻址 Evidence/Matrix Store、关闭式重验、确定性 Publication Bundle、create-only 原子输出、生产 Composition Root 和公开 Compile/Query/Bundle Create CLI 已落地；真实 Codex CLI 0.144.5 已完成一次本机 v2 Host、Compile 与 Query，受信发布矩阵仍未实现。**
+**状态：已实现。Host/Contract 双 Artifact、12 条 Evidence、内容寻址 Evidence/Matrix Store、关闭式重验、确定性 Publication Bundle、create-only 原子输出、P3a G6 Release Attestation Domain、生产 Composition Root 和公开 Compile/Query/Bundle Create CLI 已落地；真实 Codex CLI 0.144.5 已完成一次本机 v2 Host、Compile 与 Query，受信发布矩阵仍未实现。**
 
 ## 1. 目标
 

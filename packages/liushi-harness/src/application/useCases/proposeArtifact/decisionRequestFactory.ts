@@ -95,7 +95,16 @@ function nextDecisionRequestId(generator: IdGenerator) {
 }
 
 function resumePhase(gate: GateId): TaskPhase {
-  return gate === GateId.G4RiskOperation ? TaskPhase.Implementation : TaskPhase.Planning;
+  switch (gate) {
+    case GateId.G1Requirement:
+    case GateId.G2BusinessLogic:
+    case GateId.G8ProjectCompliance:
+      return TaskPhase.Planning;
+    case GateId.G4RiskOperation:
+      return TaskPhase.Implementation;
+    case GateId.G6MergeRelease:
+      throw unsupportedReleaseGate();
+  }
 }
 
 function resumeCheckpoint(gate: GateId): string {
@@ -106,6 +115,8 @@ function resumeCheckpoint(gate: GateId): string {
       return TaskCheckpoint.BusinessLogicApproved;
     case GateId.G4RiskOperation:
       return TaskCheckpoint.ImplementationReady;
+    case GateId.G6MergeRelease:
+      throw unsupportedReleaseGate();
     case GateId.G8ProjectCompliance:
       return TaskCheckpoint.ProjectProfileApproved;
   }
@@ -119,7 +130,13 @@ function requiredAction(gate: GateId): string {
       return BUSINESS_LOGIC_APPROVAL_ACTION;
     case GateId.G4RiskOperation:
       return RISK_OPERATION_APPROVAL_ACTION;
+    case GateId.G6MergeRelease:
+      throw unsupportedReleaseGate();
     case GateId.G8ProjectCompliance:
       return PROJECT_PROFILE_APPROVAL_ACTION;
   }
+}
+
+function unsupportedReleaseGate(): Error {
+  return new Error("G6 Release approval is not supported by Artifact proposal.");
 }

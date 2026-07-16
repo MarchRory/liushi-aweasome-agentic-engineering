@@ -46,7 +46,7 @@ export function resumeTaskAfterApproval(
 ): TaskState {
   return {
     ...task,
-    phase: gate === GateId.G4RiskOperation ? TaskPhase.Implementation : TaskPhase.Planning,
+    phase: resumePhase(gate),
     runState: TaskRunState.Running,
     updatedAt: occurredAt,
   };
@@ -83,7 +83,26 @@ export function approvedCheckpoint(gate: GateId): TaskCheckpoint {
       return TaskCheckpoint.BusinessLogicApproved;
     case GateId.G4RiskOperation:
       return TaskCheckpoint.ImplementationReady;
+    case GateId.G6MergeRelease:
+      throw unsupportedReleaseGate();
     case GateId.G8ProjectCompliance:
       return TaskCheckpoint.ProjectProfileApproved;
   }
+}
+
+function resumePhase(gate: GateId): TaskPhase {
+  switch (gate) {
+    case GateId.G1Requirement:
+    case GateId.G2BusinessLogic:
+    case GateId.G8ProjectCompliance:
+      return TaskPhase.Planning;
+    case GateId.G4RiskOperation:
+      return TaskPhase.Implementation;
+    case GateId.G6MergeRelease:
+      throw unsupportedReleaseGate();
+  }
+}
+
+function unsupportedReleaseGate(): Error {
+  return new Error("G6 Release approval is not supported by the Artifact task aggregate.");
 }

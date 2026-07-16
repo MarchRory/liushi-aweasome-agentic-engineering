@@ -6,6 +6,8 @@ export enum GateId {
   G2BusinessLogic = "G2",
   /** 确认 R2/R3 风险计划中的精确操作。 */
   G4RiskOperation = "G4",
+  /** 确认合并、发布或部署所绑定的精确不可变候选。 */
+  G6MergeRelease = "G6",
   /** 确认 Project Profile Proposal 可进入后续 Compiler Promotion。 */
   G8ProjectCompliance = "G8",
 }

@@ -1,6 +1,6 @@
 # Executor Compatibility 发布信任链
 
-**状态：技术方案已冻结，P1 确定性 Publication Bundle 与 P2 create-only CLI 原子文件输出已实现。当前不执行签名、上传、安装、Trusted Release Manifest 更新或任何 Repository 写入。**
+**状态：技术方案已冻结，P1 确定性 Publication Bundle、P2 create-only CLI 原子文件输出与 P3a Release Attestation Domain 协议已实现。当前没有 Sigstore Adapter，不执行真实签名、上传、安装、Trusted Release Manifest 更新或任何 Repository 写入。**
 
 ## 1. 目标
 
@@ -55,6 +55,10 @@ Statement Subject 至少绑定：
 - G6 Human Approval Record 的稳定 Digest。
 - 发布者声明的 Workflow 或 Release Identity。
 
+P3a 将 G6 分为两个确定性阶段：先生成绑定 Bundle、Matrix、Tarball、固定发布者 Identity Policy 和目标位置的 `ReleaseCandidate`，供 Human 审阅；Human Approval 产生后，再以同一 Candidate、`DecisionRequest` 和 `ApprovalRecord` 创建 `ReleaseAttestationDraft`。Draft 保留完整审批记录供后续离线复验，待签名 Statement 只公开绑定其稳定 Digest 的 G6 证明。
+
+Publisher Identity Policy 必须固定精确 OIDC Issuer、具体 SAN URI 或 Email、Runner Environment、Source Repository URI、完整 Source Revision、CT Log 阈值与 Signature Transparency Log 阈值。URI 身份不能只写域名根地址；GitHub Actions 场景必须固定具体 Workflow Identity 与 `github-hosted` 或经 Human 审批的精确 Runner Environment。Candidate、Identity、Target、Bundle 或审批记录任一变化都会使旧 Approval 失效。
+
 签名实现复用官方 Sigstore 客户端。具体依赖版本必须同时满足 Node `>=20.19.0`、离线验证、固定身份校验和锁定版本测试；不因最新版 API 存在就提升项目 Node 基线。
 
 ### 3.3 Trusted Release Manifest
@@ -82,6 +86,8 @@ Manifest 不能使用“读取 Store 中最新 Matrix”的语义。未来出现
 - 让安装选择器首次信任新的发布者身份、OIDC Issuer、Repository 或 Workflow。
 
 G6 Approval 必须绑定精确 `bundleDigest`、`matrixDigest`、Tarball Digest、发布者身份约束和目标发布位置。任何字段变化都使 Approval 失效。`actorId` 仍只是审计声明；企业使用必须由外部身份系统或受信 Wrapper 注入并验证。
+
+P3a 不把 G6 接入现有 `SupportedArtifact` Task Aggregate。该 Aggregate 当前只承载 Requirement、Business Logic、PlanRisk 与 Project Profile Artifact；错误把 G6 投递到旧 Artifact 流会关闭式失败。Release Workflow/Cell 的持久化状态迁移属于后续 Application 切片，接入前必须再次确认业务语义。
 
 ## 5. 领域模型
 
@@ -164,6 +170,8 @@ Query 与 Bundle Create 应复用一个 Application 内部的“受信 Compatibi
 
 `PublishExecutorCompatibilityPublicationBundleUseCase` 复用同一个 Bundle Creator，并只在创建成功后调用 `ExecutorCompatibilityPublicationWriterPort`。输出是带 Schema Version、Disposition、路径、Bundle/Matrix/Tarball Digest 和字节数的窄回执，不把两项 Projection 与十二条 Evidence 刷到 stdout。
 
+P3a 当前只交付 Domain 的 Candidate、Identity Policy、G6 Binding、in-toto Statement 与完整 Draft Factory。P3b 的 Application Signing/Verification Port、Sigstore Adapter、签名 Artifact Writer 和 CLI 尚未实现；任何调用方都不能把未签名 Draft 当成受信发布声明。
+
 ### 7.2 Infrastructure
 
 - 继续复用现有内容寻址 Evidence/Matrix Store。
@@ -185,7 +193,7 @@ executor compatibility attestation create
 executor compatibility release verify
 ```
 
-`bundle create` 已实现。它按精确 Matrix Digest 重建 Bundle，并以 create-only 语义写入绝对输出路径；重跑相同输入返回 `idempotent_reuse`，既有不同文件保持不变并返回 Conflict。`attestation create` 与 `release verify` 尚未实现；Attestation 与 Release Manifest 写入必须要求精确 G6 Approval。未来 `release verify` 默认离线验证 Bundle、Statement、Sigstore 验证材料和固定身份 Policy；需要网络透明日志查询时由显式选项开启。
+`bundle create` 已实现。它按精确 Matrix Digest 重建 Bundle，并以 create-only 语义写入绝对输出路径；重跑相同输入返回 `idempotent_reuse`，既有不同文件保持不变并返回 Conflict。P3a 已提供内存中的未签名 Draft 协议，但 `attestation create` 与 `release verify` CLI 尚未实现；Attestation 与 Release Manifest 写入必须要求精确 G6 Approval。未来 `release verify` 默认离线验证 Bundle、Statement、审批记录、Sigstore 验证材料和固定身份 Policy；需要网络透明日志查询时由显式选项开启。
 
 可复现实例：
 
@@ -235,6 +243,10 @@ liushi-harness executor compatibility bundle create `
 
 ### 9.2 Attestation 与安装门切片
 
+- P3a 已覆盖 Issuer 根 URI、具体 SAN、Runner Environment、Repository/Revision 证书扩展、稳定扩展排序和重复 OID 拒绝。
+- P3a 已覆盖 Candidate 对 Bundle、Matrix、Tarball、Identity Policy 与发布目标的精确 Digest 绑定。
+- P3a 已覆盖 G6、R4、Review Checkpoint、Human Actor、Approved Decision、审批时间顺序和两份审批摘要重算。
+- P3a 已覆盖 in-toto 双 Subject、Predicate、Identity Policy、G6 Binding、未知字段和旧 Candidate 漂移拒绝。
 - 有效 Sigstore Bundle 但身份不匹配时拒绝。
 - 身份匹配但 Subject Digest、Predicate 或 Approval 漂移时拒绝。
 - 只信任证书有效性、未固定 Issuer/Repository/Workflow 的配置必须拒绝。
@@ -246,9 +258,10 @@ liushi-harness executor compatibility bundle create `
 
 1. `P1`：Domain Bundle、可信记录重建服务、Bundle Create Use Case 与完整测试。已完成。
 2. `P2`：Bundle CLI、原子文件输出与可复现实例。已完成。
-3. `P3`：in-toto Statement、Sigstore Adapter、固定发布者 Identity Policy 与 G6 Approval 绑定。
-4. `P4`：Trusted Release Manifest、离线 Verify 和安装选择门。
-5. `P5`：在 GitHub Actions/npm Provenance 中生成真实 Attestation，执行干净 Consumer E2E。
-6. `P6`：Codex 发布链闭合后，为 Claude-compatible/CatPaw 分别产生独立 Scope、Evidence 和发布记录。
+3. `P3a`：in-toto Statement、固定发布者 Identity Policy、Release Candidate 与 G6 Approval 绑定。已完成。
+4. `P3b`：Node 20 兼容的 Sigstore Signing/Verification Port、显式 Trusted Root 离线验证与签名 Artifact。
+5. `P4`：Trusted Release Manifest、离线 Verify 和安装选择门。
+6. `P5`：在 GitHub Actions/npm Provenance 中生成真实 Attestation，执行干净 Consumer E2E。
+7. `P6`：Codex 发布链闭合后，为 Claude-compatible/CatPaw 分别产生独立 Scope、Evidence 和发布记录。
 
-每个切片独立提交。P1/P2 不引入私钥或网络副作用；P3 之后的真实签名、发布和信任根变更必须由 Human 显式批准。
+每个切片独立提交。P1/P2/P3a 不引入私钥或网络副作用；P3b 之后的真实签名、发布和信任根变更必须由 Human 显式批准。

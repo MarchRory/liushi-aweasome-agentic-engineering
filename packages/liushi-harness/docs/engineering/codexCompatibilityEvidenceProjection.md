@@ -143,11 +143,11 @@ Host Projector 绝不生成 `contract_test` 或 `production_e2e`。它也不把�
 
 ## 9. 当前状态与下一步
 
-当前已完成 Host Result v2 运行时环境绑定、Host 7 条 Evidence Projector、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Store、重算查询 CLI、确定性 Publication Bundle、create-only 原子输出 CLI，以及一次真实 Codex CLI `0.144.5` 本机 Host/Matrix 验收。当前未完成的是 G6、Sigstore Attestation、Trusted Release Manifest 与安装信任门，不应把实现落地、合成 Fixture、本机可写 Store 或未签名 Bundle 当成发布证据。
+当前已完成 Host Result v2 运行时环境绑定、Host 7 条 Evidence Projector、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Store、重算查询 CLI、确定性 Publication Bundle、create-only 原子输出 CLI、P3a G6 Release Attestation Domain，以及一次真实 Codex CLI `0.144.5` 本机 Host/Matrix 验收。当前未完成的是 Sigstore Signing/Verification Adapter、签名 Artifact、Trusted Release Manifest 与安装信任门，不应把实现落地、合成 Fixture、本机可写 Store、未签名 Bundle 或 Draft 当成发布证据。
 
 下一步按以下顺序推进：
 
-1. 为受信 Matrix Digest 增加 G6、Sigstore Attestation 与固定发布者 Identity Policy。
+1. 为已完成 G6/Identity/Candidate 绑定的 Draft 增加 Sigstore Signing/Verification Adapter 与显式 Trusted Root 离线验证。
 2. 让 Trusted Release Manifest 与安装选择器只消费受信发布身份，不读取“最新”本机 Matrix。
 3. 增加 ProductionE2E、模型与权限 Scope、Tarball Attestation 后再评估 Production Tier。
 4. 在 Codex 发布边界闭合后，再分别为 Claude-compatible 和 CatPaw 建立独立 Adapter、Scope 和 Evidence。
