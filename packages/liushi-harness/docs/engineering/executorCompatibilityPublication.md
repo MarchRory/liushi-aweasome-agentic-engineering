@@ -1,0 +1,230 @@
+# Executor Compatibility 发布信任链
+
+**状态：技术方案已冻结，P1 确定性 Publication Bundle Domain、可信记录重建服务和只读 Application Use Case 已实现。当前不执行签名、上传、安装或任何 Repository 写入。**
+
+## 1. 目标
+
+真实 Host 验收已经能够把精确 Executor Scope 编译为内容寻址 Matrix，但本机 Runtime Store 仍是维护者可写边界，不能直接成为安装信任根。本方案把“本机证据成立”提升为“跨机器可验证且只能由受信发布身份声明”的发布链。
+
+发布链必须同时证明：
+
+- Matrix、Policy、全部 Evidence 和来源 Artifact 没有被替换或拆分重组。
+- Matrix 绑定的 Adapter Digest 与实际 npm Tarball Digest 一致。
+- 发布来源绑定精确 Repository、Source Revision、包名和包版本。
+- Human 已批准精确 Bundle Digest；任何内容变化都必须重新审批。
+- 签名来自安装方显式信任的发布者身份，而不只是“某个有效证书”。
+- 安装方按精确 Digest 验证，不读取“最新本机记录”，也不信任可写 Fixture。
+
+## 2. 不做什么
+
+- 不自行设计密码算法、证书格式或透明日志。
+- 不把 RFC 8785 Content Digest 当作签名。
+- 不让 Domain 读取私钥、网络、环境变量或当前时间。
+- 不把 Sigstore、in-toto、DSSE 类型渗透到 Matrix Compiler。
+- 不在首个切片实现远端自动更新、`latest` 选择、回滚保护或 TUF Repository。
+- 不因 Publication Bundle 生成成功就声明 `production`。
+
+## 3. 三层协议
+
+### 3.1 Publication Bundle
+
+Publication Bundle 是确定性、脱敏、自包含但尚未受信的 JSON Artifact。它包含：
+
+- 精确 npm 包名、版本、Tarball Digest、源码仓库和 Source Revision。
+- 完整 Executor Compatibility Matrix 与 Policy。
+- 已经通过来源专属 Projection Set Verifier 的全部脱敏 Artifact 和 Evidence。
+- 排除自身后按 RFC 8785 和 SHA-256 计算的 `bundleDigest`。
+
+相同规范输入必须生成相同 Bundle 和 Digest。Bundle 不读取系统时间；需要审计时间时只能使用已经存在于受验证据中的时间，或由上层作为显式输入提供。
+
+Bundle 本身不包含签名，不具备发布者身份，也不能直接驱动安装。
+
+### 3.2 Release Attestation
+
+Release Attestation 使用 [in-toto Statement v1](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md) 表达发布声明，并由 Sigstore DSSE Bundle 承载签名和验证材料。
+
+Statement Subject 至少绑定：
+
+- Publication Bundle 的 SHA-256 Digest。
+- npm Tarball 的 SHA-256 Digest。
+
+自定义 Predicate 绑定：
+
+- `matrixDigest`、`bundleDigest` 和精确 Executor Scope。
+- 包名、版本、Repository 与 Source Revision。
+- G6 Human Approval Record 的稳定 Digest。
+- 发布者声明的 Workflow 或 Release Identity。
+
+签名实现复用官方 Sigstore 客户端。具体依赖版本必须同时满足 Node `>=20.19.0`、离线验证、固定身份校验和锁定版本测试；不因最新版 API 存在就提升项目 Node 基线。
+
+### 3.3 Trusted Release Manifest
+
+Trusted Release Manifest 是安装选择器唯一可消费的发布索引。每个 Target 只引用精确：
+
+- 包名与版本。
+- Tarball Digest。
+- Publication Bundle Digest。
+- Matrix Digest。
+- Sigstore Bundle Digest 或内容寻址位置。
+- 允许的 Executor Scope 与最低支持等级。
+
+Manifest 不能使用“读取 Store 中最新 Matrix”的语义。未来出现远端自动更新、镜像、委托角色、密钥轮换、回滚和冻结攻击边界时，直接采用 TUF Targets/Snapshot/Timestamp 模型，不在 Harness 内实现一个简化替代品。TUF 的 Target Hash、Length、签名阈值和版本回滚规则见 [The Update Framework Specification](https://theupdateframework.github.io/specification/)。
+
+## 4. Human Gate
+
+Publication Bundle 创建是 R0，只读且无外部副作用，不需要自动生成 Approval。
+
+以下动作属于 Release，必须进入 G6：
+
+- 为 Bundle 创建受信 Attestation。
+- 写入或更新 Trusted Release Manifest。
+- 将 Bundle、Attestation 或 Manifest 发布到 npm、GitHub Release、Wiki 或企业 Artifact Registry。
+- 让安装选择器首次信任新的发布者身份、OIDC Issuer、Repository 或 Workflow。
+
+G6 Approval 必须绑定精确 `bundleDigest`、`matrixDigest`、Tarball Digest、发布者身份约束和目标发布位置。任何字段变化都使 Approval 失效。`actorId` 仍只是审计声明；企业使用必须由外部身份系统或受信 Wrapper 注入并验证。
+
+## 5. 领域模型
+
+首个切片新增独立模块 `domain/executorCompatibilityPublication/`，不把发布职责塞入现有 Matrix 文件：
+
+```text
+domain/executorCompatibilityPublication/
+├── constants/
+├── contracts/
+├── digest/
+├── factory/
+├── schemas/
+├── validation/
+└── index.ts
+```
+
+核心类型：
+
+```ts
+/** npm 发布物与源码来源的稳定身份。 */
+export interface ExecutorCompatibilityReleaseSubject {
+  readonly packageName: string;
+  readonly packageVersion: string;
+  readonly packageDigest: ContentDigest;
+  readonly repositoryUri: string;
+  readonly sourceRevision: string;
+}
+
+/** 可发布 Bundle 中的一项脱敏来源投影。 */
+export interface ExecutorCompatibilityPublishedProjection {
+  readonly artifact: unknown;
+  readonly artifactDigest: ContentDigest;
+  readonly evidence: readonly ExecutorCapabilityEvidence[];
+}
+
+/** 尚未获得发布者身份的确定性兼容性发布候选。 */
+export interface ExecutorCompatibilityPublicationBundle {
+  readonly schemaVersion: string;
+  readonly releaseSubject: ExecutorCompatibilityReleaseSubject;
+  readonly matrix: ExecutorCompatibilityMatrix;
+  readonly policy: ExecutorCompatibilityPolicy;
+  readonly projections: readonly ExecutorCompatibilityPublishedProjection[];
+  readonly bundleDigest: ContentDigest;
+}
+```
+
+协议字段使用枚举表达封闭集合；类型和公开函数必须使用中文 TSDoc。文件继续使用 lower camelCase，并由各目录 `index.ts` 导出。
+
+## 6. Bundle 不变量
+
+Bundle Factory 在返回成功前必须关闭式验证：
+
+1. Matrix、Policy、Evidence 和 Projection 均通过严格 Schema。
+2. Matrix `policyDigest` 等于当前完整 Policy 的重新计算结果。
+3. Matrix `evidenceDigests` 与全部 Projection 展平后的 Evidence Digest 集合完全相等。
+4. 每条 Evidence 的 Scope 与 Matrix Scope 精确相等。
+5. 每个 `artifactDigest` 与规范化 Artifact 内容一致。
+6. 每个 `evidenceDigest` 与规范化 Evidence 内容一致。
+7. Projection 集合经过来源专属 Verifier 重投影和跨来源关系校验。
+8. `releaseSubject.packageDigest` 等于 Matrix `scope.adapterDigest`。
+9. Projection 按 `artifactDigest`、Evidence 按 `evidenceDigest` 稳定排序。
+10. Bundle Digest 排除自身字段后计算；未知字段、重复项和顺序歧义全部拒绝。
+
+Domain 负责通用结构、集合与 Digest 不变量。来源 Artifact 的专属语义继续由 Application 注入的 `ExecutorCompatibilityEvidenceProjectionSetVerifierPort` 负责，Domain 不依赖 Codex 或 Infrastructure。
+
+## 7. Application 与 Infrastructure 边界
+
+### 7.1 Application
+
+`CreateExecutorCompatibilityPublicationBundleUseCase`：
+
+1. 按调用方提供的精确 `matrixDigest` 读取 Matrix 记录。
+2. 锚定源码内受信 Policy，不信任 Store 自带 Policy 声明。
+3. 恢复全部 Projection，并执行现有 Projection Set Verifier。
+4. 重新编译 Matrix，并要求结果与请求 Digest 完全一致。
+5. 将已复验内容交给 Domain Bundle Factory。
+6. 返回 Bundle，不写发布文件、不签名、不联网。
+
+Query 与 Bundle Create 应复用一个 Application 内部的“受信 Compatibility Record 重建服务”，避免两条路径复制验证逻辑或产生不同信任口径。
+
+### 7.2 Infrastructure
+
+- 继续复用现有内容寻址 Evidence/Matrix Store。
+- Sigstore Adapter 只实现 Application Signing/Verification Port。
+- 私钥、OIDC Token、Fulcio、Rekor、TUF Root 和网络重试不进入 Domain。
+- 文件输出使用现有原子写入与父目录耐久性机制，不直接调用散落的 `writeFile`。
+- OS 差异只进入 Infrastructure Platform Adapter，不写入 Domain 或 Use Case 分支。
+
+### 7.3 Presentation
+
+计划中的 CLI 分三步交付：
+
+```text
+executor compatibility bundle create
+executor compatibility attestation create
+executor compatibility release verify
+```
+
+`bundle create` 是只读命令。`attestation create` 与 Release Manifest 写入必须要求精确 G6 Approval。`release verify` 默认离线验证 Bundle、Statement、Sigstore 验证材料和固定身份 Policy；需要网络透明日志查询时由显式选项开启。
+
+## 8. 安装选择门
+
+安装选择器收到候选后必须按以下顺序失败关闭：
+
+1. 验证 Trusted Release Manifest 的受信身份与内容完整性。
+2. 按精确 Digest 读取 Bundle 和 Attestation，不按文件修改时间或语义版本猜测。
+3. 验证 Sigstore Bundle、证书链、OIDC Issuer、Repository 与 Workflow Identity。
+4. 验证 in-toto Subject 与实际 Bundle/Tarball Digest。
+5. 完整重算 Bundle、Projection、Evidence、Policy 与 Matrix。
+6. 验证 G6 Approval 绑定。
+7. 精确匹配目标 Executor Scope 与最低支持等级。
+8. 生成 InstallPlan，仍由现有 G0 Apply 决定是否写入项目。
+
+发布信任不能绕过 Project Trust、Hook Definition Trust、G0、G2、G4 或其他业务 Gate。
+
+## 9. 测试与验收
+
+### 9.1 首个 Bundle 切片
+
+- 同一输入在不同数组顺序下生成相同 Bundle Digest。
+- Tarball Digest 与 Adapter Digest 不一致时拒绝。
+- 缺失、重复、额外或篡改 Evidence 时拒绝。
+- Artifact、Policy、Matrix 任一内容变化时拒绝。
+- Store 中存在更晚 Matrix 时仍只读取调用方指定 Digest。
+- Bundle 不包含绝对路径、原始 Session/Turn/Tool Call ID 或 Secret。
+- Application、Architecture、TypeScript、ESLint、Prettier、Build 和 Tarball Smoke 全部通过。
+
+### 9.2 Attestation 与安装门切片
+
+- 有效 Sigstore Bundle 但身份不匹配时拒绝。
+- 身份匹配但 Subject Digest、Predicate 或 Approval 漂移时拒绝。
+- 只信任证书有效性、未固定 Issuer/Repository/Workflow 的配置必须拒绝。
+- 离线验证材料缺失或无法证明透明日志状态时按 Policy 失败关闭。
+- 旧版已签名 Manifest 不能覆盖更高受信版本；实现远端更新前不得提供 `latest`。
+- 正向最终生成 InstallPlan，但不会自动执行 G0 Apply。
+
+## 10. 交付顺序
+
+1. `P1`：Domain Bundle、可信记录重建服务、Bundle Create Use Case 与完整测试。已完成。
+2. `P2`：Bundle CLI、原子文件输出与可复现实例。
+3. `P3`：in-toto Statement、Sigstore Adapter、固定发布者 Identity Policy 与 G6 Approval 绑定。
+4. `P4`：Trusted Release Manifest、离线 Verify 和安装选择门。
+5. `P5`：在 GitHub Actions/npm Provenance 中生成真实 Attestation，执行干净 Consumer E2E。
+6. `P6`：Codex 发布链闭合后，为 Claude-compatible/CatPaw 分别产生独立 Scope、Evidence 和发布记录。
+
+每个切片独立提交。P1/P2 不引入私钥或网络副作用；P3 之后的真实签名、发布和信任根变更必须由 Human 显式批准。

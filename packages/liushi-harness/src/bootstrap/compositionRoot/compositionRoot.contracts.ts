@@ -10,6 +10,7 @@ import type {
   CodexHookHandler,
   CheckRuntimeHealthUseCase,
   CompileCodexExecutorCompatibilityUseCase,
+  CreateExecutorCompatibilityPublicationBundleUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
@@ -70,6 +71,8 @@ export interface HarnessApplication {
   compileCodexExecutorCompatibility: CompileCodexExecutorCompatibilityUseCase;
   /** 按 Matrix Digest 读取并重新证明 Executor Compatibility。 */
   queryExecutorCompatibility: QueryExecutorCompatibilityUseCase;
+  /** 从精确 Matrix Digest 创建无副作用的 Publication Bundle。 */
+  createExecutorCompatibilityPublicationBundle: CreateExecutorCompatibilityPublicationBundleUseCase;
   /** 生成并持久化不修改 Repository 的 G0 Managed Files InstallPlan。 */
   createInstallPlan: CreateInstallPlanUseCase;
   /** 应用 Human 精确批准的 G0 Managed Files InstallPlan。 */

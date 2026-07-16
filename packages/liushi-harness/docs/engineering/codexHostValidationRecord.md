@@ -64,7 +64,7 @@ Host Result 的验证时间为 `2026-07-16T04:47:33.509Z`。内容寻址 Store �
 
 ## 6. 后续主线
 
-1. 设计并实现脱敏、可签名的 Published Compatibility Bundle，把 Matrix Digest、双 Artifact、12 条 Evidence、Policy 和发行来源绑定为可分发记录。
-2. 让安装选择器只消费受信发布清单中的精确 Matrix Digest，不读取“最新”本地记录，也不把仓库可写 Fixture 当作信任锚。
+1. 确定性 Publication Bundle 已实现；下一步增加 CLI 与原子文件输出，再以 G6 和 Sigstore Attestation 形成受信发布者声明。
+2. 让 Trusted Release Manifest 与安装选择器只消费精确受信 Matrix Digest，不读取“最新”本地记录，也不把仓库可写 Fixture 当作信任锚。
 3. 增加 ProductionE2E、模型与权限 Scope、Tarball Attestation 后，再评估是否满足 Production Tier。
 4. 完成 Codex 发布链后进入 Claude-compatible/CatPaw Adapter，不把本次 Codex 结论横向复制。

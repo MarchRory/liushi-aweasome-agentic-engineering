@@ -3,20 +3,15 @@ import type {
   ExecutorCompatibilityEvidenceStore,
   ExecutorCompatibilityMatrixStore,
 } from "#application/ports/index.js";
+import { rebuildExecutorCompatibilityRecord } from "#application/executorCompatibilityRecord/index.js";
 import {
-  failure,
-  HarnessError,
-  HarnessErrorCode,
   ResultStatus,
   success,
   type ContentDigest,
+  type HarnessError,
   type Result,
 } from "#common/index.js";
 import {
-  compileExecutorCompatibilityMatrix,
-  createExecutorCompatibilityPolicyDigestInput,
-  createManagedFileMutationHookPolicy,
-  type ExecutorCapabilityEvidence,
   type ExecutorCompatibilityDigestPort,
   type ExecutorCompatibilityMatrix,
 } from "#domain/executorCompatibility/index.js";
@@ -42,98 +37,14 @@ export class QueryExecutorCompatibilityUseCase {
   public async execute(
     matrixDigest: ContentDigest,
   ): Promise<Result<QueryExecutorCompatibilityOutput, HarnessError>> {
-    const loadedRecord = await this.matrixStore.load(matrixDigest);
-    if (loadedRecord.status === ResultStatus.Failure) return loadedRecord;
-
-    const trustedPolicy = createManagedFileMutationHookPolicy();
-    const trustedPolicyDigest = this.digestPort.calculate(
-      createExecutorCompatibilityPolicyDigestInput(trustedPolicy),
-    );
-    if (trustedPolicyDigest.status === ResultStatus.Failure) return trustedPolicyDigest;
-    if (trustedPolicyDigest.value !== loadedRecord.value.matrix.policyDigest) {
-      return corruptStore("Executor Compatibility Matrix 未绑定当前受信 Policy。", matrixDigest, {
-        storedPolicyDigest: loadedRecord.value.matrix.policyDigest,
-        trustedPolicyDigest: trustedPolicyDigest.value,
-      });
-    }
-
-    const loadedProjections = await this.evidenceStore.loadProjections(
-      loadedRecord.value.matrix.evidenceDigests,
-    );
-    if (loadedProjections.status === ResultStatus.Failure) {
-      if (loadedProjections.error.code === HarnessErrorCode.ExecutorCompatibilityEvidenceNotFound) {
-        const evidenceDigest = loadedProjections.error.details["evidenceDigest"];
-        return corruptStore(
-          "Executor Compatibility Matrix 引用的 Evidence 不存在。",
-          matrixDigest,
-          {
-            causeCode: loadedProjections.error.code,
-            ...(evidenceDigest === undefined ? {} : { evidenceDigest }),
-          },
-        );
-      }
-      return corruptStore("Executor Compatibility Evidence 来源无法恢复。", matrixDigest, {
-        causeCode: loadedProjections.error.code,
-      });
-    }
-
-    const verifiedProjections = this.verifier.verifyPersistedProjectionSet(loadedProjections.value);
-    if (verifiedProjections.status === ResultStatus.Failure) {
-      return corruptStore(
-        "Executor Compatibility 持久化 Projection 集合无法通过确定性复验。",
-        matrixDigest,
-        { causeCode: verifiedProjections.error.code },
-      );
-    }
-    const verifiedEvidence: ExecutorCapabilityEvidence[] = verifiedProjections.value.flatMap(
-      (projection) => projection.evidence,
-    );
-
-    const recomputed = compileExecutorCompatibilityMatrix(
-      {
-        scope: loadedRecord.value.matrix.scope,
-        policy: trustedPolicy,
-        evidence: verifiedEvidence.sort((left, right) =>
-          left.evidenceDigest.localeCompare(right.evidenceDigest),
-        ),
-      },
-      this.digestPort,
-    );
-    if (recomputed.status === ResultStatus.Failure) {
-      return corruptStore("Executor Compatibility 持久化记录无法完成重编译。", matrixDigest, {
-        causeCode: recomputed.error.code,
-      });
-    }
-
-    const storedContentDigest = this.digestPort.calculate(loadedRecord.value.matrix);
-    if (storedContentDigest.status === ResultStatus.Failure) return storedContentDigest;
-    const recomputedContentDigest = this.digestPort.calculate(recomputed.value);
-    if (recomputedContentDigest.status === ResultStatus.Failure) return recomputedContentDigest;
-
-    if (
-      loadedRecord.value.matrix.matrixDigest !== matrixDigest ||
-      recomputed.value.matrixDigest !== matrixDigest ||
-      storedContentDigest.value !== recomputedContentDigest.value
-    ) {
-      return corruptStore("Executor Compatibility Matrix 与重编译结果不一致。", matrixDigest, {
-        storedMatrixDigest: loadedRecord.value.matrix.matrixDigest,
-        recomputedMatrixDigest: recomputed.value.matrixDigest,
-      });
-    }
-
-    return success({ matrix: recomputed.value, recomputed: true });
+    const rebuilt = await rebuildExecutorCompatibilityRecord(matrixDigest, {
+      verifier: this.verifier,
+      evidenceStore: this.evidenceStore,
+      matrixStore: this.matrixStore,
+      digestPort: this.digestPort,
+    });
+    return rebuilt.status === ResultStatus.Failure
+      ? rebuilt
+      : success({ matrix: rebuilt.value.matrix, recomputed: true });
   }
-}
-
-function corruptStore(
-  message: string,
-  requestedMatrixDigest: ContentDigest,
-  details: Readonly<Record<string, string>>,
-): Result<never, HarnessError> {
-  return failure(
-    new HarnessError(HarnessErrorCode.CorruptStore, message, {
-      requestedMatrixDigest,
-      ...details,
-    }),
-  );
 }

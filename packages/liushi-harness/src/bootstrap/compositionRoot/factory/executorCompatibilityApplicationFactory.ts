@@ -1,5 +1,6 @@
 import {
   CompileCodexExecutorCompatibilityUseCase,
+  CreateExecutorCompatibilityPublicationBundleUseCase,
   QueryExecutorCompatibilityUseCase,
 } from "#application/index.js";
 import type { ContentDigestPort } from "#application/ports/index.js";
@@ -38,6 +39,8 @@ export function createExecutorCompatibilityApplication(
   readonly compileCodexExecutorCompatibility: CompileCodexExecutorCompatibilityUseCase;
   /** 按 Matrix Digest 重新证明 Executor Compatibility。 */
   readonly queryExecutorCompatibility: QueryExecutorCompatibilityUseCase;
+  /** 从精确 Matrix Digest 创建确定性 Publication Bundle。 */
+  readonly createExecutorCompatibilityPublicationBundle: CreateExecutorCompatibilityPublicationBundleUseCase;
 } {
   const codexHostProjector = new CodexCompatibilityEvidenceProjectorAdapter(dependencies.digest);
   const codexContractProjector = new CodexContractEvidenceProjectorAdapter(
@@ -93,5 +96,12 @@ export function createExecutorCompatibilityApplication(
       matrixStore,
       dependencies.digest,
     ),
+    createExecutorCompatibilityPublicationBundle:
+      new CreateExecutorCompatibilityPublicationBundleUseCase(
+        projectionSetVerifier,
+        evidenceStore,
+        matrixStore,
+        dependencies.digest,
+      ),
   };
 }

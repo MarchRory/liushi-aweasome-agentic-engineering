@@ -104,13 +104,16 @@ describe("composition root", () => {
     }
   });
 
-  it("Compile 与 Query 共享同一个 Projection Set Verifier 实例", () => {
+  it("Compile、Query 与 Publication Bundle 共享同一个 Projection Set Verifier 实例", () => {
     const application = createHarnessApplication({
       storeRoot: resolve(".tmp", "executor-compatibility-verifier-store"),
     });
 
     expect(Reflect.get(application.compileCodexExecutorCompatibility, "verifier")).toBe(
       Reflect.get(application.queryExecutorCompatibility, "verifier"),
+    );
+    expect(Reflect.get(application.compileCodexExecutorCompatibility, "verifier")).toBe(
+      Reflect.get(application.createExecutorCompatibilityPublicationBundle, "verifier"),
     );
   });
 

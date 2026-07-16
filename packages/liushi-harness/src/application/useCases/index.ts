@@ -21,4 +21,5 @@ export * from "./acquireRepositoryLock/index.js";
 export * from "./assemblePrReadyArtifact/index.js";
 export * from "./selectVerificationPlan/index.js";
 export * from "./compileCodexExecutorCompatibility/index.js";
+export * from "./createExecutorCompatibilityPublicationBundle/index.js";
 export * from "./queryExecutorCompatibility/index.js";

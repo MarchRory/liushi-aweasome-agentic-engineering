@@ -69,5 +69,6 @@ Status: Implementation-aware Architecture Baseline
 - [Codex Host v2 验证记录](./engineering/codexHostValidationRecord.md)
 - [Codex Host 兼容性证据投影](./engineering/codexCompatibilityEvidenceProjection.md)
 - [Codex Contract Evidence 投影](./engineering/codexContractEvidenceProjection.md)
+- [Executor Compatibility 发布信任链](./engineering/executorCompatibilityPublication.md)
 - [Executor Compatibility Store 与 CLI](./engineering/executorCompatibilityStore.md)
 - [Managed File 安装协议](./engineering/managedFileInstallation.md)
