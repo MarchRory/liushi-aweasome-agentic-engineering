@@ -59,13 +59,13 @@ Suite 标识为 `managed_file_mutation_hooks.codex.contract.v2`，定义版本�
 
 Host Projection 的四条 `smoke_test` 与两条 `negative_test` 必须拥有同一个非空 `observedAt`。Application 把该唯一值作为 `observationAnchor` 传入 Contract Projector；Contract Clock 的每次读取都返回这一固定时间，五条 Contract Evidence 的 `source.observedAt` 也必须全部等于它。
 
-因此，Contract Suite 不读取墙上时钟。Command Handler Case 还会把同一原生输入交给两个隔离 Harness，并比较完整 Canonical Command 与 Payload 的稳定摘要。相同 `scope`、`hostArtifactDigest`、`observationAnchor`、Locator Kind 与固定 Suite 定义会得到逐字段相同的 Artifact、Artifact Digest 和 Evidence。
+因此，Contract Suite 不读取墙上时钟。Command Handler Case 会从同一个稳定序列化值创建两份深层隔离的原生输入，分别交给两个隔离 Harness；两侧都必须恰好产生一个 Dispatch，并对完整 Dispatch 序列中的 Canonical Command 与 Payload 计算稳定摘要。相同 `scope`、`hostArtifactDigest`、`observationAnchor`、Locator Kind 与固定 Suite 定义会得到逐字段相同的 Artifact、Artifact Digest 和 Evidence。
 
 ## 6. Failed Evidence 是有效结果
 
 Contract Check 不成立与 Projector 执行失败是两个不同状态：
 
-- 输入 Schema、Scope、Suite 定义、摘要、运行时基础设施或持久化复验无效时，Projector 返回失败，不输出部分 Projection。生产 Reader 或 Adapter 抛出的异常必须终止 Suite，并由 Projector 返回 `invalid_input`；异常不能被转换为某个通过或失败的 Contract Check。
+- 输入 Schema、Scope、Suite 定义、摘要、运行时基础设施或持久化复验无效时，Projector 返回失败，不输出部分 Projection。Dispatch 序列摘要端口返回的结构化 Failure 通过 Suite 内部专用信号保留原始错误语义；生产 Reader 或 Adapter 抛出的普通 Error 或 `HarnessError` 则统一由 Projector 归一为 `invalid_input`。两类异常都不能被转换为某个通过或失败的 Contract Check。
 - Suite 正常完成但某个 Check 不成立时，Projector 仍返回完整、有效的 Artifact，并把对应 Case 投影为 `outcome=failed` 的 `contract_test` Evidence。
 
 Failed Evidence 不能被丢弃或改写成“缺少证据”。当其与同 Scope 的 Host Evidence 一起进入 Matrix Compiler 时，明确且无冲突的 Contract 失败会形成 `unsupported`；这正是兼容性结论，不是测试框架异常。
@@ -143,8 +143,8 @@ Compile 与 Query 由生产 Composition Root 注入同一个集合验证器实�
 
 现有验证覆盖以下边界：
 
-- Unit：Suite Definition 深层不可变、生产 Reader 的字符串/Buffer 分块合并及关闭式失败、五条 Passed Evidence、单 Check 故障生成单条 Failed Evidence、确定性重放、Scope/配置拒绝、持久化复验、重排容忍、摘要/Case/Check/Suite 篡改拒绝和脱敏检查。
-- Runtime Integration：固定五个 Case 必须通过生产 `NodeHookInputReaderAdapter` 与 `CodexHookAdapter`；覆盖分块 JSON、Pre/Post、非法 JSON、空输入、结构错误和 Adapter 抛错；受控 Post 映射故障只机械影响对应 Case。
+- Unit：Suite Definition 深层不可变、生产 Reader 的字符串/Buffer 分块合并及关闭式失败、五条 Passed Evidence、单 Check 故障生成单条 Failed Evidence、两侧摘要基础设施失败、Adapter 普通 Error/HarnessError 分类、确定性重放、Scope/配置拒绝、持久化复验、重排容忍、摘要/Case/Check/Suite 篡改拒绝和脱敏检查。
+- Runtime Integration：固定五个 Case 必须通过生产 `NodeHookInputReaderAdapter` 与 `CodexHookAdapter`；覆盖深层输入隔离、完整 Dispatch 序列、额外 Dispatch、两侧摘要失败、分块 JSON、Pre/Post、非法 JSON、空输入、结构错误和 Adapter 抛错；受控 Post 映射故障只机械影响对应 Case。
 - Application Unit：写入前集合复验、错误父 Host Digest 零写入、只使用复验返回值、Host/Contract 顺序持久化、Contract 失败编译为 Unsupported、任一投影/持久化失败停止 Matrix 发布，以及 Scope/观察锚点漂移拒绝。
 - Composition Root Integration：合成且受验输入编译十二条 Evidence 为 Compatible、跨实例 Query、双 Artifact 恢复和父 Host Digest 漂移拒绝。
 - CLI E2E：首次编译、两项 `evidencePersistences`、幂等复用、按 Digest 查询、Matrix 篡改拒绝与 Not Found 退出码。
