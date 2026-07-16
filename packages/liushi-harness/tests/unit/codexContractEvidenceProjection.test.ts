@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ExecutorCompatibilityEvidenceProjection } from "../../src/application/ports/executorCompatibilityEvidenceProjectionVerifier/index.js";
-import { HarnessErrorCode, ResultStatus, type ContentDigest } from "../../src/common/index.js";
+import {
+  HarnessError,
+  HarnessErrorCode,
+  ResultStatus,
+  type ContentDigest,
+} from "../../src/common/index.js";
 import {
   ExecutorAdapterKind,
   ExecutorArchitecture,
@@ -122,45 +127,58 @@ describe("Codex Contract Evidence Projection", () => {
     expect(second.artifactDigest).toBe(first.artifactDigest);
   });
 
-  it("Replay 侧完整 Dispatch 序列摘要失败时返回原始 Failure 且不生成 Projection", async () => {
-    const failingDigest = new DispatchSequenceDigestDouble(digest, 2);
-    const projector = new CodexContractEvidenceProjectorAdapter(failingDigest, CodexHookAdapter);
+  it.each([1, 2] as const)(
+    "第 %i 次完整 Dispatch 序列摘要失败时返回原始 Failure 且不生成 Projection",
+    async (failOnSequenceCall) => {
+      const failingDigest = new DispatchSequenceDigestDouble(digest, failOnSequenceCall);
+      const projector = new CodexContractEvidenceProjectorAdapter(failingDigest, CodexHookAdapter);
 
-    const result = await projector.project({
-      scope: createScope(),
-      hostArtifactDigest: calculateDigest("host-artifact"),
-      observationAnchor: OBSERVATION_ANCHOR,
-      artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
-    });
+      const result = await projector.project({
+        scope: createScope(),
+        hostArtifactDigest: calculateDigest("host-artifact"),
+        observationAnchor: OBSERVATION_ANCHOR,
+        artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
+      });
 
-    expect(result).toMatchObject({
-      status: ResultStatus.Failure,
-      error: { code: HarnessErrorCode.IoFailure },
-    });
-    expect(result).not.toHaveProperty("value");
-    expect(failingDigest.dispatchSequences).toHaveLength(2);
-  });
+      expect(result).toMatchObject({
+        status: ResultStatus.Failure,
+        error: {
+          code: HarnessErrorCode.IoFailure,
+          details: { sequenceCall: String(failOnSequenceCall) },
+        },
+      });
+      expect(result).not.toHaveProperty("value");
+      expect(failingDigest.dispatchSequences).toHaveLength(failOnSequenceCall);
+    },
+  );
 
   it.each([
     [
       "结构不完整输入",
       (input: unknown) =>
         isRecord(input) && input["hook_event_name"] === "PreToolUse" && !("session_id" in input),
+      new Error("结构不完整输入异常"),
     ],
     [
-      "合法输入",
+      "合法输入普通 Error",
       (input: unknown) => isRecord(input) && input["tool_use_id"] === "contract-command-v2",
+      new Error("合法输入普通异常"),
+    ],
+    [
+      "合法输入 HarnessError",
+      (input: unknown) => isRecord(input) && input["tool_use_id"] === "contract-command-v2",
+      new HarnessError(HarnessErrorCode.IoFailure, "Adapter 主动抛出摘要错误。"),
     ],
   ] as const)(
     "%s触发 Adapter 异常时 Projector 返回 InvalidInput Failure",
-    async (label, shouldThrow) => {
+    async (_label, shouldThrow, thrownError) => {
       // eslint-disable-next-line @typescript-eslint/unbound-method -- 测试会以实际 Adapter 实例显式调用原型方法。
       const execute = CodexHookAdapter.prototype.execute;
       vi.spyOn(CodexHookAdapter.prototype, "execute").mockImplementation(function (
         this: CodexHookAdapter,
         input: unknown,
       ) {
-        if (shouldThrow(input)) return Promise.reject(new Error(`${label}异常`));
+        if (shouldThrow(input)) return Promise.reject(thrownError);
         return execute.call(this, input);
       });
 
@@ -175,6 +193,8 @@ describe("Codex Contract Evidence Projection", () => {
         status: ResultStatus.Failure,
         error: { code: HarnessErrorCode.InvalidInput },
       });
+      if (result.status === ResultStatus.Success) throw new Error("预期 Projector 失败。");
+      expect(result.error.cause).toBe(thrownError);
     },
   );
 

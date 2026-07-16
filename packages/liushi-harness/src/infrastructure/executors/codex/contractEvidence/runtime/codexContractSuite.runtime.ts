@@ -23,6 +23,7 @@ import type {
   CodexContractCheckResult,
 } from "../contracts/index.js";
 import { CodexContractCheckOutcome, CodexContractFaultInjection } from "../enums/index.js";
+import { CodexContractSuiteInfrastructureError } from "./codexContractSuiteInfrastructure.error.js";
 import { CodexContractRuntimeHarness } from "./codexContractRuntime.doubles.js";
 import {
   createCodexContractPostInput,
@@ -95,7 +96,9 @@ async function runCommandHookHandlerCase(
   const primaryDispatches = primaryHarness.dispatches();
   const replayDispatches = replayHarness.dispatches();
   const deterministicReplay = hasSameDispatchDigest(primaryDispatches, replayDispatches, digest);
-  if (deterministicReplay.status === ResultStatus.Failure) throw deterministicReplay.error;
+  if (deterministicReplay.status === ResultStatus.Failure) {
+    throw new CodexContractSuiteInfrastructureError(deterministicReplay.error);
+  }
   const primaryDispatch = primaryDispatches[0];
   const command = primaryDispatch?.command;
   const payload = primaryDispatch?.payload;

@@ -30,7 +30,7 @@ import {
   projectCodexContractEvidenceRecords,
 } from "../evidenceRecords/index.js";
 import { CodexContractFaultInjection } from "../enums/index.js";
-import { runCodexContractSuite } from "../runtime/index.js";
+import { CodexContractSuiteInfrastructureError, runCodexContractSuite } from "../runtime/index.js";
 import { codexContractEvidenceArtifactSchema } from "../schemas/index.js";
 import {
   validateCodexContractArtifactSemantics,
@@ -64,7 +64,9 @@ export class CodexContractEvidenceProjectorAdapter implements CodexContractEvide
         this.faultInjection,
       );
     } catch (error) {
-      if (error instanceof HarnessError) return failure(error);
+      if (error instanceof CodexContractSuiteInfrastructureError) {
+        return failure(error.failure);
+      }
       return failure(
         new HarnessError(
           HarnessErrorCode.InvalidInput,

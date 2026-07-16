@@ -59,9 +59,10 @@ describe("Codex Contract Suite Runtime", () => {
     ]);
   });
 
-  it("确定性重放向两个 Adapter 提供独立输入且单侧修改不会污染另一侧", async () => {
-    const mutationMarker = Symbol("primary-replay-input-mutation");
+  it("确定性重放的嵌套 tool_input 引用独立且单侧修改不会污染另一侧", async () => {
+    const mutationMarker = "contractReplayMutationProbe";
     const commandInputs: unknown[] = [];
+    const toolInputs: Readonly<Record<string, unknown>>[] = [];
     let replaySawMutation = false;
     // eslint-disable-next-line @typescript-eslint/unbound-method -- 测试会以实际 Adapter 实例显式调用原型方法。
     const execute = CodexHookAdapter.prototype.execute;
@@ -71,10 +72,16 @@ describe("Codex Contract Suite Runtime", () => {
     ) {
       if (isCommandReplayInput(input)) {
         commandInputs.push(input);
-        if (commandInputs.length === 1) {
-          Reflect.set(input, mutationMarker, true);
+        const toolInput = input["tool_input"];
+        if (!isRecord(toolInput)) throw new Error("确定性重放测试缺少 tool_input。");
+        toolInputs.push(toolInput);
+        if (toolInputs.length === 1) {
+          Object.defineProperty(toolInput, mutationMarker, {
+            value: "primary",
+            enumerable: false,
+          });
         } else {
-          replaySawMutation = Reflect.get(input, mutationMarker) === true;
+          replaySawMutation = toolInput[mutationMarker] === "primary";
         }
       }
       return execute.call(this, input);
@@ -89,6 +96,10 @@ describe("Codex Contract Suite Runtime", () => {
 
     expect(commandInputs).toHaveLength(2);
     expect(commandInputs[0]).not.toBe(commandInputs[1]);
+    expect(toolInputs).toHaveLength(2);
+    expect(toolInputs[0]).not.toBe(toolInputs[1]);
+    expect(toolInputs[0]?.[mutationMarker]).toBe("primary");
+    expect(toolInputs[1]).not.toHaveProperty(mutationMarker);
     expect(replaySawMutation).toBe(false);
     expect(findDeterministicReplayCheck(results)?.outcome).toBe(CodexContractCheckOutcome.Passed);
   });
@@ -167,19 +178,28 @@ describe("Codex Contract Suite Runtime", () => {
     );
   });
 
-  it("Replay 侧完整 Dispatch 序列摘要失败时 Suite 直接 reject", async () => {
-    const failingDigest = new DispatchSequenceDigestDouble(digest, 2);
+  it.each([1, 2] as const)(
+    "第 %i 次完整 Dispatch 序列摘要失败时 Suite 以专用基础设施信号 reject",
+    async (failOnSequenceCall) => {
+      const failingDigest = new DispatchSequenceDigestDouble(digest, failOnSequenceCall);
 
-    await expect(
-      runCodexContractSuite(
-        failingDigest,
-        OBSERVATION_ANCHOR,
-        CodexHookAdapter,
-        CodexContractFaultInjection.None,
-      ),
-    ).rejects.toMatchObject({ code: HarnessErrorCode.IoFailure });
-    expect(failingDigest.dispatchSequences).toHaveLength(2);
-  });
+      await expect(
+        runCodexContractSuite(
+          failingDigest,
+          OBSERVATION_ANCHOR,
+          CodexHookAdapter,
+          CodexContractFaultInjection.None,
+        ),
+      ).rejects.toMatchObject({
+        name: "CodexContractSuiteInfrastructureError",
+        failure: {
+          code: HarnessErrorCode.IoFailure,
+          details: { sequenceCall: String(failOnSequenceCall) },
+        },
+      });
+      expect(failingDigest.dispatchSequences).toHaveLength(failOnSequenceCall);
+    },
+  );
 
   it("Post additionalContext 故障仅机械聚合 Post Case 为 Failed", async () => {
     const results = await runCodexContractSuite(
