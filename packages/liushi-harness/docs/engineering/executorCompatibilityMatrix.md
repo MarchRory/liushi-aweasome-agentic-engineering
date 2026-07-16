@@ -71,7 +71,7 @@ Repository 与 Runtime Store Locator 必须是无 `..`、无绝对路径、统�
 
 当前公开 Codex Compile 合并两份独立 Projection：Host Artifact 提供 1 条 `static_probe`、4 条 `smoke_test` 和 2 条 `negative_test`，Contract Artifact 提供覆盖五项能力的 5 条 `contract_test`，合计恰好 12 条唯一 Evidence。Application 在编译前校验 Host/Contract 的 exact scope、Contract 的 `hostArtifactDigest`、统一 `observationAnchor`，并拒绝任何 `production_e2e`。
 
-在合成 Fixture 或通过投影契约校验的受验输入中，12 条 Evidence 全部为 `passed` 时固定 Policy 编译为 `compatible`；任一 Contract Check 正常完成但不成立时，会保留有效 Failed Evidence，并形成 `unsupported`。Fixture 不是实际 Host 验收，仓库又没有可追溯的真实 Host Result v2 Artifact，因此不能据此声明某个真实 Codex 版本已经 `compatible`，也不能形成可发布版本矩阵。
+在合成 Fixture 或通过投影契约校验的受验输入中，12 条 Evidence 全部为 `passed` 时固定 Policy 编译为 `compatible`；任一 Contract Check 正常完成但不成立时，会保留有效 Failed Evidence，并形成 `unsupported`。2026-07-16 的真实 Codex CLI `0.144.5` 受验输入已在 Windows x64、Interactive TUI 精确 Scope 下编译为本机 `compatible`；Fixture 仍不是实际 Host 验收，本机结果也不等于可发布版本矩阵。
 
 `production` 仍不可达：当前没有 `production_e2e`，Scope 没有 `modelId` 或 `permissionMode`，Package/Adapter Digest 也不构成 Tarball Attestation。任何文档和发布信息都不得把 Compatible 编译路径写成 Production。
 
@@ -79,4 +79,4 @@ Repository 与 Runtime Store Locator 必须是无 `..`、无绝对路径、统�
 
 当前代码已实现 Domain Policy、严格校验、细分 Assessment、确定性 Matrix 编译和完整性重算，也已实现 Codex Host 7 条 Evidence、固定 v2 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址持久化，以及 `executor compatibility compile/query` CLI。Compile 与 Query 共享的 exact-schema Projection Set Verifier 要求 Host/Contract Schema 各恰好一份；来源专属 verifier 重投影后，还会校验父 Host Artifact Digest、精确 Scope 与动态观察锚点。Compile 在任何持久化前完成该校验并只消费复验返回值，Query 则合并 12 条 Evidence 交给 Domain Compiler 重算。
 
-Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；Contract Suite v2 则通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 与窄端口 doubles 验证五项固定 Case。两种 Artifact 都不含绝对路径及原始 session、turn、tool call 标识。内容寻址用于证明受信 `matrixDigest` 下的完整性，不替代 Human Approval、受信发布清单或 Attestation。仓库当前没有可追溯的真实 v2 Host Artifact；Claude-compatible/CatPaw Adapter 与可发布版本矩阵仍是后续切片。
+Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2 的完整 Schema、摘要、项目与 Worktree 拓扑、Task/PlanRisk、固定命令与场景、唯一精确版本、13 项检查、时序和运行时环境绑定；Contract Suite v2 则通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 与窄端口 doubles 验证五项固定 Case。两种 Artifact 都不含绝对路径及原始 session、turn、tool call 标识。内容寻址用于证明受信 `matrixDigest` 下的完整性，不替代 Human Approval、受信发布清单或 Attestation。真实 Codex CLI `0.144.5` 已完成本机 v2 Host/Matrix 验收；Claude-compatible/CatPaw Adapter 与可签名发布矩阵仍是后续切片。

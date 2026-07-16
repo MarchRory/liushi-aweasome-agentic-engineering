@@ -1,6 +1,6 @@
 # Executor Compatibility Store 与 CLI
 
-**状态：已实现。Host/Contract 双 Artifact、12 条 Evidence、内容寻址 Evidence/Matrix Store、关闭式重验、生产 Composition Root 和公开 CLI 已落地；仓库仍没有可追溯的真实 v2 Host Artifact 或可发布版本矩阵。**
+**状态：已实现。Host/Contract 双 Artifact、12 条 Evidence、内容寻址 Evidence/Matrix Store、关闭式重验、生产 Composition Root 和公开 CLI 已落地；真实 Codex CLI 0.144.5 已完成一次本机 v2 Host、Compile 与 Query，受信发布矩阵仍未实现。**
 
 ## 1. 目标
 
@@ -197,4 +197,4 @@ Matrix、Policy、Evidence 或来源 Artifact 任一缺失、篡改、Scope 漂�
 - CLI E2E：合成契约 Fixture 编译、两项 `evidencePersistences`、二次幂等、按 Digest 查询、Not Found 与 Corrupt Store 退出码；Fixture 不代表真实 Host 验收。
 - Architecture：层级方向、纯 Barrel、lower camelCase、中文 TSDoc、文件与函数复杂度门全部通过。
 - TypeScript 当前版本与 TypeScript 6 兼容检查、ESLint、Prettier、Build 和 Tarball Smoke 全部通过。
-- 文档必须明确：合成/受验输入可编译 Compatible，但仓库没有可追溯真实 v2 Host Artifact，不能声明真实 Codex 版本 Compatible 或形成发布矩阵；没有 ProductionE2e、`modelId`、`permissionMode` 和 Tarball Attestation 时绝不声明 Production。
+- 文档必须明确：真实 Codex CLI `0.144.5` 的受验输入只在 Windows x64、Interactive TUI 精确 Scope 下编译为本机 Compatible；该结果不能外推为其他版本、平台或受信发布矩阵。没有 ProductionE2e、`modelId`、`permissionMode` 和 Tarball Attestation 时绝不声明 Production。

@@ -126,7 +126,7 @@ Compile 与 Query 由生产 Composition Root 注入同一个集合验证器实�
 
 ## 10. Compatible 与 Production 边界
 
-在合成 Fixture 或通过上述输入契约校验的受验输入中，Host 七条与 Contract 五条 Evidence 全部为 `passed` 时，十二条 Evidence 会把 `managed_file_mutation_hooks.v1` 编译为 `compatible`。该结果证明编译与契约链的行为，不等于仓库已经验证某个真实 Codex 版本。
+在合成 Fixture 或通过上述输入契约校验的受验输入中，Host 七条与 Contract 五条 Evidence 全部为 `passed` 时，十二条 Evidence 会把 `managed_file_mutation_hooks.v1` 编译为 `compatible`。2026-07-16 的真实 Codex CLI `0.144.5` 受验输入已在 Windows x64、Interactive TUI 精确 Scope 下完成该编译与 Query 重算；合成 Fixture 本身仍不等于真实 Host 验收。
 
 任何 Contract Case 形成明确 Failed Evidence 时，完整集合编译为 `unsupported`。缺失、重复、冲突、Scope 漂移或父子绑定漂移不会降级为 Compatible，而是关闭式失败或形成 `unverified`。
 
@@ -135,9 +135,9 @@ Compile 与 Query 由生产 Composition Root 注入同一个集合验证器实�
 - 十二条 Evidence 中没有 `production_e2e`。
 - 精确 Scope 不包含 `modelId` 或 `permissionMode`。
 - Package/Adapter Digest 只是内容身份，当前没有 Tarball Attestation。
-- 仓库没有可追溯的真实 Host Result v2 Artifact。
+- 本机 Host/Contract/Matrix 记录尚未绑定签名发布清单或 Attestation。
 
-因此，当前不能声明某个真实 Codex 版本已经 `compatible`，不能形成可发布版本矩阵，更不能声明 `production`。
+因此，当前只能声明上述精确 Scope 为本机 `compatible`，不能外推到其他 Codex 版本或平台，不能形成可发布版本矩阵，更不能声明 `production`。
 
 ## 11. 验证覆盖
 

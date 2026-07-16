@@ -12,7 +12,7 @@ Codex Compatibility Evidence Projector 把已经完成受验的 Codex Host Packe
 - Host Smoke Activation Plan v2：`liushi.codex-host-smoke.activation-plan.v2`。
 - Host Result v2：`liushi.codex-host-smoke.result-verification.v2`。
 
-投影器实现不等于已经存在可发布版本矩阵。仓库目前没有可追溯的真实 v2 Host Artifact；历史 Host Smoke 结果属于旧版结果，测试 Fixture 和源码实现也不能代替真实 v2 来源。
+投影器实现不等于已经存在可发布版本矩阵。2026-07-16 已重新执行真实 Codex CLI `0.144.5` v2 Host，并生成本机 Host/Contract Artifact 与 `compatible` Matrix；历史 Host Smoke 结果仍属于旧版，测试 Fixture 和源码实现也不能代替真实 v2 来源。
 
 ## 2. 输入
 
@@ -122,7 +122,7 @@ Host Projector 绝不生成 `contract_test` 或 `production_e2e`。它也不把�
 - `production` 还需要每项能力的 `production_e2e`，并要求 Scope 绑定 Model、Permission 和 Configuration Digest。当前没有 ProductionE2e，Scope 也没有 `modelId` 或 `permissionMode`；Package Digest 不是 Tarball Attestation。
 - Host Result 的 `matrixSupportClaim=not_evaluated` 不改变上述编译过程；最终等级只能由受信 Policy、完整 Evidence 集和 Matrix Compiler 决定。
 
-因此，当前不能把 Host Projector 实现、测试 Fixture、旧版 Host Smoke 结果或单独的 Host Result v2 写成某个真实 Codex 版本的 `compatible` 或 `production` 声明。仓库没有可追溯的真实 Host Result v2 Artifact，仍不能形成可发布版本矩阵。
+因此，当前不能把 Host Projector 实现、测试 Fixture、旧版 Host Smoke 结果或单独的 Host Result v2 写成任意 Codex 版本的 `compatible` 或 `production` 声明。只有 2026-07-16 受验记录的 Codex CLI `0.144.5`、Windows x64、Interactive TUI 精确 Scope 可以声明本机 `compatible`；它仍不能形成可发布版本矩阵。
 
 ## 8. 失败条件
 
@@ -143,11 +143,12 @@ Host Projector 绝不生成 `contract_test` 或 `production_e2e`。它也不把�
 
 ## 9. 当前状态与下一步
 
-当前已完成 Host Result v2 运行时环境绑定、Host 7 条 Evidence Projector、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Store 和重算查询 CLI。当前未完成的是可追溯真实 v2 Host Artifact 与可发布版本矩阵，不应把实现落地或合成 Fixture 当成发布证据。
+当前已完成 Host Result v2 运行时环境绑定、Host 7 条 Evidence Projector、固定 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Store、重算查询 CLI，以及一次真实 Codex CLI `0.144.5` 本机 Host/Matrix 验收。当前未完成的是 Published Compatibility Bundle、签名或 Attestation 与可发布版本矩阵，不应把实现落地、合成 Fixture 或本机可写 Store 当成发布证据。
 
 下一步按以下顺序推进：
 
-1. 重新执行 v2 Host Smoke，保存可追溯且脱敏的真实 Host Artifact。
-2. 通过现有 Compile 路径生成同 Scope Contract Artifact，并保留双 Artifact 与 Matrix Digest 的可追溯记录。
-3. 设计安装前支持门如何消费精确 `matrixDigest`，保持 Human Gate 和失败关闭语义。
-4. 在 Codex 边界闭合后，再分别为 Claude-compatible 和 CatPaw 建立独立 Adapter、Scope 和 Evidence。
+1. 设计 Published Compatibility Bundle，封装脱敏 Host/Contract Artifact、12 条 Evidence、Policy 和 Matrix。
+2. 为受信 Matrix Digest 增加签名发布清单、Human Approval 或 Attestation 绑定。
+3. 让安装选择器只消费受信发布身份，不读取“最新”本机 Matrix。
+4. 增加 ProductionE2E、模型与权限 Scope、Tarball Attestation 后再评估 Production Tier。
+5. 在 Codex 发布边界闭合后，再分别为 Claude-compatible 和 CatPaw 建立独立 Adapter、Scope 和 Evidence。

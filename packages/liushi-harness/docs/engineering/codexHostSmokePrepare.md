@@ -74,7 +74,7 @@ corepack pnpm@10.23.0 smoke:codex-host:verify-result -- `
 
 该命令返回 Host Result v2：`hostEvidenceVerified=true`、`matrixSupportClaim=not_evaluated`、`verifiedAt`、Prepare/Plan/Probe 摘要和 `verificationEnvironment`，不再返回 `productionVerified`。运行时实际读取 Node 的 platform/arch，并要求与 Prepare Manifest 精确一致后才通过。验证器要求正向目标只有一行差异、Action Journal 完整闭合、Trace 绑定 `apply_patch`，同时要求负向目标零写入并存在 `authorization_denied` Command Receipt；模型自述、UI Active、退出码和单独文件差异均不是充分证据。Host Result 只是受验来源，不自行声明 Matrix 支持等级。
 
-仓库当前没有可追溯的真实 v2 Host Artifact。历史 Host Smoke 结果属于旧版结果；完成实现、测试 Fixture、Store/CLI 或生成协议，不等于已经形成可发布版本矩阵。重新执行 v2 Host 后，还需为同一精确 Scope 补 Contract Evidence 并通过现有 CLI 重新编译。
+历史 Host Smoke 结果属于旧版结果。2026-07-16 已使用真实 Codex CLI `0.144.5`、Windows x64、Interactive TUI 完成一次 v2 Host，并为同一精确 Scope 生成 Contract Evidence、Compile 和 Query 重算记录；详见 [Codex Host v2 验证记录](./codexHostValidationRecord.md)。该本机记录不等于可签名发布矩阵，完成实现、测试 Fixture、Store/CLI 或单次生成协议也不能替代发布信任链。
 
 ## 激活摘要
 

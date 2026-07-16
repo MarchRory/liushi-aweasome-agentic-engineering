@@ -97,7 +97,7 @@ corepack pnpm@10.23.0 smoke:codex-host:verify-result -- `
 
 该门能够防止跨会话拼接证据并发现普通持久化漂移，但当前没有外部签名或远端证明锚点；能够同时改写本地证据和全部摘要的本机高权限攻击者不在此边界内。
 
-仓库中记录的真实历史 Host Smoke 属于旧版结果，不能当作 Host Result v2 的可追溯 Artifact。当前实现已升级结果契约和运行时环境绑定，但仓库没有可追溯的真实 v2 Host Artifact；因此不能把旧快照、测试 Fixture 或实现代码转写为其他 Codex 版本、工具、平台或可发布 Matrix 的兼容性声明。
+仓库中记录的历史 Host Smoke 属于旧版结果，不能当作 Host Result v2 Artifact。2026-07-16 已使用真实 Codex CLI `0.144.5`、Windows x64、Interactive TUI 重新执行 v2 Host，并编译出通过重算的本机 `compatible` Matrix；该结论只适用于精确 Scope，尚未形成可签名发布矩阵。详见 [Codex Host v2 验证记录](./engineering/codexHostValidationRecord.md)。旧快照、测试 Fixture 或实现代码仍不能转写为其他 Codex 版本、工具或平台的兼容性声明。
 
 Hook 的原生入口是：
 

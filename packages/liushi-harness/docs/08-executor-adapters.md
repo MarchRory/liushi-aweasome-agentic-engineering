@@ -14,11 +14,11 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Host 7 条 Evidence Projector、固定 v2 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Evidence/Matrix Store 和重算查询 CLI 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。实现落地不等于已经存在可追溯的真实 v2 Host Artifact。
+**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Host 7 条 Evidence Projector、固定 v2 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Evidence/Matrix Store 和重算查询 CLI 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。2026-07-16 已完成一次真实 Codex CLI `0.144.5` Host v2 验收与本机 Matrix 重算，但受信发布矩阵仍未实现。
 
 当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply 与 Installation Revision 已实现；自动 Trust/Binding、Rollback/Uninstall、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
 
-Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest；Application 随后通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 与窄端口 doubles 运行固定五 Case v2 Suite，生成独立 Contract Artifact 与 5 条 ContractTest。Compile 与 Query 共用 Projection Set Verifier，并在任何持久化前校验 exact Schema、父 Host Digest、Scope 和观察锚点。合成 Fixture 或通过投影契约校验的受验输入在 12 条 Evidence 全部 Passed 时编译为 Compatible，Contract Check 的有效 Failed Evidence 则形成 Unsupported。当前仍没有可追溯的真实 v2 Host Artifact，因此不能声明某个真实 Codex 版本 Compatible，也尚未形成可发布版本矩阵。
+Executor Compatibility Matrix Domain 已实现精确 Host Scope、Adapter/Distribution 分离、Evidence Locator、支持 Policy 和确定性编译。Host Projector 会重新校验 Prepare v5、Activation Plan v2、Host Result v2，并投影 1 条 StaticProbe、4 条 SmokeTest 和 2 条 NegativeTest；Application 随后通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 与窄端口 doubles 运行固定五 Case v2 Suite，生成独立 Contract Artifact 与 5 条 ContractTest。Compile 与 Query 共用 Projection Set Verifier，并在任何持久化前校验 exact Schema、父 Host Digest、Scope 和观察锚点。真实 Codex CLI `0.144.5`、Windows x64、Interactive TUI 的 12 条 Evidence 已全部 Passed，并编译为本机 `compatible` Matrix；该结论只适用于精确 Scope，尚未形成可分发、可签名的发布矩阵。
 
 ## 2. Adapter 边界
 
@@ -276,6 +276,6 @@ README 和发布信息只能使用以下措辞：
 - `experimental`：仅部分能力验证，不承诺生产保证。
 - `unsupported`：明确阻止安装对应 Profile。
 
-当前公开 Codex Compile 在合成/受验输入正常且 12 条 Evidence 全部 Passed 时可编译 `compatible`，但仓库没有可追溯的真实 Host Result v2 Artifact，因此不得声明任何真实 Codex 版本已经 `compatible`，也不能形成发布版本矩阵。Contract Check 的有效 Failed Evidence 会编译为 `unsupported`，不能丢弃为“未测试”。
+当前公开 Codex Compile 已对真实 Codex CLI `0.144.5`、Windows x64、Interactive TUI 的 12 条 Evidence 编译出 `compatible`，并通过内容寻址 Query 重算。该本机维护者记录不等于受信发布矩阵，不得外推到其他版本、平台或 Host；Contract Check 的有效 Failed Evidence 仍会编译为 `unsupported`，不能丢弃为“未测试”。
 
 当前没有 `production_e2e`，精确 Scope 没有 `modelId` 或 `permissionMode`，Package/Adapter Digest 也不是 Tarball Attestation，绝不声明 Codex `production`。Claude-compatible/CatPaw 在各自获得真实环境和完整证据前也不能声明更高等级。
