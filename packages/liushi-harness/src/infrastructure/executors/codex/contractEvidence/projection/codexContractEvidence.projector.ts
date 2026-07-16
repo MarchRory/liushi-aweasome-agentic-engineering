@@ -64,6 +64,7 @@ export class CodexContractEvidenceProjectorAdapter implements CodexContractEvide
         this.faultInjection,
       );
     } catch (error) {
+      if (error instanceof HarnessError) return failure(error);
       return failure(
         new HarnessError(
           HarnessErrorCode.InvalidInput,

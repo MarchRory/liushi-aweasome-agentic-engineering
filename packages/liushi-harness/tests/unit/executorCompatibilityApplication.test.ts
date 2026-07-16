@@ -46,6 +46,7 @@ import {
   createExecutorCompatibilityPolicyDigestInput,
   createManagedFileMutationHookPolicy,
   type ExecutorCapabilityEvidence,
+  type ExecutorCompatibilityDigestPort,
   type ExecutorCompatibilityPolicy,
   type ExecutorHostScope,
 } from "../../src/domain/executorCompatibility/index.js";
@@ -76,13 +77,14 @@ describe("Executor Compatibility Application", () => {
     const contractProjector = new SpyContractProjector(success(contractProjection), events);
     const evidenceStore = new SpyEvidenceStore(events);
     const matrixStore = new SpyMatrixStore(events);
+    const compilerDigest = new RecordingDomainCompilerDigest(digestAdapter, events);
     const useCase = new CompileCodexExecutorCompatibilityUseCase(
       projector,
       contractProjector,
       projector,
       evidenceStore,
       matrixStore,
-      digestAdapter,
+      compilerDigest,
     );
 
     const result = await useCase.execute(createCompileInput());
@@ -104,6 +106,7 @@ describe("Executor Compatibility Application", () => {
       "project",
       "contract.project",
       "projectionSet.verify",
+      "domainCompiler.digest",
       "evidence.persist",
       "evidence.persist",
       "matrix.persist",
@@ -131,29 +134,40 @@ describe("Executor Compatibility Application", () => {
       ...hostProjection,
       evidence: [...hostProjection.evidence],
     };
-    const verifiedContractProjection: ExecutorCompatibilityEvidenceProjection = {
-      ...contractProjection,
-      evidence: [...contractProjection.evidence],
-    };
+    const verifiedContractProjection = replaceEvidence(contractProjection, 0, {
+      outcome: ExecutorEvidenceOutcome.Failed,
+    });
     const verifier = new SpyProjector();
     verifier.projectionSetResult = success([verifiedHostProjection, verifiedContractProjection]);
     const evidenceStore = new SpyEvidenceStore();
+    const matrixStore = new SpyMatrixStore();
     const useCase = new CompileCodexExecutorCompatibilityUseCase(
       new SpyProjector(success(hostProjection)),
       new SpyContractProjector(success(contractProjection)),
       verifier,
       evidenceStore,
-      new SpyMatrixStore(),
+      matrixStore,
       digestAdapter,
     );
 
     const result = await useCase.execute(createCompileInput());
 
     expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Failure) throw result.error;
+    expect(contractProjection.evidence[0]?.outcome).toBe(ExecutorEvidenceOutcome.Passed);
+    expect(verifiedContractProjection.evidence[0]?.outcome).toBe(ExecutorEvidenceOutcome.Failed);
+    expect(result.value.matrix.supportLevel).toBe(ExecutorSupportLevel.Unsupported);
+    expect(result.value.matrix.evidenceDigests).toContain(
+      verifiedContractProjection.evidence[0]?.evidenceDigest,
+    );
+    expect(result.value.matrix.evidenceDigests).not.toContain(
+      contractProjection.evidence[0]?.evidenceDigest,
+    );
     expect(evidenceStore.persisted[0]).toBe(verifiedHostProjection);
     expect(evidenceStore.persisted[1]).toBe(verifiedContractProjection);
     expect(evidenceStore.persisted[0]).not.toBe(hostProjection);
     expect(evidenceStore.persisted[1]).not.toBe(contractProjection);
+    expect(matrixStore.persisted[0]?.matrix).toEqual(result.value.matrix);
   });
 
   it("Compile 拒绝绑定错误 Host Artifact Digest 的 Contract 且零写入", async () => {
@@ -666,6 +680,24 @@ class SpyProjector
     return failed === undefined || this.verificationFailure === undefined
       ? success(projections)
       : failure(this.verificationFailure.error);
+  }
+}
+
+/** 仅记录 Domain Compiler 的首次摘要调用，不改变真实摘要语义。 */
+class RecordingDomainCompilerDigest implements ExecutorCompatibilityDigestPort {
+  private recorded = false;
+
+  public constructor(
+    private readonly delegate: ExecutorCompatibilityDigestPort,
+    private readonly events: string[],
+  ) {}
+
+  public calculate(input: unknown): Result<ContentDigest, HarnessError> {
+    if (!this.recorded) {
+      this.events.push("domainCompiler.digest");
+      this.recorded = true;
+    }
+    return this.delegate.calculate(input);
   }
 }
 

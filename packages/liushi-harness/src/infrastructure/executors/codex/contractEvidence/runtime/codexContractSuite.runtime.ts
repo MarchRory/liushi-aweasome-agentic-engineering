@@ -5,7 +5,7 @@ import {
   type CodexHookResponse,
 } from "#application/index.js";
 import type { ContentDigestPort } from "#application/ports/contentDigest/index.js";
-import { ResultStatus, type HarnessError, type Result } from "#common/index.js";
+import { ResultStatus, success, type HarnessError, type Result } from "#common/index.js";
 import { ActionKind } from "#domain/actionJournal/index.js";
 import { ExecutorEvidenceOutcome } from "#domain/executorCompatibility/index.js";
 import type * as CodexHooks from "#infrastructure/executors/codex/hooks/index.js";
@@ -81,13 +81,22 @@ async function runCommandHookHandlerCase(
 ): Promise<CodexContractCaseResult> {
   const primaryHarness = new CodexContractRuntimeHarness(CodexContractFaultInjection.None);
   const replayHarness = new CodexContractRuntimeHarness(CodexContractFaultInjection.None);
-  const input = createCodexContractPreInput("contract-command-v2", CODEX_CONTRACT_ALLOWED_TARGET);
+  const serializedInput = serializeReplayInput(
+    createCodexContractPreInput("contract-command-v2", CODEX_CONTRACT_ALLOWED_TARGET),
+  );
+  const primaryInput: unknown = JSON.parse(serializedInput);
+  const replayInput: unknown = JSON.parse(serializedInput);
   const [result, replayResult] = await Promise.all([
-    primaryHarness.createAdapter(adapterConstructor, digest, observationAnchor).execute(input),
-    replayHarness.createAdapter(adapterConstructor, digest, observationAnchor).execute(input),
+    primaryHarness
+      .createAdapter(adapterConstructor, digest, observationAnchor)
+      .execute(primaryInput),
+    replayHarness.createAdapter(adapterConstructor, digest, observationAnchor).execute(replayInput),
   ]);
-  const primaryDispatch = primaryHarness.dispatches()[0];
-  const replayDispatch = replayHarness.dispatches()[0];
+  const primaryDispatches = primaryHarness.dispatches();
+  const replayDispatches = replayHarness.dispatches();
+  const deterministicReplay = hasSameDispatchDigest(primaryDispatches, replayDispatches, digest);
+  if (deterministicReplay.status === ResultStatus.Failure) throw deterministicReplay.error;
+  const primaryDispatch = primaryDispatches[0];
   const command = primaryDispatch?.command;
   const payload = primaryDispatch?.payload;
   return createCaseResult(definition, [
@@ -97,7 +106,7 @@ async function runCommandHookHandlerCase(
       command.expectedVersion === 0 &&
       command.invocationProvenance?.executor === "codex",
     isCanonicalFileMutationPayload(payload, HarnessHookEvent.PreAction),
-    hasSameDispatchDigest(primaryDispatch, replayDispatch, digest),
+    deterministicReplay.value,
   ]);
 }
 
@@ -224,15 +233,23 @@ function hasHookSpecificValue(
 }
 
 function hasSameDispatchDigest(
-  primary: unknown,
-  replay: unknown,
+  primary: readonly unknown[],
+  replay: readonly unknown[],
   digest: ContentDigestPort,
-): boolean {
-  if (primary === undefined || replay === undefined) return false;
+): Result<boolean, HarnessError> {
   const primaryDigest = digest.calculate(primary);
-  if (primaryDigest.status === ResultStatus.Failure) return false;
+  if (primaryDigest.status === ResultStatus.Failure) return primaryDigest;
   const replayDigest = digest.calculate(replay);
-  return replayDigest.status === ResultStatus.Success && replayDigest.value === primaryDigest.value;
+  if (replayDigest.status === ResultStatus.Failure) return replayDigest;
+  return success(
+    primary.length === 1 && replay.length === 1 && replayDigest.value === primaryDigest.value,
+  );
+}
+
+function serializeReplayInput(input: unknown): string {
+  const serialized = JSON.stringify(input);
+  if (serialized === undefined) throw new Error("固定 Contract 重放输入无法稳定序列化。");
+  return serialized;
 }
 
 function requireDefinition(

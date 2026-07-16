@@ -29,6 +29,7 @@ import {
 } from "../../src/infrastructure/executors/codex/contractEvidence/index.js";
 import { CodexHookAdapter } from "../../src/infrastructure/executors/codex/hooks/index.js";
 import { Rfc8785Sha256DigestAdapter } from "../../src/infrastructure/serialization/jsonDigest/index.js";
+import { DispatchSequenceDigestDouble } from "../support/codexContractEvidence/index.js";
 
 const digest = new Rfc8785Sha256DigestAdapter();
 const OBSERVATION_ANCHOR = "2026-07-16T08:00:00.000Z";
@@ -119,6 +120,25 @@ describe("Codex Contract Evidence Projection", () => {
     expect(second).toEqual(first);
     expect(second.artifact).toEqual(first.artifact);
     expect(second.artifactDigest).toBe(first.artifactDigest);
+  });
+
+  it("Replay 侧完整 Dispatch 序列摘要失败时返回原始 Failure 且不生成 Projection", async () => {
+    const failingDigest = new DispatchSequenceDigestDouble(digest, 2);
+    const projector = new CodexContractEvidenceProjectorAdapter(failingDigest, CodexHookAdapter);
+
+    const result = await projector.project({
+      scope: createScope(),
+      hostArtifactDigest: calculateDigest("host-artifact"),
+      observationAnchor: OBSERVATION_ANCHOR,
+      artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
+    });
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.IoFailure },
+    });
+    expect(result).not.toHaveProperty("value");
+    expect(failingDigest.dispatchSequences).toHaveLength(2);
   });
 
   it.each([
