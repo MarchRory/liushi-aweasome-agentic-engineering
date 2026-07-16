@@ -44,6 +44,7 @@ const CONTRACT_TASK_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const CONTRACT_PLAN_RISK_ID = "01ARZ3NDEKTSV4RRFFQ69G5FC0";
 const CONTRACT_DIGEST = `sha256:${"1".repeat(64)}`;
 
+/** Contract Dispatcher 捕获的一次规范命令与 Payload。 */
 interface CodexContractDispatchObservation {
   readonly command: CommandEnvelope;
   readonly payload: ActionHookPayload;
@@ -90,6 +91,11 @@ export class CodexContractRuntimeHarness {
   public payloads(): readonly ActionHookPayload[] {
     return this.dispatcher.captured().map((item) => item.payload);
   }
+
+  /** 返回 Dispatcher 实际接收并完成解析的完整命令与 Payload 对。 */
+  public dispatches(): readonly CodexContractDispatchObservation[] {
+    return this.dispatcher.captured();
+  }
 }
 
 class ContractObservationClock {
@@ -101,38 +107,40 @@ class ContractObservationClock {
 }
 
 class ContractHookBindingReader {
-  public async find(cwd: string): Promise<Result<HookWorkspaceBinding, HarnessErrorType>> {
+  public find(cwd: string): Promise<Result<HookWorkspaceBinding, HarnessErrorType>> {
     if (cwd !== CONTRACT_WORKSPACE_ROOT) {
-      return failure(
-        new HarnessError(HarnessErrorCode.OperationForbidden, "Contract cwd 未绑定。"),
+      return Promise.resolve(
+        failure(new HarnessError(HarnessErrorCode.OperationForbidden, "Contract cwd 未绑定。")),
       );
     }
-    return success({
-      schemaVersion: "1.0.0",
-      workspaceRoot: CONTRACT_WORKSPACE_ROOT,
-      workspaceId: CONTRACT_WORKSPACE_ID,
-      taskId: CONTRACT_TASK_ID,
-      planRiskArtifactId: CONTRACT_PLAN_RISK_ID,
-      planRiskArtifactDigest: CONTRACT_DIGEST,
-      actorId: "contract-agent",
-      boundAt: "2026-01-01T00:00:00.000Z",
-    });
+    return Promise.resolve(
+      success({
+        schemaVersion: "1.0.0",
+        workspaceRoot: CONTRACT_WORKSPACE_ROOT,
+        workspaceId: CONTRACT_WORKSPACE_ID,
+        taskId: CONTRACT_TASK_ID,
+        planRiskArtifactId: CONTRACT_PLAN_RISK_ID,
+        planRiskArtifactDigest: CONTRACT_DIGEST,
+        actorId: "contract-agent",
+        boundAt: "2026-01-01T00:00:00.000Z",
+      }),
+    );
   }
 }
 
 class ContractTaskReader {
-  public async load(): Promise<Result<void, HarnessErrorType>> {
-    return success(undefined);
+  public load(): Promise<Result<void, HarnessErrorType>> {
+    return Promise.resolve(success(undefined));
   }
 }
 
 class ContractActionJournalReader {
   public constructor(private readonly registry: ContractActionRegistry) {}
 
-  public async load(
+  public load(
     locator: ActionJournalLocator,
   ): Promise<Result<ActionJournalState, HarnessErrorType>> {
-    return this.registry.load(locator.actionId);
+    return Promise.resolve(this.registry.load(locator.actionId));
   }
 }
 
@@ -182,7 +190,11 @@ class ContractDispatcher implements CanonicalHookDispatcherPort {
     private readonly faultInjection: CodexContractFaultInjection,
   ) {}
 
-  public async execute(input: unknown): Promise<Result<HookDispatchResult, HarnessErrorType>> {
+  public execute(input: unknown): Promise<Result<HookDispatchResult, HarnessErrorType>> {
+    return Promise.resolve(this.executeSynchronously(input));
+  }
+
+  private executeSynchronously(input: unknown): Result<HookDispatchResult, HarnessErrorType> {
     const command = parseCommandEnvelope(input);
     if (command.status === ResultStatus.Failure) return command;
     const payload = parseActionHookPayload(command.value.payload);

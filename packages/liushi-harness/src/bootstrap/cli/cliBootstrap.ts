@@ -1,5 +1,4 @@
 import {
-  NodeHookInputReaderAdapter,
   NodeJsonDocumentReaderAdapter,
   runCli,
   CliVerificationMode,
@@ -9,6 +8,7 @@ import {
 } from "#presentation/index.js";
 import {
   createCodexHookProjection,
+  NodeHookInputReaderAdapter,
   StaticRepositoryRootResolverAdapter,
 } from "#infrastructure/index.js";
 import packageJson from "../../../package.json" with { type: "json" };

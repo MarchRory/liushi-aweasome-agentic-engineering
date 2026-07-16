@@ -82,6 +82,7 @@ export function createExecutorCompatibilityApplication(
     compileCodexExecutorCompatibility: new CompileCodexExecutorCompatibilityUseCase(
       codexHostProjector,
       codexContractProjector,
+      projectionSetVerifier,
       evidenceStore,
       matrixStore,
       dependencies.digest,

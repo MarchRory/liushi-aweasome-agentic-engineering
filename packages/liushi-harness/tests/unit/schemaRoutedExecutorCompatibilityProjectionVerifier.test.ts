@@ -71,7 +71,8 @@ describe("Schema-routed Executor Compatibility Projection verifier", () => {
 
   it("Contract Artifact 缺失、非字符串或未知 schema 均不猜测来源", async () => {
     const projections = await createProjectionSet();
-    const { schemaVersion: _omitted, ...withoutSchema } = projections.contract.artifact;
+    const { schemaVersion, ...withoutSchema } = projections.contract.artifact;
+    expect(schemaVersion).toBe(CODEX_CONTRACT_EVIDENCE_ARTIFACT_SCHEMA_VERSION);
     const candidates = [
       { ...projections.contract, artifact: withoutSchema },
       { ...projections.contract, artifact: { ...projections.contract.artifact, schemaVersion: 1 } },

@@ -283,6 +283,7 @@ export class CodexHookAdapter implements CodexHookHandler {
   }
 }
 
+/** Codex Hook 处理前只需确认目标 Task 可以从权威 Store 读取。 */
 interface CodexHookTaskReader {
   load(locator: Parameters<TaskRepository["load"]>[0]): Promise<Result<unknown, HarnessErrorType>>;
 }

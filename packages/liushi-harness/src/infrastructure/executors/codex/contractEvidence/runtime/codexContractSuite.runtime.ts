@@ -1,22 +1,14 @@
 import {
-  CodexHookEvent,
   CodexPermissionDecision,
   HarnessHookEvent,
   type ActionHookPayload,
-  type CodexHookHandler,
   type CodexHookResponse,
 } from "#application/index.js";
 import type { ContentDigestPort } from "#application/ports/contentDigest/index.js";
-import {
-  HarnessError,
-  HarnessErrorCode,
-  ResultStatus,
-  failure,
-  type Result,
-} from "#common/index.js";
+import { ResultStatus, type HarnessError, type Result } from "#common/index.js";
 import { ActionKind } from "#domain/actionJournal/index.js";
 import { ExecutorEvidenceOutcome } from "#domain/executorCompatibility/index.js";
-import * as CodexHooks from "#infrastructure/executors/codex/hooks/index.js";
+import type * as CodexHooks from "#infrastructure/executors/codex/hooks/index.js";
 
 import {
   CODEX_CONTRACT_ALLOWED_TARGET,
@@ -31,10 +23,12 @@ import type {
   CodexContractCheckResult,
 } from "../contracts/index.js";
 import { CodexContractCheckOutcome, CodexContractFaultInjection } from "../enums/index.js";
+import { CodexContractRuntimeHarness } from "./codexContractRuntime.doubles.js";
 import {
-  CodexContractRuntimeHarness,
-  codexContractRuntimeIdentity,
-} from "./codexContractRuntime.doubles.js";
+  createCodexContractPostInput,
+  createCodexContractPreInput,
+  runCodexContractNativeInputChecks,
+} from "./codexContractNativeInput.runtime.js";
 
 /** 通过生产 CodexHookAdapter 运行固定且不可扩展命令的 Contract Suite。 */
 export async function runCodexContractSuite(
@@ -85,20 +79,25 @@ async function runCommandHookHandlerCase(
   observationAnchor: string,
   adapterConstructor: typeof CodexHooks.CodexHookAdapter,
 ): Promise<CodexContractCaseResult> {
-  const harness = new CodexContractRuntimeHarness(CodexContractFaultInjection.None);
-  const result = await executeSafely(
-    harness.createAdapter(adapterConstructor, digest, observationAnchor),
-    createPreInput("contract-command-v1", CODEX_CONTRACT_ALLOWED_TARGET),
-  );
-  const command = harness.commands()[0];
-  const payload = harness.payloads()[0];
+  const primaryHarness = new CodexContractRuntimeHarness(CodexContractFaultInjection.None);
+  const replayHarness = new CodexContractRuntimeHarness(CodexContractFaultInjection.None);
+  const input = createCodexContractPreInput("contract-command-v2", CODEX_CONTRACT_ALLOWED_TARGET);
+  const [result, replayResult] = await Promise.all([
+    primaryHarness.createAdapter(adapterConstructor, digest, observationAnchor).execute(input),
+    replayHarness.createAdapter(adapterConstructor, digest, observationAnchor).execute(input),
+  ]);
+  const primaryDispatch = primaryHarness.dispatches()[0];
+  const replayDispatch = replayHarness.dispatches()[0];
+  const command = primaryDispatch?.command;
+  const payload = primaryDispatch?.payload;
   return createCaseResult(definition, [
-    result.status === ResultStatus.Success,
+    result.status === ResultStatus.Success && replayResult.status === ResultStatus.Success,
     command?.commandType === "hook.pre_action" &&
       command.aggregateType === "action" &&
       command.expectedVersion === 0 &&
       command.invocationProvenance?.executor === "codex",
     isCanonicalFileMutationPayload(payload, HarnessHookEvent.PreAction),
+    hasSameDispatchDigest(primaryDispatch, replayDispatch, digest),
   ]);
 }
 
@@ -110,22 +109,7 @@ async function runNativeHookInputCase(
 ): Promise<CodexContractCaseResult> {
   const harness = new CodexContractRuntimeHarness(CodexContractFaultInjection.None);
   const adapter = harness.createAdapter(adapterConstructor, digest, observationAnchor);
-  const pre = await executeSafely(
-    adapter,
-    createPreInput("contract-native-v1", CODEX_CONTRACT_ALLOWED_TARGET),
-  );
-  const post = await executeSafely(
-    adapter,
-    createPostInput("contract-native-v1", CODEX_CONTRACT_ALLOWED_TARGET),
-  );
-  const invalid = await executeSafely(adapter, {
-    hook_event_name: CodexHookEvent.PreToolUse,
-  });
-  return createCaseResult(definition, [
-    pre.status === ResultStatus.Success,
-    post.status === ResultStatus.Success,
-    invalid.status === ResultStatus.Failure && invalid.error.code === HarnessErrorCode.InvalidInput,
-  ]);
+  return createCaseResult(definition, await runCodexContractNativeInputChecks(adapter));
 }
 
 async function runPreFileMutationCase(
@@ -135,10 +119,9 @@ async function runPreFileMutationCase(
   adapterConstructor: typeof CodexHooks.CodexHookAdapter,
 ): Promise<CodexContractCaseResult> {
   const harness = new CodexContractRuntimeHarness(CodexContractFaultInjection.None);
-  const result = await executeSafely(
-    harness.createAdapter(adapterConstructor, digest, observationAnchor),
-    createPreInput("contract-pre-v1", CODEX_CONTRACT_ALLOWED_TARGET),
-  );
+  const result = await harness
+    .createAdapter(adapterConstructor, digest, observationAnchor)
+    .execute(createCodexContractPreInput("contract-pre-v2", CODEX_CONTRACT_ALLOWED_TARGET));
   const command = harness.commands()[0];
   const payload = harness.payloads()[0];
   return createCaseResult(definition, [
@@ -158,10 +141,11 @@ async function runPostFileMutationCase(
 ): Promise<CodexContractCaseResult> {
   const harness = new CodexContractRuntimeHarness(faultInjection);
   const adapter = harness.createAdapter(adapterConstructor, digest, observationAnchor);
-  await executeSafely(adapter, createPreInput("contract-post-v1", CODEX_CONTRACT_ALLOWED_TARGET));
-  const result = await executeSafely(
-    adapter,
-    createPostInput("contract-post-v1", CODEX_CONTRACT_ALLOWED_TARGET),
+  await adapter.execute(
+    createCodexContractPreInput("contract-post-v2", CODEX_CONTRACT_ALLOWED_TARGET),
+  );
+  const result = await adapter.execute(
+    createCodexContractPostInput("contract-post-v2", CODEX_CONTRACT_ALLOWED_TARGET),
   );
   const command = harness.commands()[1];
   const payload = harness.payloads()[1];
@@ -180,10 +164,9 @@ async function runDenyFileMutationCase(
   adapterConstructor: typeof CodexHooks.CodexHookAdapter,
 ): Promise<CodexContractCaseResult> {
   const harness = new CodexContractRuntimeHarness(CodexContractFaultInjection.None);
-  const result = await executeSafely(
-    harness.createAdapter(adapterConstructor, digest, observationAnchor),
-    createPreInput("contract-deny-v1", CODEX_CONTRACT_DENIED_TARGET),
-  );
+  const result = await harness
+    .createAdapter(adapterConstructor, digest, observationAnchor)
+    .execute(createCodexContractPreInput("contract-deny-v2", CODEX_CONTRACT_DENIED_TARGET));
   const payload = harness.payloads()[0];
   return createCaseResult(definition, [
     payload?.event === HarnessHookEvent.PreAction &&
@@ -240,49 +223,16 @@ function hasHookSpecificValue(
   return isRecord(specific) && specific[key] === expected;
 }
 
-async function executeSafely(
-  adapter: CodexHookHandler,
-  input: unknown,
-): Promise<Result<CodexHookResponse, HarnessError>> {
-  try {
-    return await adapter.execute(input);
-  } catch (error) {
-    return failure(
-      new HarnessError(HarnessErrorCode.InvalidInput, "Contract Adapter 调用异常。", {}, error),
-    );
-  }
-}
-
-function createPreInput(toolUseId: string, target: string): Readonly<Record<string, unknown>> {
-  return createNativeInput(CodexHookEvent.PreToolUse, toolUseId, target);
-}
-
-function createPostInput(toolUseId: string, target: string): Readonly<Record<string, unknown>> {
-  return {
-    ...createNativeInput(CodexHookEvent.PostToolUse, toolUseId, target),
-    tool_response: { success: true },
-  };
-}
-
-function createNativeInput(
-  event: CodexHookEvent,
-  toolUseId: string,
-  target: string,
-): Readonly<Record<string, unknown>> {
-  return {
-    session_id: "contract-session-v1",
-    cwd: codexContractRuntimeIdentity.workspaceRoot,
-    hook_event_name: event,
-    model: "contract-model-v1",
-    permission_mode: CodexHooks.CodexPermissionMode.Default,
-    turn_id: "contract-turn-v1",
-    transcript_path: null,
-    tool_name: "apply_patch",
-    tool_use_id: toolUseId,
-    tool_input: {
-      command: `*** Begin Patch\n*** Update File: ${target}\n@@\n*** End Patch`,
-    },
-  };
+function hasSameDispatchDigest(
+  primary: unknown,
+  replay: unknown,
+  digest: ContentDigestPort,
+): boolean {
+  if (primary === undefined || replay === undefined) return false;
+  const primaryDigest = digest.calculate(primary);
+  if (primaryDigest.status === ResultStatus.Failure) return false;
+  const replayDigest = digest.calculate(replay);
+  return replayDigest.status === ResultStatus.Success && replayDigest.value === primaryDigest.value;
 }
 
 function requireDefinition(

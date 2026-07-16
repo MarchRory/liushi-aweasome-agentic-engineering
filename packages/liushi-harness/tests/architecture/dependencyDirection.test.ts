@@ -187,4 +187,28 @@ describe("architecture dependency direction", () => {
     expect(verifierFiles.length).toBeGreaterThan(0);
     expect(violations).toEqual([]);
   });
+
+  it("生产 Hook Input Reader 位于 Infrastructure 且不反向依赖 Presentation", () => {
+    const graph = createSourceGraph();
+    const readerPath = "src/infrastructure/hookInputReader/adapter/nodeHookInputReader.adapter.ts";
+    const reader = graph.sourceFiles.find(
+      (sourceFile) =>
+        formatRelative(graph, sourceFile.fileName).replaceAll("\\", "/") === readerPath,
+    );
+    if (reader === undefined) throw new Error("Infrastructure Hook Input Reader 源码缺失。");
+
+    const presentationDependencies = graph.dependencies
+      .filter((dependency) => dependency.importer === reader.fileName)
+      .filter(
+        (dependency) => getLayer(graph, dependency.imported) === ArchitectureLayer.Presentation,
+      );
+    const legacyReader = graph.sourceFiles.find(
+      (sourceFile) =>
+        formatRelative(graph, sourceFile.fileName).replaceAll("\\", "/") ===
+        "src/presentation/cli/input/adapter/nodeHookInputReader.adapter.ts",
+    );
+
+    expect(presentationDependencies).toEqual([]);
+    expect(legacyReader).toBeUndefined();
+  });
 });

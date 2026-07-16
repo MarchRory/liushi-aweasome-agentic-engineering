@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ExecutorCompatibilityEvidenceProjection } from "../../src/application/ports/executorCompatibilityEvidenceProjectionVerifier/index.js";
-import { ResultStatus, type ContentDigest } from "../../src/common/index.js";
+import { HarnessErrorCode, ResultStatus, type ContentDigest } from "../../src/common/index.js";
 import {
   ExecutorAdapterKind,
   ExecutorArchitecture,
@@ -19,7 +19,9 @@ import {
 } from "../../src/domain/executorCompatibility/index.js";
 import {
   CODEX_CONTRACT_POST_ADDITIONAL_CONTEXT,
+  CODEX_CONTRACT_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
   CODEX_CONTRACT_SUITE_DEFINITION,
+  CODEX_CONTRACT_SUITE_VERSION,
   CodexContractEvidenceProjectorAdapter,
   CodexContractCheckOutcome,
   CodexContractFaultInjection,
@@ -32,6 +34,18 @@ const digest = new Rfc8785Sha256DigestAdapter();
 const OBSERVATION_ANCHOR = "2026-07-16T08:00:00.000Z";
 
 describe("Codex Contract Evidence Projection", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("固定 Suite Definition 在运行时保持深层不可变", () => {
+    expect(Object.isFrozen(CODEX_CONTRACT_SUITE_DEFINITION)).toBe(true);
+    expect(Object.isFrozen(CODEX_CONTRACT_SUITE_DEFINITION.cases)).toBe(true);
+    expect(
+      CODEX_CONTRACT_SUITE_DEFINITION.cases.every(
+        (item) => Object.isFrozen(item) && Object.isFrozen(item.checkIds),
+      ),
+    ).toBe(true);
+  });
+
   it("固定 Suite 全通过时生成五条 ContractTest Passed Evidence", async () => {
     const projection = await projectSuccessfully();
 
@@ -57,6 +71,9 @@ describe("Codex Contract Evidence Projection", () => {
       ExecutorCapability.DenyFileMutation,
     ]);
     expect(projection.artifact.suite.cases).toEqual(CODEX_CONTRACT_SUITE_DEFINITION.cases);
+    expect(projection.artifact.schemaVersion).toBe("liushi.codex-hook-contract-evidence.v2");
+    expect(projection.artifact.schemaVersion).toBe(CODEX_CONTRACT_EVIDENCE_ARTIFACT_SCHEMA_VERSION);
+    expect(projection.artifact.suite.version).toBe(CODEX_CONTRACT_SUITE_VERSION);
     expect(projection.artifact.scope).not.toHaveProperty("modelId");
     expect(projection.artifact.scope).not.toHaveProperty("permissionMode");
   });
@@ -78,7 +95,7 @@ describe("Codex Contract Evidence Projection", () => {
     expect(failed).toHaveLength(1);
     expect(failed[0]?.capability).toBe(ExecutorCapability.PostFileMutation);
     expect(postResult?.checks).toContainEqual({
-      checkId: "post.additional_context_mapping.v1",
+      checkId: "post.additional_context_mapping.v2",
       outcome: CodexContractCheckOutcome.Failed,
     });
     const compiled = compileExecutorCompatibilityMatrix(
@@ -104,9 +121,47 @@ describe("Codex Contract Evidence Projection", () => {
     expect(second.artifactDigest).toBe(first.artifactDigest);
   });
 
+  it.each([
+    [
+      "结构不完整输入",
+      (input: unknown) =>
+        isRecord(input) && input["hook_event_name"] === "PreToolUse" && !("session_id" in input),
+    ],
+    [
+      "合法输入",
+      (input: unknown) => isRecord(input) && input["tool_use_id"] === "contract-command-v2",
+    ],
+  ] as const)(
+    "%s触发 Adapter 异常时 Projector 返回 InvalidInput Failure",
+    async (label, shouldThrow) => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- 测试会以实际 Adapter 实例显式调用原型方法。
+      const execute = CodexHookAdapter.prototype.execute;
+      vi.spyOn(CodexHookAdapter.prototype, "execute").mockImplementation(function (
+        this: CodexHookAdapter,
+        input: unknown,
+      ) {
+        if (shouldThrow(input)) return Promise.reject(new Error(`${label}异常`));
+        return execute.call(this, input);
+      });
+
+      const result = await createProjector().project({
+        scope: createScope(),
+        hostArtifactDigest: calculateDigest("host-artifact"),
+        observationAnchor: OBSERVATION_ANCHOR,
+        artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
+      });
+
+      expect(result).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.InvalidInput },
+      });
+    },
+  );
+
   it("拒绝 Scope 漂移以及缺失 configurationDigest", async () => {
     const validScope = createScope();
-    const { configurationDigest: _omitted, ...withoutConfiguration } = validScope;
+    const { configurationDigest, ...withoutConfiguration } = validScope;
+    expect(configurationDigest).toBeDefined();
     const projector = createProjector();
     const drifted = await projector.project({
       scope: { ...validScope, surface: ExecutorHostSurface.Desktop },
@@ -259,14 +314,14 @@ describe("Codex Contract Evidence Projection", () => {
     const serialized = JSON.stringify(projection);
 
     for (const forbidden of [
-      "contract-session-v1",
-      "contract-turn-v1",
-      "contract-command-v1",
-      "contract-native-v1",
-      "contract-pre-v1",
-      "contract-post-v1",
-      "contract-deny-v1",
-      "contract-model-v1",
+      "contract-session-v2",
+      "contract-turn-v2",
+      "contract-command-v2",
+      "contract-native-v2",
+      "contract-pre-v2",
+      "contract-post-v2",
+      "contract-deny-v2",
+      "contract-model-v2",
       "tool_input",
       "tool_response",
       "*** Begin Patch",

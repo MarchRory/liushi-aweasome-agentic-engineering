@@ -19,3 +19,4 @@ export * from "./fileInstallPlanStore/index.js";
 export * from "./installationRevisionStore/index.js";
 export * from "./managedFileMutation/index.js";
 export * from "./executorCompatibilityProjectionVerifier/index.js";
+export * from "./hookInputReader/index.js";
