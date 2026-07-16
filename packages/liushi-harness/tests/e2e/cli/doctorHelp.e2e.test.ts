@@ -55,6 +55,7 @@ describe("CLI doctor 与 help E2E", () => {
         expect.stringContaining("hook probe"),
         expect.stringContaining("executor compatibility compile"),
         expect.stringContaining("executor compatibility query"),
+        expect.stringContaining("executor compatibility bundle create"),
       ]);
     });
   });

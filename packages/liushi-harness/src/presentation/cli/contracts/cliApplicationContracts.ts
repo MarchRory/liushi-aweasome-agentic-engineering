@@ -10,6 +10,7 @@ import type {
   GetTaskStatusUseCase,
   ProposeArtifactUseCase,
   ProbeCodexCapabilitiesUseCase,
+  PublishExecutorCompatibilityPublicationBundleUseCase,
   QueryExecutorCompatibilityUseCase,
   RecordApprovalUseCase,
   ResolveRulesUseCase,
@@ -78,6 +79,8 @@ export interface CliApplication {
   compileCodexExecutorCompatibility: CompileCodexExecutorCompatibilityUseCase;
   /** Executor Compatibility 精确查询 Use Case。 */
   queryExecutorCompatibility: QueryExecutorCompatibilityUseCase;
+  /** Executor Compatibility Bundle 原子发布 Use Case。 */
+  publishExecutorCompatibilityPublicationBundle: PublishExecutorCompatibilityPublicationBundleUseCase;
 }
 
 /** 按 Store Root 创建 Use Cases 的工厂。 */

@@ -38,6 +38,8 @@ export enum CliCommand {
   ExecutorCompatibilityCompile = "executor.compatibility.compile",
   /** 按精确摘要查询 Executor Compatibility Matrix。 */
   ExecutorCompatibilityQuery = "executor.compatibility.query",
+  /** 创建并原子发布 Executor Compatibility Bundle。 */
+  ExecutorCompatibilityBundleCreate = "executor.compatibility.bundle.create",
 }
 
 /** CLI 输出格式。 */

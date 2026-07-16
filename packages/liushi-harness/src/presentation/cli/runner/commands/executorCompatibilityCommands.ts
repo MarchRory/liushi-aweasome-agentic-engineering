@@ -1,6 +1,7 @@
 import { ResultStatus, success, type HarnessError, type Result } from "#common/index.js";
 
 import type {
+  ExecutorCompatibilityBundleCreateCliCommand,
   ExecutorCompatibilityCompileCliCommand,
   ExecutorCompatibilityQueryCliCommand,
   RunCliDependencies,
@@ -12,7 +13,10 @@ import {
   writeFailure,
   writeSuccess,
 } from "../../output/index.js";
-import { writeExecutorCompatibilitySummary } from "../../output/summary/index.js";
+import {
+  writeExecutorCompatibilityPublicationSummary,
+  writeExecutorCompatibilitySummary,
+} from "../../output/summary/index.js";
 
 /** 读取完成后才可交给 Application 的三份原始 JSON 文档。 */
 interface ExecutorCompatibilityRawDocuments {
@@ -23,13 +27,19 @@ interface ExecutorCompatibilityRawDocuments {
 
 /** 在独立子模块中执行已解析的 Executor Compatibility 命令。 */
 export async function executeExecutorCompatibilityCommand(
-  command: ExecutorCompatibilityCompileCliCommand | ExecutorCompatibilityQueryCliCommand,
+  command:
+    | ExecutorCompatibilityCompileCliCommand
+    | ExecutorCompatibilityQueryCliCommand
+    | ExecutorCompatibilityBundleCreateCliCommand,
   dependencies: RunCliDependencies,
 ): Promise<number> {
   if (command.command === CliCommand.ExecutorCompatibilityCompile) {
     return executeCompile(command, dependencies);
   }
-  return executeQuery(command, dependencies);
+  if (command.command === CliCommand.ExecutorCompatibilityQuery) {
+    return executeQuery(command, dependencies);
+  }
+  return executeBundleCreate(command, dependencies);
 }
 
 async function executeCompile(
@@ -70,6 +80,32 @@ async function executeQuery(
   return CLI_EXIT_CODE_SUCCESS;
 }
 
+async function executeBundleCreate(
+  command: ExecutorCompatibilityBundleCreateCliCommand,
+  dependencies: RunCliDependencies,
+): Promise<number> {
+  const application = dependencies.applicationFactory.create(
+    command.storeRoot ?? dependencies.defaultStoreRoot,
+  );
+  const result = await application.publishExecutorCompatibilityPublicationBundle.execute({
+    matrixDigest: command.matrixDigest,
+    releaseSubject: {
+      packageName: command.packageName,
+      packageVersion: command.packageVersion,
+      packageDigest: command.packageDigest,
+      repositoryUri: command.repositoryUri,
+      sourceRevision: command.sourceRevision,
+    },
+    outputFilePath: command.outputFilePath,
+  });
+  if (result.status === ResultStatus.Failure) {
+    writeFailure(dependencies, command.outputFormat, command.command, result.error);
+    return mapErrorExitCode(result.error.code);
+  }
+  writeResult(command, dependencies, result.value);
+  return CLI_EXIT_CODE_SUCCESS;
+}
+
 async function readRawDocuments(
   command: ExecutorCompatibilityCompileCliCommand,
   dependencies: RunCliDependencies,
@@ -88,12 +124,19 @@ async function readRawDocuments(
 }
 
 function writeResult(
-  command: ExecutorCompatibilityCompileCliCommand | ExecutorCompatibilityQueryCliCommand,
+  command:
+    | ExecutorCompatibilityCompileCliCommand
+    | ExecutorCompatibilityQueryCliCommand
+    | ExecutorCompatibilityBundleCreateCliCommand,
   dependencies: RunCliDependencies,
   data: unknown,
 ): void {
   if (command.outputFormat === CliOutputFormat.Json) {
     writeSuccess(dependencies, command.outputFormat, command.command, data);
+    return;
+  }
+  if (command.command === CliCommand.ExecutorCompatibilityBundleCreate) {
+    writeExecutorCompatibilityPublicationSummary(dependencies.writer, data);
     return;
   }
   writeExecutorCompatibilitySummary(dependencies.writer, command.command, data);

@@ -1,6 +1,7 @@
 import {
   CompileCodexExecutorCompatibilityUseCase,
   CreateExecutorCompatibilityPublicationBundleUseCase,
+  PublishExecutorCompatibilityPublicationBundleUseCase,
   QueryExecutorCompatibilityUseCase,
 } from "#application/index.js";
 import type { ContentDigestPort } from "#application/ports/index.js";
@@ -13,6 +14,7 @@ import {
   CodexHookAdapter,
   FileExecutorCompatibilityEvidenceStore,
   FileExecutorCompatibilityMatrixStore,
+  NodeExecutorCompatibilityPublicationWriterAdapter,
   SchemaRoutedExecutorCompatibilityProjectionSetVerifierAdapter,
 } from "#infrastructure/index.js";
 import type {
@@ -41,6 +43,8 @@ export function createExecutorCompatibilityApplication(
   readonly queryExecutorCompatibility: QueryExecutorCompatibilityUseCase;
   /** 从精确 Matrix Digest 创建确定性 Publication Bundle。 */
   readonly createExecutorCompatibilityPublicationBundle: CreateExecutorCompatibilityPublicationBundleUseCase;
+  /** 创建并原子发布精确 Matrix 对应的 Publication Bundle。 */
+  readonly publishExecutorCompatibilityPublicationBundle: PublishExecutorCompatibilityPublicationBundleUseCase;
 } {
   const codexHostProjector = new CodexCompatibilityEvidenceProjectorAdapter(dependencies.digest);
   const codexContractProjector = new CodexContractEvidenceProjectorAdapter(
@@ -80,6 +84,12 @@ export function createExecutorCompatibilityApplication(
     parentDirectoryDurability: dependencies.parentDirectoryDurability,
     digest: dependencies.digest,
   });
+  const bundleCreator = new CreateExecutorCompatibilityPublicationBundleUseCase(
+    projectionSetVerifier,
+    evidenceStore,
+    matrixStore,
+    dependencies.digest,
+  );
 
   return {
     compileCodexExecutorCompatibility: new CompileCodexExecutorCompatibilityUseCase(
@@ -96,12 +106,14 @@ export function createExecutorCompatibilityApplication(
       matrixStore,
       dependencies.digest,
     ),
-    createExecutorCompatibilityPublicationBundle:
-      new CreateExecutorCompatibilityPublicationBundleUseCase(
-        projectionSetVerifier,
-        evidenceStore,
-        matrixStore,
-        dependencies.digest,
+    createExecutorCompatibilityPublicationBundle: bundleCreator,
+    publishExecutorCompatibilityPublicationBundle:
+      new PublishExecutorCompatibilityPublicationBundleUseCase(
+        bundleCreator,
+        new NodeExecutorCompatibilityPublicationWriterAdapter(
+          dependencies.digest,
+          dependencies.parentDirectoryDurability,
+        ),
       ),
   };
 }

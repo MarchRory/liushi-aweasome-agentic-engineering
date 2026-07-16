@@ -219,6 +219,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.CommandGatewayCommitOutcomeUnknown:
     case HarnessErrorCode.EvidenceBundleCommitOutcomeUnknown:
     case HarnessErrorCode.ExecutorCompatibilityCommitOutcomeUnknown:
+    case HarnessErrorCode.ExecutorCompatibilityPublicationCommitOutcomeUnknown:
     case HarnessErrorCode.InstallationCommitOutcomeUnknown:
       return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }

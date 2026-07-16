@@ -7,7 +7,6 @@ import {
   type ApprovalDecideCliCommand,
   type ArtifactProposeCliCommand,
   type CliApplication,
-  type DoctorCliCommand,
   type ParsedCliCommand,
   type ProfileCompileCliCommand,
   type RunCliDependencies,
@@ -17,6 +16,7 @@ import {
 } from "../contracts/index.js";
 import {
   executeCellRun,
+  executeDoctor,
   executeExecutorCompatibilityCommand,
   executeHookBind,
   executeHookConfig,
@@ -122,6 +122,7 @@ async function executeCommand(
       return executeHookHandle(command, createApplication(command, dependencies), dependencies);
     case CliCommand.ExecutorCompatibilityCompile:
     case CliCommand.ExecutorCompatibilityQuery:
+    case CliCommand.ExecutorCompatibilityBundleCreate:
       return executeExecutorCompatibilityCommand(command, dependencies);
   }
 }
@@ -142,20 +143,6 @@ function createApplication(
     },
     verificationMode: command.verificationMode,
   });
-}
-
-async function executeDoctor(
-  command: DoctorCliCommand,
-  application: CliApplication,
-  dependencies: RunCliDependencies,
-): Promise<number> {
-  const result = await application.checkRuntimeHealth.execute();
-  if (result.status === ResultStatus.Failure) {
-    writeFailure(dependencies, command.outputFormat, command.command, result.error);
-    return mapErrorExitCode(result.error.code);
-  }
-  writeSuccess(dependencies, command.outputFormat, command.command, result.value);
-  return CLI_EXIT_CODE_SUCCESS;
 }
 
 async function executeTaskCreate(

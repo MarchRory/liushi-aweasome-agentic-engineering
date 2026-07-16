@@ -4,6 +4,7 @@ import type { HarnessErrorCode } from "#common/index.js";
 import type { CliVerificationMode } from "../enums/index.js";
 import type { BaseCliCommand, CliCommand } from "./cliCommandContracts.js";
 import type {
+  ExecutorCompatibilityBundleCreateCliCommand,
   ExecutorCompatibilityCompileCliCommand,
   ExecutorCompatibilityQueryCliCommand,
 } from "./cliExecutorCompatibilityContracts.js";
@@ -207,7 +208,8 @@ export type ParsedCliCommand =
   | InitDryRunCliCommand
   | InitApplyCliCommand
   | ExecutorCompatibilityCompileCliCommand
-  | ExecutorCompatibilityQueryCliCommand;
+  | ExecutorCompatibilityQueryCliCommand
+  | ExecutorCompatibilityBundleCreateCliCommand;
 
 /** CLI JSON 失败信息。 */
 export interface CliErrorPayload {

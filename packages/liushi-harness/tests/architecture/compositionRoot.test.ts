@@ -56,6 +56,7 @@ describe("composition root", () => {
       "MockVerificationExecutorAdapter",
       "NodeCodingTaskCellRuntimePathAdapter",
       "NodeCommandRunnerAdapter",
+      "NodeExecutorCompatibilityPublicationWriterAdapter",
       "NodeFileMutationExecutorAdapter",
       "NodeGitCheckpointAdapter",
       "NodeHookInputReaderAdapter",
@@ -104,7 +105,7 @@ describe("composition root", () => {
     }
   });
 
-  it("Compile、Query 与 Publication Bundle 共享同一个 Projection Set Verifier 实例", () => {
+  it("Compile、Query、Bundle 创建与原子发布共享同一条受信重建链", () => {
     const application = createHarnessApplication({
       storeRoot: resolve(".tmp", "executor-compatibility-verifier-store"),
     });
@@ -115,6 +116,9 @@ describe("composition root", () => {
     expect(Reflect.get(application.compileCodexExecutorCompatibility, "verifier")).toBe(
       Reflect.get(application.createExecutorCompatibilityPublicationBundle, "verifier"),
     );
+    expect(
+      Reflect.get(application.publishExecutorCompatibilityPublicationBundle, "bundleCreator"),
+    ).toBe(application.createExecutorCompatibilityPublicationBundle);
   });
 
   it("保留调用方注入的 Repository Root Resolver", () => {

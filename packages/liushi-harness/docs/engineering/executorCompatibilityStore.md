@@ -1,6 +1,6 @@
 # Executor Compatibility Store 与 CLI
 
-**状态：已实现。Host/Contract 双 Artifact、12 条 Evidence、内容寻址 Evidence/Matrix Store、关闭式重验、确定性 Publication Bundle、生产 Composition Root 和公开 Compile/Query CLI 已落地；真实 Codex CLI 0.144.5 已完成一次本机 v2 Host、Compile 与 Query，受信发布矩阵仍未实现。**
+**状态：已实现。Host/Contract 双 Artifact、12 条 Evidence、内容寻址 Evidence/Matrix Store、关闭式重验、确定性 Publication Bundle、create-only 原子输出、生产 Composition Root 和公开 Compile/Query/Bundle Create CLI 已落地；真实 Codex CLI 0.144.5 已完成一次本机 v2 Host、Compile 与 Query，受信发布矩阵仍未实现。**
 
 ## 1. 目标
 
@@ -180,7 +180,35 @@ Query 固定执行：
 
 Matrix、Policy、Evidence 或来源 Artifact 任一缺失、篡改、Scope 漂移、投影关系漂移或摘要不一致都必须失败。Query 不选择“最新”记录，也不把多个 Scope 合并。调用方若从不可信位置取得另一个自洽摘要，Query 不会把它提升为受信身份；后续安装支持门必须把精确 `matrixDigest` 绑定进 Human Approval 或受信发布记录。
 
-## 9. 持久化与失败语义
+## 9. Bundle 输出协议
+
+公开命令：
+
+```powershell
+liushi-harness executor compatibility bundle create `
+  --matrix-digest <sha256> `
+  --package-name <name> `
+  --package-version <exact-version> `
+  --package-digest <npm-tarball-sha256> `
+  --repository-uri <canonical-https-url> `
+  --source-revision <full-git-revision> `
+  --output <absolute-path> `
+  [--store <path>] [--json]
+```
+
+命令固定执行：
+
+1. 复用 Query 的受信记录重建链，按精确 Matrix Digest 重验 Policy、双 Projection 与十二条 Evidence。
+2. 验证 Tarball Digest 等于 Matrix Adapter Digest，并绑定包名、版本、Repository 与完整 Revision。
+3. 生成带 `bundleDigest` 的确定性 Bundle，再由 Writer 重验完整摘要链。
+4. 使用 RFC 8785 规范 JSON 与单一末尾换行生成稳定字节。
+5. 在目标同目录完成临时文件写入和 `fsync`，再以无覆盖原子链接暴露完整目标，删除临时链接并刷新父目录。
+6. 首次创建返回 `created`；既有规范字节完全相同返回 `idempotent_reuse`；既有不同内容或类型返回 `precondition_not_met`，不修改目标。
+7. JSON stdout 只返回写入回执，不输出完整 Artifact 或 Evidence。
+
+该文件仍是未签名候选，不是 Trusted Release Manifest，也不能驱动安装。Attestation、发布和信任根变更仍必须经过 G6。
+
+## 10. 持久化与失败语义
 
 - 首次写入返回 `persisted`，相同内容返回 `idempotent_reuse`。
 - 同一内容摘要位置出现不一致内容视为 `corrupt_store`，不是普通版本冲突。
@@ -190,11 +218,11 @@ Matrix、Policy、Evidence 或来源 Artifact 任一缺失、篡改、Scope 漂�
 - Unknown 结果禁止自动重试；调用方只能先按精确 Digest 查询现场，再决定是否重放相同输入。
 - Store 不自动删除孤儿、损坏文件或遗留 Lock。
 
-## 10. 完成门
+## 11. 完成门
 
 - Unit：生产 Hook Input Reader、Host/Contract Projector 失败、Adapter 异常、Contract Failed Evidence、写入前集合复验、错误父摘要零写入、双 Projection 持久化顺序、exact-schema Query、Scope/观察锚点漂移和篡改拒绝。
 - Integration：生产 `NodeHookInputReaderAdapter` 与 `CodexHookAdapter` 固定 Suite、12 条 Evidence 编译、双 Artifact 跨实例读取、跨进程 Lock、并发幂等、原子写、目录耐久性、真实链接逃逸、Golden Digest 和完整摘要链。
-- CLI E2E：合成契约 Fixture 编译、两项 `evidencePersistences`、二次幂等、按 Digest 查询、Not Found 与 Corrupt Store 退出码；Fixture 不代表真实 Host 验收。
+- CLI E2E：合成契约 Fixture 编译、两项 `evidencePersistences`、二次幂等、按 Digest 查询、Bundle 原子创建/幂等复用/拒绝覆盖、Not Found 与 Corrupt Store 退出码；Fixture 不代表真实 Host 验收。
 - Architecture：层级方向、纯 Barrel、lower camelCase、中文 TSDoc、文件与函数复杂度门全部通过。
 - TypeScript 当前版本与 TypeScript 6 兼容检查、ESLint、Prettier、Build 和 Tarball Smoke 全部通过。
 - 文档必须明确：真实 Codex CLI `0.144.5` 的受验输入只在 Windows x64、Interactive TUI 精确 Scope 下编译为本机 Compatible；该结果不能外推为其他版本、平台或受信发布矩阵。没有 ProductionE2e、`modelId`、`permissionMode` 和 Tarball Attestation 时绝不声明 Production。

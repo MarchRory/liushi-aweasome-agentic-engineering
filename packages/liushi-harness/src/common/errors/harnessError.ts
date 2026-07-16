@@ -54,6 +54,8 @@ export enum HarnessErrorCode {
   ExecutorCompatibilityMatrixNotFound = "executor_compatibility_matrix_not_found",
   /** Executor Compatibility 记录已开始写入但提交结果未知，禁止自动重试。 */
   ExecutorCompatibilityCommitOutcomeUnknown = "executor_compatibility_commit_outcome_unknown",
+  /** Executor Compatibility 发布文件已开始提交但耐久结果未知，禁止自动重试。 */
+  ExecutorCompatibilityPublicationCommitOutcomeUnknown = "executor_compatibility_publication_commit_outcome_unknown",
   /** Command Handler 已执行但 Receipt 无法可靠落盘，禁止自动重试。 */
   CommandGatewayCommitOutcomeUnknown = "command_gateway_commit_outcome_unknown",
   /** 请求的 Installation Revision 不存在。 */

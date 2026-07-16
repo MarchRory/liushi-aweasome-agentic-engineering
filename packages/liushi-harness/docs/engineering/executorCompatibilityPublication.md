@@ -1,6 +1,6 @@
 # Executor Compatibility 发布信任链
 
-**状态：技术方案已冻结，P1 确定性 Publication Bundle Domain、可信记录重建服务和只读 Application Use Case 已实现。当前不执行签名、上传、安装或任何 Repository 写入。**
+**状态：技术方案已冻结，P1 确定性 Publication Bundle 与 P2 create-only CLI 原子文件输出已实现。当前不执行签名、上传、安装、Trusted Release Manifest 更新或任何 Repository 写入。**
 
 ## 1. 目标
 
@@ -72,7 +72,7 @@ Manifest 不能使用“读取 Store 中最新 Matrix”的语义。未来出现
 
 ## 4. Human Gate
 
-Publication Bundle 创建是 R0，只读且无外部副作用，不需要自动生成 Approval。
+内存中的 Publication Bundle 创建是 R0，只读且无外部副作用。`bundle create --output` 是调用方显式指定目标的 R1 本地 Artifact 创建：只允许绝对路径，只创建或幂等复用完全相同的规范字节，绝不覆盖既有 Human 文件。该动作本身不需要 G6，但仍受宿主 Sandbox、文件权限和 Tool Approval 约束。
 
 以下动作属于 Release，必须进入 G6：
 
@@ -162,25 +162,47 @@ Domain 负责通用结构、集合与 Digest 不变量。来源 Artifact 的专�
 
 Query 与 Bundle Create 应复用一个 Application 内部的“受信 Compatibility Record 重建服务”，避免两条路径复制验证逻辑或产生不同信任口径。
 
+`PublishExecutorCompatibilityPublicationBundleUseCase` 复用同一个 Bundle Creator，并只在创建成功后调用 `ExecutorCompatibilityPublicationWriterPort`。输出是带 Schema Version、Disposition、路径、Bundle/Matrix/Tarball Digest 和字节数的窄回执，不把两项 Projection 与十二条 Evidence 刷到 stdout。
+
 ### 7.2 Infrastructure
 
 - 继续复用现有内容寻址 Evidence/Matrix Store。
 - Sigstore Adapter 只实现 Application Signing/Verification Port。
 - 私钥、OIDC Token、Fulcio、Rekor、TUF Root 和网络重试不进入 Domain。
-- 文件输出使用现有原子写入与父目录耐久性机制，不直接调用散落的 `writeFile`。
+- `NodeExecutorCompatibilityPublicationWriterAdapter` 先重验 Bundle Digest，再使用 RFC 8785 规范 JSON 和单一末尾换行生成稳定字节。
+- 文件输出先在目标同目录创建 `wx` 临时文件并完成文件 `fsync`，再通过无覆盖硬链接原子暴露完整目标，删除临时链接后刷新父目录。目标已存在时只有规范字节完全相同才返回 `idempotent_reuse`；内容或文件类型不同返回 `precondition_not_met`。
+- 发布目标已经可见后出现清理、父目录耐久性或写后复验失败，返回 `executor_compatibility_publication_commit_outcome_unknown`，禁止调用方盲目自动重试。
+- 不支持安全无覆盖硬链接语义的文件系统关闭式失败；不退化为“先检查再 rename”或可覆盖写入。
 - OS 差异只进入 Infrastructure Platform Adapter，不写入 Domain 或 Use Case 分支。
 
 ### 7.3 Presentation
 
-计划中的 CLI 分三步交付：
+CLI 按三步交付：
 
 ```text
-executor compatibility bundle create
+executor compatibility bundle create --matrix-digest <sha256> --package-name <name> --package-version <version> --package-digest <sha256> --repository-uri <https-url> --source-revision <full-revision> --output <absolute-path> [--store <path>] [--json]
 executor compatibility attestation create
 executor compatibility release verify
 ```
 
-`bundle create` 是只读命令。`attestation create` 与 Release Manifest 写入必须要求精确 G6 Approval。`release verify` 默认离线验证 Bundle、Statement、Sigstore 验证材料和固定身份 Policy；需要网络透明日志查询时由显式选项开启。
+`bundle create` 已实现。它按精确 Matrix Digest 重建 Bundle，并以 create-only 语义写入绝对输出路径；重跑相同输入返回 `idempotent_reuse`，既有不同文件保持不变并返回 Conflict。`attestation create` 与 `release verify` 尚未实现；Attestation 与 Release Manifest 写入必须要求精确 G6 Approval。未来 `release verify` 默认离线验证 Bundle、Statement、Sigstore 验证材料和固定身份 Policy；需要网络透明日志查询时由显式选项开启。
+
+可复现实例：
+
+```powershell
+liushi-harness executor compatibility bundle create `
+  --matrix-digest <sha256:64hex> `
+  --package-name liushi-harness `
+  --package-version <exact-version> `
+  --package-digest <npm-tarball-sha256> `
+  --repository-uri https://github.com/MarchRory/liushi-aweasome-agentic-engineering `
+  --source-revision <full-git-revision> `
+  --output <absolute-path-to-bundle.json> `
+  --store <trusted-runtime-store> `
+  --json
+```
+
+`packageDigest` 必须与 Matrix Scope 的 `adapterDigest` 精确相等。输出文件是完整、规范且未签名的 Bundle；JSON stdout 只包含写入回执。
 
 ## 8. 安装选择门
 
@@ -208,6 +230,8 @@ executor compatibility release verify
 - Store 中存在更晚 Matrix 时仍只读取调用方指定 Digest。
 - Bundle 不包含绝对路径、原始 Session/Turn/Tool Call ID 或 Secret。
 - Application、Architecture、TypeScript、ESLint、Prettier、Build 和 Tarball Smoke 全部通过。
+- CLI 只接受绝对输出路径，首次创建、幂等复用、并发相同输入、既有不同文件和提交结果未知均有动态测试。
+- 输出字节必须严格等于 `RFC8785(bundle) + "\n"`，任何临时文件不能在成功返回后残留。
 
 ### 9.2 Attestation 与安装门切片
 
@@ -221,7 +245,7 @@ executor compatibility release verify
 ## 10. 交付顺序
 
 1. `P1`：Domain Bundle、可信记录重建服务、Bundle Create Use Case 与完整测试。已完成。
-2. `P2`：Bundle CLI、原子文件输出与可复现实例。
+2. `P2`：Bundle CLI、原子文件输出与可复现实例。已完成。
 3. `P3`：in-toto Statement、Sigstore Adapter、固定发布者 Identity Policy 与 G6 Approval 绑定。
 4. `P4`：Trusted Release Manifest、离线 Verify 和安装选择门。
 5. `P5`：在 GitHub Actions/npm Provenance 中生成真实 Attestation，执行干净 Consumer E2E。

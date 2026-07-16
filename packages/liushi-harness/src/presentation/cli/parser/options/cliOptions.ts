@@ -74,6 +74,18 @@ export enum CliOptionName {
   Result = "--result",
   /** 指定 Executor Compatibility Matrix Digest。 */
   MatrixDigest = "--matrix-digest",
+  /** 指定 npm 包名。 */
+  PackageName = "--package-name",
+  /** 指定精确 npm 包版本。 */
+  PackageVersion = "--package-version",
+  /** 指定 npm Tarball 内容摘要。 */
+  PackageDigest = "--package-digest",
+  /** 指定规范 HTTPS 源码仓库 URI。 */
+  RepositoryUri = "--repository-uri",
+  /** 指定发布物对应的完整 Git Revision。 */
+  SourceRevision = "--source-revision",
+  /** 指定不可覆盖的绝对输出文件。 */
+  Output = "--output",
 }
 
 const CLI_OPTION_BY_NAME = new Map<string, CliOptionName>(

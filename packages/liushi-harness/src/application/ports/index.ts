@@ -34,3 +34,4 @@ export type * from "./codexContractEvidenceProjector/index.js";
 export type * from "./executorCompatibilityEvidenceProjectionVerifier/index.js";
 export type * from "./executorCompatibilityEvidenceProjectionSetVerifier/index.js";
 export * from "./executorCompatibilityStore/index.js";
+export * from "./executorCompatibilityPublicationWriter/index.js";
