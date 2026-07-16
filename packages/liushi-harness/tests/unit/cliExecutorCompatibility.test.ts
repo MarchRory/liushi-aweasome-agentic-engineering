@@ -62,11 +62,18 @@ const MATRIX = {
 } as const;
 const COMPILE_OUTPUT = {
   matrix: MATRIX,
-  evidencePersistence: {
-    disposition: "persisted",
-    artifactDigest: RECORD_DIGEST,
-    evidenceDigests: [EVIDENCE_DIGEST, RECORD_DIGEST],
-  },
+  evidencePersistences: [
+    {
+      disposition: "persisted",
+      artifactDigest: RECORD_DIGEST,
+      evidenceDigests: [EVIDENCE_DIGEST],
+    },
+    {
+      disposition: "persisted",
+      artifactDigest: EVIDENCE_DIGEST,
+      evidenceDigests: [RECORD_DIGEST],
+    },
+  ],
   matrixPersistence: { disposition: "persisted", matrixDigest: MATRIX_DIGEST },
 } as const;
 const QUERY_OUTPUT = { matrix: MATRIX, recomputed: true } as const;
@@ -285,7 +292,7 @@ describe("Executor Compatibility CLI runner", () => {
 
     expect(exitCode).toBe(CLI_EXIT_CODE_SUCCESS);
     expect(setup.stdout).toBe(
-      `Executor compatibility ${MATRIX_DIGEST}: profile=managed-file-mutation-hooks support=production executor=codex_cli@1.2.3 host=non_interactive_cli/windows/x64 evidence=2 evidencePersistence=persisted matrixPersistence=persisted.\n`,
+      `Executor compatibility ${MATRIX_DIGEST}: profile=managed-file-mutation-hooks support=production executor=codex_cli@1.2.3 host=non_interactive_cli/windows/x64 evidence=2 evidencePersistences=host:persisted,contract:persisted matrixPersistence=persisted.\n`,
     );
     expect(setup.stdout).not.toContain(RECORD_DIGEST);
   });

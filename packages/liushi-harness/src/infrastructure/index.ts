@@ -18,3 +18,4 @@ export * from "./managedFileReader/index.js";
 export * from "./fileInstallPlanStore/index.js";
 export * from "./installationRevisionStore/index.js";
 export * from "./managedFileMutation/index.js";
+export * from "./executorCompatibilityProjectionVerifier/index.js";

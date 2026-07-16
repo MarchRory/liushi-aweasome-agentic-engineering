@@ -69,6 +69,7 @@ describe("composition root", () => {
       "NodeWorktreeProvisionRecoveryInspectorAdapter",
       "NodeWorktreeProvisionerAdapter",
       "Rfc8785Sha256DigestAdapter",
+      "SchemaRoutedExecutorCompatibilityProjectionSetVerifierAdapter",
       "StaticRepositoryRootResolverAdapter",
       "StructuredProjectConfigParserAdapter",
       "SystemClock",

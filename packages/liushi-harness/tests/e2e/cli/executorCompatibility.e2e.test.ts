@@ -18,6 +18,8 @@ import {
 } from "../../../src/domain/executorCompatibility/index.js";
 import {
   CodexCompatibilityEvidenceProjectorAdapter,
+  CodexContractEvidenceProjectorAdapter,
+  CodexHookAdapter,
   Rfc8785Sha256DigestAdapter,
   resolveExecutorCompatibilityMatrixStorePaths,
 } from "../../../src/infrastructure/index.js";
@@ -36,7 +38,11 @@ import {
 import { runCommand, singleOutput, withStore } from "./support/index.js";
 
 const digestAdapter = new Rfc8785Sha256DigestAdapter();
-const projector = new CodexCompatibilityEvidenceProjectorAdapter(digestAdapter);
+const hostProjector = new CodexCompatibilityEvidenceProjectorAdapter(digestAdapter);
+const contractProjector = new CodexContractEvidenceProjectorAdapter(
+  digestAdapter,
+  CodexHookAdapter,
+);
 
 /** E2E 中写入真实 JSON Reader 的三份来源文件。 */
 interface CompatibilitySourceFiles {
@@ -54,7 +60,10 @@ interface CompatibilityMatrixOutput {
 
 /** 首次或复用编译的 CLI 数据。 */
 interface CompatibilityCompileOutput {
-  readonly evidencePersistence: ExecutorCompatibilityEvidenceWriteResult;
+  readonly evidencePersistences: readonly [
+    ExecutorCompatibilityEvidenceWriteResult,
+    ExecutorCompatibilityEvidenceWriteResult,
+  ];
   readonly matrix: CompatibilityMatrixOutput;
   readonly matrixPersistence: ExecutorCompatibilityMatrixWriteResult;
 }
@@ -76,7 +85,7 @@ describe("Executor Compatibility 生产 CLI E2E", () => {
   it("首次编译、查询、幂等复用并在 Matrix 篡改后关闭式失败", async () => {
     await withStore(async (storeRoot) => {
       const fixture = createCodexCompatibilitySourceFixture();
-      const expected = createExpectedCompilation(fixture);
+      const expected = await createExpectedCompilation(fixture);
       const sourceFiles = await writeCompatibilitySourceFiles(storeRoot, fixture);
 
       const firstResult = await compileCompatibility(storeRoot, sourceFiles);
@@ -87,24 +96,24 @@ describe("Executor Compatibility 生产 CLI E2E", () => {
         status: CliResponseStatus.Success,
         command: CliCommand.ExecutorCompatibilityCompile,
         data: {
-          matrix: { supportLevel: ExecutorSupportLevel.Experimental },
-          evidencePersistence: {
-            disposition: ExecutorCompatibilityWriteDisposition.Persisted,
-          },
+          matrix: { supportLevel: ExecutorSupportLevel.Compatible },
+          evidencePersistences: [
+            { disposition: ExecutorCompatibilityWriteDisposition.Persisted },
+            { disposition: ExecutorCompatibilityWriteDisposition.Persisted },
+          ],
           matrixPersistence: {
             disposition: ExecutorCompatibilityWriteDisposition.Persisted,
           },
         },
       });
-      expect(first.data.matrix.evidenceDigests).toHaveLength(7);
-      expect(first.data.matrix.supportLevel).not.toBe(ExecutorSupportLevel.Compatible);
+      expect(first.data.matrix.evidenceDigests).toHaveLength(12);
+      expect(first.data.matrix.supportLevel).toBe(ExecutorSupportLevel.Compatible);
       expect(first.data.matrix.supportLevel).not.toBe(ExecutorSupportLevel.Production);
-      expect(first.data.evidencePersistence.artifactDigest).toBe(expected.artifactDigest);
-      expect(first.data.evidencePersistence.evidenceDigests).toEqual(expected.evidenceDigests);
+      expect(first.data.evidencePersistences).toEqual(expected.evidencePersistences);
       expect(first.data.matrix.evidenceDigests).toEqual(expected.evidenceDigests);
       expect(first.data.matrix.matrixDigest).toBe(expected.matrixDigest);
       expect(first.data.matrixPersistence.matrixDigest).toBe(expected.matrixDigest);
-      expect(expected.evidenceKinds).not.toContain(ExecutorEvidenceKind.ContractTest);
+      expect(expected.evidenceKinds).toContain(ExecutorEvidenceKind.ContractTest);
       expect(expected.evidenceKinds).not.toContain(ExecutorEvidenceKind.ProductionE2e);
 
       // 每次 runCommand 都通过 createHarnessApplication 创建新的生产 Application 实例。
@@ -126,11 +135,10 @@ describe("Executor Compatibility 生产 CLI E2E", () => {
       expect(reused.data.matrix).toEqual(first.data.matrix);
       expect(reused.data).toMatchObject({
         matrix: first.data.matrix,
-        evidencePersistence: {
+        evidencePersistences: first.data.evidencePersistences.map((item) => ({
+          ...item,
           disposition: ExecutorCompatibilityWriteDisposition.IdempotentReuse,
-          artifactDigest: first.data.evidencePersistence.artifactDigest,
-          evidenceDigests: first.data.evidencePersistence.evidenceDigests,
-        },
+        })),
         matrixPersistence: {
           disposition: ExecutorCompatibilityWriteDisposition.IdempotentReuse,
           matrixDigest: first.data.matrix.matrixDigest,
@@ -182,7 +190,7 @@ describe("Executor Compatibility 生产 CLI E2E", () => {
   ] as const)("拒绝%s且不发布 Matrix", async (_label, mutate, expectedMessage) => {
     await withStore(async (storeRoot) => {
       const fixture = createCodexCompatibilitySourceFixture();
-      const expected = createExpectedCompilation(fixture);
+      const expected = await createExpectedCompilation(fixture);
       mutate(fixture);
       const sourceFiles = await writeCompatibilitySourceFiles(storeRoot, fixture);
       const result = await compileCompatibility(storeRoot, sourceFiles);
@@ -262,34 +270,60 @@ function parseSuccess<T>(stdout: readonly string[]): SuccessEnvelope<T> {
   return JSON.parse(singleOutput(stdout)) as SuccessEnvelope<T>;
 }
 
-function createExpectedCompilation(fixture: CodexCompatibilitySourceFixture): {
-  readonly artifactDigest: ContentDigest;
+async function createExpectedCompilation(fixture: CodexCompatibilitySourceFixture): Promise<{
+  readonly evidencePersistences: readonly [
+    ExecutorCompatibilityEvidenceWriteResult,
+    ExecutorCompatibilityEvidenceWriteResult,
+  ];
   readonly evidenceDigests: readonly ContentDigest[];
   readonly evidenceKinds: readonly ExecutorEvidenceKind[];
   readonly matrixDigest: ContentDigest;
-} {
-  const projection = projector.project({
+}> {
+  const host = hostProjector.project({
     ...fixture,
     artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
   });
-  if (projection.status === ResultStatus.Failure) throw projection.error;
-  const scope = projection.value.evidence[0]?.scope;
+  if (host.status === ResultStatus.Failure) throw host.error;
+  const scope = host.value.evidence[0]?.scope;
   if (scope === undefined) throw new Error("合成来源 Fixture 未生成 Evidence。");
+  const contract = await contractProjector.project({
+    scope,
+    hostArtifactDigest: host.value.artifactDigest,
+    observationAnchor: fixture.hostResult.verifiedAt,
+    artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
+  });
+  if (contract.status === ResultStatus.Failure) throw contract.error;
+  const evidence = [...host.value.evidence, ...contract.value.evidence];
   const matrix = compileExecutorCompatibilityMatrix(
     {
       scope,
       policy: createManagedFileMutationHookPolicy(),
-      evidence: projection.value.evidence,
+      evidence,
     },
     digestAdapter,
   );
   if (matrix.status === ResultStatus.Failure) throw matrix.error;
   return {
-    artifactDigest: projection.value.artifactDigest,
-    evidenceDigests: projection.value.evidence
+    evidencePersistences: [
+      {
+        disposition: ExecutorCompatibilityWriteDisposition.Persisted,
+        artifactDigest: host.value.artifactDigest,
+        evidenceDigests: host.value.evidence
+          .map((item) => item.evidenceDigest)
+          .sort((left, right) => left.localeCompare(right)),
+      },
+      {
+        disposition: ExecutorCompatibilityWriteDisposition.Persisted,
+        artifactDigest: contract.value.artifactDigest,
+        evidenceDigests: contract.value.evidence
+          .map((item) => item.evidenceDigest)
+          .sort((left, right) => left.localeCompare(right)),
+      },
+    ],
+    evidenceDigests: evidence
       .map((item) => item.evidenceDigest)
       .sort((left, right) => left.localeCompare(right)),
-    evidenceKinds: projection.value.evidence.map((item) => item.kind),
+    evidenceKinds: evidence.map((item) => item.kind),
     matrixDigest: matrix.value.matrixDigest,
   };
 }

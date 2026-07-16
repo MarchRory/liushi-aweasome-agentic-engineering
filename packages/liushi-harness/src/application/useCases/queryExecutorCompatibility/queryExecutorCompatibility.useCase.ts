@@ -1,5 +1,5 @@
 import type {
-  ExecutorCompatibilityEvidenceProjectionVerifierPort,
+  ExecutorCompatibilityEvidenceProjectionSetVerifierPort,
   ExecutorCompatibilityEvidenceStore,
   ExecutorCompatibilityMatrixStore,
 } from "#application/ports/index.js";
@@ -32,7 +32,7 @@ export interface QueryExecutorCompatibilityOutput {
 /** 按来自受信编译边界的精确 Matrix Digest 读取并重新证明内容完整性。 */
 export class QueryExecutorCompatibilityUseCase {
   public constructor(
-    private readonly verifier: ExecutorCompatibilityEvidenceProjectionVerifierPort,
+    private readonly verifier: ExecutorCompatibilityEvidenceProjectionSetVerifierPort,
     private readonly evidenceStore: ExecutorCompatibilityEvidenceStore,
     private readonly matrixStore: ExecutorCompatibilityMatrixStore,
     private readonly digestPort: ExecutorCompatibilityDigestPort,
@@ -77,18 +77,17 @@ export class QueryExecutorCompatibilityUseCase {
       });
     }
 
-    const verifiedEvidence: ExecutorCapabilityEvidence[] = [];
-    for (const projection of loadedProjections.value) {
-      const verifiedProjection = this.verifier.verifyPersistedProjection(projection);
-      if (verifiedProjection.status === ResultStatus.Failure) {
-        return corruptStore(
-          "Executor Compatibility 持久化 Projection 无法通过确定性复验。",
-          matrixDigest,
-          { causeCode: verifiedProjection.error.code },
-        );
-      }
-      verifiedEvidence.push(...verifiedProjection.value.evidence);
+    const verifiedProjections = this.verifier.verifyPersistedProjectionSet(loadedProjections.value);
+    if (verifiedProjections.status === ResultStatus.Failure) {
+      return corruptStore(
+        "Executor Compatibility 持久化 Projection 集合无法通过确定性复验。",
+        matrixDigest,
+        { causeCode: verifiedProjections.error.code },
+      );
     }
+    const verifiedEvidence: ExecutorCapabilityEvidence[] = verifiedProjections.value.flatMap(
+      (projection) => projection.evidence,
+    );
 
     const recomputed = compileExecutorCompatibilityMatrix(
       {

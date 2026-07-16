@@ -21,13 +21,17 @@ export function writeExecutorCompatibilitySummary(
 }
 
 function compilePersistenceSummary(data: Record<string, unknown>): string {
-  const evidence = isRecord(data["evidencePersistence"])
-    ? scalar(data["evidencePersistence"]["disposition"])
-    : "unknown";
+  const evidence = Array.isArray(data["evidencePersistences"])
+    ? data["evidencePersistences"].map((item) =>
+        isRecord(item) ? scalar(item["disposition"]) : "unknown",
+      )
+    : [];
+  const hostEvidence = evidence[0] ?? "unknown";
+  const contractEvidence = evidence[1] ?? "unknown";
   const matrix = isRecord(data["matrixPersistence"])
     ? scalar(data["matrixPersistence"]["disposition"])
     : "unknown";
-  return `evidencePersistence=${evidence} matrixPersistence=${matrix}`;
+  return `evidencePersistences=host:${hostEvidence},contract:${contractEvidence} matrixPersistence=${matrix}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -2,15 +2,24 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   CompileCodexExecutorCompatibilityUseCase,
+  ExecutorCompatibilityWriteDisposition,
   QueryExecutorCompatibilityUseCase,
 } from "../../src/application/index.js";
 import { createHarnessApplication } from "../../src/bootstrap/index.js";
-import { ResultStatus } from "../../src/common/index.js";
+import { HarnessErrorCode, ResultStatus } from "../../src/common/index.js";
 import {
+  ExecutorEvidenceKind,
+  ExecutorEvidenceLocatorKind,
+  ExecutorSupportLevel,
   compileExecutorCompatibilityMatrix,
   createManagedFileMutationHookPolicy,
 } from "../../src/domain/executorCompatibility/index.js";
 import {
+  CODEX_COMPATIBILITY_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+  CODEX_CONTRACT_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+  CodexCompatibilityEvidenceProjectorAdapter,
+  CodexContractEvidenceProjectorAdapter,
+  CodexHookAdapter,
   ExclusiveFileLockManager,
   FileExecutorCompatibilityEvidenceStore,
   FileExecutorCompatibilityMatrixStore,
@@ -27,7 +36,7 @@ afterEach(async () => {
 });
 
 describe("Executor Compatibility Composition Root", () => {
-  it("生产应用从真实来源投影，并跨实例复用同一 Runtime Store", async () => {
+  it("生产应用编译 Compatible 十二条 Evidence，并跨新实例完整重验", async () => {
     const storeRoot = await runtimeStores.create("liushi-executor-compatibility-bootstrap-");
     const fixture = createCodexCompatibilitySourceFixture();
     const writer = createHarnessApplication({ storeRoot });
@@ -43,6 +52,12 @@ describe("Executor Compatibility Composition Root", () => {
     });
     expect(compiled.status).toBe(ResultStatus.Success);
     if (compiled.status === ResultStatus.Failure) throw compiled.error;
+    expect(compiled.value.matrix.supportLevel).toBe(ExecutorSupportLevel.Compatible);
+    expect(compiled.value.matrix.evidenceDigests).toHaveLength(12);
+    expect(compiled.value.evidencePersistences.map((item) => item.disposition)).toEqual([
+      ExecutorCompatibilityWriteDisposition.Persisted,
+      ExecutorCompatibilityWriteDisposition.Persisted,
+    ]);
 
     const reader = createHarnessApplication({ storeRoot });
     const queried = await reader.queryExecutorCompatibility.execute(
@@ -55,61 +70,117 @@ describe("Executor Compatibility Composition Root", () => {
     });
   });
 
-  it("生产 Query 恢复并复验两个独立 Codex Artifact 后共同重编译", async () => {
+  it("一次 Compile 生成的同一 Matrix 恢复为 Host 与 Contract 两种 Artifact", async () => {
     const storeRoot = await runtimeStores.create("liushi-executor-compatibility-multi-source-");
-    const firstFixture = createCodexCompatibilitySourceFixture();
-    const secondFixture = createCodexCompatibilitySourceFixture();
-    secondFixture.hostResult.verifiedAt = "2026-07-15T08:10:10.000Z";
-    const writer = createHarnessApplication({ storeRoot });
+    const fixture = createCodexCompatibilitySourceFixture();
+    const application = createHarnessApplication({ storeRoot });
+    const compiled = await application.compileCodexExecutorCompatibility.execute(fixture);
+    expect(compiled.status).toBe(ResultStatus.Success);
+    if (compiled.status === ResultStatus.Failure) throw compiled.error;
 
-    const first = await writer.compileCodexExecutorCompatibility.execute(firstFixture);
-    const second = await writer.compileCodexExecutorCompatibility.execute(secondFixture);
-    expect(first.status).toBe(ResultStatus.Success);
-    expect(second.status).toBe(ResultStatus.Success);
-    if (first.status === ResultStatus.Failure) throw first.error;
-    if (second.status === ResultStatus.Failure) throw second.error;
-    expect(first.value.evidencePersistence.artifactDigest).not.toBe(
-      second.value.evidencePersistence.artifactDigest,
+    const dependencies = createStoreDependencies();
+    const evidenceStore = new FileExecutorCompatibilityEvidenceStore(storeRoot, dependencies);
+    const loaded = await evidenceStore.loadProjections(compiled.value.matrix.evidenceDigests);
+    expect(loaded.status).toBe(ResultStatus.Success);
+    if (loaded.status === ResultStatus.Failure) throw loaded.error;
+    expect(loaded.value).toHaveLength(2);
+    const host = loaded.value.find(
+      (projection) =>
+        readArtifactString(projection.artifact, "schemaVersion") ===
+        CODEX_COMPATIBILITY_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+    );
+    const contract = loaded.value.find(
+      (projection) =>
+        readArtifactString(projection.artifact, "schemaVersion") ===
+        CODEX_CONTRACT_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+    );
+    expect(host?.evidence).toHaveLength(7);
+    expect(contract?.evidence).toHaveLength(5);
+    if (host === undefined || contract === undefined) {
+      throw new Error("恢复的 Projection 集合缺少 Host 或 Contract 来源。");
+    }
+    expect(readArtifactString(contract.artifact, "hostArtifactDigest")).toBe(host.artifactDigest);
+    const kinds = loaded.value.flatMap((projection) =>
+      projection.evidence.map((evidence) => evidence.kind),
+    );
+    expect(kinds).toContain(ExecutorEvidenceKind.ContractTest);
+    expect(kinds).not.toContain(ExecutorEvidenceKind.ProductionE2e);
+  });
+
+  it("Query 拒绝同 Scope 但绑定其他 Host Artifact Digest 的合法 Contract Projection", async () => {
+    const storeRoot = await runtimeStores.create("liushi-executor-compatibility-parent-drift-");
+    const fixture = createCodexCompatibilitySourceFixture();
+    const dependencies = createStoreDependencies();
+    const hostProjector = new CodexCompatibilityEvidenceProjectorAdapter(dependencies.digest);
+    const contractProjector = new CodexContractEvidenceProjectorAdapter(
+      dependencies.digest,
+      CodexHookAdapter,
+    );
+    const host = hostProjector.project({
+      ...fixture,
+      artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
+    });
+    expect(host.status).toBe(ResultStatus.Success);
+    if (host.status === ResultStatus.Failure) throw host.error;
+    const scope = host.value.evidence[0]?.scope;
+    if (scope === undefined) throw new Error("Host Projection 缺少 Scope。");
+    const otherHostDigest = calculateDigest(dependencies.digest, { host: "other" });
+    const contract = await contractProjector.project({
+      scope,
+      hostArtifactDigest: otherHostDigest,
+      observationAnchor: fixture.hostResult.verifiedAt,
+      artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
+    });
+    expect(contract.status).toBe(ResultStatus.Success);
+    if (contract.status === ResultStatus.Failure) throw contract.error;
+    expect(contractProjector.verifyPersistedProjection(contract.value).status).toBe(
+      ResultStatus.Success,
     );
 
-    const digest = new Rfc8785Sha256DigestAdapter();
-    const storeDependencies = {
-      digest,
-      lockManager: new ExclusiveFileLockManager(),
-      parentDirectoryDurability: new FileParentDirectoryDurability(),
-    };
-    const evidenceStore = new FileExecutorCompatibilityEvidenceStore(storeRoot, storeDependencies);
-    const evidenceDigests = [
-      ...first.value.matrix.evidenceDigests,
-      ...second.value.matrix.evidenceDigests,
-    ];
-    const loadedProjections = await evidenceStore.loadProjections(evidenceDigests);
-    expect(loadedProjections.status).toBe(ResultStatus.Success);
-    if (loadedProjections.status === ResultStatus.Failure) throw loadedProjections.error;
-    expect(loadedProjections.value).toHaveLength(2);
-
+    const evidenceStore = new FileExecutorCompatibilityEvidenceStore(storeRoot, dependencies);
+    expect((await evidenceStore.persist(host.value)).status).toBe(ResultStatus.Success);
+    expect((await evidenceStore.persist(contract.value)).status).toBe(ResultStatus.Success);
     const policy = createManagedFileMutationHookPolicy();
-    const combined = compileExecutorCompatibilityMatrix(
-      {
-        scope: first.value.matrix.scope,
-        policy,
-        evidence: loadedProjections.value.flatMap((projection) => projection.evidence),
-      },
-      digest,
+    const matrix = compileExecutorCompatibilityMatrix(
+      { scope, policy, evidence: [...host.value.evidence, ...contract.value.evidence] },
+      dependencies.digest,
     );
-    expect(combined.status).toBe(ResultStatus.Success);
-    if (combined.status === ResultStatus.Failure) throw combined.error;
-    const matrixStore = new FileExecutorCompatibilityMatrixStore(storeRoot, storeDependencies);
-    const persisted = await matrixStore.persist({ matrix: combined.value, policy });
-    expect(persisted.status).toBe(ResultStatus.Success);
-    if (persisted.status === ResultStatus.Failure) throw persisted.error;
+    expect(matrix.status).toBe(ResultStatus.Success);
+    if (matrix.status === ResultStatus.Failure) throw matrix.error;
+    const matrixStore = new FileExecutorCompatibilityMatrixStore(storeRoot, dependencies);
+    expect((await matrixStore.persist({ matrix: matrix.value, policy })).status).toBe(
+      ResultStatus.Success,
+    );
 
-    const reader = createHarnessApplication({ storeRoot });
-    const queried = await reader.queryExecutorCompatibility.execute(combined.value.matrixDigest);
+    const queried = await createHarnessApplication({
+      storeRoot,
+    }).queryExecutorCompatibility.execute(matrix.value.matrixDigest);
 
-    expect(queried).toEqual({
-      status: ResultStatus.Success,
-      value: { matrix: combined.value, recomputed: true },
+    expect(queried).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.CorruptStore },
     });
   });
 });
+
+function createStoreDependencies() {
+  return {
+    digest: new Rfc8785Sha256DigestAdapter(),
+    lockManager: new ExclusiveFileLockManager(),
+    parentDirectoryDurability: new FileParentDirectoryDurability(),
+  };
+}
+
+function readArtifactString(artifact: unknown, field: string): string | undefined {
+  return isRecord(artifact) && typeof artifact[field] === "string" ? artifact[field] : undefined;
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function calculateDigest(digest: Rfc8785Sha256DigestAdapter, input: unknown) {
+  const result = digest.calculate(input);
+  if (result.status === ResultStatus.Failure) throw result.error;
+  return result.value;
+}

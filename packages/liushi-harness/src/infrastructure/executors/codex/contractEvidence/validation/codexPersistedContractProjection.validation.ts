@@ -96,8 +96,8 @@ export function verifyPersistedCodexContractProjection(
     return corrupt("Codex Contract Evidence 无法重新投影。", expectedEvidence.error);
   }
 
-  const expectedRecordsDigest = digestPort.calculate(expectedEvidence.value);
-  const loadedRecordsDigest = digestPort.calculate(parsedProjection.data.evidence);
+  const expectedRecordsDigest = digestPort.calculate(sortEvidence(expectedEvidence.value));
+  const loadedRecordsDigest = digestPort.calculate(sortEvidence(parsedProjection.data.evidence));
   if (
     expectedRecordsDigest.status === ResultStatus.Failure ||
     loadedRecordsDigest.status === ResultStatus.Failure
@@ -146,6 +146,14 @@ function parseArtifact(value: unknown): Result<CodexContractEvidenceArtifact, Ha
       definitionDigest: definitionDigest.value,
     },
   });
+}
+
+function sortEvidence<T extends { readonly evidenceDigest: string }>(
+  evidence: readonly T[],
+): readonly T[] {
+  return [...evidence].sort((left, right) =>
+    left.evidenceDigest.localeCompare(right.evidenceDigest),
+  );
 }
 
 function brandScope(value: {

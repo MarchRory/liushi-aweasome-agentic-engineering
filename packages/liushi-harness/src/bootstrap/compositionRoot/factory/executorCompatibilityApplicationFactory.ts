@@ -3,10 +3,16 @@ import {
   QueryExecutorCompatibilityUseCase,
 } from "#application/index.js";
 import type { ContentDigestPort } from "#application/ports/index.js";
+import { ExecutorEvidenceKind } from "#domain/executorCompatibility/index.js";
 import {
+  CODEX_COMPATIBILITY_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+  CODEX_CONTRACT_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
   CodexCompatibilityEvidenceProjectorAdapter,
+  CodexContractEvidenceProjectorAdapter,
+  CodexHookAdapter,
   FileExecutorCompatibilityEvidenceStore,
   FileExecutorCompatibilityMatrixStore,
+  SchemaRoutedExecutorCompatibilityProjectionSetVerifierAdapter,
 } from "#infrastructure/index.js";
 import type {
   FileLockManager,
@@ -33,7 +39,34 @@ export function createExecutorCompatibilityApplication(
   /** 按 Matrix Digest 重新证明 Executor Compatibility。 */
   readonly queryExecutorCompatibility: QueryExecutorCompatibilityUseCase;
 } {
-  const codexProjector = new CodexCompatibilityEvidenceProjectorAdapter(dependencies.digest);
+  const codexHostProjector = new CodexCompatibilityEvidenceProjectorAdapter(dependencies.digest);
+  const codexContractProjector = new CodexContractEvidenceProjectorAdapter(
+    dependencies.digest,
+    CodexHookAdapter,
+  );
+  const projectionSetVerifier = new SchemaRoutedExecutorCompatibilityProjectionSetVerifierAdapter(
+    [
+      {
+        schemaVersion: CODEX_COMPATIBILITY_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+        exactCount: 1,
+        verifier: codexHostProjector,
+      },
+      {
+        schemaVersion: CODEX_CONTRACT_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+        exactCount: 1,
+        verifier: codexContractProjector,
+      },
+    ],
+    [
+      {
+        parentSchemaVersion: CODEX_COMPATIBILITY_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+        dependentSchemaVersion: CODEX_CONTRACT_EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+        dependentArtifactDigestField: "hostArtifactDigest",
+        dependentObservationAnchorField: "observationAnchor",
+        parentObservationKinds: [ExecutorEvidenceKind.SmokeTest, ExecutorEvidenceKind.NegativeTest],
+      },
+    ],
+  );
   const evidenceStore = new FileExecutorCompatibilityEvidenceStore(storeRoot, {
     lockManager: dependencies.lockManager,
     parentDirectoryDurability: dependencies.parentDirectoryDurability,
@@ -47,13 +80,14 @@ export function createExecutorCompatibilityApplication(
 
   return {
     compileCodexExecutorCompatibility: new CompileCodexExecutorCompatibilityUseCase(
-      codexProjector,
+      codexHostProjector,
+      codexContractProjector,
       evidenceStore,
       matrixStore,
       dependencies.digest,
     ),
     queryExecutorCompatibility: new QueryExecutorCompatibilityUseCase(
-      codexProjector,
+      projectionSetVerifier,
       evidenceStore,
       matrixStore,
       dependencies.digest,

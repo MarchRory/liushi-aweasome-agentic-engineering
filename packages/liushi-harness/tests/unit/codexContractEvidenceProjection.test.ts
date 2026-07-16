@@ -140,6 +140,28 @@ describe("Codex Contract Evidence Projection", () => {
     expect(verified.value).toEqual(persistedProjection);
   });
 
+  it("接受 Runtime Store 按 Evidence Digest 重排后重建的合法 Projection", async () => {
+    const projector = createProjector();
+    const projection = await projectSuccessfully(projector);
+    const persistedProjection: ExecutorCompatibilityEvidenceProjection = {
+      artifact: structuredClone(projection.artifact),
+      artifactDigest: projection.artifactDigest,
+      evidence: [...structuredClone(projection.evidence)].sort((left, right) =>
+        left.evidenceDigest.localeCompare(right.evidenceDigest),
+      ),
+    };
+
+    const verified = projector.verifyPersistedProjection(persistedProjection);
+
+    expect(verified.status).toBe(ResultStatus.Success);
+    if (verified.status === ResultStatus.Failure) throw verified.error;
+    expect(
+      verified.value.evidence
+        .map((item) => item.evidenceDigest)
+        .sort((left, right) => left.localeCompare(right)),
+    ).toEqual(persistedProjection.evidence.map((item) => item.evidenceDigest));
+  });
+
   it("Artifact、Evidence、Check ID 与 Suite Digest 篡改均关闭式拒绝", async () => {
     const projector = createProjector();
     const projection = await projectSuccessfully(projector);

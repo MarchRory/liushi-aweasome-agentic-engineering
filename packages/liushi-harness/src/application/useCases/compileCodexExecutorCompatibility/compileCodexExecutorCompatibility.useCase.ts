@@ -1,14 +1,12 @@
 import type {
   CodexCompatibilityEvidenceProjectorPort,
+  CodexContractEvidenceProjectorPort,
   ExecutorCompatibilityEvidenceWriteResult,
   ExecutorCompatibilityEvidenceStore,
   ExecutorCompatibilityMatrixWriteResult,
   ExecutorCompatibilityMatrixStore,
 } from "#application/ports/index.js";
 import {
-  failure,
-  HarnessError,
-  HarnessErrorCode,
   ResultStatus,
   success,
   type HarnessError as HarnessErrorType,
@@ -21,6 +19,12 @@ import {
   type ExecutorCompatibilityDigestPort,
   type ExecutorCompatibilityMatrix,
 } from "#domain/executorCompatibility/index.js";
+
+import {
+  validateCodexCompilationEvidenceSet,
+  validateCodexContractCompilationProjection,
+  validateCodexHostCompilationProjection,
+} from "./compileCodexExecutorCompatibility.validation.js";
 
 /** 编译 Codex Executor Compatibility 的三份未信任 JSON 输入。 */
 export interface CompileCodexExecutorCompatibilityInput {
@@ -36,8 +40,11 @@ export interface CompileCodexExecutorCompatibilityInput {
 export interface CompileCodexExecutorCompatibilityOutput {
   /** 由 Domain Compiler 生成的 Matrix。 */
   readonly matrix: ExecutorCompatibilityMatrix;
-  /** 受信 Projection 的持久化回执。 */
-  readonly evidencePersistence: ExecutorCompatibilityEvidenceWriteResult;
+  /** 按 Host、Contract 稳定顺序返回的两项 Projection 持久化回执。 */
+  readonly evidencePersistences: readonly [
+    ExecutorCompatibilityEvidenceWriteResult,
+    ExecutorCompatibilityEvidenceWriteResult,
+  ];
   /** Matrix 与 Policy 记录的持久化回执。 */
   readonly matrixPersistence: ExecutorCompatibilityMatrixWriteResult;
 }
@@ -45,7 +52,8 @@ export interface CompileCodexExecutorCompatibilityOutput {
 /** 编排 Codex 证据投影、Domain 编译和顺序持久化。 */
 export class CompileCodexExecutorCompatibilityUseCase {
   public constructor(
-    private readonly projector: CodexCompatibilityEvidenceProjectorPort,
+    private readonly hostProjector: CodexCompatibilityEvidenceProjectorPort,
+    private readonly contractProjector: CodexContractEvidenceProjectorPort,
     private readonly evidenceStore: ExecutorCompatibilityEvidenceStore,
     private readonly matrixStore: ExecutorCompatibilityMatrixStore,
     private readonly digestPort: ExecutorCompatibilityDigestPort,
@@ -55,30 +63,45 @@ export class CompileCodexExecutorCompatibilityUseCase {
   public async execute(
     input: CompileCodexExecutorCompatibilityInput,
   ): Promise<Result<CompileCodexExecutorCompatibilityOutput, HarnessErrorType>> {
-    const projection = this.projector.project({
+    const hostProjection = this.hostProjector.project({
       ...input,
       artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
     });
-    if (projection.status === ResultStatus.Failure) return projection;
+    if (hostProjection.status === ResultStatus.Failure) return hostProjection;
 
-    const scope = projection.value.evidence[0]?.scope;
-    if (scope === undefined) {
-      return failure(
-        new HarnessError(
-          HarnessErrorCode.InvalidInput,
-          "Codex 兼容性证据投影未产生可用于编译的 Evidence。",
-        ),
-      );
-    }
+    const hostContext = validateCodexHostCompilationProjection(hostProjection.value);
+    if (hostContext.status === ResultStatus.Failure) return hostContext;
+    const contractProjection = await this.contractProjector.project({
+      scope: hostContext.value.scope,
+      hostArtifactDigest: hostProjection.value.artifactDigest,
+      observationAnchor: hostContext.value.observationAnchor,
+      artifactLocatorKind: ExecutorEvidenceLocatorKind.RuntimeStore,
+    });
+    if (contractProjection.status === ResultStatus.Failure) return contractProjection;
+    const contractValidation = validateCodexContractCompilationProjection(
+      contractProjection.value,
+      hostContext.value.scope,
+      hostContext.value.observationAnchor,
+    );
+    if (contractValidation.status === ResultStatus.Failure) return contractValidation;
+
+    const evidence = [...hostProjection.value.evidence, ...contractProjection.value.evidence];
+    const evidenceValidation = validateCodexCompilationEvidenceSet(
+      evidence,
+      hostContext.value.scope,
+    );
+    if (evidenceValidation.status === ResultStatus.Failure) return evidenceValidation;
     const policy = createManagedFileMutationHookPolicy();
     const compiled = compileExecutorCompatibilityMatrix(
-      { scope, policy, evidence: projection.value.evidence },
+      { scope: hostContext.value.scope, policy, evidence },
       this.digestPort,
     );
     if (compiled.status === ResultStatus.Failure) return compiled;
 
-    const evidencePersistence = await this.evidenceStore.persist(projection.value);
-    if (evidencePersistence.status === ResultStatus.Failure) return evidencePersistence;
+    const hostPersistence = await this.evidenceStore.persist(hostProjection.value);
+    if (hostPersistence.status === ResultStatus.Failure) return hostPersistence;
+    const contractPersistence = await this.evidenceStore.persist(contractProjection.value);
+    if (contractPersistence.status === ResultStatus.Failure) return contractPersistence;
 
     const matrixPersistence = await this.matrixStore.persist({
       matrix: compiled.value,
@@ -88,7 +111,7 @@ export class CompileCodexExecutorCompatibilityUseCase {
 
     return success({
       matrix: compiled.value,
-      evidencePersistence: evidencePersistence.value,
+      evidencePersistences: [hostPersistence.value, contractPersistence.value],
       matrixPersistence: matrixPersistence.value,
     });
   }

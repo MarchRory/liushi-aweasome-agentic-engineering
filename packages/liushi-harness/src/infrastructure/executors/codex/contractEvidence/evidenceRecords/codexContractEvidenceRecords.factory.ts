@@ -39,7 +39,7 @@ export function createCodexContractEvidenceLocator(
     case ExecutorEvidenceLocatorKind.RuntimeStore:
       return success({
         kind,
-        value: `executorCompatibility/codex/contract/${digestHex}.json`,
+        value: `executorCompatibility/codex/${digestHex}.json`,
       });
     case ExecutorEvidenceLocatorKind.ExternalUri:
       return success({ kind, value: `urn:liushi:artifact:${artifactDigest}` });

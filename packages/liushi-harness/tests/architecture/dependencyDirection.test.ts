@@ -129,7 +129,7 @@ describe("architecture dependency direction", () => {
     expect(violations).toEqual([]);
   });
 
-  it("Executor Compatibility Query 仅依赖执行器无关的 Projection Verifier Port", () => {
+  it("Executor Compatibility Query 仅依赖执行器无关的 Projection Set Verifier Port", () => {
     const graph = createSourceGraph();
     const querySource = graph.sourceFiles.find(
       (sourceFile) =>
@@ -138,7 +138,53 @@ describe("architecture dependency direction", () => {
     );
     if (querySource === undefined) throw new Error("Executor Compatibility Query 源码缺失。");
 
-    expect(querySource.getText()).toContain("ExecutorCompatibilityEvidenceProjectionVerifierPort");
+    expect(querySource.getText()).toContain(
+      "ExecutorCompatibilityEvidenceProjectionSetVerifierPort",
+    );
     expect(querySource.getText()).not.toContain("CodexCompatibilityEvidenceProjectorPort");
+  });
+
+  it("Application 不反向依赖 Infrastructure", () => {
+    const graph = createSourceGraph();
+    const violations = graph.dependencies
+      .filter(
+        (dependency) => getLayer(graph, dependency.importer) === ArchitectureLayer.Application,
+      )
+      .filter(
+        (dependency) => getLayer(graph, dependency.imported) === ArchitectureLayer.Infrastructure,
+      )
+      .map(
+        (dependency) =>
+          `${formatRelative(graph, dependency.importer)} imports ${formatRelative(
+            graph,
+            dependency.imported,
+          )}`,
+      );
+
+    expect(violations).toEqual([]);
+  });
+
+  it("通用 Projection Verifier 不依赖 Bootstrap 或 Presentation", () => {
+    const graph = createSourceGraph();
+    const modulePrefix = "src/infrastructure/executorCompatibilityProjectionVerifier/";
+    const verifierFiles = graph.sourceFiles.filter((sourceFile) =>
+      formatRelative(graph, sourceFile.fileName).replaceAll("\\", "/").startsWith(modulePrefix),
+    );
+    const violations = graph.dependencies
+      .filter((dependency) => verifierFiles.some((file) => file.fileName === dependency.importer))
+      .filter((dependency) => {
+        const layer = getLayer(graph, dependency.imported);
+        return layer === ArchitectureLayer.Bootstrap || layer === ArchitectureLayer.Presentation;
+      })
+      .map(
+        (dependency) =>
+          `${formatRelative(graph, dependency.importer)} imports ${formatRelative(
+            graph,
+            dependency.imported,
+          )}`,
+      );
+
+    expect(verifierFiles.length).toBeGreaterThan(0);
+    expect(violations).toEqual([]);
   });
 });
