@@ -35,6 +35,14 @@ export const EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_ACTION =
 /** G6 Release Approval 完成后的稳定检查点名称。 */
 export const EXECUTOR_COMPATIBILITY_RELEASE_APPROVED_CHECKPOINT = "release_approved";
 
+/** Release Manifest G6 DecisionRequest 必须展示的精确动作。 */
+export const EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_APPROVAL_ACTION =
+  "Confirm the exact Executor Compatibility release manifest and its publisher identity policy.";
+
+/** Release Manifest G6 Approval 完成后的稳定检查点名称。 */
+export const EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_APPROVED_CHECKPOINT =
+  "release_manifest_approved";
+
 /** 证书身份、Issuer 与发布目标 URI 的最大长度。 */
 export const EXECUTOR_COMPATIBILITY_ATTESTATION_URI_MAX_LENGTH = 1024;
 

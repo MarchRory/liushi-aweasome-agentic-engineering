@@ -15,3 +15,11 @@ export enum ExecutorCompatibilityPublicationTargetKind {
   /** 企业或第三方 Artifact Registry 中的精确目标。 */
   ArtifactRegistry = "artifact_registry",
 }
+
+/** Executor Compatibility Release G6 审批语义的封闭主体类别。 */
+export enum ExecutorCompatibilityReleaseApprovalSubject {
+  /** G6 审批绑定 Release Candidate。 */
+  ReleaseCandidate = "release_candidate",
+  /** G6 审批绑定 Release Manifest。 */
+  ReleaseManifest = "release_manifest",
+}

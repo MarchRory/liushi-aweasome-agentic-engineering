@@ -14,13 +14,18 @@ import { TaskPhase } from "#domain/task/index.js";
 import {
   EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_ACTION,
   EXECUTOR_COMPATIBILITY_RELEASE_APPROVED_CHECKPOINT,
+  EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_APPROVAL_ACTION,
+  EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_APPROVED_CHECKPOINT,
 } from "../constants/index.js";
 import type {
   CreateExecutorCompatibilityG6ApprovalBindingInput,
   ExecutorCompatibilityAttestationDigestPort,
   ExecutorCompatibilityG6ApprovalBinding,
+  ExecutorCompatibilityReleaseG6ApprovalRecordsInput,
+  ExecutorCompatibilityReleaseG6ApprovalSemantics,
   ExecutorCompatibilityReleaseCandidate,
 } from "../contracts/index.js";
+import { ExecutorCompatibilityReleaseApprovalSubject } from "../enums/index.js";
 import { executorCompatibilityG6ApprovalBindingSchema } from "../schemas/index.js";
 import { attestationBindingMismatch, invalidAttestationSchema } from "./validationErrors.js";
 
@@ -32,6 +37,29 @@ export function validateExecutorCompatibilityG6ApprovalRecords(
   Readonly<{ decisionRequest: DecisionRequest; approvalRecord: ApprovalRecord }>,
   HarnessError
 > {
+  return validateExecutorCompatibilityReleaseG6ApprovalRecords(
+    {
+      artifactDigest: input.releaseCandidate.candidateDigest,
+      decisionRequest: input.decisionRequest,
+      approvalRecord: input.approvalRecord,
+      approvalSubject: ExecutorCompatibilityReleaseApprovalSubject.ReleaseCandidate,
+    },
+    digestPort,
+  );
+}
+
+/** 校验 Release Candidate 或 Release Manifest 的固定 G6 审批记录。 */
+export function validateExecutorCompatibilityReleaseG6ApprovalRecords(
+  input: ExecutorCompatibilityReleaseG6ApprovalRecordsInput,
+  digestPort: ExecutorCompatibilityAttestationDigestPort,
+): Result<
+  Readonly<{ decisionRequest: DecisionRequest; approvalRecord: ApprovalRecord }>,
+  HarnessError
+> {
+  const semantics = resolveReleaseG6Semantics(input.approvalSubject);
+  if (semantics === undefined) {
+    return attestationBindingMismatch("Release G6 审批主体非法。");
+  }
   const decisionRequest = parseDecisionRequest(input.decisionRequest);
   if (decisionRequest.status === ResultStatus.Failure) return decisionRequest;
   const approvalRecord = parseApprovalRecord(input.approvalRecord);
@@ -55,17 +83,17 @@ export function validateExecutorCompatibilityG6ApprovalRecords(
   if (request.gate !== GateId.G6MergeRelease || approval.gate !== GateId.G6MergeRelease) {
     return attestationBindingMismatch("Release Attestation 只接受 G6 Merge/Release Approval。");
   }
-  if (!hasExactReleaseSemantics(request)) {
+  if (!hasExactReleaseSemantics(request, semantics)) {
     return attestationBindingMismatch("G6 DecisionRequest 的 Release 语义不完整或发生漂移。");
   }
-  if (request.artifactDigest !== input.releaseCandidate.candidateDigest) {
-    return attestationBindingMismatch("G6 DecisionRequest 未绑定精确 Release Candidate Digest。");
+  if (request.artifactDigest !== input.artifactDigest) {
+    return attestationBindingMismatch(semantics.artifactDigestMismatchMessage);
   }
   if (approval.actor.kind !== ActorKind.Human) {
     return attestationBindingMismatch("G6 ApprovalRecord 必须由 Human Actor 创建。");
   }
   if (approval.decision !== ApprovalDecision.Approved) {
-    return attestationBindingMismatch("G6 ApprovalRecord 必须明确批准 Release Candidate。");
+    return attestationBindingMismatch(semantics.approvalDecisionMismatchMessage);
   }
   if (!approvalMatchesRequest(approval, request)) {
     return attestationBindingMismatch("G6 ApprovalRecord 未精确匹配 DecisionRequest。");
@@ -90,15 +118,41 @@ export function validateExecutorCompatibilityG6ApprovalBinding(
     : attestationBindingMismatch("G6 Approval Binding 未绑定当前 Release Candidate。");
 }
 
-function hasExactReleaseSemantics(request: DecisionRequest): boolean {
+function hasExactReleaseSemantics(
+  request: DecisionRequest,
+  semantics: ExecutorCompatibilityReleaseG6ApprovalSemantics,
+): boolean {
   return (
     request.riskLevel === RiskLevel.R4 &&
     request.resumePhase === TaskPhase.Review &&
-    request.resumeCheckpoint === EXECUTOR_COMPATIBILITY_RELEASE_APPROVED_CHECKPOINT &&
-    request.requiredAction === EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_ACTION &&
+    request.resumeCheckpoint === semantics.approvedCheckpoint &&
+    request.requiredAction === semantics.requiredAction &&
     request.writeSetDigest === undefined &&
     request.baseRevision === undefined
   );
+}
+
+function resolveReleaseG6Semantics(
+  subject: ExecutorCompatibilityReleaseG6ApprovalRecordsInput["approvalSubject"],
+): ExecutorCompatibilityReleaseG6ApprovalSemantics | undefined {
+  switch (subject) {
+    case ExecutorCompatibilityReleaseApprovalSubject.ReleaseCandidate:
+      return {
+        requiredAction: EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_ACTION,
+        approvedCheckpoint: EXECUTOR_COMPATIBILITY_RELEASE_APPROVED_CHECKPOINT,
+        artifactDigestMismatchMessage: "G6 DecisionRequest 未绑定精确 Release Candidate Digest。",
+        approvalDecisionMismatchMessage: "G6 ApprovalRecord 必须明确批准 Release Candidate。",
+      };
+    case ExecutorCompatibilityReleaseApprovalSubject.ReleaseManifest:
+      return {
+        requiredAction: EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_APPROVAL_ACTION,
+        approvedCheckpoint: EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_APPROVED_CHECKPOINT,
+        artifactDigestMismatchMessage: "G6 DecisionRequest 未绑定精确 Release Manifest Digest。",
+        approvalDecisionMismatchMessage: "G6 ApprovalRecord 必须明确批准 Release Manifest。",
+      };
+    default:
+      return undefined;
+  }
 }
 
 function approvalMatchesRequest(approval: ApprovalRecord, request: DecisionRequest): boolean {

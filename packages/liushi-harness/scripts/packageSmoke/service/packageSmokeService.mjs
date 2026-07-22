@@ -113,6 +113,7 @@ function verifyEsmImport(consumerRoot) {
     function assertTrustedReleaseExports(module) {
       const names = [
         "createExecutorCompatibilityReleaseManifest",
+        "createExecutorCompatibilityReleaseManifestAttestationDraft",
         "createExecutorCompatibilityReleaseTrustProfile",
         "deriveExecutorCompatibilityPublisherIdentityPolicy",
       ];
@@ -157,6 +158,7 @@ function verifyCjsRequire(consumerRoot) {
     function assertTrustedReleaseExports(module) {
       const names = [
         "createExecutorCompatibilityReleaseManifest",
+        "createExecutorCompatibilityReleaseManifestAttestationDraft",
         "createExecutorCompatibilityReleaseTrustProfile",
         "deriveExecutorCompatibilityPublisherIdentityPolicy",
       ];

@@ -3,7 +3,14 @@ import type {
   ExecutorCompatibilityReleaseManifest,
   ExecutorCompatibilityReleaseManifestDigestInput,
 } from "../contracts/index.js";
-import { ExecutorCompatibilityReleaseArtifactKind } from "../enums/index.js";
+import { EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_ARTIFACT_ORDER } from "../constants/index.js";
+import type { ExecutorCompatibilityReleaseArtifactKind } from "../enums/index.js";
+
+const artifactOrder = new Map<ExecutorCompatibilityReleaseArtifactKind, number>(
+  EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_ARTIFACT_ORDER.map(
+    (kind, index) => [kind, index] as const,
+  ),
+);
 
 /** 创建排除自身摘要且 Artifact 顺序固定的 Manifest 摘要输入。 */
 export function createExecutorCompatibilityReleaseManifestDigestInput(
@@ -31,12 +38,9 @@ export function createExecutorCompatibilityReleaseManifestDigestInput(
 export function normalizeExecutorCompatibilityReleaseArtifacts(
   artifacts: readonly ExecutorCompatibilityReleaseArtifactReference[],
 ): readonly ExecutorCompatibilityReleaseArtifactReference[] {
-  const order = new Map<ExecutorCompatibilityReleaseArtifactKind, number>([
-    [ExecutorCompatibilityReleaseArtifactKind.PackageTarball, 0],
-    [ExecutorCompatibilityReleaseArtifactKind.PublicationBundle, 1],
-    [ExecutorCompatibilityReleaseArtifactKind.SignedReleaseAttestation, 2],
-  ]);
   return [...artifacts]
     .map((artifact) => ({ ...artifact }))
-    .sort((left, right) => (order.get(left.kind) ?? 99) - (order.get(right.kind) ?? 99));
+    .sort(
+      (left, right) => (artifactOrder.get(left.kind) ?? 99) - (artifactOrder.get(right.kind) ?? 99),
+    );
 }

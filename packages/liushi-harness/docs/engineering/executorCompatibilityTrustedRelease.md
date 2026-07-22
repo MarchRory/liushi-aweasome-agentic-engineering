@@ -1,6 +1,6 @@
 # Executor Compatibility Trusted Release
 
-**状态：P4 技术方案已冻结，P4a Release Manifest 与 Consumer Trust Profile Domain 已实现。** Manifest G6 Draft/DSSE、Artifact Reader/Writer、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
+**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile、P4b1 通用 Sigstore Statement 边界与 P4b2 Manifest G6 Draft Domain 已实现。** Signed Manifest Artifact、显式 Trust Profile 离线验签、Artifact Reader/Writer、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
 
 ## 1. 目标与边界
 
@@ -187,9 +187,11 @@ CLI 不提供 `--latest`、`--skip-signature`、`--trust-manifest-root`、通用
 ## 10. 实现切片
 
 1. `P4a`：Release Manifest Domain、Trust Profile Domain、严格 Schema、Digest 与单元测试。已完成。
-2. `P4b`：Manifest G6 Draft、DSSE Artifact、Signer/Verifier Port 与显式 Trust Profile 验证。
-3. `P4c`：create-only Attestation/Manifest Writer、严格文件 Reader 和 CLI。
-4. `P4d`：Accepted Head Store、Verified Release Selection、InstallPlan v2 与 G0 Apply 迁移。
-5. `P4e`：完整负向集成/E2E，包括 Root 替换、身份替换、Manifest 拼接、重复 Key、长度漂移、旧 Head 回放、分叉、首装非钉住 Digest 和无 G0 写入。
+2. `P4b1`：通用 in-toto Sigstore Statement 边界。已完成。
+3. `P4b2`：Manifest 独立 G6 Draft 与 Statement Domain。已完成。
+4. `P4b3`：Signed Manifest Artifact、Sign/Verify Use Case 与显式 Trust Profile 离线验证。
+5. `P4c`：create-only Attestation/Manifest Writer、严格文件 Reader 和 CLI。
+6. `P4d`：Accepted Head Store、Verified Release Selection、InstallPlan v2 与 G0 Apply 迁移。
+7. `P4e`：完整负向集成/E2E，包括 Root 替换、身份替换、Manifest 拼接、重复 Key、长度漂移、旧 Head 回放、分叉、首装非钉住 Digest 和无 G0 写入。
 
 每个切片独立提交。P4 全部完成前，不宣称 Production 安装闭环。

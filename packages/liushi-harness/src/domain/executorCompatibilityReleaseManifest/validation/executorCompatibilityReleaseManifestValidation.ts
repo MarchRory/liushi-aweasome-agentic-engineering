@@ -22,7 +22,10 @@ import type {
 } from "#domain/executorCompatibilityAttestation/index.js";
 import { executorCompatibilityPublicationBundleSchema } from "#domain/executorCompatibilityPublication/index.js";
 
-import { EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_SCHEMA_VERSION } from "../constants/index.js";
+import {
+  EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_ARTIFACT_ORDER,
+  EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_SCHEMA_VERSION,
+} from "../constants/index.js";
 import type {
   ExecutorCompatibilityReleaseArtifactReference,
   ExecutorCompatibilityReleaseManifest,
@@ -31,7 +34,6 @@ import type {
   ExecutorCompatibilityVerifiedReleaseAttestationBinding,
 } from "../contracts/index.js";
 import { createExecutorCompatibilityReleaseManifestDigestInput } from "../digest/index.js";
-import { ExecutorCompatibilityReleaseArtifactKind } from "../enums/index.js";
 import {
   executorCompatibilityReleaseManifestDigestInputSchema,
   executorCompatibilityReleaseManifestSchema,
@@ -118,9 +120,9 @@ export function validateExecutorCompatibilityReleaseManifest(
   verifiedAttestation: unknown,
   digestPort: ExecutorCompatibilityReleaseManifestDigestPort,
 ): Result<ExecutorCompatibilityReleaseManifest, HarnessError> {
-  const parsed = executorCompatibilityReleaseManifestSchema.safeParse(input);
-  if (!parsed.success) return invalid("Release Manifest Schema 非法。");
-  const manifest = parsed.data as unknown as ExecutorCompatibilityReleaseManifest;
+  const integrity = validateExecutorCompatibilityReleaseManifestIntegrity(input, digestPort);
+  if (integrity.status === ResultStatus.Failure) return integrity;
+  const manifest = integrity.value;
   const digestInput: ExecutorCompatibilityReleaseManifestDigestInput = {
     schemaVersion: manifest.schemaVersion,
     ...(manifest.predecessorManifestDigest === undefined
@@ -144,8 +146,28 @@ export function validateExecutorCompatibilityReleaseManifest(
     digestPort,
   );
   if (validated.status === ResultStatus.Failure) return validated;
+  return success(manifest);
+}
+
+/** 只校验完整 Manifest 的严格 Schema、固定 Artifact 顺序与自身摘要。 */
+export function validateExecutorCompatibilityReleaseManifestIntegrity(
+  input: unknown,
+  digestPort: ExecutorCompatibilityReleaseManifestDigestPort,
+): Result<ExecutorCompatibilityReleaseManifest, HarnessError> {
+  const parsed = executorCompatibilityReleaseManifestSchema.safeParse(input);
+  if (!parsed.success) return invalid("Release Manifest Schema 非法。");
+  const manifest = parsed.data as unknown as ExecutorCompatibilityReleaseManifest;
+  if (
+    manifest.artifacts.length !== EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_ARTIFACT_ORDER.length ||
+    manifest.artifacts.some(
+      (artifact, index) =>
+        artifact.kind !== EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_ARTIFACT_ORDER[index],
+    )
+  ) {
+    return invalid("Release Manifest Artifact 缺失、重复或顺序非法。");
+  }
   const digest = digestPort.calculate(
-    createExecutorCompatibilityReleaseManifestDigestInput(validated.value),
+    createExecutorCompatibilityReleaseManifestDigestInput(manifest),
   );
   if (digest.status === ResultStatus.Failure) return digest;
   return digest.value === manifest.manifestDigest
@@ -217,14 +239,14 @@ function validateArtifacts(
   draft: ExecutorCompatibilityReleaseAttestationDraft,
   verifiedAttestation: ExecutorCompatibilityVerifiedReleaseAttestationBinding,
 ): Result<void, HarnessError> {
-  const expectedKinds = [
-    ExecutorCompatibilityReleaseArtifactKind.PackageTarball,
-    ExecutorCompatibilityReleaseArtifactKind.PublicationBundle,
-    ExecutorCompatibilityReleaseArtifactKind.SignedReleaseAttestation,
-  ] as const;
-  if (artifacts.length !== expectedKinds.length)
+  if (artifacts.length !== EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_ARTIFACT_ORDER.length)
     return invalid("Release Manifest Artifact 数量非法。");
-  if (artifacts.some((artifact, index) => artifact.kind !== expectedKinds[index])) {
+  if (
+    artifacts.some(
+      (artifact, index) =>
+        artifact.kind !== EXECUTOR_COMPATIBILITY_RELEASE_MANIFEST_ARTIFACT_ORDER[index],
+    )
+  ) {
     return invalid("Release Manifest Artifact 缺失、重复或顺序非法。");
   }
   const [packageTarball, publicationBundle, signedReleaseAttestation] = artifacts;

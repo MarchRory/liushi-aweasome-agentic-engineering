@@ -14,7 +14,7 @@ Executor Adapter 让同一个 Task State、Artifact、Policy 和 Gate 可以在 
 
 ### 1.1 当前实现状态
 
-**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Host 7 条 Evidence Projector、固定 v2 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Evidence/Matrix Store、重算查询 CLI、确定性 Publication Bundle、create-only 原子输出 CLI、P3a G6 Release Attestation Domain、P3b Sigstore Sign/Offline Verify 与 P4a Manifest/Trust Profile Domain 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。2026-07-16 已完成一次真实 Codex CLI `0.144.5` Host v2 验收与本机 Matrix 重算，但签名 Manifest 和安装选择门仍未实现。
+**状态：部分实现。** 当前已交付 Codex Hook 的最小生产接入面：`HookWorkspaceBinding` 持久化、Human 确认后的绑定 Use Case、PreToolUse/PostToolUse Adapter、原生 Stdin/Stdout CLI Wrapper，以及确定性的 `hooks.json` 投影。Host Result v2 的运行时验证、Codex Host 7 条 Evidence Projector、固定 v2 Contract Suite 5 条 ContractTest、双 Artifact 内容寻址 Evidence/Matrix Store、重算查询 CLI、确定性 Publication Bundle、create-only 原子输出 CLI、P3a G6 Release Attestation Domain、P3b Sigstore Sign/Offline Verify、P4a Manifest/Trust Profile 与 Manifest 独立 G6 Draft Domain 已落地；新增的 `init --target codex --dry-run` 可只读检查 Repository，并在隔离的 Runtime Store 持久化不可变 InstallPlan。2026-07-16 已完成一次真实 Codex CLI `0.144.5` Host v2 验收与本机 Matrix 重算，但 Signed Manifest Artifact 和安装选择门仍未实现。
 
 当前 Codex 路径只处理 `apply_patch`，并要求绑定精确的、已通过 G4 Approval 的 PlanRisk Artifact Digest；历史业务逻辑变更还必须通过 G2，R4 始终拒绝。`hook config` 只打印配置，不自动写入项目；`init --dry-run` 也不写 `.codex/hooks.json` 或 Manifest。G0 Apply 与 Installation Revision 已实现；自动 Trust/Binding、Rollback/Uninstall、Role Invocation Runtime 和 Claude-compatible/CatPaw Adapter 仍未实现。
 

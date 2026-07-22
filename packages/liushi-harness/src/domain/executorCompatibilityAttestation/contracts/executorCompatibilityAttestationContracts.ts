@@ -18,6 +18,7 @@ import type {
 import type {
   ExecutorCompatibilityCertificateIdentityKind,
   ExecutorCompatibilityPublicationTargetKind,
+  ExecutorCompatibilityReleaseApprovalSubject,
 } from "../enums/index.js";
 
 /** 发布者证书中必须存在且精确匹配的一项扩展。 */
@@ -100,6 +101,30 @@ export interface ExecutorCompatibilityG6ApprovalBinding {
   readonly approvalRecordDigest: ContentDigest;
   /** DecisionRequest 与 ApprovalRecord 共同批准的 Candidate Digest。 */
   readonly releaseCandidateDigest: ContentDigest;
+}
+
+/** 共享 Release G6 记录校验所需的关闭式审批语义输入。 */
+export interface ExecutorCompatibilityReleaseG6ApprovalRecordsInput {
+  /** 当前审批对象的完整内容摘要。 */
+  readonly artifactDigest: ContentDigest;
+  /** Core 创建的待审批决策请求。 */
+  readonly decisionRequest: DecisionRequest;
+  /** Human 创建的审批记录。 */
+  readonly approvalRecord: ApprovalRecord;
+  /** 只允许由封闭枚举选择 Release Candidate 或 Release Manifest 语义。 */
+  readonly approvalSubject: ExecutorCompatibilityReleaseApprovalSubject;
+}
+
+/** 由关闭式审批主体映射得到的固定 G6 语义。 */
+export interface ExecutorCompatibilityReleaseG6ApprovalSemantics {
+  /** DecisionRequest 必须展示的精确动作。 */
+  readonly requiredAction: string;
+  /** Approval 完成后的稳定检查点。 */
+  readonly approvedCheckpoint: string;
+  /** DecisionRequest 未绑定精确审批对象时使用的稳定错误消息。 */
+  readonly artifactDigestMismatchMessage: string;
+  /** ApprovalRecord 未明确批准审批对象时使用的稳定错误消息。 */
+  readonly approvalDecisionMismatchMessage: string;
 }
 
 /** in-toto Statement 中不可变 Subject 的最小描述。 */
