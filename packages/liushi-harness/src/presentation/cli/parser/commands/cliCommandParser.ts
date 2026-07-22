@@ -10,6 +10,7 @@ import {
 } from "./cliCommandParsing.js";
 import { parseInitCliCommand } from "./initCliCommandParser.js";
 import { parseExecutorCompatibilityCliCommand } from "./executorCompatibilityCliCommandParser.js";
+import { parseCodingTaskSessionCliCommand } from "./codingTaskSessionCliCommandParser.js";
 import {
   CliOptionName,
   parseAbsolutePath,
@@ -54,6 +55,8 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
     storeRoot,
   );
   if (executorCompatibility !== undefined) return executorCompatibility;
+  const codingTaskSession = parseCodingTaskSessionCliCommand(collected, outputFormat, storeRoot);
+  if (codingTaskSession !== undefined) return codingTaskSession;
   if (isExactCommand(collected.positionals, ["task", "create"])) {
     validateAllowedOptions(
       collected,

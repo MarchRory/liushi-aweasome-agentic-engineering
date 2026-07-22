@@ -18,6 +18,7 @@ import {
 import { ActionOutcome } from "#domain/actionJournal/index.js";
 import { WorktreeInspectionStatus } from "#application/ports/worktree/index.js";
 import type { CommandRunner } from "#infrastructure/system/index.js";
+import { samePathIdentity } from "#infrastructure/system/platformCompatibility/index.js";
 import { isWithinRoot } from "#infrastructure/worktree/path/index.js";
 
 import { DEFAULT_WORKTREE_PROVISION_TIMEOUT_MS } from "../constants/index.js";
@@ -104,8 +105,15 @@ export class NodeWorktreeProvisionerAdapter implements WorktreeProvisionerPort {
   ): Promise<Result<PreparedWorktree, HarnessError>> {
     let repositoryRoot: string;
     try {
-      repositoryRoot = await realpath(input.repositoryRoot);
-      if (!(await lstat(repositoryRoot)).isDirectory()) throw new Error("not_directory");
+      const requestedRoot = resolve(input.repositoryRoot);
+      const requestedStatus = await lstat(requestedRoot);
+      if (requestedStatus.isSymbolicLink() || !requestedStatus.isDirectory()) {
+        throw new Error("unsupported_repository_root");
+      }
+      repositoryRoot = await realpath(requestedRoot);
+      if (!samePathIdentity(repositoryRoot, requestedRoot)) {
+        throw new Error("linked_repository_root");
+      }
     } catch {
       return success({ preflightFailure: WorktreeProvisionFailureCode.RepositoryUnavailable });
     }

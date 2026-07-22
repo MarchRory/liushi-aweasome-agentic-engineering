@@ -65,6 +65,7 @@ Status: Implementation-aware Architecture Baseline
 - [PRReadyArtifact 权威装配](./engineering/prReadyArtifact.md)
 - [npm Tarball 干净安装 Smoke](./engineering/packageTarballSmoke.md)
 - [固定公开项目 CodingTask Cell Smoke](./engineering/publicProjectSmoke.md)
+- [外部 Agent CodingTask Session](./engineering/codingTaskSession.md)
 - [Codex Host Smoke Prepare](./engineering/codexHostSmokePrepare.md)
 - [Codex Host v2 验证记录](./engineering/codexHostValidationRecord.md)
 - [Codex Host 兼容性证据投影](./engineering/codexCompatibilityEvidenceProjection.md)

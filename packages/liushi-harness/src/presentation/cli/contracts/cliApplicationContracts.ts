@@ -1,6 +1,7 @@
 import type {
   BindHookWorkspaceUseCase,
   ApplyInstallPlanUseCase,
+  ActivateCodingTaskSessionService,
   CodingTaskCellService,
   CheckRuntimeHealthUseCase,
   CodexHookHandler,
@@ -21,7 +22,7 @@ import type {
 import type { HookInputReader, JsonDocumentReader } from "../input/index.js";
 import type { CliVerificationMode } from "../enums/index.js";
 
-/** CLI 启动期可信 Repository 绑定。 */
+/** CLI 启动期由操作员显式提供的 Repository 绑定。 */
 export interface CliRepositoryBinding {
   /** Harness Workspace 标识。 */
   readonly workspaceId: string;
@@ -33,10 +34,12 @@ export interface CliRepositoryBinding {
 
 /** 一次 CLI Application 创建所需的可选启动配置。 */
 export interface CliApplicationStartupConfig {
-  /** Cell 命令使用的可信单仓绑定。 */
+  /** Cell 或 Session 命令使用的操作员单仓绑定。 */
   readonly repositoryBinding: CliRepositoryBinding;
-  /** Cell 命令显式选择的 Verification 模式。 */
-  readonly verificationMode: CliVerificationMode;
+  /** 只有 Cell 命令需要显式选择 Verification 模式。 */
+  readonly verificationMode?: CliVerificationMode;
+  /** 只有 Session Activation 使用的启动期 Agent 审计身份。 */
+  readonly sessionActorId?: string;
 }
 
 /** 生成只读、可序列化的执行器配置投影。 */
@@ -53,6 +56,8 @@ export interface CliApplication {
   createInstallPlan: CreateInstallPlanUseCase;
   /** 串行 CodingTask Cell。 */
   runCodingTaskCell: CodingTaskCellService;
+  /** 激活外部 Agent CodingTask Session。 */
+  activateCodingTaskSession: ActivateCodingTaskSessionService;
   /** Runtime 健康检查 Use Case。 */
   checkRuntimeHealth: CheckRuntimeHealthUseCase;
   /** Project Profile 编译 Use Case。 */

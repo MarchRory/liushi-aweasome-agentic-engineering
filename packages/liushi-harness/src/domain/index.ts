@@ -18,6 +18,7 @@ export * from "./taskRun/index.js";
 export * from "./workspace/index.js";
 export * from "./workflow/index.js";
 export * from "./codingTask/index.js";
+export * from "./codingTaskSession/index.js";
 export * from "./repositoryDelivery/index.js";
 export * from "./verification/index.js";
 export * from "./installation/index.js";

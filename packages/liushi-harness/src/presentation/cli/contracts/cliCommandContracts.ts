@@ -22,6 +22,8 @@ export enum CliCommand {
   ProfileCompile = "profile.compile",
   /** 执行 CodingTask Cell。 */
   CellRun = "cell.run",
+  /** 激活外部 Agent CodingTask Session。 */
+  CodingTaskSessionActivate = "coding_task.session.activate",
   /** 绑定 Hook 工作区。 */
   HookBind = "hook.bind",
   /** 处理执行器 Hook。 */

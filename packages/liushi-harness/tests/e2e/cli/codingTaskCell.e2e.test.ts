@@ -6,6 +6,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION,
+  CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION,
+  CodingTaskSessionActivationDisposition,
+  CodingTaskSessionActivationStage,
+  CodingTaskSessionActivationStatus,
   ApprovalDecision,
   ActorKind,
   ArtifactStatus,
@@ -51,6 +55,8 @@ const temporaryRoots: string[] = [];
 const digest = new Rfc8785Sha256DigestAdapter();
 const workspaceId = "coding-task-cell-workspace";
 const codingTaskId = "coding-task-cell-task";
+const codingTaskSessionId = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
+const codingTaskSessionAggregateId = "coding-task-session-task";
 const sourceTaskId = "01ARZ3NDEKTSV4RRFFQ69G5FB2";
 const correlationId = "coding-task-cell-correlation";
 const submittedAt = "2026-07-14T00:00:00.000Z";
@@ -123,6 +129,63 @@ describe("CodingTask Cell CLI E2E", () => {
     );
     expect(await readFile(setup.verificationCounter, "utf8")).toBe("1");
   }, 20_000);
+
+  it("在真实 Gate 与 Git Worktree 上并发激活 Session，跨实例复用且不产生实现提交", async () => {
+    const setup = await createSetup();
+
+    const executions = await Promise.all([
+      runSessionActivation(setup),
+      runSessionActivation(setup),
+    ]);
+
+    for (const execution of executions) {
+      expect(execution.exitCode, JSON.stringify(execution)).toBe(0);
+      expect(execution.stderr).toHaveLength(0);
+    }
+    const envelopes = executions.map((execution) => parseOutput(execution.stdout));
+    for (const envelope of envelopes) {
+      expect(envelope.status).toBe(CliResponseStatus.Success);
+      expect(envelope.command).toBe(CliCommand.CodingTaskSessionActivate);
+    }
+    const data = envelopes.map((envelope) => envelope.data as SessionActivationOutputData);
+    expect(data.map((item) => item.persistenceDisposition).sort()).toEqual(
+      [
+        CodingTaskSessionActivationDisposition.Created,
+        CodingTaskSessionActivationDisposition.Reused,
+      ].sort(),
+    );
+    const created = data.find(
+      (item) => item.persistenceDisposition === CodingTaskSessionActivationDisposition.Created,
+    );
+    const reused = data.find(
+      (item) => item.persistenceDisposition === CodingTaskSessionActivationDisposition.Reused,
+    );
+    expect(created).toBeDefined();
+    expect(reused).toBeDefined();
+    if (created === undefined || reused === undefined) return;
+    expect(created).toMatchObject({
+      status: CodingTaskSessionActivationStatus.WaitingAgent,
+      worktreeRoot: setup.sessionWorktreeRoot,
+      activation: {
+        sessionId: codingTaskSessionId,
+        codingTaskId: codingTaskSessionAggregateId,
+        sourceTaskId,
+        repositoryId: "repo-1",
+      },
+    });
+    expect(created.receipts.map((receipt) => receipt.stage)).toEqual([
+      CodingTaskSessionActivationStage.Create,
+      CodingTaskSessionActivationStage.Provision,
+      CodingTaskSessionActivationStage.StartAttempt,
+    ]);
+    expect(reused).toMatchObject({
+      status: CodingTaskSessionActivationStatus.WaitingAgent,
+      worktreeRoot: setup.sessionWorktreeRoot,
+      receipts: [],
+    });
+    expect(await runGit(setup.sessionWorktreeRoot, ["rev-parse", "HEAD"])).toBe(setup.baseRevision);
+    expect(await runGit(setup.sessionWorktreeRoot, ["status", "--porcelain=v1"])).toBe("");
+  }, 20_000);
 });
 
 /** Cell CLI 真实运行所需的临时仓库与持久化路径。 */
@@ -131,8 +194,42 @@ interface CellSetup {
   readonly repositoryRoot: string;
   readonly worktreeRoot: string;
   readonly manifestFile: string;
+  readonly sessionManifestFile: string;
+  readonly sessionWorktreeRoot: string;
   readonly verificationCounter: string;
   readonly baseRevision: string;
+}
+
+/** Session Activation CLI JSON 中当前 E2E 需要验证的稳定字段。 */
+interface SessionActivationOutputData {
+  /** Activation 的封闭状态。 */
+  readonly status: CodingTaskSessionActivationStatus;
+  /** 当前 Session 的受管 Worktree Root。 */
+  readonly worktreeRoot: string;
+  /** 不可变记录的持久化处置。 */
+  readonly persistenceDisposition: CodingTaskSessionActivationDisposition;
+  /** 首次创建时返回的不可变 Activation 身份。 */
+  readonly activation?: SessionActivationIdentityOutput;
+  /** 本次实际执行的阶段回执。 */
+  readonly receipts: readonly SessionActivationStageOutput[];
+}
+
+/** Session Activation CLI 返回的不可变身份字段。 */
+interface SessionActivationIdentityOutput {
+  /** Session 标识。 */
+  readonly sessionId: string;
+  /** CodingTask 标识。 */
+  readonly codingTaskId: string;
+  /** 来源 Requirement Task 标识。 */
+  readonly sourceTaskId: string;
+  /** 目标 Repository 标识。 */
+  readonly repositoryId: string;
+}
+
+/** Session Activation CLI 返回的阶段回执摘要。 */
+interface SessionActivationStageOutput {
+  /** 已执行的 Activation 阶段。 */
+  readonly stage: CodingTaskSessionActivationStage;
 }
 
 async function createSetup(): Promise<CellSetup> {
@@ -214,13 +311,72 @@ async function createSetup(): Promise<CellSetup> {
     executionAuthorization,
   });
   await writeFile(manifestFile, JSON.stringify(manifest), "utf8");
+  const sessionWorktreeRoot = join(repositoryRoot, "worktrees", "session");
+  const sessionManifestFile = join(storeRoot, "codingTaskSessionActivation.json");
+  await writeFile(
+    sessionManifestFile,
+    JSON.stringify(createSessionManifest({ repositoryRoot, baseRevision, executionAuthorization })),
+    "utf8",
+  );
   return {
     storeRoot,
     repositoryRoot,
     worktreeRoot,
     manifestFile,
+    sessionManifestFile,
+    sessionWorktreeRoot,
     verificationCounter,
     baseRevision,
+  };
+}
+
+function createSessionManifest(input: {
+  readonly repositoryRoot: string;
+  readonly baseRevision: string;
+  readonly executionAuthorization: CodingTaskExecutionAuthorization;
+}) {
+  const createPayload = {
+    workspaceId,
+    sourceTaskId,
+    repositoryId: "repo-1",
+    baseRevision: input.baseRevision,
+    worktreeBinding: {
+      worktreeId: "session-worktree",
+      relativePath: "worktrees/session",
+      branchName: "feature/coding-task-session",
+      managed: true,
+    },
+    writeSet,
+    inputBindingSet: { bindings: [] },
+    executionAuthorization: input.executionAuthorization,
+  };
+  return {
+    schemaVersion: CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION,
+    sessionId: codingTaskSessionId,
+    createCommand: command(
+      "session-create",
+      CodingTaskCommandType.Create,
+      0,
+      createPayload,
+      codingTaskSessionAggregateId,
+    ),
+    provision: {
+      command: command(
+        "session-provision",
+        WORKTREE_PROVISION_COMMAND_TYPE,
+        1,
+        rootPayload("01ARZ3NDEKTSV4RRFFQ69G5FD1", input.repositoryRoot),
+        codingTaskSessionAggregateId,
+      ),
+      runtime: { repositoryRoot: input.repositoryRoot },
+    },
+    startAttemptCommand: command(
+      "session-start",
+      CodingTaskCommandType.StartAttempt,
+      1,
+      { workspaceId, attemptNumber: 1 },
+      codingTaskSessionAggregateId,
+    ),
   };
 }
 
@@ -348,17 +504,18 @@ function command(
   commandType: string,
   expectedVersion: number,
   payload: unknown,
+  aggregateId: string = codingTaskId,
 ) {
   return {
     schemaVersion: "1.0.0",
     commandId,
     commandType,
     aggregateType: "coding_task",
-    aggregateId: codingTaskId,
+    aggregateId,
     expectedVersion,
     idempotencyKey: commandId,
     requestDigest: calculateDigest(payload),
-    actor: { kind: "agent", actorId: "agent" },
+    actor: { kind: "agent", actorId: "agent:codex" },
     authorizationContext: {},
     correlationId,
     submittedAt,
@@ -470,6 +627,42 @@ async function runCell(setup: CellSetup) {
       setup.repositoryRoot,
       "--verification-mode",
       "local_command",
+      "--store",
+      setup.storeRoot,
+      "--json",
+    ],
+    {
+      defaultStoreRoot: setup.storeRoot,
+      applicationFactory: createProductionCliApplicationFactory(),
+      writer,
+      jsonDocumentReader: new NodeJsonDocumentReaderAdapter(),
+    },
+  );
+  return { exitCode, stdout, stderr };
+}
+
+async function runSessionActivation(setup: CellSetup) {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const writer: CliWriter = {
+    stdout: (value) => stdout.push(value),
+    stderr: (value) => stderr.push(value),
+  };
+  const exitCode = await runCli(
+    [
+      "coding-task",
+      "session",
+      "activate",
+      "--file",
+      setup.sessionManifestFile,
+      "--workspace",
+      workspaceId,
+      "--repository",
+      "repo-1",
+      "--root",
+      setup.repositoryRoot,
+      "--actor-id",
+      "agent:codex",
       "--store",
       setup.storeRoot,
       "--json",

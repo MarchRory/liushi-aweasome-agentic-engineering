@@ -9,6 +9,7 @@ import type {
   ExecutorCompatibilityQueryCliCommand,
 } from "./cliExecutorCompatibilityContracts.js";
 import type { InitApplyCliCommand, InitDryRunCliCommand } from "./cliInstallationContracts.js";
+import type { CodingTaskSessionActivateCliCommand } from "./cliCodingTaskSessionContracts.js";
 
 /** CLI 接受的 Human Approval 决策值。 */
 export enum CliApprovalDecision {
@@ -201,6 +202,7 @@ export type ParsedCliCommand =
   | ProjectScanCliCommand
   | ProfileCompileCliCommand
   | CellRunCliCommand
+  | CodingTaskSessionActivateCliCommand
   | HookBindCliCommand
   | HookHandleCliCommand
   | HookConfigCliCommand

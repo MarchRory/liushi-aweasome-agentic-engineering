@@ -16,6 +16,7 @@ import {
 } from "../contracts/index.js";
 import {
   executeCellRun,
+  executeCodingTaskSessionActivate,
   executeDoctor,
   executeExecutorCompatibilityCommand,
   executeHookBind,
@@ -38,6 +39,7 @@ import {
   CLI_EXIT_CODE_INVALID_INPUT,
   CLI_USAGE_LINES,
 } from "../constants/index.js";
+import { resolveCliApplication } from "./application/index.js";
 
 /** 解析并执行一次 CLI 调用，返回稳定退出码。 */
 export async function runCli(
@@ -79,10 +81,10 @@ async function executeCommand(
   dependencies: RunCliDependencies,
 ): Promise<number> {
   if (command.command === CliCommand.InitDryRun) {
-    return executeInitDryRun(command, createApplication(command, dependencies), dependencies);
+    return executeInitDryRun(command, resolveCliApplication(command, dependencies), dependencies);
   }
   if (command.command === CliCommand.InitApply) {
-    return executeInitApply(command, createApplication(command, dependencies), dependencies);
+    return executeInitApply(command, resolveCliApplication(command, dependencies), dependencies);
   }
   switch (command.command) {
     case CliCommand.Help:
@@ -91,58 +93,62 @@ async function executeCommand(
       });
       return CLI_EXIT_CODE_SUCCESS;
     case CliCommand.Doctor:
-      return executeDoctor(command, createApplication(command, dependencies), dependencies);
+      return executeDoctor(command, resolveCliApplication(command, dependencies), dependencies);
     case CliCommand.TaskCreate:
-      return executeTaskCreate(command, createApplication(command, dependencies), dependencies);
+      return executeTaskCreate(command, resolveCliApplication(command, dependencies), dependencies);
     case CliCommand.TaskStatus:
-      return executeTaskStatus(command, createApplication(command, dependencies), dependencies);
+      return executeTaskStatus(command, resolveCliApplication(command, dependencies), dependencies);
     case CliCommand.ArtifactPropose:
       return executeArtifactPropose(
         command,
-        createApplication(command, dependencies),
+        resolveCliApplication(command, dependencies),
         dependencies,
       );
     case CliCommand.ApprovalDecide:
-      return executeApprovalDecide(command, createApplication(command, dependencies), dependencies);
+      return executeApprovalDecide(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
     case CliCommand.RulesResolve:
-      return executeRulesResolve(command, createApplication(command, dependencies), dependencies);
+      return executeRulesResolve(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
     case CliCommand.ProjectScan:
-      return executeProjectScan(command, createApplication(command, dependencies), dependencies);
+      return executeProjectScan(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
     case CliCommand.ProfileCompile:
-      return executeProfileCompile(command, createApplication(command, dependencies), dependencies);
+      return executeProfileCompile(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
     case CliCommand.CellRun:
-      return executeCellRun(command, createApplication(command, dependencies), dependencies);
+      return executeCellRun(command, resolveCliApplication(command, dependencies), dependencies);
+    case CliCommand.CodingTaskSessionActivate:
+      return executeCodingTaskSessionActivate(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
     case CliCommand.HookBind:
-      return executeHookBind(command, createApplication(command, dependencies), dependencies);
+      return executeHookBind(command, resolveCliApplication(command, dependencies), dependencies);
     case CliCommand.HookConfig:
       return executeHookConfig(command, dependencies);
     case CliCommand.HookProbe:
-      return executeHookProbe(command, createApplication(command, dependencies), dependencies);
+      return executeHookProbe(command, resolveCliApplication(command, dependencies), dependencies);
     case CliCommand.HookHandle:
-      return executeHookHandle(command, createApplication(command, dependencies), dependencies);
+      return executeHookHandle(command, resolveCliApplication(command, dependencies), dependencies);
     case CliCommand.ExecutorCompatibilityCompile:
     case CliCommand.ExecutorCompatibilityQuery:
     case CliCommand.ExecutorCompatibilityBundleCreate:
       return executeExecutorCompatibilityCommand(command, dependencies);
   }
-}
-
-function createApplication(
-  command: ParsedCliCommand,
-  dependencies: RunCliDependencies,
-): CliApplication {
-  const storeRoot = command.storeRoot ?? dependencies.defaultStoreRoot;
-  if (command.command !== CliCommand.CellRun) {
-    return dependencies.applicationFactory.create(storeRoot);
-  }
-  return dependencies.applicationFactory.create(storeRoot, {
-    repositoryBinding: {
-      workspaceId: command.workspaceId,
-      repositoryId: command.repositoryId,
-      repositoryRoot: command.repositoryRoot,
-    },
-    verificationMode: command.verificationMode,
-  });
 }
 
 async function executeTaskCreate(

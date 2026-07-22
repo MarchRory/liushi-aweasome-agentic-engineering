@@ -48,8 +48,21 @@ export function createProductionCliApplicationFactory(): CliApplicationFactory {
         storeRoot,
         packageVersion: packageJson.version,
         repositoryRootResolver: new StaticRepositoryRootResolverAdapter([repositoryBinding]),
-        codingTaskCellRuntimeBinding: repositoryBinding,
-        verificationExecutionMode: mapVerificationExecutionMode(startupConfig.verificationMode),
+        ...(startupConfig.sessionActorId === undefined
+          ? { codingTaskCellRuntimeBinding: repositoryBinding }
+          : {
+              codingTaskSessionRuntimeBinding: {
+                ...repositoryBinding,
+                agentActorId: startupConfig.sessionActorId,
+              },
+            }),
+        ...(startupConfig.verificationMode === undefined
+          ? {}
+          : {
+              verificationExecutionMode: mapVerificationExecutionMode(
+                startupConfig.verificationMode,
+              ),
+            }),
       });
     },
   };

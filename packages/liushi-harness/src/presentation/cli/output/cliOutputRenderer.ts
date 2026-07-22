@@ -95,6 +95,10 @@ export function writeSuccess<T>(
       writeCodingTaskCellSummary(dependencies, data);
       return;
     }
+    if (command === CliCommand.CodingTaskSessionActivate) {
+      writeCodingTaskSessionActivationSummary(dependencies, data);
+      return;
+    }
     if (command === CliCommand.InitDryRun) {
       const plan = data["plan"];
       if (isRecord(plan)) {
@@ -150,6 +154,10 @@ export function writeBlocked<T>(
   }
   if (command === CliCommand.CellRun) {
     writeCodingTaskCellSummary(dependencies, data);
+    return;
+  }
+  if (command === CliCommand.CodingTaskSessionActivate) {
+    writeCodingTaskSessionActivationSummary(dependencies, data);
   }
 }
 
@@ -226,6 +234,18 @@ function writeCodingTaskCellSummary(dependencies: RunCliDependencies, data: unkn
   const stoppedStage = data["stoppedStage"];
   dependencies.writer.stdout(
     `CodingTask cell: status=${scalarString(data["status"])} stoppedStage=${stoppedStage === undefined ? "none" : scalarString(stoppedStage)} receipts=${countEntries(data["receipts"])}.\n`,
+  );
+}
+
+function writeCodingTaskSessionActivationSummary(
+  dependencies: RunCliDependencies,
+  data: unknown,
+): void {
+  if (!isRecord(data)) return;
+  const stoppedStage = data["stoppedStage"];
+  const worktreeRoot = data["worktreeRoot"];
+  dependencies.writer.stdout(
+    `CodingTask session activation: status=${scalarString(data["status"])} stoppedStage=${stoppedStage === undefined ? "none" : scalarString(stoppedStage)} receipts=${countEntries(data["receipts"])} worktreeRoot=${worktreeRoot === undefined ? "none" : scalarString(worktreeRoot)}.\n`,
   );
 }
 

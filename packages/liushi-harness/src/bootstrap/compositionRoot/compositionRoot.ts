@@ -1,9 +1,6 @@
 import {
   ApplicationCommandGateway,
   CodingTaskCommandHandler,
-  ActionHookAuthorizationPolicy,
-  BindHookWorkspaceUseCase,
-  CanonicalHookDispatcher,
   CheckRuntimeHealthUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
@@ -18,7 +15,6 @@ import {
   ListTraceObservationsUseCase,
   ListRecoverableActionsUseCase,
   ProposeArtifactUseCase,
-  ProbeCodexCapabilitiesUseCase,
   RecordApprovalUseCase,
   RecordActionIntentUseCase,
   RecordActionObservationUseCase,
@@ -41,9 +37,6 @@ import {
   FileActionJournalRepository,
   FileCommandReservationStore,
   FileEvidenceBundleStore,
-  FileHookBindingStore,
-  CodexHookAdapter,
-  CodexCapabilityProbeAdapter,
   FileTraceObservationStore,
   FileRuntimeHealthAdapter,
   FileSnapshotStore,
@@ -68,6 +61,9 @@ import {
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
 import {
   createCodingTaskCellApplication,
+  createCodingTaskSessionApplication,
+  createCodingTaskSessionPersistence,
+  createHookApplication,
   createCodingTaskAuthorizationResolver,
   createExecutorCompatibilityApplication,
   createExecutorCompatibilityAttestationApplication,
@@ -127,24 +123,26 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
   const storeDependencies = { digest, lockManager, parentDirectoryDurability };
+  const codingTaskSessionPersistence = createCodingTaskSessionPersistence(
+    options.storeRoot,
+    storeDependencies,
+  );
   const unresolvedProvisionGuard = createUnresolvedProvisionGuard(actionJournalRepository, digest);
   const evidenceBundleStore = new FileEvidenceBundleStore(options.storeRoot, storeDependencies);
   const projectFileSystem = new NodeProjectFileSystemAdapter();
   const projectConfigParser = new StructuredProjectConfigParserAdapter();
   const applicationCommandGateway = new ApplicationCommandGateway(commandReservationStore, delay);
-  const hookBindingStore = new FileHookBindingStore(options.storeRoot, {
-    lockManager,
-    parentDirectoryDurability,
-  });
-  const hookAuthorizationPolicy = new ActionHookAuthorizationPolicy(taskRepository);
-  const canonicalHookDispatcher = new CanonicalHookDispatcher(
+  const commandRunner = new NodeCommandRunnerAdapter();
+  const hookApplication = createHookApplication({
+    ...storeDependencies,
+    storeRoot: options.storeRoot,
     applicationCommandGateway,
-    hookAuthorizationPolicy,
+    taskRepository,
     actionJournalRepository,
     traceObservationStore,
-    digest,
-  );
-  const commandRunner = new NodeCommandRunnerAdapter();
+    clock,
+    commandRunner,
+  });
   const worktreeInspector = new NodeWorktreeInspectorAdapter(commandRunner);
   const repositoryLock = new NodeRepositoryLockAdapter(
     options.storeRoot,
@@ -158,6 +156,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     clock,
     actionExecutionLock,
   );
+  const managedWorktreePath = new NodeCodingTaskCellRuntimePathAdapter();
   const worktreeApplication = createWorktreeApplication({
     applicationCommandGateway,
     codingTaskRepository,
@@ -229,33 +228,33 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     taskRepository,
     codingTaskAuthorizationResolver,
     digest,
-    runtimePath: new NodeCodingTaskCellRuntimePathAdapter(),
+    runtimePath: managedWorktreePath,
     ...(options.codingTaskCellRuntimeBinding === undefined
       ? {}
       : { runtimeBinding: options.codingTaskCellRuntimeBinding }),
+  });
+  const codingTaskSessionApplication = createCodingTaskSessionApplication({
+    codingTaskCommands: codingTaskCellApplication.codingTaskCommands,
+    worktreeProvisionCommands: worktreeApplication.worktreeProvisionCommands,
+    codingTaskRepository,
+    activationRepository: codingTaskSessionPersistence.activationRepository,
+    activationLease: codingTaskSessionPersistence.activationLease,
+    digest,
+    runtimePath: managedWorktreePath,
+    ...(options.codingTaskSessionRuntimeBinding === undefined
+      ? {}
+      : { runtimeBinding: options.codingTaskSessionRuntimeBinding }),
   });
   return {
     applicationCommandGateway,
     evidenceBundleStore,
     repositoryRootResolver,
-    bindHookWorkspace: new BindHookWorkspaceUseCase(taskRepository, hookBindingStore, clock),
     checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
     compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
     createTask: new CreateTaskUseCase(taskRepository, clock, taskIdGenerator),
     getTaskStatus: new GetTaskStatusUseCase(taskRepository),
     getTaskTimeline: new GetTaskTimelineUseCase(taskRepository),
-    handleHook: canonicalHookDispatcher,
-    handleCodexHook: new CodexHookAdapter(
-      canonicalHookDispatcher,
-      hookBindingStore,
-      actionJournalRepository,
-      taskRepository,
-      digest,
-      clock,
-    ),
-    probeCodexCapabilities: new ProbeCodexCapabilitiesUseCase(
-      new CodexCapabilityProbeAdapter(commandRunner),
-    ),
+    ...hookApplication,
     ...createExecutorCompatibilityApplication(options.storeRoot, storeDependencies),
     ...createExecutorCompatibilityAttestationApplication(options, digest),
     // prettier-ignore
@@ -294,6 +293,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
     journaledActionRunner,
     ...codingTaskCellApplication,
+    ...codingTaskSessionApplication,
     ...worktreeApplication,
   };
 }

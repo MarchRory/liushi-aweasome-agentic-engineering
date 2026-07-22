@@ -3,8 +3,10 @@ import type {
   ApplyInstallPlanUseCase,
   AssemblePrReadyArtifactUseCase,
   CodingTaskCellService,
+  ActivateCodingTaskSessionService,
   CodingTaskCellRuntimeBinding,
   CodingTaskCommandService,
+  CodingTaskSessionRuntimeBinding,
   BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
   CodexHookHandler,
@@ -129,6 +131,8 @@ export interface HarnessApplication {
   codingTaskCommands: CodingTaskCommandService;
   /** 串行执行编码阶段的单一 CodingTask Cell。 */
   runCodingTaskCell: CodingTaskCellService;
+  /** 激活真实外部 Agent 的 CodingTask Session。 */
+  activateCodingTaskSession: ActivateCodingTaskSessionService;
   /** 从权威状态组装 PR-ready Repository Delivery Artifact。 */
   assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase;
   /** 只读检查 CodingTask 工作树、基线和 Write Set。 */
@@ -191,6 +195,8 @@ export interface HarnessApplicationOptions {
   repositoryRootResolver?: RepositoryRootResolverPort;
   /** 可选 Cell 启动期可信运行时绑定；嵌入式调用未提供时保持兼容。 */
   codingTaskCellRuntimeBinding?: CodingTaskCellRuntimeBinding;
+  /** 可选 Session 启动期单仓与 Agent 审计声明；生产宿主负责认证。 */
+  codingTaskSessionRuntimeBinding?: CodingTaskSessionRuntimeBinding;
   /** 可替换的离线 Attestation Verifier；默认禁止 TUF 和网络。 */
   executorCompatibilityAttestationVerifier?: ExecutorCompatibilityAttestationVerifierPort;
 }

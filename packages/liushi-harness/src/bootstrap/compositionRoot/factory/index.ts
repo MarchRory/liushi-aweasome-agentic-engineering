@@ -1,4 +1,7 @@
 export * from "./codingTaskCellApplicationFactory.js";
+export * from "./codingTaskSessionApplicationFactory.js";
+export * from "./codingTaskSessionPersistenceFactory.js";
+export * from "./hookApplicationFactory.js";
 export * from "./executorCompatibilityApplicationFactory.js";
 export * from "./executorCompatibilityAttestationApplicationFactory.js";
 export * from "./worktreeApplicationFactory.js";

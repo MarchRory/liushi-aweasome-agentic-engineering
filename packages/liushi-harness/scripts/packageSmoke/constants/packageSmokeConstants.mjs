@@ -2,7 +2,12 @@ export const PACKAGE_NAME = "liushi-harness";
 
 export const EXPECTED_BIN_NAMES = ["liushi-harness", "lh"];
 
-export const EXPECTED_HELP_COMMANDS = ["doctor", "cell run", "hook probe"];
+export const EXPECTED_HELP_COMMANDS = [
+  "doctor",
+  "cell run",
+  "coding-task session activate",
+  "hook probe",
+];
 
 export const REQUIRED_PACKAGE_FILES = [
   "CHANGELOG.md",

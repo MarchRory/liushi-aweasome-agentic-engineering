@@ -70,6 +70,8 @@ export enum HarnessErrorCode {
   InstallationRecoveryRequired = "installation_recovery_required",
   /** Installation checkpoint 已开始持久化但提交结果未知，禁止自动重试。 */
   InstallationCommitOutcomeUnknown = "installation_commit_outcome_unknown",
+  /** CodingTask Session Activation Record 已发布但父目录耐久性失败，提交结果未知且禁止自动重试。 */
+  CodingTaskSessionActivationCommitOutcomeUnknown = "coding_task_session_activation_commit_outcome_unknown",
 }
 
 /** Harness 跨层返回的可分类错误。 */

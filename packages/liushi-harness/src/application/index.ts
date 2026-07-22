@@ -14,6 +14,7 @@ export * from "./useCases/index.js";
 export * from "./workflow/index.js";
 export * from "./codingTask/index.js";
 export * from "./codingTaskCell/index.js";
+export * from "./codingTaskSession/index.js";
 export * from "./actionExecution/index.js";
 export * from "./worktreeProvisioning/index.js";
 export * from "./worktreeProvisionRecovery/index.js";

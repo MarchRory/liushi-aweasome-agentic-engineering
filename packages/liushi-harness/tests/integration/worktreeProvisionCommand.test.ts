@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -8,6 +8,7 @@ import {
   ActorKind,
   ActionJournalStatus,
   CodingTaskCommandType,
+  CommandErrorCode,
   CommandStatus,
   ResultStatus,
   WORKTREE_PROVISION_COMMAND_TYPE,
@@ -88,6 +89,48 @@ describe("Managed Worktree Provision Command", () => {
       { repositoryRoot: otherRoot },
     );
     expect(rejected.status).toBe(ResultStatus.Failure);
+    await expect(
+      runGit(fixture.repositoryRoot, [
+        "show-ref",
+        "--verify",
+        "refs/heads/feature/worktree-provision",
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it("Repository Root 是 symlink 或 junction 时在 Git 写入前拒绝", async (context) => {
+    const fixture = await createRepository();
+    const linkParent = await mkdtemp(join(tmpdir(), "liushi-worktree-linked-root-"));
+    repositories.push(linkParent);
+    const linkedRoot = join(linkParent, "repository");
+    try {
+      await symlink(
+        fixture.repositoryRoot,
+        linkedRoot,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch {
+      context.skip();
+      return;
+    }
+
+    const storeRoot = await runtimeStores.create("liushi-worktree-linked-binding-");
+    const application = createApplication(storeRoot);
+    await createSourceTask(application);
+    await createCodingTask(application, fixture.baseRevision);
+
+    const rejected = await application.worktreeProvisionCommands.execute(
+      provisionCommand(linkedRoot),
+      { repositoryRoot: linkedRoot },
+    );
+
+    expect(rejected).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        status: CommandStatus.Rejected,
+        errorCode: CommandErrorCode.AuthorizationDenied,
+      },
+    });
     await expect(
       runGit(fixture.repositoryRoot, [
         "show-ref",
