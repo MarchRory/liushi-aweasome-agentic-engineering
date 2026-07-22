@@ -4,7 +4,7 @@
 
 P4c2a 已提供包内企业 HTTPS Release Approval Authority Adapter。Adapter 只接受无凭据、无查询参数和无片段的 HTTPS endpoint，在联网前校验 Authority 输入，使用最小 canonical JSON POST，并对 JSON 回执执行严格 UTF-8、Schema、固定 Authority 标识及请求主题/摘要绑定校验；网络、重定向、超时和回执预算异常均 fail closed。P4c2b 的 Release Host、CLI 接线和真实发布流程仍未实现。
 
-**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile、P4b1-P4b3 的通用 Sigstore Statement、Manifest G6 Draft、包内可信 Release Approval Authority、Signed Manifest Artifact 和公开离线 Verify，P4c1 严格 Artifact Reader/create-only Writer，以及 P4c2a 企业 HTTPS Authority Adapter 已实现。** npm 根与 `HarnessApplication` 不暴露签名能力；P4c2b 隔离 Release Host 与 CLI 接线、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
+**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile、P4b1-P4b3 的通用 Sigstore Statement、Manifest G6 Draft、包内可信 Release Approval Authority、Signed Manifest Artifact 和公开离线 Verify，P4c1 严格 Artifact Reader/create-only Writer、P4c2a 企业 HTTPS Authority Adapter，以及 P4c2b1 严格 Draft Reader 与签名发布闭环 Use Case 已实现。** npm 根与 `HarnessApplication` 不暴露签名能力；P4c2b1 尚未接入隔离 Release Host 或 bin，P4c2b2 隔离 Release Host 与 CLI 接线、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
 
 ## 1. 目标与边界
 

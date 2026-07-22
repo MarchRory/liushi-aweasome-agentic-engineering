@@ -61,6 +61,7 @@ describe("composition root", () => {
       "NodeCodingTaskCellRuntimePathAdapter",
       "NodeCommandRunnerAdapter",
       "NodeExecutorCompatibilityPublicationWriterAdapter",
+      "NodeExecutorCompatibilityReleaseDraftReaderAdapter",
       "NodeExecutorCompatibilitySignedAttestationArtifactReaderAdapter",
       "NodeExecutorCompatibilitySignedAttestationArtifactWriterAdapter",
       "NodeExecutorCompatibilitySignedManifestArtifactReaderAdapter",
