@@ -72,7 +72,7 @@
     "build": "tsup --config tsup.config.ts",
     "lint": "eslint src tests --no-error-on-unmatched-pattern",
     "test": "vitest run --maxWorkers=1",
-    "test:architecture": "vitest run tests/architecture",
+    "test:architecture": "vitest run tests/architecture --maxWorkers=1",
     "test:contract": "vitest run tests/contract",
     "test:e2e": "vitest run tests/e2e",
     "test:integration": "vitest run tests/integration",

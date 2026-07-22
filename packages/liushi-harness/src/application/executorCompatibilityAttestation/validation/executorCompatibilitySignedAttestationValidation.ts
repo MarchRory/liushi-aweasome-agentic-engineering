@@ -11,12 +11,14 @@ import {
 } from "#common/index.js";
 import {
   createExecutorCompatibilityReleaseAttestationDraft,
+  type ExecutorCompatibilityPublisherIdentityPolicy,
   type ExecutorCompatibilityReleaseAttestationDraft,
 } from "#domain/executorCompatibilityAttestation/index.js";
 
 import type {
   ExecutorCompatibilitySignedAttestationArtifact,
   ExecutorCompatibilityTrustedRootJson,
+  ExecutorCompatibilityVerifiedSignerIdentity,
 } from "../contracts/index.js";
 import {
   executorCompatibilityReleaseAttestationDraftSchema,
@@ -99,6 +101,34 @@ export function validateExecutorCompatibilityTrustedRootJson(
   return trustedRootDigest.status === ResultStatus.Failure
     ? trustedRootDigest
     : success({ trustedRoot: parsed.data, digest: trustedRootDigest.value });
+}
+
+/** 要求证书实际身份与完整 Publisher Identity Policy 精确一致。 */
+export function requireExactExecutorCompatibilitySignerIdentity(
+  actual: ExecutorCompatibilityVerifiedSignerIdentity,
+  policy: ExecutorCompatibilityPublisherIdentityPolicy,
+): Result<ExecutorCompatibilityVerifiedSignerIdentity, HarnessErrorType> {
+  const extensionsMatch =
+    actual.certificateExtensions.length === policy.certificateExtensions.length &&
+    policy.certificateExtensions.every(
+      (expected) =>
+        actual.certificateExtensions.filter(
+          (candidate) => candidate.oid === expected.oid && candidate.value === expected.value,
+        ).length === 1,
+    );
+  if (
+    actual.certificateIssuer !== policy.certificateIssuer ||
+    actual.certificateIdentity !== policy.certificateIdentity.value ||
+    !extensionsMatch
+  ) {
+    return failure(
+      new HarnessError(
+        HarnessErrorCode.ExecutorCompatibilityAttestationVerificationFailed,
+        "Sigstore 证书身份与 Publisher Identity Policy 不一致。",
+      ),
+    );
+  }
+  return success(actual);
 }
 
 function invalidAttestationInput(message: string): Result<never, HarnessErrorType> {

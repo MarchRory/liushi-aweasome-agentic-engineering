@@ -1,6 +1,6 @@
 # Executor Compatibility Trusted Release
 
-**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile、P4b1 通用 Sigstore Statement 边界与 P4b2 Manifest G6 Draft Domain 已实现。** Signed Manifest Artifact、显式 Trust Profile 离线验签、Artifact Reader/Writer、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
+**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile 与 P4b1-P4b3 的通用 Sigstore Statement、Manifest G6 Draft、包内可信 Release Approval Authority、Signed Manifest Artifact 和公开离线 Verify 已实现。** npm 根与 `HarnessApplication` 不暴露签名能力；隔离 Release Host、真实企业审批源 Adapter、Artifact Reader/Writer、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
 
 ## 1. 目标与边界
 
@@ -36,7 +36,7 @@ flowchart LR
 | 严格结构校验        | Zod strict Schema                          | 原始 JSON 读取前还必须拒绝重复 Key                          |
 | DSSE 签名与离线验证 | 现有 Sigstore Infrastructure               | Sigstore SDK 不进入 Domain/Application                      |
 | 发布文件写入        | 现有 create-only、原子、耐久写入语义       | 为 Manifest/Attestation 新建窄 Port，不复用 Bundle 回执类型 |
-| Human Approval      | 现有 G6 DecisionRequest 与 ApprovalRecord  | Manifest Digest 必须获得独立 G6 绑定                        |
+| Human Approval      | 现有 G6 DecisionRequest 与 ApprovalRecord  | Authority 必须从可信源返回记录，调用方自报记录不能触发签名  |
 | Repository 写入     | 现有 G0 Apply 与 Installation Revision     | G6 不能替代 G0                                              |
 | 远端更新            | 后续直接采用 TUF                           | P4 不自造 Snapshot/Timestamp/过期算法                       |
 
@@ -128,7 +128,11 @@ Manifest Factory 必须关闭式保证：
 
 Manifest 不能只依赖 P3b Release Attestation 的签名。Manifest 自身作为新的 in-toto Statement Subject，由独立 DSSE 签名；Predicate 绑定完整 Manifest、Publisher Identity Policy 和针对 `manifestDigest` 的 G6 Approval Binding。Manifest Artifact 继续采用内容寻址和 create-only Writer。
 
-发布者在签名 Manifest 前必须重建 P3b Signed Release Attestation，并重建针对 Manifest Digest 的 G6 DecisionRequest 与 ApprovalRecord。联网 Signer 只能位于所有确定性复验之后。
+包内发布签名链在签名 Manifest 前必须重建 P3b Signed Release Attestation，并重建针对 Manifest Digest 的 G6 DecisionRequest 与 ApprovalRecord。随后由可信 `ExecutorCompatibilityReleaseApprovalAuthorityPort` 仅按审批主题和制品摘要查询权威记录；Authority 返回的完整记录、记录摘要与内容寻址回执必须与 Draft 精确一致。调用方不能把自报的 `actor.kind=Human` 当作授权，联网 Signer 只能位于上述全部复验之后。
+
+Authority 与 Signer 不能作为普通同进程依赖开放给不可信调用方，否则调用方可以同时伪造 Authority 并使用环境凭据。因此当前 npm 根、`HarnessApplication` 和 CLI 都不暴露 Sign UseCase、Authority 回执工厂或 Signer 注入；P4c 必须把它们放入隔离 Release Host，固定真实企业审批源和凭据，只接收 Draft 请求。
+
+该 Authority 是发布侧认证边界，不改变离线消费者的信任模型。离线 Verifier 能证明发布者签署了包含 G6 绑定的声明，但不能独立访问或认证企业内部审批系统；消费者仍通过外部 Trust Profile、Trusted Root 和发布者身份策略决定是否信任该发布者。
 
 ## 5. 本地防回放
 
@@ -154,7 +158,7 @@ P4 首个生产切片在 Transition Artifact 落地前对 Root 或 Identity Dige
 
 1. 严格读取 Trust Profile、Trusted Root、Manifest Artifact 和调用方钉住的 Manifest Digest。
 2. 复验 Trust Profile 与 Trusted Root Digest，禁止任何自认证输入。
-3. 从外部 Publisher Trust Policy 与签名 Release Subject 派生本次 Identity Policy，验证 Manifest DSSE 与 Manifest G6 Approval。
+3. 从外部 Publisher Trust Policy 与签名 Release Subject 派生本次 Identity Policy，验证 Manifest DSSE 与签名声明中的 Manifest G6 Approval 绑定；不宣称离线认证企业审批源。
 4. 按签名的 Digest 和 Byte Length 读取 P3b Attestation、Publication Bundle 与 Tarball。
 5. 复用 P3b Offline Verifier，并要求其真实证书身份与外部 Profile 完全一致。
 6. 重算 Bundle、Projection、Evidence、Policy、Matrix、Tarball 和 Manifest 的全部交叉绑定。
@@ -189,8 +193,8 @@ CLI 不提供 `--latest`、`--skip-signature`、`--trust-manifest-root`、通用
 1. `P4a`：Release Manifest Domain、Trust Profile Domain、严格 Schema、Digest 与单元测试。已完成。
 2. `P4b1`：通用 in-toto Sigstore Statement 边界。已完成。
 3. `P4b2`：Manifest 独立 G6 Draft 与 Statement Domain。已完成。
-4. `P4b3`：Signed Manifest Artifact、Sign/Verify Use Case 与显式 Trust Profile 离线验证。
-5. `P4c`：create-only Attestation/Manifest Writer、严格文件 Reader 和 CLI。
+4. `P4b3`：包内可信 Release Approval Authority、Signed Manifest Artifact、Sign/Verify Use Case、公共签名面收缩与显式 Trust Profile 离线验证。已完成。
+5. `P4c`：隔离 Release Host、真实企业 Authority Adapter、create-only Attestation/Manifest Writer、严格文件 Reader 和受控 CLI。
 6. `P4d`：Accepted Head Store、Verified Release Selection、InstallPlan v2 与 G0 Apply 迁移。
 7. `P4e`：完整负向集成/E2E，包括 Root 替换、身份替换、Manifest 拼接、重复 Key、长度漂移、旧 Head 回放、分叉、首装非钉住 Digest 和无 G0 写入。
 

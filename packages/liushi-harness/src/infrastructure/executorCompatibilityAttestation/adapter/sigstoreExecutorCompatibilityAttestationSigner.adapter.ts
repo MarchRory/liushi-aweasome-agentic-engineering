@@ -1,8 +1,8 @@
-import {
-  type ExecutorCompatibilityAttestationSignerPort,
-  type ExecutorCompatibilityAttestationSigningResult,
-  type SignExecutorCompatibilityAttestationInput,
-} from "#application/ports/index.js";
+import type {
+  ExecutorCompatibilityAttestationSignerPort,
+  ExecutorCompatibilityAttestationSigningResult,
+  SignExecutorCompatibilityAttestationInput,
+} from "#application/ports/executorCompatibilityAttestation/index.js";
 import {
   failure,
   HarnessError,

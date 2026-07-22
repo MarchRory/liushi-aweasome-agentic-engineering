@@ -57,6 +57,7 @@ export interface SigstoreAttestationTestEnvironment {
 export async function createSigstoreAttestationTestEnvironment(
   fixture: ExecutorCompatibilityAttestationFixture,
   mode: SigstoreAttestationTestMode,
+  signingRequestCount = 1,
 ): Promise<SigstoreAttestationTestEnvironment> {
   nock.cleanAll();
   nock.enableNetConnect();
@@ -70,16 +71,21 @@ export async function createSigstoreAttestationTestEnvironment(
   const tlog = await initializeTLog(REKOR_BASE_URL, tlogKeyPair, signingTime);
   const tsa = await initializeTSA(tsaKeyPair, signingTime);
   const singleEntryTlog = createSingleEntrySigstoreMockTLog(tlog, tlogKeyPair.privateKey);
-  const fulcioScope = bindSigstoreHandler(FULCIO_BASE_URL, fulcioHandler(ca, { strict: true }));
+  const fulcioScope = bindSigstoreHandler(
+    FULCIO_BASE_URL,
+    fulcioHandler(ca, { strict: true }),
+    signingRequestCount,
+  );
   const rekorScope = bindSigstoreHandler(
     REKOR_BASE_URL,
     mode === SigstoreAttestationTestMode.DefaultRekorV1
       ? rekorHandler(singleEntryTlog, { strict: true })
       : rekorV2Handler(singleEntryTlog, { strict: true }),
+    signingRequestCount,
   );
   const tsaScope =
     mode === SigstoreAttestationTestMode.RekorV2WithTsa
-      ? bindSigstoreHandler(TSA_BASE_URL, tsaHandler(tsa, { strict: true }))
+      ? bindSigstoreHandler(TSA_BASE_URL, tsaHandler(tsa, { strict: true }), signingRequestCount)
       : undefined;
   const identityToken = createUnsignedIdentityToken(fixture);
   const trustedRoot = createTrustedRootJson(
@@ -148,9 +154,14 @@ export async function createSigstoreAttestationTestEnvironment(
   };
 }
 
-function bindSigstoreHandler(baseUrl: string, handler: Readonly<{ path: string; fn: HandlerFn }>) {
+function bindSigstoreHandler(
+  baseUrl: string,
+  handler: Readonly<{ path: string; fn: HandlerFn }>,
+  requestCount: number,
+) {
   return nock(baseUrl)
     .post(handler.path)
+    .times(requestCount)
     .reply(async (_uri, body) => {
       const result = await handler.fn(serializeRequestBody(body));
       const response =

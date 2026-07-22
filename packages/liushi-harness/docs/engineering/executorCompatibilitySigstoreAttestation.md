@@ -1,14 +1,14 @@
 # Executor Compatibility Sigstore Attestation
 
-**状态：P3b 已实现。** 当前 Library 与 Composition Root 已提供真实 Sigstore DSSE 签名、内容寻址 Signed Attestation Artifact，以及调用方显式 Trusted Root 驱动的纯离线验证。Attestation CLI、签名 Artifact Writer、Trusted Release Manifest、远端发布和安装选择门仍未实现。
+**状态：P3b 包内签名链与公共离线验证已实现。** 包内 Sign UseCase 已提供可信 Release Approval Authority、真实 Sigstore DSSE 签名和内容寻址 Signed Attestation Artifact；npm 根与 `HarnessApplication` 只公开调用方显式 Trusted Root 驱动的离线验证，不公开签名或 Authority 注入。隔离 Release Host、真实企业审批源 Adapter、Attestation CLI、签名 Artifact Writer、远端发布和安装选择门仍未实现。
 
 ## 1. 目标
 
 P3b 把 P3a 已获 Human G6 Approval 的 `ReleaseAttestationDraft` 转换为可跨机器验证的签名 Artifact，同时保持以下边界：
 
-- 业务绑定、审批记录和内容摘要由 Harness 确定性重建。
+- 业务绑定、审批记录和内容摘要由 Harness 确定性重建，审批记录还必须来自注入的可信 Authority。
 - 证书、DSSE、透明日志和可验证时间证据复用官方 Sigstore JavaScript 组件。
-- Signer 只能在完整 G6 Draft 复验成功后被调用。
+- Signer 只能在完整 G6 Draft 与 Authority 权威回执精确匹配后被调用。
 - Verifier 只使用调用方显式提供的 Trusted Root，不读取 TUF、网络或用户缓存。
 - 发布者身份必须同时精确匹配 Issuer、SAN 和 Policy 声明的全部证书扩展。
 - 任何摘要、Payload、证书身份或信任材料漂移都关闭式失败。
@@ -32,6 +32,7 @@ P3b 固定复用 Node 20 兼容的 Sigstore 组件：
 Harness 自持以下语义：
 
 - G6 Draft 的五项权威输入与重复绑定字段复验。
+- 只按审批主题和制品摘要查询的 Authority Port，以及绑定完整权威记录的内容寻址回执。
 - Statement、Bundle、Artifact 和 Trusted Root 的 RFC 8785 SHA-256 摘要。
 - 精确 Publisher Identity Policy 和证书扩展集合匹配。
 - 验证成功后的窄化审计回执。
@@ -44,7 +45,9 @@ Sigstore SDK 只能从 `infrastructure/executorCompatibilityAttestation/` 引入
 ```text
 application/
 ├── executorCompatibilityAttestation/
+├── executorCompatibilityReleaseApproval/
 ├── ports/executorCompatibilityAttestation/
+├── ports/executorCompatibilityReleaseApprovalAuthority/
 └── useCases/
     ├── signExecutorCompatibilityReleaseAttestation/
     └── verifyExecutorCompatibilityReleaseAttestation/
@@ -59,22 +62,23 @@ infrastructure/executorCompatibilityAttestation/
 └── validation/
 ```
 
-Application 只依赖 Signer/Verifier Port。默认 Sigstore 实现由 Bootstrap Composition Root 装配，嵌入方可以注入自己的受信实现。
+包内 Sign Application 只依赖 Signer 与 Release Approval Authority Port，公开 Application 只装配离线 Verifier。当前 Bootstrap Composition Root 不创建 Signer、不接收 Authority/Signer 注入，也不返回 Sign UseCase；P4c 的隔离 Release Host 必须固定从企业可信审批源读取记录的 Adapter 与发布凭据。
 
-包根公开两个 Use Case、Port 契约和 `createHarnessApplication`，不直接导出 Infrastructure 具体 Adapter。调用方需要默认实现时使用 Composition Root；需要企业实现时通过 `HarnessApplicationOptions` 注入 Port，不能绕开公开装配边界。
+包根公开 Verify UseCase、只读 Domain/Application 能力和 `createHarnessApplication`，不导出两个 Sign UseCase、Authority 回执工厂或 Infrastructure Signer。`HarnessApplicationOptions` 只允许替换离线 Verifier；企业签名不能通过普通嵌入式 Options 启用。
 
 ## 4. 签名链
 
-`SignExecutorCompatibilityReleaseAttestationUseCase` 按固定顺序执行：
+包内 `SignExecutorCompatibilityReleaseAttestationUseCase` 按固定顺序执行：
 
 1. 从 Bundle、Publisher Identity Policy、Release Candidate、DecisionRequest 和 ApprovalRecord 重新构建 P3a Draft。
 2. 比较调用方 Draft 与重建 Draft 的规范摘要，拒绝任何重复字段漂移。
-3. 将规范 in-toto Statement 序列化为确定字节。
-4. 调用 Signer Port；默认实现使用官方 `sigstore.attest`，并关闭旧 Bundle 兼容模式。
-5. 使用官方 Bundle Parser 重新解析结果，要求 Bundle v0.3、单一 DSSE 签名、精确 Payload Type 和逐字节一致的 Payload。
-6. 计算 Statement、Sigstore Bundle 和完整 Artifact 摘要，返回自包含签名 Artifact。
+3. 仅以 `ReleaseCandidate` 审批主题和 Candidate Digest 查询可信 Authority，不把调用方 Draft 中的记录传给 Authority。
+4. 严格重算 Authority 回执、DecisionRequest、ApprovalRecord 和 G6 语义，并要求权威记录摘要与待签名 Draft 精确一致。
+5. 将规范 in-toto Statement 交给 Signer Port；默认实现使用官方 `sigstore.attest`，并关闭旧 Bundle 兼容模式。
+6. 使用官方 Bundle Parser 重新解析结果，要求 Bundle v0.3、单一 DSSE 签名、精确 Payload Type 和逐字节一致的 Payload。
+7. 计算 Statement、Sigstore Bundle 和完整 Artifact 摘要，返回自包含签名 Artifact。
 
-默认 Signer 可能访问 OIDC、Fulcio 和 Rekor，并使用 Rekor v1 Inclusion Promise 提供可验证时间证据，不主动访问 TSA。调用方必须在受信 Release Workflow 中、经过 Human G6 后显式触发；P3b 不自动发布或持久化结果。通过 Port 注入的企业 Signer 可以额外生成 RFC 3161 TSA 时间戳。
+Signer 可能访问 OIDC、Fulcio 和 Rekor，并使用 Rekor v1 Inclusion Promise 提供可验证时间证据，不主动访问 TSA。它当前只在包内测试链中运行，不可从 npm 根、公共 Composition Root 或 CLI 触发；P4c 必须在隔离 Release Host 中固定可信审批源和凭据。权威记录与 Draft 不一致时 Signer 不会被调用。P3b 不自动发布或持久化结果；后续企业 Signer 可以额外生成 RFC 3161 TSA 时间戳。
 
 ## 5. 离线验证链
 
@@ -106,6 +110,8 @@ CLI 稳定映射中，签名失败属于暂不可用，验证失败属于冲突�
 
 当前测试覆盖：
 
+- Authority 不可用时两个包内 Release Signer 入口都失败关闭。
+- 调用方伪造摘要自洽的 Human 记录、跨审批主题/制品回执或篡改回执摘要时 Signer Port 不会被调用。
 - Draft 漂移时 Signer Port 不会被调用。
 - Signer 明确失败不会被吞掉或改写。
 - Artifact、Statement、Bundle 和 Trusted Root 摘要重算。
@@ -120,12 +126,13 @@ CLI 稳定映射中，签名失败属于暂不可用，验证失败属于冲突�
 
 ## 8. 后续门
 
-P4 开工前必须再次确认：
+P4c-P4e 继续实现前必须确认：
 
 - Signed Attestation Artifact 的 create-only Writer 与持久化恢复语义。
-- Trusted Release Manifest 的版本、Target 和回滚保护。
+- Trusted Release Manifest 的 Reader/Writer、Target 和回滚保护。
+- 隔离 Release Host 如何把企业审批 Store/Wiki/Ticket 系统适配为只读 Authority，且不允许调用方记录回流为可信源或替换发布凭据。
 - `attestation create` 与 `release verify` CLI 的 G6、身份和输出边界。
 - 安装选择器如何按精确 Digest 读取 Manifest、Bundle、Attestation 和 Tarball。
 - 验证通过后只生成 InstallPlan，仍由现有 G0 Apply 决定是否写入项目。
 
-在 P4/P5 完成前，P3b 不能被描述为可发布矩阵、可信自动更新或生产安装闭环。
+在 P4/P5 完成前，P3b 不能被描述为可发布矩阵、可信自动更新或生产安装闭环；包内签名测试也不等同于已接入隔离 Release Host 或企业审批系统。

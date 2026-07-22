@@ -17,4 +17,13 @@ export const REQUIRED_PACKAGE_FILES = [
   "dist/bootstrap/cli/cliEntrypoint.js",
 ];
 
+/** 发布物类型声明中禁止重新暴露的特权签名符号。 */
+export const PRIVILEGED_SIGNING_DECLARATION_NAMES = [
+  "SignExecutorCompatibilityReleaseAttestationUseCase",
+  "SignExecutorCompatibilityReleaseManifestUseCase",
+  "ExecutorCompatibilityAttestationSignerPort",
+  "ExecutorCompatibilityReleaseApprovalAuthorityPort",
+  "createExecutorCompatibilityReleaseApprovalVerificationReceipt",
+];
+
 export const TEMP_DIRECTORY_PREFIX = "liushi-harness-package-smoke-";

@@ -1,24 +1,20 @@
 import {
   EXECUTOR_COMPATIBILITY_ATTESTATION_VERIFICATION_RECEIPT_SCHEMA_VERSION,
+  requireExactExecutorCompatibilitySignerIdentity,
   validateExecutorCompatibilitySignedAttestationArtifact,
   validateExecutorCompatibilityTrustedRootJson,
   type ExecutorCompatibilityAttestationVerificationReceipt,
-  type ExecutorCompatibilityVerifiedSignerIdentity,
 } from "#application/executorCompatibilityAttestation/index.js";
 import type {
   ContentDigestPort,
   ExecutorCompatibilityAttestationVerifierPort,
 } from "#application/ports/index.js";
 import {
-  failure,
-  HarnessError,
-  HarnessErrorCode,
   ResultStatus,
   success,
   type HarnessError as HarnessErrorType,
   type Result,
 } from "#common/index.js";
-import type { ExecutorCompatibilityPublisherIdentityPolicy } from "#domain/executorCompatibilityAttestation/index.js";
 
 /** 离线验证签名 Artifact 所需的显式输入。 */
 export interface VerifyExecutorCompatibilityReleaseAttestationUseCaseInput {
@@ -56,7 +52,7 @@ export class VerifyExecutorCompatibilityReleaseAttestationUseCase {
       publisherIdentityPolicy: artifact.value.draft.publisherIdentityPolicy,
     });
     if (cryptographic.status === ResultStatus.Failure) return cryptographic;
-    const identity = requireExactSignerIdentity(
+    const identity = requireExactExecutorCompatibilitySignerIdentity(
       cryptographic.value.signerIdentity,
       artifact.value.draft.publisherIdentityPolicy,
     );
@@ -71,31 +67,4 @@ export class VerifyExecutorCompatibilityReleaseAttestationUseCase {
       signerIdentity: identity.value,
     });
   }
-}
-
-function requireExactSignerIdentity(
-  actual: ExecutorCompatibilityVerifiedSignerIdentity,
-  policy: ExecutorCompatibilityPublisherIdentityPolicy,
-): Result<ExecutorCompatibilityVerifiedSignerIdentity, HarnessErrorType> {
-  const extensionsMatch =
-    actual.certificateExtensions.length === policy.certificateExtensions.length &&
-    policy.certificateExtensions.every(
-      (expected) =>
-        actual.certificateExtensions.filter(
-          (candidate) => candidate.oid === expected.oid && candidate.value === expected.value,
-        ).length === 1,
-    );
-  if (
-    actual.certificateIssuer !== policy.certificateIssuer ||
-    actual.certificateIdentity !== policy.certificateIdentity.value ||
-    !extensionsMatch
-  ) {
-    return failure(
-      new HarnessError(
-        HarnessErrorCode.ExecutorCompatibilityAttestationVerificationFailed,
-        "Sigstore 证书身份与 Publisher Identity Policy 不一致。",
-      ),
-    );
-  }
-  return success(actual);
 }

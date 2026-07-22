@@ -7,6 +7,7 @@ import {
   EXPECTED_BIN_NAMES,
   EXPECTED_HELP_COMMANDS,
   PACKAGE_NAME,
+  PRIVILEGED_SIGNING_DECLARATION_NAMES,
   REQUIRED_PACKAGE_FILES,
   TEMP_DIRECTORY_PREFIX,
 } from "../constants/index.mjs";
@@ -26,6 +27,8 @@ export async function runPackageSmoke(packageRoot) {
 
     const installedPackageRoot = join(consumerRoot, "node_modules", PACKAGE_NAME);
     await assertRequiredFiles(installedPackageRoot);
+    const hiddenSigningDeclarations =
+      await assertNoPrivilegedSigningDeclarations(installedPackageRoot);
     const installedManifest = JSON.parse(
       await readFile(join(installedPackageRoot, "package.json"), "utf8"),
     );
@@ -47,6 +50,7 @@ export async function runPackageSmoke(packageRoot) {
       entryCount: packed.entryCount,
       esm,
       cjs,
+      hiddenSigningDeclarations,
       cli,
     };
   } finally {
@@ -87,6 +91,20 @@ async function assertRequiredFiles(installedPackageRoot) {
   assertValue(license.includes("MIT License"), "发布物 LICENSE 内容无效。");
 }
 
+async function assertNoPrivilegedSigningDeclarations(installedPackageRoot) {
+  const declarations = await Promise.all(
+    ["dist/index.d.ts", "dist/index.d.cts"].map((relativePath) =>
+      readFile(join(installedPackageRoot, ...relativePath.split("/")), "utf8"),
+    ),
+  );
+  for (const declaration of declarations) {
+    for (const name of PRIVILEGED_SIGNING_DECLARATION_NAMES) {
+      assertValue(!declaration.includes(name), `发布物类型声明泄漏特权签名符号：${name}。`);
+    }
+  }
+  return PRIVILEGED_SIGNING_DECLARATION_NAMES.length;
+}
+
 function verifyEsmImport(consumerRoot) {
   const script = `
     const pkg = await import(${JSON.stringify(PACKAGE_NAME)});
@@ -94,13 +112,13 @@ function verifyEsmImport(consumerRoot) {
     if (typeof value !== "string") throw new Error("ESM export missing");
     const attestationExports = assertAttestationExports(pkg);
     const trustedReleaseExports = assertTrustedReleaseExports(pkg);
+    const hiddenSigningExports = assertHiddenSigningExports(pkg);
     process.stdout.write(
-      JSON.stringify({ manifestSchemaVersion: value, attestationExports, trustedReleaseExports }),
+      JSON.stringify({ manifestSchemaVersion: value, attestationExports, trustedReleaseExports, hiddenSigningExports }),
     );
 
     function assertAttestationExports(module) {
       const names = [
-        "SignExecutorCompatibilityReleaseAttestationUseCase",
         "VerifyExecutorCompatibilityReleaseAttestationUseCase",
         "createHarnessApplication",
       ];
@@ -114,13 +132,27 @@ function verifyEsmImport(consumerRoot) {
       const names = [
         "createExecutorCompatibilityReleaseManifest",
         "createExecutorCompatibilityReleaseManifestAttestationDraft",
+        "createExecutorCompatibilitySignedReleaseManifestArtifact",
         "createExecutorCompatibilityReleaseTrustProfile",
         "deriveExecutorCompatibilityPublisherIdentityPolicy",
+        "VerifyExecutorCompatibilityReleaseManifestUseCase",
       ];
       for (const name of names) {
         if (typeof module[name] !== "function") {
           throw new Error(\`ESM trusted release export missing: \${name}\`);
         }
+      }
+      return names.length;
+    }
+
+    function assertHiddenSigningExports(module) {
+      const names = [
+        "SignExecutorCompatibilityReleaseAttestationUseCase",
+        "SignExecutorCompatibilityReleaseManifestUseCase",
+        "createExecutorCompatibilityReleaseApprovalVerificationReceipt",
+      ];
+      for (const name of names) {
+        if (name in module) throw new Error(\`ESM privileged signing export leaked: \${name}\`);
       }
       return names.length;
     }
@@ -139,13 +171,13 @@ function verifyCjsRequire(consumerRoot) {
     if (typeof value !== "string") throw new Error("CJS export missing");
     const attestationExports = assertAttestationExports(pkg);
     const trustedReleaseExports = assertTrustedReleaseExports(pkg);
+    const hiddenSigningExports = assertHiddenSigningExports(pkg);
     process.stdout.write(
-      JSON.stringify({ manifestSchemaVersion: value, attestationExports, trustedReleaseExports }),
+      JSON.stringify({ manifestSchemaVersion: value, attestationExports, trustedReleaseExports, hiddenSigningExports }),
     );
 
     function assertAttestationExports(module) {
       const names = [
-        "SignExecutorCompatibilityReleaseAttestationUseCase",
         "VerifyExecutorCompatibilityReleaseAttestationUseCase",
         "createHarnessApplication",
       ];
@@ -159,13 +191,27 @@ function verifyCjsRequire(consumerRoot) {
       const names = [
         "createExecutorCompatibilityReleaseManifest",
         "createExecutorCompatibilityReleaseManifestAttestationDraft",
+        "createExecutorCompatibilitySignedReleaseManifestArtifact",
         "createExecutorCompatibilityReleaseTrustProfile",
         "deriveExecutorCompatibilityPublisherIdentityPolicy",
+        "VerifyExecutorCompatibilityReleaseManifestUseCase",
       ];
       for (const name of names) {
         if (typeof module[name] !== "function") {
           throw new Error(\`CJS trusted release export missing: \${name}\`);
         }
+      }
+      return names.length;
+    }
+
+    function assertHiddenSigningExports(module) {
+      const names = [
+        "SignExecutorCompatibilityReleaseAttestationUseCase",
+        "SignExecutorCompatibilityReleaseManifestUseCase",
+        "createExecutorCompatibilityReleaseApprovalVerificationReceipt",
+      ];
+      for (const name of names) {
+        if (name in module) throw new Error(\`CJS privileged signing export leaked: \${name}\`);
       }
       return names.length;
     }

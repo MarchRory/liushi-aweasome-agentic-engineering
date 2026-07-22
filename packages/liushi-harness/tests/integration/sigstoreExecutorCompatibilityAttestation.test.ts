@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  SignExecutorCompatibilityReleaseAttestationUseCase,
-  VerifyExecutorCompatibilityReleaseAttestationUseCase,
-} from "../../src/application/index.js";
+import { SignExecutorCompatibilityReleaseAttestationUseCase } from "../../src/application/useCases/signExecutorCompatibilityReleaseAttestation/index.js";
+import { VerifyExecutorCompatibilityReleaseAttestationUseCase } from "../../src/application/useCases/verifyExecutorCompatibilityReleaseAttestation/index.js";
 import { HarnessErrorCode, ResultStatus } from "../../src/common/index.js";
-import { createExecutorCompatibilityPublisherIdentityPolicy } from "../../src/domain/executorCompatibilityAttestation/index.js";
+import {
+  createExecutorCompatibilityPublisherIdentityPolicy,
+  ExecutorCompatibilityReleaseApprovalSubject,
+} from "../../src/domain/executorCompatibilityAttestation/index.js";
 import {
   SigstoreExecutorCompatibilityAttestationSignerAdapter,
   SigstoreExecutorCompatibilityAttestationVerifierAdapter,
@@ -15,6 +16,7 @@ import {
   createPublisherIdentityPolicyInput,
   createSigstoreAttestationTestEnvironment,
   createStrictExecutorCompatibilityAttestationDraft,
+  createExecutorCompatibilityTrustedApprovalAuthority,
   SigstoreAttestationTestMode,
   type SigstoreAttestationTestEnvironment,
 } from "../support/executorCompatibility/index.js";
@@ -50,6 +52,17 @@ describe("Sigstore Executor Compatibility Attestation", () => {
       const verifier = new SigstoreExecutorCompatibilityAttestationVerifierAdapter();
       const signing = new SignExecutorCompatibilityReleaseAttestationUseCase(
         signer,
+        createExecutorCompatibilityTrustedApprovalAuthority(
+          [
+            {
+              approvalSubject: ExecutorCompatibilityReleaseApprovalSubject.ReleaseCandidate,
+              artifactDigest: fixture.releaseCandidate.candidateDigest,
+              decisionRequest: fixture.decisionRequest,
+              approvalRecord: fixture.approvalRecord,
+            },
+          ],
+          fixture.digest,
+        ),
         fixture.digest,
       );
       const verification = new VerifyExecutorCompatibilityReleaseAttestationUseCase(

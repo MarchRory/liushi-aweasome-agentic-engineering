@@ -12,8 +12,8 @@ import type {
   CompileCodexExecutorCompatibilityUseCase,
   CreateExecutorCompatibilityPublicationBundleUseCase,
   PublishExecutorCompatibilityPublicationBundleUseCase,
-  SignExecutorCompatibilityReleaseAttestationUseCase,
   VerifyExecutorCompatibilityReleaseAttestationUseCase,
+  VerifyExecutorCompatibilityReleaseManifestUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
@@ -51,7 +51,6 @@ import type {
   EvidenceBundleStore,
   RepositoryRootResolverPort,
   VerificationExecutorPort,
-  ExecutorCompatibilityAttestationSignerPort,
   ExecutorCompatibilityAttestationVerifierPort,
 } from "#application/ports/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
@@ -80,10 +79,10 @@ export interface HarnessApplication {
   createExecutorCompatibilityPublicationBundle: CreateExecutorCompatibilityPublicationBundleUseCase;
   /** 从精确 Matrix Digest 创建并原子发布不可变 Publication Bundle。 */
   publishExecutorCompatibilityPublicationBundle: PublishExecutorCompatibilityPublicationBundleUseCase;
-  /** 对已获 G6 Approval 的 Release Attestation Draft 执行 Sigstore 签名。 */
-  signExecutorCompatibilityReleaseAttestation: SignExecutorCompatibilityReleaseAttestationUseCase;
   /** 使用显式 Trusted Root 离线验证完整签名 Artifact。 */
   verifyExecutorCompatibilityReleaseAttestation: VerifyExecutorCompatibilityReleaseAttestationUseCase;
+  /** 使用 Trust Profile 与显式 Trusted Root 离线验证完整 Manifest 发布链。 */
+  verifyExecutorCompatibilityReleaseManifest: VerifyExecutorCompatibilityReleaseManifestUseCase;
   /** 生成并持久化不修改 Repository 的 G0 Managed Files InstallPlan。 */
   createInstallPlan: CreateInstallPlanUseCase;
   /** 应用 Human 精确批准的 G0 Managed Files InstallPlan。 */
@@ -192,8 +191,6 @@ export interface HarnessApplicationOptions {
   repositoryRootResolver?: RepositoryRootResolverPort;
   /** 可选 Cell 启动期可信运行时绑定；嵌入式调用未提供时保持兼容。 */
   codingTaskCellRuntimeBinding?: CodingTaskCellRuntimeBinding;
-  /** 可替换的 Attestation Signer；默认使用官方 sigstore-js。 */
-  executorCompatibilityAttestationSigner?: ExecutorCompatibilityAttestationSignerPort;
   /** 可替换的离线 Attestation Verifier；默认禁止 TUF 和网络。 */
   executorCompatibilityAttestationVerifier?: ExecutorCompatibilityAttestationVerifierPort;
 }
