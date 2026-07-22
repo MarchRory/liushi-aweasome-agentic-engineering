@@ -17,7 +17,8 @@ const contentDigestSchema = z
   .string()
   .regex(CONTENT_DIGEST_PATTERN)
   .transform((value) => value as ContentDigest);
-const authorityIdSchema = z
+/** Authority 标识的严格 Schema。 */
+export const executorCompatibilityReleaseApprovalAuthorityIdSchema = z
   .string()
   .min(EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_AUTHORITY_ID_MIN_LENGTH)
   .max(EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_AUTHORITY_ID_MAX_LENGTH)
@@ -42,7 +43,7 @@ export const executorCompatibilityReleaseApprovalVerificationReceiptSchema = z
     schemaVersion: z.literal(
       EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_VERIFICATION_RECEIPT_SCHEMA_VERSION,
     ),
-    authorityId: authorityIdSchema,
+    authorityId: executorCompatibilityReleaseApprovalAuthorityIdSchema,
     authorityEvidenceId: authorityEvidenceIdSchema,
     authorityEvidenceDigest: contentDigestSchema,
     approvalSubject: z.enum(ExecutorCompatibilityReleaseApprovalSubject),

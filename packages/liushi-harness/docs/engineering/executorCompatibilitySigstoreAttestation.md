@@ -1,6 +1,6 @@
 # Executor Compatibility Sigstore Attestation
 
-**状态：P3b 包内签名链、公共离线验证与 P4c1 严格签名 Artifact Reader/create-only Writer 已实现。** 包内 Sign UseCase 已提供可信 Release Approval Authority、真实 Sigstore DSSE 签名和内容寻址 Signed Attestation Artifact；npm 根与 `HarnessApplication` 只公开调用方显式 Trusted Root 驱动的离线验证，不公开签名或 Authority 注入。P4c1 I/O Adapter 尚未接入 CLI；隔离 Release Host、真实企业审批源 Adapter、Attestation CLI、远端发布和安装选择门仍未实现。
+**状态：P3b 包内签名链、公共离线验证、P4c1 严格签名 Artifact Reader/create-only Writer 与 P4c2a 企业 HTTPS Authority Adapter 已实现。** 包内 Sign UseCase 已提供可信 Release Approval Authority、真实 Sigstore DSSE 签名和内容寻址 Signed Attestation Artifact；npm 根与 `HarnessApplication` 只公开调用方显式 Trusted Root 驱动的离线验证，不公开签名或 Authority 注入。P4c2b 隔离 Release Host、Attestation CLI、真实企业配置接线、远端发布和安装选择门仍未实现。
 
 ## 1. 目标
 

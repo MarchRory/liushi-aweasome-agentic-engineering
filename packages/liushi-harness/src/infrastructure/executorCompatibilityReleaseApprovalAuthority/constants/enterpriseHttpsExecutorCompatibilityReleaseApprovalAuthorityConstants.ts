@@ -1,0 +1,7 @@
+/** Authority 小型 JSON 回执允许的最大字节数。 */
+export const ENTERPRISE_HTTPS_EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_MAX_RESPONSE_BYTES =
+  1024 * 1024;
+
+/** Authority 请求使用的 JSON 媒体类型。 */
+export const ENTERPRISE_HTTPS_EXECUTOR_COMPATIBILITY_RELEASE_APPROVAL_JSON_MEDIA_TYPE =
+  "application/json";

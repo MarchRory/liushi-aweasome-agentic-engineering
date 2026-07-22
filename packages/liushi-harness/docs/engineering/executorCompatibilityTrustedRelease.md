@@ -1,6 +1,10 @@
 # Executor Compatibility Trusted Release
 
-**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile、P4b1-P4b3 的通用 Sigstore Statement、Manifest G6 Draft、包内可信 Release Approval Authority、Signed Manifest Artifact 和公开离线 Verify，以及 P4c1 严格 Artifact Reader/create-only Writer 已实现。** npm 根与 `HarnessApplication` 不暴露签名能力；P4c2 隔离 Release Host、真实企业审批源 Adapter 与 CLI 接线、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
+## P4c2a 状态
+
+P4c2a 已提供包内企业 HTTPS Release Approval Authority Adapter。Adapter 只接受无凭据、无查询参数和无片段的 HTTPS endpoint，在联网前校验 Authority 输入，使用最小 canonical JSON POST，并对 JSON 回执执行严格 UTF-8、Schema、固定 Authority 标识及请求主题/摘要绑定校验；网络、重定向、超时和回执预算异常均 fail closed。P4c2b 的 Release Host、CLI 接线和真实发布流程仍未实现。
+
+**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile、P4b1-P4b3 的通用 Sigstore Statement、Manifest G6 Draft、包内可信 Release Approval Authority、Signed Manifest Artifact 和公开离线 Verify，P4c1 严格 Artifact Reader/create-only Writer，以及 P4c2a 企业 HTTPS Authority Adapter 已实现。** npm 根与 `HarnessApplication` 不暴露签名能力；P4c2b 隔离 Release Host 与 CLI 接线、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
 
 ## 1. 目标与边界
 
@@ -195,8 +199,9 @@ CLI 不提供 `--latest`、`--skip-signature`、`--trust-manifest-root`、通用
 3. `P4b2`：Manifest 独立 G6 Draft 与 Statement Domain。已完成。
 4. `P4b3`：包内可信 Release Approval Authority、Signed Manifest Artifact、Sign/Verify Use Case、公共签名面收缩与显式 Trust Profile 离线验证。已完成。
 5. `P4c1`：严格 canonical Attestation/Manifest Reader、受信输出根约束下的 create-only Writer 与通用不可变文件原语。已完成，但尚未接入 CLI。
-6. `P4c2`：隔离 Release Host、HTTPS 企业 Authority Adapter、受控 CLI 与 Artifact I/O 接线。
-7. `P4d`：Accepted Head Store、Verified Release Selection、InstallPlan v2 与 G0 Apply 迁移。
-8. `P4e`：完整负向集成/E2E，包括 Root 替换、身份替换、Manifest 拼接、重复 Key、长度漂移、旧 Head 回放、分叉、首装非钉住 Digest 和无 G0 写入。
+6. `P4c2a`：包内 HTTPS 企业 Authority Adapter。
+7. `P4c2b`：隔离 Release Host、受控 CLI 与 Artifact I/O 接线。
+8. `P4d`：Accepted Head Store、Verified Release Selection、InstallPlan v2 与 G0 Apply 迁移。
+9. `P4e`：完整负向集成/E2E，包括 Root 替换、身份替换、Manifest 拼接、重复 Key、长度漂移、旧 Head 回放、分叉、首装非钉住 Digest 和无 G0 写入。
 
 每个切片独立提交。P4 全部完成前，不宣称 Production 安装闭环。

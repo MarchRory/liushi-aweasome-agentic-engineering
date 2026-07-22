@@ -39,6 +39,7 @@ describe("composition root", () => {
       "CodexCapabilityProbeAdapter",
       "CodexHookAdapter",
       "CodexInstallProfileProjectorAdapter",
+      "EnterpriseHttpsExecutorCompatibilityReleaseApprovalAuthorityAdapter",
       "ExclusiveFileLockManager",
       "FileActionExecutionLockAdapter",
       "FileActionJournalRepository",
