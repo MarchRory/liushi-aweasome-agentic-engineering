@@ -126,8 +126,20 @@ export interface ExecutorCompatibilityAttestationPredicate {
   readonly g6Approval: ExecutorCompatibilityG6ApprovalBinding;
 }
 
+/** 通用 in-toto Statement v1 的最小只读边界。 */
+export interface ExecutorCompatibilityInTotoStatement {
+  /** in-toto Statement v1 的固定类型 URI。 */
+  readonly _type: typeof IN_TOTO_STATEMENT_V1_TYPE;
+  /** 不可变 Subject 的只读列表。 */
+  readonly subject: readonly ExecutorCompatibilityInTotoSubject[];
+  /** Predicate 的类型 URI。 */
+  readonly predicateType: string;
+  /** 未由通用边界约束的 Predicate 内容。 */
+  readonly predicate: unknown;
+}
+
 /** 交给 Sigstore DSSE 签名的 in-toto Statement v1。 */
-export interface ExecutorCompatibilityAttestationStatement {
+export interface ExecutorCompatibilityAttestationStatement extends ExecutorCompatibilityInTotoStatement {
   /** in-toto Statement v1 的固定类型 URI。 */
   readonly _type: typeof IN_TOTO_STATEMENT_V1_TYPE;
   /** 固定绑定 Publication Bundle 与 npm Tarball 的两个 Subject。 */

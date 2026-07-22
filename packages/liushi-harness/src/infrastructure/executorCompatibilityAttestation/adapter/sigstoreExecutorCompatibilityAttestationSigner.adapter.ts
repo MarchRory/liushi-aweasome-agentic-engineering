@@ -14,7 +14,7 @@ import {
 
 import { defaultSigstoreAttestClient } from "../client/index.js";
 import type { SigstoreAttestClient } from "../contracts/index.js";
-import { serializeExecutorCompatibilityAttestationStatement } from "../serialization/index.js";
+import { serializeExecutorCompatibilityInTotoStatement } from "../serialization/index.js";
 import { validateSigstoreAttestationBundle } from "../validation/index.js";
 
 /** 使用官方 sigstore-js 生成 DSSE Attestation Bundle。 */
@@ -25,7 +25,7 @@ export class SigstoreExecutorCompatibilityAttestationSignerAdapter implements Ex
   public async sign(
     input: SignExecutorCompatibilityAttestationInput,
   ): Promise<Result<ExecutorCompatibilityAttestationSigningResult, HarnessError>> {
-    const payload = serializeExecutorCompatibilityAttestationStatement(input.statement);
+    const payload = serializeExecutorCompatibilityInTotoStatement(input.statement);
     try {
       const signedBundle = await this.client(payload, input.payloadType);
       const validated = validateSigstoreAttestationBundle(

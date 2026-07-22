@@ -21,7 +21,7 @@ import {
   createSigstorePublisherVerificationPolicy,
   extractVerifiedSigstorePublisherIdentity,
 } from "../identity/index.js";
-import { serializeExecutorCompatibilityAttestationStatement } from "../serialization/index.js";
+import { serializeExecutorCompatibilityInTotoStatement } from "../serialization/index.js";
 import { validateSigstoreAttestationBundle } from "../validation/index.js";
 
 /** 使用显式 Trusted Root 且不触发 TUF 或网络的 Sigstore Verifier。 */
@@ -38,7 +38,7 @@ export class SigstoreExecutorCompatibilityAttestationVerifierAdapter implements 
   private verifySynchronously(
     input: VerifyExecutorCompatibilityAttestationInput,
   ): Result<ExecutorCompatibilityAttestationCryptographicVerificationResult, HarnessError> {
-    const payload = serializeExecutorCompatibilityAttestationStatement(input.statement);
+    const payload = serializeExecutorCompatibilityInTotoStatement(input.statement);
     const validatedBundle = validateSigstoreAttestationBundle(
       input.sigstoreBundle,
       payload,

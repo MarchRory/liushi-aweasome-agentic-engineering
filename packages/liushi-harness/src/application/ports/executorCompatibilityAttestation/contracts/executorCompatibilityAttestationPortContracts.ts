@@ -4,7 +4,7 @@ import type {
   ExecutorCompatibilityVerifiedSignerIdentity,
 } from "#application/executorCompatibilityAttestation/index.js";
 import type {
-  ExecutorCompatibilityAttestationStatement,
+  ExecutorCompatibilityInTotoStatement,
   ExecutorCompatibilityPublisherIdentityPolicy,
   IN_TOTO_ATTESTATION_PAYLOAD_TYPE,
 } from "#domain/executorCompatibilityAttestation/index.js";
@@ -14,7 +14,7 @@ export interface SignExecutorCompatibilityAttestationInput {
   /** Sigstore DSSE Envelope 内的固定 Payload Type。 */
   readonly payloadType: typeof IN_TOTO_ATTESTATION_PAYLOAD_TYPE;
   /** 需要由官方 Sigstore 客户端签名的完整 in-toto Statement。 */
-  readonly statement: ExecutorCompatibilityAttestationStatement;
+  readonly statement: ExecutorCompatibilityInTotoStatement;
 }
 
 /** Verifier Port 所需的全部显式离线输入。 */
@@ -24,7 +24,7 @@ export interface VerifyExecutorCompatibilityAttestationInput {
   /** 通过受信通道提供且禁止 Adapter 自动更新的 Trusted Root。 */
   readonly trustedRoot: ExecutorCompatibilityTrustedRootJson;
   /** DSSE Payload 必须逐字节匹配的受信 Statement。 */
-  readonly statement: ExecutorCompatibilityAttestationStatement;
+  readonly statement: ExecutorCompatibilityInTotoStatement;
   /** 证书 Issuer、SAN、OID 与日志阈值的精确策略。 */
   readonly publisherIdentityPolicy: ExecutorCompatibilityPublisherIdentityPolicy;
 }
