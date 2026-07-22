@@ -15,6 +15,8 @@ P3b 把 P3a 已获 Human G6 Approval 的 `ReleaseAttestationDraft` 转换为可�
 
 该能力不会创建 Trusted Release Manifest，不会选择可安装版本，也不会执行 G0 Apply。
 
+P3b 验证的是“证书身份与 Artifact 内已签 Identity Policy 一致”，不是“消费者已经授权该身份”。安装端只有在 P4 使用外部 Trust Profile 钉住 Trusted Root Digest、稳定 Publisher Trust Policy 和 Bootstrap Manifest Digest，并从签名 Release Subject 派生本次 Source Revision 约束后，才能把该回执纳入发布信任判断；禁止把 Artifact 自带 Policy 或 Root 当成自认证信任锚。
+
 ## 2. 复用与自持边界
 
 P3b 固定复用 Node 20 兼容的 Sigstore 组件：

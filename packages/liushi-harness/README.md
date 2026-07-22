@@ -96,6 +96,7 @@
 - [Codex Contract Evidence 投影](./docs/engineering/codexContractEvidenceProjection.md)
 - [Executor Compatibility Store 与 CLI](./docs/engineering/executorCompatibilityStore.md)
 - [Executor Compatibility Sigstore Attestation](./docs/engineering/executorCompatibilitySigstoreAttestation.md)
+- [Executor Compatibility Trusted Release](./docs/engineering/executorCompatibilityTrustedRelease.md)
 - [Worktree Provision 未知状态恢复](./docs/engineering/worktreeProvisionRecovery.md)
 
 ## CLI
@@ -182,3 +183,5 @@ Managed File 的所有权、零写入 dry-run、G0 和后续恢复边界见 [Man
 跨 Codex、Claude Code 与 CatPaw 的精确 Scope、Evidence 和支持声明算法见 [执行器兼容性矩阵](./docs/engineering/executorCompatibilityMatrix.md)。
 
 Human G6 后的真实 DSSE 签名、显式 Trusted Root 离线验证和当前未闭合边界见 [Executor Compatibility Sigstore Attestation](./docs/engineering/executorCompatibilitySigstoreAttestation.md)。
+
+消费者 Trust Profile、独立签名 Manifest、本地防回放与 InstallPlan 来源绑定见 [Executor Compatibility Trusted Release](./docs/engineering/executorCompatibilityTrustedRelease.md)。

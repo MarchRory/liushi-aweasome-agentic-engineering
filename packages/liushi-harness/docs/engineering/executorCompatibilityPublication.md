@@ -1,6 +1,6 @@
 # Executor Compatibility 发布信任链
 
-**状态：技术方案已冻结，P1 确定性 Publication Bundle、P2 create-only CLI 原子文件输出、P3a Release Attestation Domain 协议与 P3b Sigstore Signing/Offline Verification 已实现。当前不会上传、安装、更新 Trusted Release Manifest 或写入 Repository；Attestation CLI 和签名 Artifact Writer 尚未实现。**
+**状态：P1 确定性 Publication Bundle、P2 create-only CLI 原子文件输出、P3a Release Attestation Domain、P3b Sigstore Signing/Offline Verification 与 P4a Manifest/Trust Profile Domain 已实现。当前不会上传、安装、签名或更新 Trusted Release Manifest，也不会写入 Repository；Attestation CLI 和签名 Artifact Writer 尚未实现。**
 
 ## 1. 目标
 
@@ -72,7 +72,9 @@ Trusted Release Manifest 是安装选择器唯一可消费的发布索引。每�
 - Sigstore Bundle Digest 或内容寻址位置。
 - 允许的 Executor Scope 与最低支持等级。
 
-Manifest 不能使用“读取 Store 中最新 Matrix”的语义。未来出现远端自动更新、镜像、委托角色、密钥轮换、回滚和冻结攻击边界时，直接采用 TUF Targets/Snapshot/Timestamp 模型，不在 Harness 内实现一个简化替代品。TUF 的 Target Hash、Length、签名阈值和版本回滚规则见 [The Update Framework Specification](https://theupdateframework.github.io/specification/)。
+Manifest 必须作为独立 DSSE Payload 签名；消费者另行提供的 Trust Profile 必须钉住 Trusted Root Digest、稳定 Publisher Trust Policy、Package/Repository/Target、最低支持等级和 Bootstrap Manifest Digest，并从签名 Release Subject 派生本次 Source Revision 约束。Manifest 不能携带或授权自己的 Root，也不能使用“读取 Store 中最新 Matrix”的语义。
+
+P4 只通过签名 `predecessorManifestDigest` 与本地受信 Head 防止已经接受版本后的回放，不使用 SemVer、文件时间或过期算法判断新鲜度。未来出现远端自动更新、镜像、委托角色和冻结攻击边界时，直接采用 TUF Targets/Snapshot/Timestamp 模型，不在 Harness 内实现一个简化替代品。精确设计见 [Executor Compatibility Trusted Release](./executorCompatibilityTrustedRelease.md)，TUF 的 Target Hash、Length、签名阈值和版本回滚规则见 [The Update Framework Specification](https://theupdateframework.github.io/specification/)。
 
 ## 4. Human Gate
 
@@ -216,14 +218,14 @@ liushi-harness executor compatibility bundle create `
 
 安装选择器收到候选后必须按以下顺序失败关闭：
 
-1. 验证 Trusted Release Manifest 的受信身份与内容完整性。
+1. 使用消费者外部 Trust Profile 和显式 Trusted Root 验证 Manifest DSSE，禁止自认证。
 2. 按精确 Digest 读取 Bundle 和 Attestation，不按文件修改时间或语义版本猜测。
 3. 验证 Sigstore Bundle、证书链、OIDC Issuer、Repository 与 Workflow Identity。
 4. 验证 in-toto Subject 与实际 Bundle/Tarball Digest。
 5. 完整重算 Bundle、Projection、Evidence、Policy 与 Matrix。
 6. 验证 G6 Approval 绑定。
 7. 精确匹配目标 Executor Scope 与最低支持等级。
-8. 生成 InstallPlan，仍由现有 G0 Apply 决定是否写入项目。
+8. 生成绑定完整 Verified Release Selection 的 InstallPlan v2，仍由现有 G0 Apply 决定是否写入项目。
 
 发布信任不能绕过 Project Trust、Hook Definition Trust、G0、G2、G4 或其他业务 Gate。
 
@@ -251,7 +253,7 @@ liushi-harness executor compatibility bundle create `
 - P3b 已覆盖 Subject、Predicate、Approval、Bundle Payload 和 Artifact Digest 漂移时拒绝。
 - P3b 要求调用方显式提供 Trusted Root v0.2，并离线验证证书链、CT、TLog，以及至少一个来自 Rekor Inclusion Promise 或 RFC 3161 TSA 的可验证时间证据。
 - 只信任证书有效性、未固定 Issuer/Repository/Workflow 的配置固定拒绝。
-- 旧版已签名 Manifest 不能覆盖更高受信版本；实现远端更新前不得提供 `latest`。
+- 首装只接受 Trust Profile 钉住的 Bootstrap Manifest；后续只接受当前受信 Head 的签名直接后继，实现远端更新前不得提供 `latest`。
 - 正向最终生成 InstallPlan，但不会自动执行 G0 Apply。
 
 ## 10. 交付顺序

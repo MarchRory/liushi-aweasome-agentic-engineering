@@ -93,7 +93,10 @@ function verifyEsmImport(consumerRoot) {
     const value = pkg.CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION;
     if (typeof value !== "string") throw new Error("ESM export missing");
     const attestationExports = assertAttestationExports(pkg);
-    process.stdout.write(JSON.stringify({ manifestSchemaVersion: value, attestationExports }));
+    const trustedReleaseExports = assertTrustedReleaseExports(pkg);
+    process.stdout.write(
+      JSON.stringify({ manifestSchemaVersion: value, attestationExports, trustedReleaseExports }),
+    );
 
     function assertAttestationExports(module) {
       const names = [
@@ -103,6 +106,20 @@ function verifyEsmImport(consumerRoot) {
       ];
       for (const name of names) {
         if (typeof module[name] !== "function") throw new Error(\`ESM export missing: \${name}\`);
+      }
+      return names.length;
+    }
+
+    function assertTrustedReleaseExports(module) {
+      const names = [
+        "createExecutorCompatibilityReleaseManifest",
+        "createExecutorCompatibilityReleaseTrustProfile",
+        "deriveExecutorCompatibilityPublisherIdentityPolicy",
+      ];
+      for (const name of names) {
+        if (typeof module[name] !== "function") {
+          throw new Error(\`ESM trusted release export missing: \${name}\`);
+        }
       }
       return names.length;
     }
@@ -120,7 +137,10 @@ function verifyCjsRequire(consumerRoot) {
     const value = pkg.CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION;
     if (typeof value !== "string") throw new Error("CJS export missing");
     const attestationExports = assertAttestationExports(pkg);
-    process.stdout.write(JSON.stringify({ manifestSchemaVersion: value, attestationExports }));
+    const trustedReleaseExports = assertTrustedReleaseExports(pkg);
+    process.stdout.write(
+      JSON.stringify({ manifestSchemaVersion: value, attestationExports, trustedReleaseExports }),
+    );
 
     function assertAttestationExports(module) {
       const names = [
@@ -130,6 +150,20 @@ function verifyCjsRequire(consumerRoot) {
       ];
       for (const name of names) {
         if (typeof module[name] !== "function") throw new Error(\`CJS export missing: \${name}\`);
+      }
+      return names.length;
+    }
+
+    function assertTrustedReleaseExports(module) {
+      const names = [
+        "createExecutorCompatibilityReleaseManifest",
+        "createExecutorCompatibilityReleaseTrustProfile",
+        "deriveExecutorCompatibilityPublisherIdentityPolicy",
+      ];
+      for (const name of names) {
+        if (typeof module[name] !== "function") {
+          throw new Error(\`CJS trusted release export missing: \${name}\`);
+        }
       }
       return names.length;
     }

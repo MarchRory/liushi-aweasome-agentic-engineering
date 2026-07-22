@@ -71,5 +71,6 @@ Status: Implementation-aware Architecture Baseline
 - [Codex Contract Evidence 投影](./engineering/codexContractEvidenceProjection.md)
 - [Executor Compatibility 发布信任链](./engineering/executorCompatibilityPublication.md)
 - [Executor Compatibility Sigstore Attestation](./engineering/executorCompatibilitySigstoreAttestation.md)
+- [Executor Compatibility Trusted Release](./engineering/executorCompatibilityTrustedRelease.md)
 - [Executor Compatibility Store 与 CLI](./engineering/executorCompatibilityStore.md)
 - [Managed File 安装协议](./engineering/managedFileInstallation.md)

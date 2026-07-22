@@ -5,6 +5,8 @@ export * from "./evidence/index.js";
 export * from "./executorCompatibility/index.js";
 export * from "./executorCompatibilityAttestation/index.js";
 export * from "./executorCompatibilityPublication/index.js";
+export * from "./executorCompatibilityReleaseManifest/index.js";
+export * from "./executorCompatibilityReleaseTrust/index.js";
 export * from "./gate/index.js";
 export * from "./policy/index.js";
 export * from "./projectDiscovery/index.js";
