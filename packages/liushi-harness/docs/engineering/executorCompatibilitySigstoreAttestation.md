@@ -1,6 +1,6 @@
 # Executor Compatibility Sigstore Attestation
 
-**状态：P3b 包内签名链与公共离线验证已实现。** 包内 Sign UseCase 已提供可信 Release Approval Authority、真实 Sigstore DSSE 签名和内容寻址 Signed Attestation Artifact；npm 根与 `HarnessApplication` 只公开调用方显式 Trusted Root 驱动的离线验证，不公开签名或 Authority 注入。隔离 Release Host、真实企业审批源 Adapter、Attestation CLI、签名 Artifact Writer、远端发布和安装选择门仍未实现。
+**状态：P3b 包内签名链、公共离线验证与 P4c1 严格签名 Artifact Reader/create-only Writer 已实现。** 包内 Sign UseCase 已提供可信 Release Approval Authority、真实 Sigstore DSSE 签名和内容寻址 Signed Attestation Artifact；npm 根与 `HarnessApplication` 只公开调用方显式 Trusted Root 驱动的离线验证，不公开签名或 Authority 注入。P4c1 I/O Adapter 尚未接入 CLI；隔离 Release Host、真实企业审批源 Adapter、Attestation CLI、远端发布和安装选择门仍未实现。
 
 ## 1. 目标
 
@@ -128,8 +128,8 @@ CLI 稳定映射中，签名失败属于暂不可用，验证失败属于冲突�
 
 P4c-P4e 继续实现前必须确认：
 
-- Signed Attestation Artifact 的 create-only Writer 与持久化恢复语义。
-- Trusted Release Manifest 的 Reader/Writer、Target 和回滚保护。
+- P4c1 已提供的 Signed Attestation/Manifest Reader 与 create-only Writer 如何接入隔离 Host，并保持受信输出根只能由 Host 配置。
+- Trusted Release Manifest 的 Target、Accepted Head 和回滚保护。
 - 隔离 Release Host 如何把企业审批 Store/Wiki/Ticket 系统适配为只读 Authority，且不允许调用方记录回流为可信源或替换发布凭据。
 - `attestation create` 与 `release verify` CLI 的 G6、身份和输出边界。
 - 安装选择器如何按精确 Digest 读取 Manifest、Bundle、Attestation 和 Tarball。

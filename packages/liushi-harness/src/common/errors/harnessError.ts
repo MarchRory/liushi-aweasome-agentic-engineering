@@ -56,6 +56,8 @@ export enum HarnessErrorCode {
   ExecutorCompatibilityCommitOutcomeUnknown = "executor_compatibility_commit_outcome_unknown",
   /** Executor Compatibility 发布文件已开始提交但耐久结果未知，禁止自动重试。 */
   ExecutorCompatibilityPublicationCommitOutcomeUnknown = "executor_compatibility_publication_commit_outcome_unknown",
+  /** Release Artifact 发布后的 root 或耐久结果未知，必须停止自动重试。 */
+  ExecutorCompatibilityReleaseArtifactCommitOutcomeUnknown = "executor_compatibility_release_artifact_commit_outcome_unknown",
   /** Sigstore 无法为已获 G6 批准的 Executor Compatibility 声明生成签名。 */
   ExecutorCompatibilityAttestationSigningFailed = "executor_compatibility_attestation_signing_failed",
   /** Sigstore Bundle、Trusted Root 或发布者身份无法通过关闭式验证。 */

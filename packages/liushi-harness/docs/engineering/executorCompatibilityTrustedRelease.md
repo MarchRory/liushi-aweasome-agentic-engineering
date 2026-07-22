@@ -1,6 +1,6 @@
 # Executor Compatibility Trusted Release
 
-**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile 与 P4b1-P4b3 的通用 Sigstore Statement、Manifest G6 Draft、包内可信 Release Approval Authority、Signed Manifest Artifact 和公开离线 Verify 已实现。** npm 根与 `HarnessApplication` 不暴露签名能力；隔离 Release Host、真实企业审批源 Adapter、Artifact Reader/Writer、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
+**状态：P4 技术方案已冻结，P4a Release Manifest/Consumer Trust Profile、P4b1-P4b3 的通用 Sigstore Statement、Manifest G6 Draft、包内可信 Release Approval Authority、Signed Manifest Artifact 和公开离线 Verify，以及 P4c1 严格 Artifact Reader/create-only Writer 已实现。** npm 根与 `HarnessApplication` 不暴露签名能力；P4c2 隔离 Release Host、真实企业审批源 Adapter 与 CLI 接线、Accepted Head、Offline Selection 和 InstallPlan v2 尚未实现。P4 不实现远端自动更新、`latest`、时间失效或完整 TUF Repository。
 
 ## 1. 目标与边界
 
@@ -123,7 +123,7 @@ Manifest Factory 必须关闭式保证：
 2. Package、Bundle、Matrix、Candidate、Identity、Scope 和 Support Level 与 P3b Artifact 内的已复验 Draft 精确一致。
 3. Application 必须把 P3b 完整性校验结果作为外部 Binding 传入；Signed Attestation Artifact、Statement 和 Sigstore Bundle 的三项摘要必须与该 Binding 精确一致，不能使用 Manifest 自带声明替代。
 4. 每个 URI 都是无凭据、Query、Fragment 和尾斜杠的规范 HTTPS 资源 URI。
-5. 每个 `byteLength` 是正安全整数；P4c Reader 必须按摘要和精确长度读取真实字节，不设置任意企业文件大小预算。
+5. 每个 `byteLength` 是正安全整数；P4c1 Reader 已按摘要和精确长度读取真实字节，不设置任意企业文件大小预算。
 6. `manifestDigest` 排除自身后计算；未知字段、重复 Key、摘要漂移和交叉 Artifact 拼接全部拒绝，即使攻击者重算 `manifestDigest` 也不能绕过外部 Binding。
 
 Manifest 不能只依赖 P3b Release Attestation 的签名。Manifest 自身作为新的 in-toto Statement Subject，由独立 DSSE 签名；Predicate 绑定完整 Manifest、Publisher Identity Policy 和针对 `manifestDigest` 的 G6 Approval Binding。Manifest Artifact 继续采用内容寻址和 create-only Writer。
@@ -194,8 +194,9 @@ CLI 不提供 `--latest`、`--skip-signature`、`--trust-manifest-root`、通用
 2. `P4b1`：通用 in-toto Sigstore Statement 边界。已完成。
 3. `P4b2`：Manifest 独立 G6 Draft 与 Statement Domain。已完成。
 4. `P4b3`：包内可信 Release Approval Authority、Signed Manifest Artifact、Sign/Verify Use Case、公共签名面收缩与显式 Trust Profile 离线验证。已完成。
-5. `P4c`：隔离 Release Host、真实企业 Authority Adapter、create-only Attestation/Manifest Writer、严格文件 Reader 和受控 CLI。
-6. `P4d`：Accepted Head Store、Verified Release Selection、InstallPlan v2 与 G0 Apply 迁移。
-7. `P4e`：完整负向集成/E2E，包括 Root 替换、身份替换、Manifest 拼接、重复 Key、长度漂移、旧 Head 回放、分叉、首装非钉住 Digest 和无 G0 写入。
+5. `P4c1`：严格 canonical Attestation/Manifest Reader、受信输出根约束下的 create-only Writer 与通用不可变文件原语。已完成，但尚未接入 CLI。
+6. `P4c2`：隔离 Release Host、HTTPS 企业 Authority Adapter、受控 CLI 与 Artifact I/O 接线。
+7. `P4d`：Accepted Head Store、Verified Release Selection、InstallPlan v2 与 G0 Apply 迁移。
+8. `P4e`：完整负向集成/E2E，包括 Root 替换、身份替换、Manifest 拼接、重复 Key、长度漂移、旧 Head 回放、分叉、首装非钉住 Digest 和无 G0 写入。
 
 每个切片独立提交。P4 全部完成前，不宣称 Production 安装闭环。

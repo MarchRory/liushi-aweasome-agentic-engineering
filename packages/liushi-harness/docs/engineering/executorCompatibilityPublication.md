@@ -195,7 +195,7 @@ executor compatibility attestation create
 executor compatibility release verify
 ```
 
-`bundle create` 已实现。它按精确 Matrix Digest 重建 Bundle，并以 create-only 语义写入绝对输出路径；重跑相同输入返回 `idempotent_reuse`，既有不同文件保持不变并返回 Conflict。P3b 已提供包内签名链和公共显式 Trusted Root 离线验证，但 npm 根与 Composition Root 不暴露签名能力；`attestation create` 与 `release verify` CLI 尚未实现。后续隔离 Release Host 必须从真实企业 Authority 取得精确 G6 Approval 后才允许写入 Attestation/Manifest；`release verify` 默认复用现有离线 Verifier，并在 Presentation 层补齐文件读取、输出和恢复语义。
+`bundle create` 已实现。它按精确 Matrix Digest 重建 Bundle，并以 create-only 语义写入绝对输出路径；重跑相同输入返回 `idempotent_reuse`，既有不同文件保持不变并返回 Conflict。P3b 已提供包内签名链和公共显式 Trusted Root 离线验证，但 npm 根与 Composition Root 不暴露签名能力；P4c1 已新增未接线的严格 Attestation/Manifest Reader 与 create-only Writer，Writer 的受信输出根由构造期固定，调用请求不能覆盖。`attestation create` 与 `release verify` CLI 尚未实现。后续隔离 Release Host 必须从真实企业 Authority 取得精确 G6 Approval 后才允许写入 Attestation/Manifest；`release verify` 默认复用现有离线 Verifier，并在 Presentation 层补齐文件读取、输出和恢复语义。
 
 可复现实例：
 
