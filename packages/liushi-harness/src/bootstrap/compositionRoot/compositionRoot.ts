@@ -70,6 +70,7 @@ import {
   createCodingTaskCellApplication,
   createCodingTaskAuthorizationResolver,
   createExecutorCompatibilityApplication,
+  createExecutorCompatibilityAttestationApplication,
   createManagedFileInstallationApplication,
   createUnresolvedProvisionGuard,
   createVerificationExecutor,
@@ -256,6 +257,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       new CodexCapabilityProbeAdapter(commandRunner),
     ),
     ...createExecutorCompatibilityApplication(options.storeRoot, storeDependencies),
+    ...createExecutorCompatibilityAttestationApplication(options, digest),
     // prettier-ignore
     ...createManagedFileInstallationApplication(options, { digest, clock, lockManager, parentDirectoryDurability, repositoryLock }),
     getActionJournal: new GetActionJournalUseCase(actionJournalRepository),

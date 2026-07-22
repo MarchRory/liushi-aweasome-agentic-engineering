@@ -1,6 +1,6 @@
 # Executor Compatibility 发布信任链
 
-**状态：技术方案已冻结，P1 确定性 Publication Bundle、P2 create-only CLI 原子文件输出与 P3a Release Attestation Domain 协议已实现。当前没有 Sigstore Adapter，不执行真实签名、上传、安装、Trusted Release Manifest 更新或任何 Repository 写入。**
+**状态：技术方案已冻结，P1 确定性 Publication Bundle、P2 create-only CLI 原子文件输出、P3a Release Attestation Domain 协议与 P3b Sigstore Signing/Offline Verification 已实现。当前不会上传、安装、更新 Trusted Release Manifest 或写入 Repository；Attestation CLI 和签名 Artifact Writer 尚未实现。**
 
 ## 1. 目标
 
@@ -170,7 +170,7 @@ Query 与 Bundle Create 应复用一个 Application 内部的“受信 Compatibi
 
 `PublishExecutorCompatibilityPublicationBundleUseCase` 复用同一个 Bundle Creator，并只在创建成功后调用 `ExecutorCompatibilityPublicationWriterPort`。输出是带 Schema Version、Disposition、路径、Bundle/Matrix/Tarball Digest 和字节数的窄回执，不把两项 Projection 与十二条 Evidence 刷到 stdout。
 
-P3a 当前只交付 Domain 的 Candidate、Identity Policy、G6 Binding、in-toto Statement 与完整 Draft Factory。P3b 的 Application Signing/Verification Port、Sigstore Adapter、签名 Artifact Writer 和 CLI 尚未实现；任何调用方都不能把未签名 Draft 当成受信发布声明。
+P3b 已交付 Application Signing/Verification Port、真实 Sigstore Adapter、内容寻址 Signed Attestation Artifact 和窄化验证回执。Signing Use Case 会在任何联网调用前重建完整 G6 Draft；Verification Use Case 会重算 Artifact、Statement、Bundle 与 Trusted Root 摘要，并要求离线密码学验证返回的发布者身份与 P3a Policy 完全一致。签名 Artifact Writer、CLI、Manifest 和安装选择门仍未实现；任何调用方都不能把内存中的验证成功直接当成已发布或可安装声明。
 
 ### 7.2 Infrastructure
 
@@ -193,7 +193,7 @@ executor compatibility attestation create
 executor compatibility release verify
 ```
 
-`bundle create` 已实现。它按精确 Matrix Digest 重建 Bundle，并以 create-only 语义写入绝对输出路径；重跑相同输入返回 `idempotent_reuse`，既有不同文件保持不变并返回 Conflict。P3a 已提供内存中的未签名 Draft 协议，但 `attestation create` 与 `release verify` CLI 尚未实现；Attestation 与 Release Manifest 写入必须要求精确 G6 Approval。未来 `release verify` 默认离线验证 Bundle、Statement、审批记录、Sigstore 验证材料和固定身份 Policy；需要网络透明日志查询时由显式选项开启。
+`bundle create` 已实现。它按精确 Matrix Digest 重建 Bundle，并以 create-only 语义写入绝对输出路径；重跑相同输入返回 `idempotent_reuse`，既有不同文件保持不变并返回 Conflict。P3b 已提供 Library 与 Composition Root 级签名和显式 Trusted Root 离线验证，但 `attestation create` 与 `release verify` CLI 尚未实现；Attestation 与 Release Manifest 写入必须要求精确 G6 Approval。未来 `release verify` 默认复用现有离线 Verifier，并在 Presentation 层补齐文件读取、输出和恢复语义。
 
 可复现实例：
 
@@ -247,10 +247,10 @@ liushi-harness executor compatibility bundle create `
 - P3a 已覆盖 Candidate 对 Bundle、Matrix、Tarball、Identity Policy 与发布目标的精确 Digest 绑定。
 - P3a 已覆盖 G6、R4、Review Checkpoint、Human Actor、Approved Decision、审批时间顺序和两份审批摘要重算。
 - P3a 已覆盖 in-toto 双 Subject、Predicate、Identity Policy、G6 Binding、未知字段和旧 Candidate 漂移拒绝。
-- 有效 Sigstore Bundle 但身份不匹配时拒绝。
-- 身份匹配但 Subject Digest、Predicate 或 Approval 漂移时拒绝。
-- 只信任证书有效性、未固定 Issuer/Repository/Workflow 的配置必须拒绝。
-- 离线验证材料缺失或无法证明透明日志状态时按 Policy 失败关闭。
+- P3b 已覆盖有效 Sigstore Bundle 但 Workflow SAN、Issuer 或自定义 OID 身份不匹配时拒绝。
+- P3b 已覆盖 Subject、Predicate、Approval、Bundle Payload 和 Artifact Digest 漂移时拒绝。
+- P3b 要求调用方显式提供 Trusted Root v0.2，并离线验证证书链、CT、TLog，以及至少一个来自 Rekor Inclusion Promise 或 RFC 3161 TSA 的可验证时间证据。
+- 只信任证书有效性、未固定 Issuer/Repository/Workflow 的配置固定拒绝。
 - 旧版已签名 Manifest 不能覆盖更高受信版本；实现远端更新前不得提供 `latest`。
 - 正向最终生成 InstallPlan，但不会自动执行 G0 Apply。
 
@@ -259,9 +259,9 @@ liushi-harness executor compatibility bundle create `
 1. `P1`：Domain Bundle、可信记录重建服务、Bundle Create Use Case 与完整测试。已完成。
 2. `P2`：Bundle CLI、原子文件输出与可复现实例。已完成。
 3. `P3a`：in-toto Statement、固定发布者 Identity Policy、Release Candidate 与 G6 Approval 绑定。已完成。
-4. `P3b`：Node 20 兼容的 Sigstore Signing/Verification Port、显式 Trusted Root 离线验证与签名 Artifact。
+4. `P3b`：Node 20 兼容的 Sigstore Signing/Verification Port、显式 Trusted Root 离线验证与签名 Artifact。已完成。
 5. `P4`：Trusted Release Manifest、离线 Verify 和安装选择门。
 6. `P5`：在 GitHub Actions/npm Provenance 中生成真实 Attestation，执行干净 Consumer E2E。
 7. `P6`：Codex 发布链闭合后，为 Claude-compatible/CatPaw 分别产生独立 Scope、Evidence 和发布记录。
 
-每个切片独立提交。P1/P2/P3a 不引入私钥或网络副作用；P3b 之后的真实签名、发布和信任根变更必须由 Human 显式批准。
+每个切片独立提交。P1/P2/P3a 不引入私钥或网络副作用；P3b 的默认 Signer 可能访问 OIDC、Fulcio 和 Rekor，只能在完整 G6 复验后由受信 Release Workflow 显式调用。默认路径使用 Rekor v1 Inclusion Promise，不主动访问 TSA；自定义 Signer 可以提供额外 RFC 3161 时间戳。发布、Manifest 和信任根变更仍必须由 Human 显式批准。实现细节见 [Executor Compatibility Sigstore Attestation](./executorCompatibilitySigstoreAttestation.md)。

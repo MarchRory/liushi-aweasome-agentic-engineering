@@ -46,7 +46,7 @@
 - `init --target codex --root <path> --workspace <id> --repository <id> --dry-run` 可生成并持久化 G0 InstallPlan；命令拒绝 Runtime Store 与 Repository 的直接或符号链接重叠，不写 `.codex/hooks.json` 或 Manifest，Existing Human File 和未经 Runtime Revision 证明的 Manifest Claim 均保持 `Conflict`。
 - `init --apply` 已实现 G0 Human 明确 Apply：在 Repository Lock 内验证精确 InstallPlan 和同一 Approval，完成全量 preflight/preimage 后先持久化 Installation Revision Intent，再逐文件、Manifest 原子写入并记录 checkpoint，后置验证后提交 `Committed` Revision。
 - Executor Compatibility Matrix Domain 已实现 Adapter/Distribution 分离、精确版本/Host/OS/模型/权限/配置 Scope、分级 Evidence、可复核 Locator、固定支持 Policy 与确定性 Digest 编译。Codex Host Projector 会关闭式校验 Prepare v5、Activation Plan v2 和 Host Result v2，并生成不含绝对路径及原始宿主标识的 7 条 Evidence；Application 再通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 与窄端口 doubles 运行固定五 Case v2 Contract Suite，生成独立 Contract Artifact 与 5 条 ContractTest。Compile 与 Query 共用 exact-schema Projection Set Verifier，在任何持久化前校验父 Host Digest、精确 Scope 与统一观察锚点；Compile 只持久化复验返回值，并按 Host、Contract 顺序返回 `evidencePersistences`。真实维护者验收现已证明 Codex CLI `0.144.5`、Windows x64、Interactive TUI 的精确 Scope 可以编译为 `compatible`，且 Query 重算通过；该本机记录尚未形成受信发布矩阵。没有 ProductionE2e、`modelId`、`permissionMode` 和 Tarball Attestation 时绝不声明 Production。详见 [Codex Host v2 验证记录](./docs/engineering/codexHostValidationRecord.md)。
-- `createExecutorCompatibilityPublicationBundle` 会按调用方提供的精确 `matrixDigest` 复用同一 Projection Set Verifier，重建当前受信 Policy、双 Artifact、12 条 Evidence 与 Matrix，并生成绑定 npm Tarball Digest、包版本、源码仓库和完整 Revision 的确定性 Bundle。`publishExecutorCompatibilityPublicationBundle` 与公开 `bundle create` CLI 复用同一 Creator，以规范 JSON、create-only 原子链接和父目录耐久化写入绝对输出路径；相同字节可幂等复用，既有不同文件绝不覆盖。P3a 已新增固定 OIDC/SAN/Repository/Revision 的 Publisher Identity Policy、不可变 Release Candidate、真实 Human G6 Approval 摘要复验和 in-toto Statement Draft；当前仍不联网、不签名，没有 Sigstore Bundle、Trusted Release Manifest 和安装信任门时不能驱动安装。
+- `createExecutorCompatibilityPublicationBundle` 会按调用方提供的精确 `matrixDigest` 复用同一 Projection Set Verifier，重建当前受信 Policy、双 Artifact、12 条 Evidence 与 Matrix，并生成绑定 npm Tarball Digest、包版本、源码仓库和完整 Revision 的确定性 Bundle。`publishExecutorCompatibilityPublicationBundle` 与公开 `bundle create` CLI 复用同一 Creator，以规范 JSON、create-only 原子链接和父目录耐久化写入绝对输出路径；相同字节可幂等复用，既有不同文件绝不覆盖。P3a 已新增固定 OIDC/SAN/Repository/Revision 的 Publisher Identity Policy、不可变 Release Candidate、真实 Human G6 Approval 摘要复验和 in-toto Statement Draft；P3b 又提供真实 Sigstore DSSE 签名、内容寻址 Signed Attestation Artifact，以及调用方显式 Trusted Root 驱动的纯离线验证。默认 Signer 只在完整 G6 Draft 重建成功后调用；Verifier 会关闭式验证精确 Payload、证书链、CT/TLog、至少一个可验证时间证据（Rekor Inclusion Promise 或 RFC 3161 TSA）、Issuer、SAN 和 Policy 声明的全部 OID。Attestation CLI、签名 Artifact Writer、Trusted Release Manifest 和安装信任门仍未实现。
 - Runtime Store 的 `Committed` Installation Revision 是所有权证据，Repository Manifest 自声明不可信；相同已提交 Approval 返回 `Reused`，物理现场已完成但 checkpoint 未闭合时只补齐元数据。Partial、Mixed、Unknown 和漂移状态必须 Human 介入，不盲目重试或自动回滚。
 - Rollback、Uninstall 和 CLI recovery 当前未实现；`actor-id` 只是审计身份声明，不是认证机制，企业使用须由外部受信任包装器或身份系统注入。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
@@ -60,7 +60,7 @@
 - 固定公开项目 Smoke 已从真实 npm Tarball 独立安装启动生产 CLI，在 `unjs/defu@82632b66` 完成预编排单文件 Mutation 的 G1/G4 Gate 协议、受管 Worktree、单一 Checkpoint、离线安装、完整测试、Passed Evidence、PRReadyArtifact 与跨进程幂等复用。该结果不代表 Agent 已能自主理解需求或生成代码。
 - Codex Host Result 已升级为 v2：删除 `productionVerified`，返回 `hostEvidenceVerified=true`、`matrixSupportClaim=not_evaluated`、`verifiedAt`、Prepare/Plan/Probe 摘要和 `verificationEnvironment`。`verify-result` 运行时实际读取 Node 的 platform/arch，并要求与 Prepare Manifest 精确一致后才通过；Host Result 只是受验来源，不自行声明 Matrix 支持等级。2026-07-16 的真实 v2 Host 已经通过结果门并编译出本机 `compatible` Matrix；历史旧版结果仍不能复用，本次本机记录也不能直接当作受信发布矩阵。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、G0 Rollback/Uninstall、Sigstore Signing/Verification Adapter、Attestation CLI、Trusted Release Manifest 与安装信任门、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 G6 只在 Release Attestation Domain 内形成关闭式协议，未接入旧 `SupportedArtifact` Task Aggregate；Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、G0 Rollback/Uninstall、Attestation CLI、签名 Artifact Writer、Trusted Release Manifest 与安装信任门、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、Agent Runtime、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前 G6 与 P3b 签名/验证只通过公开 Library API 和 Composition Root 提供，未接入旧 `SupportedArtifact` Task Aggregate 或持久化 Release Workflow；Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
@@ -95,6 +95,7 @@
 - [Codex Host 兼容性证据投影](./docs/engineering/codexCompatibilityEvidenceProjection.md)
 - [Codex Contract Evidence 投影](./docs/engineering/codexContractEvidenceProjection.md)
 - [Executor Compatibility Store 与 CLI](./docs/engineering/executorCompatibilityStore.md)
+- [Executor Compatibility Sigstore Attestation](./docs/engineering/executorCompatibilitySigstoreAttestation.md)
 - [Worktree Provision 未知状态恢复](./docs/engineering/worktreeProvisionRecovery.md)
 
 ## CLI
@@ -129,7 +130,7 @@ liushi-harness hook probe --executor codex [--executable <path-or-command>] --js
 
 `executor compatibility compile` 只接收三份原始 Host JSON；调用方不能提交 Contract Result 或任意 Passed Evidence。Application 先持久化独立 Host/Contract Projection，再发布 Matrix。成功 JSON 的 `data.evidencePersistences` 是按 Host、Contract 固定排序的二元组；旧字段 `evidencePersistence` 已移除。`query` 只按精确 `matrixDigest` 恢复两种 Artifact、重投影 12 条 Evidence 并重新编译，不选择“最新”记录。合成 Fixture 的 Compatible 结果不是实际 Host 验收或真实版本声明。
 
-`executor compatibility bundle create` 只按精确 Matrix Digest 创建未签名 Bundle。`--output` 必须是绝对路径；输出严格使用 RFC 8785 规范 JSON 和一个末尾换行。相同输入重跑返回 `idempotent_reuse`，目标存在不同字节或不是普通文件时返回 Conflict 并保持既有内容。CLI JSON stdout 只返回窄写入回执，不输出完整 Evidence。它不是 G6 Release，不会上传、签名、更新 Trusted Release Manifest 或触发安装。P3a 的 Release Attestation Draft 目前仅作为公开 Domain API 存在，必须提供精确 Candidate、DecisionRequest 和真实 Human Approval；尚无对应 CLI 或 Sigstore 副作用。
+`executor compatibility bundle create` 只按精确 Matrix Digest 创建未签名 Bundle。`--output` 必须是绝对路径；输出严格使用 RFC 8785 规范 JSON 和一个末尾换行。相同输入重跑返回 `idempotent_reuse`，目标存在不同字节或不是普通文件时返回 Conflict 并保持既有内容。CLI JSON stdout 只返回窄写入回执，不输出完整 Evidence。它不是 G6 Release，不会上传、签名、更新 Trusted Release Manifest 或触发安装。P3a Draft 与 P3b Sign/Verify 当前仅作为公开 Library API 和 Composition Root Use Case 存在；默认 Signer 可能联网，必须由受信 Release Workflow 在精确 Human G6 后显式调用。当前尚无 Attestation CLI、签名文件输出或安装信任副作用。
 
 `rules resolve` 是报告型命令，不扫描或修改项目，也不激活 Candidate Rule。可执行 Bundle 返回 JSON `status=success` 和退出码 `0`；不可执行 Bundle 仍将完整诊断写入 stdout，但返回 JSON `status=blocked` 和退出码 `4`，从进程边界阻断后续流水线。
 
@@ -179,3 +180,5 @@ Agent 文件写入的 Write Set、内容摘要与恢复边界见 [受控文件�
 Managed File 的所有权、零写入 dry-run、G0 和后续恢复边界见 [Managed File 安装协议](./docs/engineering/managedFileInstallation.md)。
 
 跨 Codex、Claude Code 与 CatPaw 的精确 Scope、Evidence 和支持声明算法见 [执行器兼容性矩阵](./docs/engineering/executorCompatibilityMatrix.md)。
+
+Human G6 后的真实 DSSE 签名、显式 Trusted Root 离线验证和当前未闭合边界见 [Executor Compatibility Sigstore Attestation](./docs/engineering/executorCompatibilitySigstoreAttestation.md)。

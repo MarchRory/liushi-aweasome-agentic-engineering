@@ -56,6 +56,10 @@ export enum HarnessErrorCode {
   ExecutorCompatibilityCommitOutcomeUnknown = "executor_compatibility_commit_outcome_unknown",
   /** Executor Compatibility 发布文件已开始提交但耐久结果未知，禁止自动重试。 */
   ExecutorCompatibilityPublicationCommitOutcomeUnknown = "executor_compatibility_publication_commit_outcome_unknown",
+  /** Sigstore 无法为已获 G6 批准的 Executor Compatibility 声明生成签名。 */
+  ExecutorCompatibilityAttestationSigningFailed = "executor_compatibility_attestation_signing_failed",
+  /** Sigstore Bundle、Trusted Root 或发布者身份无法通过关闭式验证。 */
+  ExecutorCompatibilityAttestationVerificationFailed = "executor_compatibility_attestation_verification_failed",
   /** Command Handler 已执行但 Receipt 无法可靠落盘，禁止自动重试。 */
   CommandGatewayCommitOutcomeUnknown = "command_gateway_commit_outcome_unknown",
   /** 请求的 Installation Revision 不存在。 */

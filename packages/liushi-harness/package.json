@@ -83,15 +83,23 @@
     "typecheck:ts6": "tsc6 --noEmit"
   },
   "dependencies": {
+    "@sigstore/bundle": "4.0.0",
+    "@sigstore/core": "3.2.1",
+    "@sigstore/protobuf-specs": "0.5.0",
+    "@sigstore/verify": "3.1.1",
     "canonicalize": "3.0.0",
     "jsonc-parser": "3.3.1",
     "minimatch": "10.2.5",
+    "sigstore": "4.1.1",
     "ulid": "3.0.2",
     "write-file-atomic": "7.0.1",
     "yaml": "2.9.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@types/write-file-atomic": "4.0.3"
+    "@sigstore/mock": "0.12.1",
+    "@sigstore/sign": "4.1.1",
+    "@types/write-file-atomic": "4.0.3",
+    "nock": "13.5.5"
   }
 }

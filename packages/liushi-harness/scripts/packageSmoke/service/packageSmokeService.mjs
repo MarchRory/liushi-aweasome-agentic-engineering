@@ -92,7 +92,20 @@ function verifyEsmImport(consumerRoot) {
     const pkg = await import(${JSON.stringify(PACKAGE_NAME)});
     const value = pkg.CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION;
     if (typeof value !== "string") throw new Error("ESM export missing");
-    process.stdout.write(JSON.stringify({ manifestSchemaVersion: value }));
+    const attestationExports = assertAttestationExports(pkg);
+    process.stdout.write(JSON.stringify({ manifestSchemaVersion: value, attestationExports }));
+
+    function assertAttestationExports(module) {
+      const names = [
+        "SignExecutorCompatibilityReleaseAttestationUseCase",
+        "VerifyExecutorCompatibilityReleaseAttestationUseCase",
+        "createHarnessApplication",
+      ];
+      for (const name of names) {
+        if (typeof module[name] !== "function") throw new Error(\`ESM export missing: \${name}\`);
+      }
+      return names.length;
+    }
   `;
   return JSON.parse(
     runProcess(process.execPath, ["--input-type=module", "--eval", script], {
@@ -106,7 +119,20 @@ function verifyCjsRequire(consumerRoot) {
     const pkg = require(${JSON.stringify(PACKAGE_NAME)});
     const value = pkg.CODING_TASK_CELL_MANIFEST_SCHEMA_VERSION;
     if (typeof value !== "string") throw new Error("CJS export missing");
-    process.stdout.write(JSON.stringify({ manifestSchemaVersion: value }));
+    const attestationExports = assertAttestationExports(pkg);
+    process.stdout.write(JSON.stringify({ manifestSchemaVersion: value, attestationExports }));
+
+    function assertAttestationExports(module) {
+      const names = [
+        "SignExecutorCompatibilityReleaseAttestationUseCase",
+        "VerifyExecutorCompatibilityReleaseAttestationUseCase",
+        "createHarnessApplication",
+      ];
+      for (const name of names) {
+        if (typeof module[name] !== "function") throw new Error(\`CJS export missing: \${name}\`);
+      }
+      return names.length;
+    }
   `;
   return JSON.parse(runProcess(process.execPath, ["--eval", script], { cwd: consumerRoot }).stdout);
 }

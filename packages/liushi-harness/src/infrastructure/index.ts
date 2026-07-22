@@ -20,4 +20,5 @@ export * from "./installationRevisionStore/index.js";
 export * from "./managedFileMutation/index.js";
 export * from "./executorCompatibilityProjectionVerifier/index.js";
 export * from "./executorCompatibilityPublicationWriter/index.js";
+export * from "./executorCompatibilityAttestation/index.js";
 export * from "./hookInputReader/index.js";

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ArchitectureLayer,
+  collectModuleSpecifiers,
   createSourceGraph,
   formatRelative,
   getLayer,
@@ -185,6 +186,23 @@ describe("architecture dependency direction", () => {
       );
 
     expect(verifierFiles.length).toBeGreaterThan(0);
+    expect(violations).toEqual([]);
+  });
+
+  it("Sigstore SDK 只允许存在于 Attestation 基础设施模块", () => {
+    const graph = createSourceGraph();
+    const modulePrefix = "src/infrastructure/executorCompatibilityAttestation/";
+    const violations = graph.sourceFiles
+      .filter((sourceFile) => {
+        const relative = formatRelative(graph, sourceFile.fileName).replaceAll("\\", "/");
+        return !relative.startsWith(modulePrefix);
+      })
+      .flatMap((sourceFile) =>
+        collectModuleSpecifiers(sourceFile)
+          .filter((specifier) => specifier === "sigstore" || specifier.startsWith("@sigstore/"))
+          .map((specifier) => `${formatRelative(graph, sourceFile.fileName)} imports ${specifier}`),
+      );
+
     expect(violations).toEqual([]);
   });
 

@@ -2,7 +2,11 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import type { RepositoryRootResolverPort } from "../../src/application/ports/index.js";
+import type {
+  ExecutorCompatibilityAttestationSignerPort,
+  ExecutorCompatibilityAttestationVerifierPort,
+  RepositoryRootResolverPort,
+} from "../../src/application/ports/index.js";
 import { createHarnessApplication } from "../../src/bootstrap/index.js";
 import { HarnessErrorCode, ResultStatus, success } from "../../src/common/index.js";
 
@@ -71,6 +75,8 @@ describe("composition root", () => {
       "NodeWorktreeProvisionerAdapter",
       "Rfc8785Sha256DigestAdapter",
       "SchemaRoutedExecutorCompatibilityProjectionSetVerifierAdapter",
+      "SigstoreExecutorCompatibilityAttestationSignerAdapter",
+      "SigstoreExecutorCompatibilityAttestationVerifierAdapter",
       "StaticRepositoryRootResolverAdapter",
       "StructuredProjectConfigParserAdapter",
       "SystemClock",
@@ -132,5 +138,30 @@ describe("composition root", () => {
     });
 
     expect(application.repositoryRootResolver).toBe(repositoryRootResolver);
+  });
+
+  it("保留调用方注入的 Attestation Signer 与离线 Verifier", () => {
+    const signer: ExecutorCompatibilityAttestationSignerPort = {
+      sign: () => {
+        throw new Error("测试不应调用 Attestation Signer。");
+      },
+    };
+    const verifier: ExecutorCompatibilityAttestationVerifierPort = {
+      verify: () => {
+        throw new Error("测试不应调用 Attestation Verifier。");
+      },
+    };
+    const application = createHarnessApplication({
+      storeRoot: resolve(".tmp", "attestation-composition-root"),
+      executorCompatibilityAttestationSigner: signer,
+      executorCompatibilityAttestationVerifier: verifier,
+    });
+
+    expect(Reflect.get(application.signExecutorCompatibilityReleaseAttestation, "signer")).toBe(
+      signer,
+    );
+    expect(Reflect.get(application.verifyExecutorCompatibilityReleaseAttestation, "verifier")).toBe(
+      verifier,
+    );
   });
 });

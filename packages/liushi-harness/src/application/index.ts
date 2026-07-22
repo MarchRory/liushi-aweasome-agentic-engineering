@@ -2,6 +2,7 @@ export * from "./command/index.js";
 export * from "./commandGateway/index.js";
 export * from "./executorHooks/index.js";
 export * from "./executorCompatibilityRecord/index.js";
+export * from "./executorCompatibilityAttestation/index.js";
 export * from "./hooks/index.js";
 export * from "./implementationCommand/index.js";
 export * from "./implementationSubmission/index.js";

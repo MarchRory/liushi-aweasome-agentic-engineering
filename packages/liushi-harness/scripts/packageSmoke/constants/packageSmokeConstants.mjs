@@ -9,6 +9,7 @@ export const REQUIRED_PACKAGE_FILES = [
   "LICENSE",
   "README.md",
   "THIRD_PARTY_NOTICES.md",
+  "thirdPartyLicenses/sigstoreLicense.txt",
   "dist/index.js",
   "dist/index.cjs",
   "dist/index.d.ts",
