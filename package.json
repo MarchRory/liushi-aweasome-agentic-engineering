@@ -25,22 +25,22 @@
     "version-packages": "changeset version"
   },
   "devDependencies": {
-    "@changesets/cli": "2.31.0",
-    "@commitlint/cli": "20.5.3",
-    "@commitlint/config-conventional": "20.5.3",
+    "@changesets/cli": "2.31.1",
+    "@commitlint/cli": "21.2.1",
+    "@commitlint/config-conventional": "21.2.0",
     "@eslint/js": "10.0.1",
     "@types/node": "26.1.1",
-    "dependency-cruiser": "17.4.3",
-    "eslint": "10.7.0",
+    "dependency-cruiser": "18.1.0",
+    "eslint": "10.8.0",
     "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-jsdoc": "62.9.0",
+    "eslint-plugin-jsdoc": "63.2.2",
     "husky": "9.1.7",
-    "lint-staged": "16.4.0",
-    "markdownlint-cli2": "0.20.0",
-    "prettier": "3.9.5",
+    "lint-staged": "17.2.0",
+    "markdownlint-cli2": "0.23.1",
+    "prettier": "3.9.6",
     "tsup": "8.5.1",
-    "typescript": "6.0.3",
-    "typescript-eslint": "8.63.0",
+    "typescript": "7.0.2",
+    "typescript-eslint": "8.65.0",
     "vitest": "4.1.10"
   }
 }
