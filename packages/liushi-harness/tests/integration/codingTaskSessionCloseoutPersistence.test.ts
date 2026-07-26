@@ -18,6 +18,10 @@ import {
   digestOf,
   initialState,
   legacyV1PersistedState,
+  legacyV2CheckpointBoundState,
+  legacyV2ClosingState,
+  legacyV2PersistedState,
+  legacyV2TerminalState,
   locator,
   outcomeUnknownCheckpointBoundState,
   persistedState,
@@ -284,6 +288,140 @@ describe("File CodingTaskSession Closeout Store", () => {
     });
   });
 
+  it("旧 v2 完整 Coverage Manifest 只返回 PreconditionNotMet 且保持原字节", async () => {
+    await withTempRoot(async (root) => {
+      const store = createStore(root);
+      const initial = initialState();
+      unwrap(await store.create(initial));
+      const legacy = legacyV2PersistedState(initial, snapshot());
+      const bytes = `${canonicalizeJson(legacy)}\n`;
+      await writeFile(closeoutStateFile(root), bytes, "utf8");
+
+      const result = await store.load(locator);
+      expect(result).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.PreconditionNotMet },
+      });
+      if (result.status === ResultStatus.Failure) expect(result.error.message).toContain("v2");
+      expect(await readFile(closeoutStateFile(root), "utf8")).toBe(bytes);
+    });
+  });
+
+  it.each([
+    ["Closing", legacyV2ClosingState],
+    ["CheckpointBound", legacyV2CheckpointBoundState],
+    ["Terminal", legacyV2TerminalState],
+  ] as const)("完整旧 v2 %s 阶段保持原字节并要求显式迁移", async (_stage, createLegacy) => {
+    await withTempRoot(async (root) => {
+      const store = createStore(root);
+      const initial = initialState();
+      unwrap(await store.create(initial));
+      const legacy = createLegacy(initial);
+      const bytes = `${canonicalizeJson(legacy)}\n`;
+      await writeFile(closeoutStateFile(root), bytes, "utf8");
+
+      const result = await store.load(locator);
+      expect(result).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.PreconditionNotMet },
+      });
+      expect(await readFile(closeoutStateFile(root), "utf8")).toBe(bytes);
+    });
+  });
+
+  it.each([
+    "unknown field",
+    "missing key",
+    "nested field",
+    "manifest drift",
+    "binding drift",
+    "locator drift",
+    "stage drift",
+  ] as const)("损坏旧 v2 返回 CorruptStore：%s", async (kind) => {
+    await withTempRoot(async (root) => {
+      const store = createStore(root);
+      const initial = initialState();
+      unwrap(await store.create(initial));
+      const legacy = legacyV2PersistedState(
+        kind === "locator drift" ? initialState({ sessionId: secondSession }) : initial,
+        snapshot(),
+      );
+      const manifest = legacy["coverageManifest"] as Record<string, unknown>;
+      const damaged =
+        kind === "unknown field"
+          ? { ...legacy, unexpected: true }
+          : kind === "missing key"
+            ? withoutProperty(legacy, "coverageBindingDigest")
+            : kind === "nested field"
+              ? { ...legacy, coverageManifest: { ...manifest, unexpected: true } }
+              : kind === "manifest drift"
+                ? {
+                    ...legacy,
+                    coverageManifest: { ...manifest, manifestDigest: digestOf("drift") },
+                  }
+                : kind === "binding drift"
+                  ? { ...legacy, coverageBindingDigest: digestOf("drift") }
+                  : kind === "stage drift"
+                    ? { ...legacy, version: 0 }
+                    : legacy;
+      await writeFile(closeoutStateFile(root), `${canonicalizeJson(damaged)}\n`, "utf8");
+
+      const result = await store.load(locator);
+      expect(result).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.CorruptStore },
+      });
+    });
+  });
+
+  it.each(["checkpoint digest", "binding digest"] as const)(
+    "损坏旧 v2 Checkpoint %s 返回 CorruptStore",
+    async (kind) => {
+      await withTempRoot(async (root) => {
+        const store = createStore(root);
+        const initial = initialState();
+        unwrap(await store.create(initial));
+        const legacy = legacyV2CheckpointBoundState(initial);
+        const checkpointRecord = legacy["checkpoint"] as Record<string, unknown>;
+        const gitCheckpoint = checkpointRecord["checkpoint"] as Record<string, unknown>;
+        const damaged = {
+          ...legacy,
+          checkpoint:
+            kind === "binding digest"
+              ? { ...checkpointRecord, bindingDigest: digestOf("drift") }
+              : {
+                  ...checkpointRecord,
+                  checkpoint: { ...gitCheckpoint, checkpointDigest: digestOf("drift") },
+                },
+        };
+        await writeFile(closeoutStateFile(root), `${canonicalizeJson(damaged)}\n`, "utf8");
+
+        const result = await store.load(locator);
+        expect(result).toMatchObject({
+          status: ResultStatus.Failure,
+          error: { code: HarnessErrorCode.CorruptStore },
+        });
+      });
+    },
+  );
+
+  it("非 canonical 的完整旧 v2 字节返回 CorruptStore 且不覆盖原文件", async () => {
+    await withTempRoot(async (root) => {
+      const store = createStore(root);
+      const initial = initialState();
+      unwrap(await store.create(initial));
+      const bytes = `${JSON.stringify(legacyV2PersistedState(initial), null, 2)}\n`;
+      await writeFile(closeoutStateFile(root), bytes, "utf8");
+
+      const result = await store.load(locator);
+      expect(result).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.CorruptStore },
+      });
+      expect(await readFile(closeoutStateFile(root), "utf8")).toBe(bytes);
+    });
+  });
+
   it("LockUnavailable 只尝试一次，且保留锁释放失败时的原操作语义", async () => {
     await withTempRoot(async (root) => {
       const rejecting = new RejectingLockManager();
@@ -342,3 +480,9 @@ describe("File CodingTaskSession Closeout Store", () => {
     },
   );
 });
+
+function withoutProperty(input: Record<string, unknown>, key: string): Record<string, unknown> {
+  const output = { ...input };
+  delete output[key];
+  return output;
+}

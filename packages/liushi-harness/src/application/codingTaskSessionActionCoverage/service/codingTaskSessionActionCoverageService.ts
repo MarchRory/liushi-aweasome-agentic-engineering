@@ -60,14 +60,14 @@ export class CodingTaskSessionActionCoverageService {
         actionId,
       });
       if (journal.status === ResultStatus.Failure) return journal;
-      const journalDigests = validateCodingTaskSessionActionJournal(
+      const journalEvidence = validateCodingTaskSessionActionJournal(
         journal.value,
         actionId,
         activation.value,
         admission.value,
         validatedInput.value,
       );
-      if (journalDigests.status === ResultStatus.Failure) return journalDigests;
+      if (journalEvidence.status === ResultStatus.Failure) return journalEvidence;
 
       const traces = await this.dependencies.traceObservationStore.query({
         workspaceId: validatedInput.value.workspaceId,
@@ -77,7 +77,7 @@ export class CodingTaskSessionActionCoverageService {
       if (traces.status === ResultStatus.Failure) return traces;
       const traceDigests = calculateAndMatchTraceDigests(
         traces.value,
-        journalDigests.value,
+        journalEvidence.value.observationDigests,
         actionId,
         validatedInput.value.workspaceId,
         activation.value.sourceTaskId,
@@ -89,6 +89,7 @@ export class CodingTaskSessionActionCoverageService {
       if (journalDigest.status === ResultStatus.Failure) return journalDigest;
       actions.push({
         actionId,
+        targets: journalEvidence.value.targets,
         journalDigest: journalDigest.value,
         traceObservationDigests: traceDigests.value,
       });

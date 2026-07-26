@@ -27,6 +27,7 @@ import {
   rebuildCloseoutCoverageManifest,
   rebuildCloseoutSnapshot,
   validateCloseoutCoverageIdentity,
+  validateCloseoutCoveragePaths,
 } from "../validation/index.js";
 
 /** 仅从 Closing 一次性持久化 Snapshot 与完整 Coverage Manifest。 */
@@ -52,6 +53,8 @@ export function persistSnapshot(
     coverageManifest.value,
   );
   if (identity.status === ResultStatus.Failure) return identity;
+  const paths = validateCloseoutCoveragePaths(snapshot.value, coverageManifest.value);
+  if (paths.status === ResultStatus.Failure) return paths;
   const coverageBindingDigest = calculateCloseoutCoverageBindingDigest(
     snapshot.value.snapshotDigest,
     coverageManifest.value.manifestDigest,

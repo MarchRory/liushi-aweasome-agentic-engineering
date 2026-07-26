@@ -30,6 +30,10 @@ describe("CodingTask Session Action/Trace Coverage Proof Service", () => {
       "01ARZ3NDEKTSV4RRFFQ69G5FCY",
       "01ARZ3NDEKTSV4RRFFQ69G5FCZ",
     ]);
+    expect(result.value.actions.map((action) => action.targets)).toEqual([
+      ["src/a.ts"],
+      ["src/a.ts"],
+    ]);
     const actionA = result.value.actions[0];
     expect(actionA?.traceObservationDigests).toEqual(
       [...(actionA?.traceObservationDigests ?? [])].sort(),
@@ -42,6 +46,57 @@ describe("CodingTask Session Action/Trace Coverage Proof Service", () => {
     ]);
     expect(fixture.calls.trace).toEqual(fixture.calls.journal);
   });
+
+  it("每个 Manifest Action targets 都来自已复验 Intent.targets", async () => {
+    const fixture = createCoverageFixture();
+    const actionId = "01ARZ3NDEKTSV4RRFFQ69G5FCY";
+    const state = fixture.journals.get(actionId)!;
+    const targets = ["src/from-intent.ts"];
+    fixture.journals.set(actionId, {
+      ...state,
+      intent: { ...(state.intent as SessionActionIntentRecord), targets },
+      observations: state.observations.map((observation) => ({ ...observation, targets })),
+    });
+
+    const result = await new CodingTaskSessionActionCoverageService(fixture.dependencies).execute(
+      fixture.input,
+    );
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Success)
+      expect(result.value.actions[0]?.targets).toEqual(targets);
+  });
+
+  it.each(["仅 Intent 漂移", "仅 Observation 漂移"] as const)(
+    "拒绝 Intent 与 Observation targets 不一致：%s",
+    async (kind) => {
+      const fixture = createCoverageFixture();
+      const actionId = "01ARZ3NDEKTSV4RRFFQ69G5FCY";
+      const state = fixture.journals.get(actionId)!;
+      const targets = ["src/mismatch.ts"];
+      fixture.journals.set(
+        actionId,
+        kind === "仅 Intent 漂移"
+          ? {
+              ...state,
+              intent: { ...(state.intent as SessionActionIntentRecord), targets },
+            }
+          : {
+              ...state,
+              observations: state.observations.map((observation) => ({
+                ...observation,
+                targets,
+              })),
+            },
+      );
+
+      const result = await new CodingTaskSessionActionCoverageService(fixture.dependencies).execute(
+        fixture.input,
+      );
+
+      expectFailure(result, HarnessErrorCode.PreconditionNotMet);
+    },
+  );
 
   it("拒绝调用方注入 Action IDs 的定位输入", async () => {
     const fixture = createCoverageFixture();

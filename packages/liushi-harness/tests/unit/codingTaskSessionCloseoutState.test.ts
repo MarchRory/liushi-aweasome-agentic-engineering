@@ -16,6 +16,7 @@ import {
   type CodingTaskSessionActionCoverageManifest,
 } from "../../src/application/codingTaskSessionActionCoverage/index.js";
 import {
+  CodingTaskSessionChangeKind,
   createCodingTaskSessionChangeSet,
   createCodingTaskSessionChangeSetSnapshot,
 } from "../../src/domain/codingTaskSessionChangeSet/index.js";
@@ -41,7 +42,7 @@ import {
   unwrap,
 } from "../support/codingTaskSessionCloseout/index.js";
 
-describe("CodingTask Session Closeout State v2", () => {
+describe("CodingTask Session Closeout State v3", () => {
   it("按 Closing、SnapshotPersisted、CheckpointBound 顺序绑定完整 Manifest", () => {
     const closing = initialState();
     const currentSnapshot = snapshot();
@@ -66,6 +67,7 @@ describe("CodingTask Session Closeout State v2", () => {
     );
 
     expect(closing).toMatchObject({
+      schemaVersion: "coding-task-session.closeout-state.v3",
       status: CodingTaskSessionCloseoutStatus.Closing,
       version: 0,
       coverageManifest: null,
@@ -88,6 +90,165 @@ describe("CodingTask Session Closeout State v2", () => {
       checkpoint: checkpoint(currentSnapshot),
     });
     expect(unwrap(rebuildCodingTaskSessionCloseoutState(bound, digest))).toEqual(bound);
+  });
+
+  it("联合验证两个 changedPaths、允许额外未变更 target，并拒绝缺覆盖或越 Write Set", () => {
+    const currentSnapshot = snapshot();
+    const manifest = coverageManifest();
+    const complete = unwrap(
+      persistSnapshot(
+        initialState(),
+        {
+          snapshot: currentSnapshot,
+          coverageManifest: manifest,
+          updatedAt: "2026-07-26T00:00:01.000Z",
+        },
+        digest,
+      ),
+    );
+    expect(complete.snapshot?.changedPaths).toEqual(["src/closeout-a.ts", "src/closeout-b.ts"]);
+    expect(complete.coverageManifest?.actions.flatMap((action) => action.targets)).toContain(
+      "src/closeout-extra.ts",
+    );
+
+    const missingTargetManifest = manifestWith({
+      actions: manifest.actions.map((action, index) =>
+        index === 1 ? { ...action, targets: ["src/closeout-extra.ts"] } : action,
+      ),
+    });
+    expectFailure(
+      persistSnapshot(
+        initialState(),
+        {
+          snapshot: currentSnapshot,
+          coverageManifest: missingTargetManifest,
+          updatedAt: "2026-07-26T00:00:01.000Z",
+        },
+        digest,
+      ),
+      HarnessErrorCode.PreconditionNotMet,
+    );
+    expectFailure(
+      rebuildCodingTaskSessionCloseoutState(
+        {
+          ...complete,
+          coverageManifest: missingTargetManifest,
+          coverageBindingDigest: unwrap(calculateBinding(currentSnapshot, missingTargetManifest)),
+        },
+        digest,
+      ),
+      HarnessErrorCode.PreconditionNotMet,
+    );
+
+    const outsideWriteSetManifest = manifestWith({
+      actions: manifest.actions.map((action, index) =>
+        index === 0 ? { ...action, targets: ["src/closeout-a.ts", "src/outside.ts"] } : action,
+      ),
+    });
+    expectFailure(
+      persistSnapshot(
+        initialState(),
+        {
+          snapshot: currentSnapshot,
+          coverageManifest: outsideWriteSetManifest,
+          updatedAt: "2026-07-26T00:00:01.000Z",
+        },
+        digest,
+      ),
+      HarnessErrorCode.PreconditionNotMet,
+    );
+    expectFailure(
+      rebuildCodingTaskSessionCloseoutState(
+        {
+          ...complete,
+          coverageManifest: outsideWriteSetManifest,
+          coverageBindingDigest: unwrap(calculateBinding(currentSnapshot, outsideWriteSetManifest)),
+        },
+        digest,
+      ),
+      HarnessErrorCode.PreconditionNotMet,
+    );
+  });
+
+  it("Rename 的原路径与目标路径都必须有 Action target", () => {
+    const currentSnapshot = renamedSnapshot();
+    const completeManifest = manifestWith({
+      actions: coverageManifest().actions.map((action, index) =>
+        index === 0
+          ? { ...action, targets: ["src/rename-source.ts", "src/rename-target.ts"] }
+          : { ...action, targets: ["src/closeout-extra.ts"] },
+      ),
+    });
+    expect(currentSnapshot.changedPaths).toEqual(["src/rename-source.ts", "src/rename-target.ts"]);
+    const persisted = unwrap(
+      persistSnapshot(
+        initialState(),
+        {
+          snapshot: currentSnapshot,
+          coverageManifest: completeManifest,
+          updatedAt: "2026-07-26T00:00:01.000Z",
+        },
+        digest,
+      ),
+    );
+    expect(rebuildCodingTaskSessionCloseoutState(persisted, digest).status).toBe(
+      ResultStatus.Success,
+    );
+
+    for (const target of ["src/rename-source.ts", "src/rename-target.ts"] as const) {
+      const incompleteManifest = manifestWith({
+        actions: completeManifest.actions.map((action, index) =>
+          index === 0 ? { ...action, targets: [target] } : action,
+        ),
+      });
+      expectFailure(
+        persistSnapshot(
+          initialState(),
+          {
+            snapshot: currentSnapshot,
+            coverageManifest: incompleteManifest,
+            updatedAt: "2026-07-26T00:00:01.000Z",
+          },
+          digest,
+        ),
+        HarnessErrorCode.PreconditionNotMet,
+      );
+      expectFailure(
+        rebuildCodingTaskSessionCloseoutState(
+          {
+            ...persisted,
+            coverageManifest: incompleteManifest,
+            coverageBindingDigest: unwrap(calculateBinding(currentSnapshot, incompleteManifest)),
+          },
+          digest,
+        ),
+        HarnessErrorCode.PreconditionNotMet,
+      );
+    }
+  });
+
+  it("Copy 只要求覆盖实际新增的目标路径", () => {
+    const currentSnapshot = copiedSnapshot();
+    const manifest = manifestWith({
+      actions: coverageManifest().actions.map((action, index) =>
+        index === 0
+          ? { ...action, targets: ["src/copy-target.ts"] }
+          : { ...action, targets: ["src/closeout-extra.ts"] },
+      ),
+    });
+
+    expect(currentSnapshot.changedPaths).toEqual(["src/copy-target.ts"]);
+    expect(
+      persistSnapshot(
+        initialState(),
+        {
+          snapshot: currentSnapshot,
+          coverageManifest: manifest,
+          updatedAt: "2026-07-26T00:00:01.000Z",
+        },
+        digest,
+      ).status,
+    ).toBe(ResultStatus.Success);
   });
 
   it.each([
@@ -372,6 +533,72 @@ function snapshotWith(repositoryId: typeof repository, worktreeId: string) {
         branchName: current.branchName,
         observedHeadRevision: current.observedHeadRevision,
         writeSet: current.writeSet,
+      },
+      digest,
+    ),
+  );
+}
+
+function renamedSnapshot() {
+  const changeSet = unwrap(
+    createCodingTaskSessionChangeSet(
+      {
+        repositoryId: repository,
+        baseRevision: "a".repeat(40),
+        changes: [
+          {
+            path: "src/rename-target.ts",
+            originalPath: "src/rename-source.ts",
+            kind: CodingTaskSessionChangeKind.Renamed,
+            targetContentDigest: digestOf({ content: "rename" }),
+          },
+        ],
+      },
+      digest,
+    ),
+  );
+  return unwrap(
+    createCodingTaskSessionChangeSetSnapshot(
+      {
+        changeSet,
+        worktreeId: "closeout-worktree",
+        worktreeRelativePath: "worktrees/closeout",
+        branchName: "task/closeout",
+        observedHeadRevision: changeSet.baseRevision,
+        writeSet: ["src/closeout-extra.ts", "src/rename-source.ts", "src/rename-target.ts"],
+      },
+      digest,
+    ),
+  );
+}
+
+function copiedSnapshot() {
+  const changeSet = unwrap(
+    createCodingTaskSessionChangeSet(
+      {
+        repositoryId: repository,
+        baseRevision: "a".repeat(40),
+        changes: [
+          {
+            path: "src/copy-target.ts",
+            originalPath: "src/copy-source.ts",
+            kind: CodingTaskSessionChangeKind.Copied,
+            targetContentDigest: digestOf({ content: "copy" }),
+          },
+        ],
+      },
+      digest,
+    ),
+  );
+  return unwrap(
+    createCodingTaskSessionChangeSetSnapshot(
+      {
+        changeSet,
+        worktreeId: "closeout-worktree",
+        worktreeRelativePath: "worktrees/closeout",
+        branchName: "task/closeout",
+        observedHeadRevision: changeSet.baseRevision,
+        writeSet: ["src/closeout-extra.ts", "src/copy-target.ts"],
       },
       digest,
     ),

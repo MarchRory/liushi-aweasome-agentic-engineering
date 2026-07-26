@@ -25,6 +25,7 @@ export function createCodingTaskSessionActionCoverageManifestDigestInput(
     executorSessionIdDigest: manifest.executorSessionIdDigest,
     actions: manifest.actions.map((action) => ({
       actionId: action.actionId,
+      targets: [...action.targets],
       journalDigest: action.journalDigest,
       traceObservationDigests: [...action.traceObservationDigests],
     })),

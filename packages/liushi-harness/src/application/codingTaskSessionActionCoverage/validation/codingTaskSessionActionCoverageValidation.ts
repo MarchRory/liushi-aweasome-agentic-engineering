@@ -33,6 +33,7 @@ import type {
   CodingTaskSessionActionCoverageManifest,
 } from "../contracts/index.js";
 import { calculateCodingTaskSessionActionCoverageManifestDigest } from "../digest/index.js";
+import { isCanonicalCodingTaskSessionActionTargets } from "./targets/index.js";
 import type { ContentDigestPort } from "#application/ports/index.js";
 
 const nonBlank = z
@@ -59,10 +60,18 @@ const sessionIdSchema = branded<CodingTaskSessionId>(parseCodingTaskSessionId);
 const codingTaskIdSchema = branded<CodingTaskId>(parseCodingTaskId);
 const sourceTaskIdSchema = branded<TaskId>(parseTaskId);
 const repositoryIdSchema = branded<RepositoryId>(parseRepositoryId);
+const targetsSchema = z.array(z.string()).superRefine((targets, context) => {
+  if (isCanonicalCodingTaskSessionActionTargets(targets)) return;
+  context.addIssue({
+    code: "custom",
+    message: "Action targets 必须是非空、排序去重的规范仓库相对 POSIX 路径。",
+  });
+});
 
 const actionSchema = z
   .object({
     actionId: actionIdSchema,
+    targets: targetsSchema,
     journalDigest: digestSchema,
     traceObservationDigests: z.array(digestSchema).min(1),
   })
@@ -173,6 +182,7 @@ function freezeManifest(
   const actions = manifest.actions.map((action) =>
     Object.freeze({
       ...action,
+      targets: Object.freeze([...action.targets]),
       traceObservationDigests: Object.freeze([...action.traceObservationDigests]),
     }),
   );

@@ -27,6 +27,8 @@ export interface CodingTaskSessionActionCoverageInput {
 export interface CodingTaskSessionActionCoverageManifestAction {
   /** Admission 权威提供的 Action 标识。 */
   readonly actionId: ActionId;
+  /** 从已复验 Session Action Intent 投影的规范仓库相对目标。 */
+  readonly targets: readonly string[];
   /** 完整 ActionJournalState 的 RFC 8785 摘要。 */
   readonly journalDigest: ContentDigest;
   /** 该 Action 全部 Trace Observation 的 RFC 8785 摘要，按摘要排序。 */
@@ -61,6 +63,14 @@ export interface CodingTaskSessionActionCoverageManifestDigestInput {
   readonly executorSessionIdDigest: ContentDigest;
   /** 按 Action ID 排序的摘要条目。 */
   readonly actions: readonly CodingTaskSessionActionCoverageManifestAction[];
+}
+
+/** 已复验单个 Session Action Journal 的目标与 Observation 摘要。 */
+export interface CodingTaskSessionActionJournalValidationResult {
+  /** 冻结的 Intent targets 投影。 */
+  readonly targets: readonly string[];
+  /** 按字典序严格排序且去重的 Observation 摘要。 */
+  readonly observationDigests: readonly ContentDigest[];
 }
 
 /** 仅保存摘要的 CodingTask Session Action/Trace Coverage Proof。 */

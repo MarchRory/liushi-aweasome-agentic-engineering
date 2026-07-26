@@ -19,6 +19,7 @@ import type {
   CodingTaskSessionCloseoutState,
   CodingTaskSessionCloseoutStateIdentity,
 } from "../contracts/index.js";
+import { validateCloseoutCoveragePaths } from "./pathCoverage/index.js";
 import { parseDigest } from "./closeoutValidationSupport.js";
 
 /** 严格重建并验证 Closeout 使用的 Coverage Manifest。 */
@@ -73,6 +74,8 @@ export function validateCloseoutCoverageBinding(
 
   const identity = validateCloseoutCoverageIdentity(state, state.snapshot, state.coverageManifest);
   if (identity.status === ResultStatus.Failure) return identity;
+  const paths = validateCloseoutCoveragePaths(state.snapshot, state.coverageManifest);
+  if (paths.status === ResultStatus.Failure) return paths;
   const parsedBinding = parseDigest(state.coverageBindingDigest, "coverageBindingDigest");
   if (parsedBinding.status === ResultStatus.Failure) return parsedBinding;
   const expectedBinding = calculateCloseoutCoverageBindingDigest(

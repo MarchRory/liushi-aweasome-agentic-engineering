@@ -107,7 +107,7 @@ export function snapshot(): CodingTaskSessionChangeSetSnapshot {
         worktreeRelativePath: "worktrees/closeout",
         branchName: "task/closeout",
         observedHeadRevision: changeSet.baseRevision,
-        writeSet: ["src/closeout-a.ts", "src/closeout-b.ts"],
+        writeSet: ["src/closeout-a.ts", "src/closeout-b.ts", "src/closeout-extra.ts"],
       },
       digest,
     ),
@@ -130,6 +130,10 @@ export function coverageManifest(): CodingTaskSessionActionCoverageManifest {
     executorSessionIdDigest: digestOf({ executorSession: "closeout" }),
     actions: actionIds.map((actionId) => ({
       actionId,
+      targets:
+        actionId === actionIds[0]
+          ? ["src/closeout-a.ts"]
+          : ["src/closeout-b.ts", "src/closeout-extra.ts"],
       journalDigest: digestOf({ journal: actionId }),
       traceObservationDigests: [digestOf({ trace: actionId })],
     })),
@@ -276,6 +280,98 @@ export function legacyV1PersistedState(
     version: 1,
     updatedAt: "2026-07-26T00:00:01.000Z",
   };
+}
+
+/** 创建携带旧 Coverage Manifest v1 的完整 Closeout State v2 fixture。 */
+export function legacyV2PersistedState(
+  state: CodingTaskSessionCloseoutState,
+  currentSnapshot: CodingTaskSessionChangeSetSnapshot = snapshot(),
+): Record<string, unknown> {
+  const coverageManifest = legacyCoverageManifestV1(state, currentSnapshot);
+  return {
+    ...state,
+    schemaVersion: "coding-task-session.closeout-state.v2",
+    status: CodingTaskSessionCloseoutStatus.SnapshotPersisted,
+    snapshot: currentSnapshot,
+    coverageManifest,
+    coverageBindingDigest: digestOf({
+      schemaVersion: "coding-task-session.closeout-coverage-binding.v1",
+      snapshotDigest: currentSnapshot.snapshotDigest,
+      manifestDigest: coverageManifest.manifestDigest,
+    }),
+    checkpoint: null,
+    stoppedStage: null,
+    errorCode: null,
+    recoveryGuidance: null,
+    version: 1,
+    updatedAt: "2026-07-26T00:00:01.000Z",
+  };
+}
+
+/** 创建尚未持久化证据的旧 Closeout State v2 Closing fixture。 */
+export function legacyV2ClosingState(
+  state: CodingTaskSessionCloseoutState,
+): Record<string, unknown> {
+  return {
+    ...state,
+    schemaVersion: "coding-task-session.closeout-state.v2",
+  };
+}
+
+/** 创建已绑定 Checkpoint 的旧 Closeout State v2 fixture。 */
+export function legacyV2CheckpointBoundState(
+  state: CodingTaskSessionCloseoutState,
+  currentSnapshot: CodingTaskSessionChangeSetSnapshot = snapshot(),
+): Record<string, unknown> {
+  return {
+    ...legacyV2PersistedState(state, currentSnapshot),
+    status: CodingTaskSessionCloseoutStatus.CheckpointBound,
+    checkpoint: checkpoint(currentSnapshot),
+    version: 2,
+    updatedAt: "2026-07-26T00:00:02.000Z",
+  };
+}
+
+/** 创建停在 SnapshotPersisted 阶段的旧 Closeout State v2 终态 fixture。 */
+export function legacyV2TerminalState(
+  state: CodingTaskSessionCloseoutState,
+  currentSnapshot: CodingTaskSessionChangeSetSnapshot = snapshot(),
+): Record<string, unknown> {
+  return {
+    ...legacyV2PersistedState(state, currentSnapshot),
+    status: CodingTaskSessionCloseoutStatus.Blocked,
+    stoppedStage: CodingTaskSessionCloseoutStage.SnapshotPersisted,
+    errorCode: HarnessErrorCode.PreconditionNotMet,
+    recoveryGuidance: "由 Human 复核旧 v2 证据后决定迁移方式",
+    version: 2,
+    updatedAt: "2026-07-26T00:00:02.000Z",
+  };
+}
+
+function legacyCoverageManifestV1(
+  state: CodingTaskSessionCloseoutState,
+  currentSnapshot: CodingTaskSessionChangeSetSnapshot,
+): Record<string, unknown> & { readonly manifestDigest: ContentDigest } {
+  const input = {
+    schemaVersion: "coding-task-session.action-coverage.v1",
+    workspaceId: state.workspaceId,
+    sessionId: state.sessionId,
+    codingTaskId: state.codingTaskId,
+    sourceTaskId: state.sourceTaskId,
+    repositoryId: state.repositoryId,
+    attemptNumber: state.attemptNumber,
+    activationBindingDigest: state.activationBindingDigest,
+    sessionBindingDigest: state.sessionBindingDigest,
+    worktreeId: currentSnapshot.worktreeId,
+    worktreeRootDigest: digestOf({ worktreeRoot: "legacy-v2" }),
+    executorSessionIdDigest: digestOf({ executorSession: "legacy-v2" }),
+    actions: actionIds.map((actionId) => ({
+      actionId,
+      journalDigest: digestOf({ journal: actionId }),
+      traceObservationDigests: [digestOf({ trace: actionId })],
+    })),
+  } as const;
+  return { ...input, manifestDigest: digestOf(input) };
 }
 
 export function digestOf(input: unknown): ContentDigest {

@@ -31,7 +31,11 @@ import {
   type Result,
 } from "#common/index.js";
 
-import type { CodingTaskSessionActionCoverageInput } from "../../contracts/index.js";
+import type {
+  CodingTaskSessionActionCoverageInput,
+  CodingTaskSessionActionJournalValidationResult,
+} from "../../contracts/index.js";
+import { isCanonicalCodingTaskSessionActionTargets } from "../index.js";
 
 /** 验证 Activation/Admission 身份并返回规范排序的权威 Action ID。 */
 export function validateActivationAndAdmission(
@@ -77,7 +81,7 @@ export function validateCodingTaskSessionActionJournal(
   activation: CodingTaskSessionActivationRecord,
   admission: CodingTaskSessionAdmissionState,
   input: CodingTaskSessionActionCoverageInput,
-): Result<readonly ContentDigest[], HarnessError> {
+): Result<CodingTaskSessionActionJournalValidationResult, HarnessError> {
   if (
     ![ActionJournalStatus.Committed, ActionJournalStatus.Recovered].includes(state.status) ||
     state.observations.length === 0 ||
@@ -89,7 +93,7 @@ export function validateCodingTaskSessionActionJournal(
     state.intent.actionId !== actionId ||
     state.intent.workspaceId !== input.workspaceId ||
     state.intent.taskId !== activation.sourceTaskId ||
-    !Array.isArray(state.intent.targets) ||
+    !isCanonicalCodingTaskSessionActionTargets(state.intent.targets) ||
     state.intent.sessionProvenance === undefined
   ) {
     return coverageFailure("Action Journal 未形成完整的 Session v2 终态闭合。", "journal");
@@ -126,7 +130,7 @@ export function validateCodingTaskSessionActionJournal(
       observation.taskId !== activation.sourceTaskId ||
       observation.sessionProvenance === undefined ||
       !sameProvenance(observation.sessionProvenance, expectedProvenance) ||
-      !Array.isArray(observation.targets) ||
+      !isCanonicalCodingTaskSessionActionTargets(observation.targets) ||
       !sameStrings(observation.targets, state.intent.targets) ||
       observation.trace === undefined ||
       observation.trace.disposition !== SessionActionTraceDisposition.Persisted ||
@@ -166,7 +170,12 @@ export function validateCodingTaskSessionActionJournal(
   ) {
     return coverageFailure("Action Journal 的终态、序列或 Observation 摘要不闭合。", "journal");
   }
-  return success(Object.freeze([...observationDigests].sort(compareStrings)));
+  return success(
+    Object.freeze({
+      targets: Object.freeze([...state.intent.targets]),
+      observationDigests: Object.freeze([...observationDigests].sort(compareStrings)),
+    }),
+  );
 }
 
 /** 对 Trace 查询结果做跳过记录检查、规范摘要计算和精确集合匹配。 */

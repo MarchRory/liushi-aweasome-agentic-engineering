@@ -1,6 +1,7 @@
 export * from "./codingTaskSessionCloseoutStateValidation.js";
 export * from "./codingTaskSessionCloseoutSuccessorValidation.js";
 export * from "./codingTaskSessionCloseoutCoverageValidation.js";
+export * from "./pathCoverage/index.js";
 export {
   parseCloseoutStatus,
   parseCloseoutVersion,

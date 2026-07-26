@@ -13,7 +13,10 @@ import {
   rebuildCodingTaskSessionCloseoutState,
   type CodingTaskSessionCloseoutState,
 } from "#application/codingTaskSessionCloseoutState/index.js";
-import { classifyCodingTaskSessionCloseoutV1 } from "#application/codingTaskSessionCloseoutState/validation/legacy/index.js";
+import {
+  classifyCodingTaskSessionCloseoutV1,
+  classifyCodingTaskSessionCloseoutV2,
+} from "#application/codingTaskSessionCloseoutState/validation/legacy/index.js";
 import {
   StrictJsonCanonicalPolicy,
   readStrictJsonFile,
@@ -67,12 +70,18 @@ export async function readCodingTaskSessionCloseoutState(
       ),
     );
   }
-  const legacyError = classifyCodingTaskSessionCloseoutV1(
+  const legacyV1Error = classifyCodingTaskSessionCloseoutV1(
     parsed.value,
     { workspaceId: paths.workspaceId, sessionId: paths.sessionId },
     digestPort,
   );
-  if (legacyError !== undefined) return failure(legacyError);
+  if (legacyV1Error !== undefined) return failure(legacyV1Error);
+  const legacyV2Error = classifyCodingTaskSessionCloseoutV2(
+    parsed.value,
+    { workspaceId: paths.workspaceId, sessionId: paths.sessionId },
+    digestPort,
+  );
+  if (legacyV2Error !== undefined) return failure(legacyV2Error);
   const rebuilt = rebuildCodingTaskSessionCloseoutState(parsed.value, digestPort);
   if (rebuilt.status === ResultStatus.Failure) {
     return failure(

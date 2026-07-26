@@ -161,19 +161,20 @@ Session Action Journal 的 schema version 保持 `2.0.0`。新写入的 Session 
 
 `CodingTaskSessionActionCoverageService` 是 Application 层的独立 Coverage Proof 能力。调用方只能提供带品牌类型的 `workspaceId` 和 `sessionId`；Activation、Admission、Action Journal 和 Trace Observation 都由既有 Port 按权威身份读取。它要求 Activation 与 Admission 精确绑定，Admission 已进入 `closing`，并从 Admission 的 `admittedActionIds` 取得规范排序后的 Action 集合。
 
-对每个 Action，Coverage Proof 会复验 Session Action Journal v2 的完整 Session Provenance、目标、终态、Observation/Resolution 闭合关系，以及每条 Observation 的 `Persisted` disposition 和 `observationDigest`。Trace Store 查询不得跳过记录；查询结果会通过既有 RFC 8785 `ContentDigestPort` 计算 canonical digest，并与 Journal 中的全部 Observation digest 做排序后的严格一一对应校验。缺失、重复、额外或内容漂移都属于 `PreconditionNotMet`；Port I/O、Corrupt、Unknown 错误保持原样传播。
+对每个 Action，Coverage Proof 会复验 Session Action Journal v2 的完整 Session Provenance、目标、终态、Observation/Resolution 闭合关系，以及每条 Observation 的 `Persisted` disposition 和 `observationDigest`。Action 的 `targets` 只从已复验的 Journal v2 Intent 投影，不能由调用方另行提供。Trace Store 查询不得跳过记录；查询结果会通过既有 RFC 8785 `ContentDigestPort` 计算 canonical digest，并与 Journal 中的全部 Observation digest 做排序后的严格一一对应校验。缺失、重复、额外或内容漂移都属于 `PreconditionNotMet`；Port I/O、Corrupt、Unknown 错误保持原样传播。
 
-通过后只生成不含原始 Journal/Trace payload 的 canonical manifest：Manifest 和其中的 Action、Trace digest 列表均采用固定字段与规范排序，并由 `ContentDigestPort` 生成 `manifestDigest`。Manifest 支持严格 rebuild/verify，会拒绝未知字段、空值、重复项、非规范排序和摘要漂移。
+通过后只生成不含原始 Journal/Trace payload 的 canonical `coding-task-session.action-coverage.v2` manifest：每个 Action 含非空、规范仓库相对 POSIX、排序去重且冻结的 `targets`，以及固定字段与规范排序的 digest 列表；`targets` 和其余证明字段共同进入 `manifestDigest`。Manifest 支持严格 rebuild/verify，会拒绝未知字段、缺失或空 targets、重复项、非规范排序、非法路径和摘要漂移。
 
-这是 Coverage Proof 能力，不是 Closeout State 的新字段或存储流程；当前尚未接入 Closeout State、Process Manager、CLI、Verification、PRReady 或 Workflow Studio。Human Gate、跨仓库写入、Wiki 写入和知识晋升边界保持不变。
+Coverage Proof 现在由 Closeout State v3 消费：`snapshot.changedPaths` 必须被 Action targets 的 union 覆盖，且每个 Action target 必须属于 Snapshot Write Set；Write Set 中获准但没有最终 diff 的额外 target 仍可保留。Rename 规范化后的原路径与目标路径都必须分别有 target；Copy 仍按实际新增的目标路径覆盖，不把未变化的来源路径伪装成 changed path。File Store 在当前 v3 rebuild 前独立识别旧 Coverage Manifest v1 与旧 Closeout State v2；完整自洽旧证据返回 `PreconditionNotMet`，损坏旧证据返回 `CorruptStore`，不自动升级。Human Gate、跨仓库写入、Wiki 写入和知识晋升边界保持不变。
 
 ### S3 Closeout（进行中）
 
 - 已实现：提交前权威 ChangeSet Inspector、原始字节摘要、双摘要职责分离、完整 Snapshot 摘要重算验证和 Composition Root Use Case。
 - 已实现：提交后权威 ChangeSet 重建、Added/Rename/Copy 语义规范化、ChangeSet Digest 与 Git Checkpoint 双向绑定，以及副作用前漂移拒绝和幂等恢复。
-- 已实现：Closeout Process State 与 File Store，按精确版本持久化完整 Snapshot、Action Evidence 和双向绑定 Checkpoint，并提供 create-only、内部短时锁、CAS、严格重建与未知结果分类。
+- 已实现：Closeout Process State v3 与 File Store，按精确版本持久化完整 Snapshot、Action Coverage Manifest v2 和双向绑定 Checkpoint，并提供 create-only、内部短时锁、CAS、严格重建与未知结果分类。
+- 已实现：Closeout v3 的 changed-path 覆盖验证；Snapshot changed paths 必须属于 Action targets union，全部 Action targets 必须属于 Write Set，允许 Write Set 内获准但无最终 diff 的 target。
+- 已实现：旧 Closeout v1 与旧 v2 的独立分类；完整自洽旧 v2 保留原始 bytes 并返回显式迁移所需的 `PreconditionNotMet`，unknown field、manifest/binding/locator/stage 漂移返回 `CorruptStore`。
 - 待实现：Repository Lock、Coverage Proof 消费和阶段恢复 Use Case 组成的 Closeout Process Manager 接入。
-- 已实现但未接入 Closeout：独立的 Session Action/Trace Coverage Proof manifest 生成与严格复验能力。
 - 待实现：Submission、Verification、Evidence 和 PRReady 编排。
 - 待实现：CLI `coding-task session closeout`。
 

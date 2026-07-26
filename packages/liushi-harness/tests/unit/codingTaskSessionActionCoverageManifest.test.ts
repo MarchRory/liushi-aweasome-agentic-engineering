@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateCodingTaskSessionActionCoverageManifestDigest,
   CodingTaskSessionActionCoverageService,
   HarnessErrorCode,
   ResultStatus,
@@ -15,8 +16,8 @@ import {
 } from "../../src/index.js";
 import { createCoverageFixture } from "../support/codingTaskSessionActionCoverage/index.js";
 
-describe("CodingTask Session Action/Trace Coverage Proof Manifest", () => {
-  it("允许 canonical manifest strict rebuild，并拒绝未知字段与排序漂移", async () => {
+describe("CodingTask Session Action/Trace Coverage Proof Manifest v2", () => {
+  it("允许 v2 roundtrip，并拒绝 targets 未知、空值、排序和路径漂移", async () => {
     const fixture = createCoverageFixture({ multiTrace: true });
     const created = await new CodingTaskSessionActionCoverageService(fixture.dependencies).create(
       fixture.input,
@@ -27,6 +28,9 @@ describe("CodingTask Session Action/Trace Coverage Proof Manifest", () => {
     const rebuilt = verifyCodingTaskSessionActionCoverageManifest(created.value, fixture.digest);
     expect(rebuilt.status).toBe(ResultStatus.Success);
     expect(rebuilt).toEqual(created);
+    expect(created.value.schemaVersion).toBe("coding-task-session.action-coverage.v2");
+    expect(created.value.actions.every((action) => action.targets.length > 0)).toBe(true);
+    expect(Object.isFrozen(created.value.actions[0]?.targets)).toBe(true);
 
     const actionWithTraces = created.value.actions.find(
       (action) => action.traceObservationDigests.length > 1,
@@ -76,6 +80,46 @@ describe("CodingTask Session Action/Trace Coverage Proof Manifest", () => {
         traceObservationDigests: [],
       })),
     });
+    const missingTargets = rebuild(created.value, fixture.digest, {
+      actions: created.value.actions.map((action) => {
+        const candidate = { ...action } as Record<string, unknown>;
+        delete candidate["targets"];
+        return candidate;
+      }),
+    });
+    const emptyTargets = rebuild(created.value, fixture.digest, {
+      actions: created.value.actions.map((action) => ({ ...action, targets: [] })),
+    });
+    const reverseTargets = rebuild(created.value, fixture.digest, {
+      actions: created.value.actions.map((action, index) =>
+        index === 0 ? { ...action, targets: ["src/b.ts", "src/a.ts"] } : action,
+      ),
+    });
+    const duplicateTargets = rebuild(created.value, fixture.digest, {
+      actions: created.value.actions.map((action, index) =>
+        index === 0 ? { ...action, targets: ["src/a.ts", "src/a.ts"] } : action,
+      ),
+    });
+    const invalidTargets = rebuild(created.value, fixture.digest, {
+      actions: created.value.actions.map((action, index) =>
+        index === 0 ? { ...action, targets: ["../outside.ts"] } : action,
+      ),
+    });
+    const absoluteTargets = rebuild(created.value, fixture.digest, {
+      actions: created.value.actions.map((action, index) =>
+        index === 0 ? { ...action, targets: ["/absolute.ts"] } : action,
+      ),
+    });
+    const windowsTargets = rebuild(created.value, fixture.digest, {
+      actions: created.value.actions.map((action, index) =>
+        index === 0 ? { ...action, targets: ["src\\windows.ts"] } : action,
+      ),
+    });
+    const platformInvalidTargets = rebuild(created.value, fixture.digest, {
+      actions: created.value.actions.map((action, index) =>
+        index === 0 ? { ...action, targets: ["src/invalid?.ts"] } : action,
+      ),
+    });
 
     for (const result of [
       unknownField,
@@ -87,12 +131,36 @@ describe("CodingTask Session Action/Trace Coverage Proof Manifest", () => {
       emptyActions,
       oversizedWorktree,
       emptyTraces,
+      missingTargets,
+      emptyTargets,
+      reverseTargets,
+      duplicateTargets,
+      invalidTargets,
+      absoluteTargets,
+      windowsTargets,
+      platformInvalidTargets,
     ]) {
       expectFailure(result, HarnessErrorCode.PreconditionNotMet);
     }
+
+    const changedActions = created.value.actions.map((action, index) =>
+      index === 0 ? { ...action, targets: ["src/rehashed.ts"] } : action,
+    );
+    const recalculated = calculateCodingTaskSessionActionCoverageManifestDigest(
+      { ...created.value, actions: changedActions },
+      fixture.digest,
+    );
+    expect(recalculated.status).toBe(ResultStatus.Success);
+    if (recalculated.status === ResultStatus.Failure) return;
+    expect(
+      rebuild(created.value, fixture.digest, {
+        actions: changedActions,
+        manifestDigest: recalculated.value,
+      }).status,
+    ).toBe(ResultStatus.Success);
   });
 
-  it.each(["manifest", "journal", "trace"])("拒绝 %s digest 漂移", async (kind) => {
+  it.each(["manifest", "journal", "trace", "targets"])("拒绝 %s digest 漂移", async (kind) => {
     const fixture = createCoverageFixture({ multiTrace: true });
     const created = await new CodingTaskSessionActionCoverageService(fixture.dependencies).create(
       fixture.input,
@@ -110,12 +178,16 @@ describe("CodingTask Session Action/Trace Coverage Proof Manifest", () => {
                     ...action,
                     ...(kind === "journal"
                       ? { journalDigest: drift }
-                      : {
-                          traceObservationDigests: [
-                            drift,
-                            ...action.traceObservationDigests.slice(1),
-                          ],
-                        }),
+                      : kind === "trace"
+                        ? {
+                            traceObservationDigests: [
+                              drift,
+                              ...action.traceObservationDigests.slice(1),
+                            ],
+                          }
+                        : kind === "targets"
+                          ? { targets: ["src/target-drift.ts"] }
+                          : {}),
                   }
                 : action,
             ),
