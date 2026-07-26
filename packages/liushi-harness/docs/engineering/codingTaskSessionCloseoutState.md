@@ -13,12 +13,15 @@ Closeout 必须在 Git 副作用前留下可恢复的提交前事实，并在 Gi
 - 保存并复验 `ChangeSetCheckpoint`、ChangeSet Digest、Snapshot Digest 和 changed paths。
 - create-only 初始化、严格 canonical JSON 重建、跨进程短时锁和 `expectedVersion` CAS。
 - 写入结果未知与 Lock 释放结果未知的独立错误分类。
+- 独立的 CodingTask Session Action/Trace Coverage Proof Application 能力；该能力尚未绑定本 Closeout State 或 Process Manager。
 
 未实现：
 
-- 从 Session Action Journal、Observation、Resolution 和 Trace 读取并证明完整覆盖。
+- 由 Closeout State 消费 Coverage Proof 并在 Process Manager 中编排其结果。
 - 在 Repository Lock 内驱动 Snapshot、Git Checkpoint、Submission、Verification 和 PRReady。
 - Closeout 恢复 Use Case、CLI、真实 Codex Pilot 和多仓交付编排。
+
+Coverage Proof 的严格身份、Journal v2 provenance、Trace observation digest 精确集合匹配和 fail-closed 规则不改变现有 Human Gates、多仓写入、Wiki 写入或知识候选晋升边界。
 
 ## 2. 状态机
 
@@ -86,7 +89,7 @@ replace 在同一个 Lock 内重新读取当前文件并执行 `expectedVersion`
 下一步由 Closeout Process Manager 在 Repository Lock 内执行：
 
 1. 原子关闭 Session 新 Action 准入。
-2. 重建 Action、Observation、Resolution 和 Trace 的完整覆盖证明。
+2. 调用独立 Coverage Proof，重建 Action、Observation、Resolution 和 Trace 的完整覆盖证明。
 3. 获取权威 ChangeSet Snapshot，创建并持久化 `SnapshotPersisted`。
 4. 执行或只读恢复 ChangeSet-bound Git Checkpoint，持久化 `CheckpointBound`。
 5. 接入 Submission、Verification、Evidence 和 PRReady，并提供确定性恢复入口。
