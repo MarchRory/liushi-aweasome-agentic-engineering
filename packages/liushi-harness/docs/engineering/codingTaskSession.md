@@ -157,11 +157,12 @@ Windows、POSIX 路径、Git 命令和文件锁实现必须位于 Infrastructure
 
 - 已实现：提交前权威 ChangeSet Inspector、原始字节摘要、双摘要职责分离、完整 Snapshot 摘要重算验证和 Composition Root Use Case。
 - 已实现：提交后权威 ChangeSet 重建、Added/Rename/Copy 语义规范化、ChangeSet Digest 与 Git Checkpoint 双向绑定，以及副作用前漂移拒绝和幂等恢复。
-- 待实现：持久化 Snapshot、Repository Lock、Session Action/Trace 证据门和阶段恢复组成的 Closeout Process Manager。
+- 已实现：Closeout Process State 与 File Store，按精确版本持久化完整 Snapshot、Action Evidence 和双向绑定 Checkpoint，并提供 create-only、内部短时锁、CAS、严格重建与未知结果分类。
+- 待实现：Repository Lock、Session Action/Trace 覆盖证明和阶段恢复 Use Case 组成的 Closeout Process Manager。
 - 待实现：Submission、Verification、Evidence 和 PRReady 编排。
 - 待实现：CLI `coding-task session closeout`。
 
-双向绑定的算法、失败分类和分层边界见 [ChangeSet 与 Git Checkpoint 双向绑定](./changeSetCheckpointBinding.md)。
+双向绑定算法见 [ChangeSet 与 Git Checkpoint 双向绑定](./changeSetCheckpointBinding.md)，阶段持久化见 [Closeout 状态持久化](./codingTaskSessionCloseoutState.md)。
 
 ### S4 Pilot Metrics
 

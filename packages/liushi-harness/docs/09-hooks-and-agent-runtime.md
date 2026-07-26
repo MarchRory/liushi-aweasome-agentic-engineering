@@ -142,7 +142,7 @@ S2 的 Session Action Admission 已将上述原则落到可恢复的状态协议
 
 - `waiting_agent` 允许新的 PreAction 竞争同一 Session Lease；`closing` 拒绝新的 PreAction，但允许已经准入的 Action 完成 PostAction。
 - PreAction 在 Lease 内复验 Activation、Session Hook Binding v2、Runtime Provenance、PlanRisk/G2/G4 和 Write Set；Admission State 先进入 `pending`，只有健康 v2 Intent 提交成功后才把 Action ID 追加到 `admittedActionIds`。
-- `pending`、缺失 PostAction、`WaitingHuman`、`RetryPermitted` 或 `outcome_unknown` 都会阻止 `beginClosing`。`beginClosing` 当前仅为内部能力，S3 仍负责 Application/CLI Closeout、ChangeSet、Checkpoint 和 Verification 编排。
+- `pending`、缺失 PostAction、`WaitingHuman`、`RetryPermitted` 或 `outcome_unknown` 都会阻止 `beginClosing`。`beginClosing` 当前仅为内部能力；S3 已具备 ChangeSet、Checkpoint 与 Closeout Process State/File Store，仍缺少驱动 Action/Trace 覆盖门、Repository Lock、Verification 和 CLI 的 Process Manager。
 - PostAction 必须复验对应 v2 Intent，再记录 Trace、v2 Observation 和受其因果绑定的 Resolution；重复投递按稳定 Action/Intent 身份幂等重放。Observation 或 Resolution 提交不健康时，Session 从 `waiting_agent` 或 `closing` 进入 `outcome_unknown`。
 - Codex `tool_response` 没有跨工具统一的成功字段；Adapter 只把显式成功证据归为 `succeeded`，显式失败证据归为 `failed`，空值、空对象或未识别结构统一归为 `outcome_unknown` 并进入 `human_required`。
 - Lease 竞争、重入、状态复验或持久化结果不确定时均不放行；无法证明结果时保持 fail-closed 或 `outcome_unknown`，不把普通 Hook 进程失败解释为安全拒绝。

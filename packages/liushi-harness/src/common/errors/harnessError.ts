@@ -80,6 +80,10 @@ export enum HarnessErrorCode {
   CodingTaskSessionAdmissionCommitOutcomeUnknown = "coding_task_session_admission_commit_outcome_unknown",
   /** Admission Lease 释放结果未知，必须先恢复锁状态再继续。 */
   CodingTaskSessionAdmissionLockReleaseUnknown = "coding_task_session_admission_lock_release_unknown",
+  /** Closeout State 写入结果未知，必须先恢复持久化状态。 */
+  CodingTaskSessionCloseoutCommitOutcomeUnknown = "coding_task_session_closeout_commit_outcome_unknown",
+  /** Closeout State Lock 释放结果未知，必须先恢复锁状态。 */
+  CodingTaskSessionCloseoutLockReleaseUnknown = "coding_task_session_closeout_lock_release_unknown",
 }
 
 /** Harness 跨层返回的可分类错误。 */

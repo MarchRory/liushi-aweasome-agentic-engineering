@@ -16,6 +16,22 @@ export * from "./codingTask/index.js";
 export * from "./codingTaskCell/index.js";
 export * from "./codingTaskSession/index.js";
 export * from "./changeSetCheckpoint/index.js";
+export * from "./codingTaskSessionCloseoutState/constants/index.js";
+export type * from "./codingTaskSessionCloseoutState/contracts/index.js";
+export * from "./codingTaskSessionCloseoutState/enums/index.js";
+export {
+  bindCheckpoint,
+  block,
+  markOutcomeUnknown as markCloseoutOutcomeUnknown,
+  persistSnapshot,
+} from "./codingTaskSessionCloseoutState/transitions/index.js";
+export {
+  createCloseoutActionEvidenceDigestInput,
+  createCodingTaskSessionCloseoutState,
+  parseCodingTaskSessionCloseoutState,
+  rebuildCodingTaskSessionCloseoutState,
+  validateCodingTaskSessionCloseoutState,
+} from "./codingTaskSessionCloseoutState/validation/index.js";
 export * from "./actionExecution/index.js";
 export * from "./worktreeProvisioning/index.js";
 export * from "./worktreeProvisionRecovery/index.js";

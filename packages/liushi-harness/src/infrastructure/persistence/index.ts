@@ -6,6 +6,7 @@ export * from "./fileCodingTaskStore/index.js";
 export * from "./fileCodingTaskSessionActivationRepository/index.js";
 export * from "./fileCodingTaskSessionActivationLease/index.js";
 export * from "./fileCodingTaskSessionAdmission/index.js";
+export * from "./fileCodingTaskSessionCloseoutStore/index.js";
 export * from "./fileEvidenceBundleStore/index.js";
 export * from "./executorCompatibilityStoreSupport/index.js";
 export * from "./fileExecutorCompatibilityEvidenceStore/index.js";

@@ -59,6 +59,8 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.CodingTaskSessionActivationCommitOutcomeUnknown:
     case HarnessErrorCode.CodingTaskSessionAdmissionCommitOutcomeUnknown:
     case HarnessErrorCode.CodingTaskSessionAdmissionLockReleaseUnknown:
+    case HarnessErrorCode.CodingTaskSessionCloseoutCommitOutcomeUnknown:
+    case HarnessErrorCode.CodingTaskSessionCloseoutLockReleaseUnknown:
       return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }
 }

@@ -66,6 +66,8 @@ Status: Implementation-aware Architecture Baseline
 - [npm Tarball 干净安装 Smoke](./engineering/packageTarballSmoke.md)
 - [固定公开项目 CodingTask Cell Smoke](./engineering/publicProjectSmoke.md)
 - [外部 Agent CodingTask Session](./engineering/codingTaskSession.md)
+- [CodingTask Session Closeout 状态持久化](./engineering/codingTaskSessionCloseoutState.md)
+- [ChangeSet 与 Git Checkpoint 双向绑定](./engineering/changeSetCheckpointBinding.md)
 - [Codex Host Smoke Prepare](./engineering/codexHostSmokePrepare.md)
 - [Codex Host v2 验证记录](./engineering/codexHostValidationRecord.md)
 - [Codex Host 兼容性证据投影](./engineering/codexCompatibilityEvidenceProjection.md)

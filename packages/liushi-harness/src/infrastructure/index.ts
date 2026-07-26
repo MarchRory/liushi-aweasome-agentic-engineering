@@ -26,3 +26,4 @@ export * from "./hookInputReader/index.js";
 export * from "./persistence/fileCodingTaskSessionAdmission/index.js";
 export * from "./gitChangeSetInspector/index.js";
 export * from "./gitCommittedChangeSetInspector/index.js";
+export * from "./persistence/fileCodingTaskSessionCloseoutStore/index.js";

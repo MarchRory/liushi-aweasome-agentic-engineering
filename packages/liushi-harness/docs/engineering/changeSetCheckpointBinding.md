@@ -53,4 +53,4 @@ Committed Inspector 不设置固定文件数或固定输出预算。`--no-rename
 - Bootstrap Factory 组合提交前 Inspector、提交后 Inspector、Git Checkpoint 与绑定服务。
 - 调用方必须持有 Repository Lock，并负责在任何 Git 副作用前持久化 Snapshot。
 
-当前尚未实现的部分包括 Closeout Process Manager、Session Action/Trace 覆盖证明、阶段状态持久化、Verification、PRReady 编排和 CLI。没有这些能力时，不得声明完整生产 Closeout 或真实 Codex Pilot 已完成。
+Closeout Process State 与 File Store 已能按精确版本持久化完整 Snapshot、Action Evidence 和本服务返回的双向绑定 Checkpoint。当前尚未实现的部分包括驱动这些阶段的 Process Manager、Session Action/Trace 覆盖证明、Repository Lock 编排、Verification、PRReady 和 CLI。没有这些能力时，不得声明完整生产 Closeout 或真实 Codex Pilot 已完成。
