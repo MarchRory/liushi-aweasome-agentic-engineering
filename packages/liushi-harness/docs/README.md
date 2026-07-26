@@ -67,6 +67,7 @@ Status: Implementation-aware Architecture Baseline
 - [固定公开项目 CodingTask Cell Smoke](./engineering/publicProjectSmoke.md)
 - [外部 Agent CodingTask Session](./engineering/codingTaskSession.md)
 - [CodingTask Session Closeout 状态持久化](./engineering/codingTaskSessionCloseoutState.md)
+- [CodingTask Session Closeout Human-gated 恢复](./engineering/codingTaskSessionCloseoutRecovery.md)
 - [ChangeSet 与 Git Checkpoint 双向绑定](./engineering/changeSetCheckpointBinding.md)
 - [Codex Host Smoke Prepare](./engineering/codexHostSmokePrepare.md)
 - [Codex Host v2 验证记录](./engineering/codexHostValidationRecord.md)

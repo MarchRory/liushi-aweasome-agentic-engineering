@@ -2,6 +2,7 @@ import {
   ChangeSetCheckpointService,
   InspectGitChangeSetUseCase,
   type ChangeSetCheckpointPort,
+  type ChangeSetCheckpointRecoveryPort,
 } from "#application/index.js";
 import type {
   ContentDigestPort,
@@ -31,6 +32,8 @@ export interface ChangeSetCheckpointApplicationFactoryOutput {
   readonly inspectGitChangeSet: InspectGitChangeSetUseCase;
   /** 创建或恢复与 ChangeSet 双向绑定的 Git Checkpoint。 */
   readonly changeSetCheckpoints: ChangeSetCheckpointPort;
+  /** 只读评估 ChangeSet-bound Checkpoint 的恢复端口。 */
+  readonly changeSetCheckpointRecovery: ChangeSetCheckpointRecoveryPort;
   /** 兼容既有 CodingTask 提交链的底层 Git Checkpoint 端口。 */
   readonly gitCheckpoint: GitCheckpointPort;
 }
@@ -53,14 +56,16 @@ export function createChangeSetCheckpointApplication(
     input.worktreeInspector,
     input.digest,
   );
+  const changeSetCheckpoints = new ChangeSetCheckpointService(
+    changeSetInspector,
+    committedChangeSetInspector,
+    gitCheckpoint,
+    input.digest,
+  );
   return {
     inspectGitChangeSet: new InspectGitChangeSetUseCase(changeSetInspector),
-    changeSetCheckpoints: new ChangeSetCheckpointService(
-      changeSetInspector,
-      committedChangeSetInspector,
-      gitCheckpoint,
-      input.digest,
-    ),
+    changeSetCheckpoints,
+    changeSetCheckpointRecovery: changeSetCheckpoints,
     gitCheckpoint,
   };
 }

@@ -9,3 +9,13 @@ export enum ChangeSetCheckpointErrorCode {
   /** Git 副作用后无法证明 Checkpoint 与 ChangeSet 的绑定。 */
   PostconditionUnknown = "change_set_checkpoint_postcondition_unknown",
 }
+
+/** ChangeSet-bound Checkpoint 只读恢复评估的封闭三态。 */
+export enum ChangeSetCheckpointRecoveryStatus {
+  /** 已证明当前不存在满足条件的 Checkpoint。 */
+  Absent = "absent",
+  /** 已完成 Checkpoint、ChangeSet 与 Snapshot 的完整复验。 */
+  Present = "present",
+  /** 无法证明 Checkpoint 存在或不存在，必须交由上层 Human Gate 处理。 */
+  Unknown = "unknown",
+}

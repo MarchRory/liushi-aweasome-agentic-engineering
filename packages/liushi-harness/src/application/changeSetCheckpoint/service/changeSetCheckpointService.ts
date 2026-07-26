@@ -26,17 +26,55 @@ import type {
   ChangeSetCheckpoint,
   ChangeSetCheckpointInput,
   ChangeSetCheckpointPort,
+  ChangeSetCheckpointRecoveryAssessment,
+  ChangeSetCheckpointRecoveryPort,
 } from "../contracts/index.js";
-import { ChangeSetCheckpointErrorCode } from "../enums/index.js";
+import { ChangeSetCheckpointErrorCode, ChangeSetCheckpointRecoveryStatus } from "../enums/index.js";
 
 /** 为 ChangeSet 创建、验证并幂等恢复 Git Checkpoint。 */
-export class ChangeSetCheckpointService implements ChangeSetCheckpointPort {
+export class ChangeSetCheckpointService
+  implements ChangeSetCheckpointPort, ChangeSetCheckpointRecoveryPort
+{
   public constructor(
     private readonly changeSetInspector: GitChangeSetInspectorPort,
     private readonly committedChangeSetInspector: GitCommittedChangeSetInspectorPort,
     private readonly gitCheckpoint: GitCheckpointRecoveryPort,
     private readonly digest: ContentDigestPort,
   ) {}
+
+  /** 只读评估 ChangeSet-bound Checkpoint，绝不执行 Git 副作用。 */
+  public async assess(
+    input: ChangeSetCheckpointInput,
+  ): Promise<Result<ChangeSetCheckpointRecoveryAssessment, HarnessError>> {
+    const validated = this.validateInput(input);
+    if (validated.status === ResultStatus.Failure) return validated;
+
+    let existing;
+    try {
+      existing = await this.gitCheckpoint.assess(input.checkpointInput);
+    } catch {
+      return success(recoveryUnknown());
+    }
+    if (existing.status === ResultStatus.Failure) return success(recoveryUnknown());
+    if (existing.value.status === GitCheckpointInspectionStatus.Absent) {
+      return success({ status: ChangeSetCheckpointRecoveryStatus.Absent });
+    }
+    if (existing.value.status !== GitCheckpointInspectionStatus.Present) {
+      return success(recoveryUnknown());
+    }
+
+    try {
+      const inspected = await this.inspect(input);
+      return inspected.status === ResultStatus.Success
+        ? success({
+            status: ChangeSetCheckpointRecoveryStatus.Present,
+            checkpoint: inspected.value,
+          })
+        : success(recoveryUnknown());
+    } catch {
+      return success(recoveryUnknown());
+    }
+  }
 
   /** 只读重建并验证一个已存在的 ChangeSet-bound Checkpoint。 */
   public async inspect(
@@ -225,6 +263,10 @@ function notApplied(
 
 function unknown(errorCode: ChangeSetCheckpointErrorCode) {
   return { outcome: ActionOutcome.OutcomeUnknown, evidenceIds: [], errorCode } as const;
+}
+
+function recoveryUnknown(): ChangeSetCheckpointRecoveryAssessment {
+  return { status: ChangeSetCheckpointRecoveryStatus.Unknown };
 }
 
 function samePaths(left: readonly string[], right: readonly string[]): boolean {
