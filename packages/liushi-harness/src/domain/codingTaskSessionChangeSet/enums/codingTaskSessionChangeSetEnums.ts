@@ -6,12 +6,10 @@ export enum CodingTaskSessionChangeKind {
   Added = "added",
   /** 文件被删除。 */
   Deleted = "deleted",
-  /** 文件被重命名。 */
+  /** Inspector 输入的 Rename 提示；不会进入规范 ChangeSet 输出。 */
   Renamed = "renamed",
-  /** 文件被复制。 */
+  /** Inspector 输入的 Copy 提示；不会进入规范 ChangeSet 输出。 */
   Copied = "copied",
-  /** 未被 Git 跟踪的新文件。 */
-  Untracked = "untracked",
   /** 文件类型发生变化。 */
   TypeChanged = "type_changed",
 }

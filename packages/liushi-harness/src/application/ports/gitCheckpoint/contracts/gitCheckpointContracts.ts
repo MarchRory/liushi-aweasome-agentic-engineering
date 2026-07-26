@@ -3,6 +3,8 @@ import type { ActionOutcome } from "#domain/actionJournal/index.js";
 import type { WorktreeBinding } from "#domain/codingTask/index.js";
 import type { RepositoryId } from "#domain/workspace/index.js";
 
+import type { GitCheckpointInspectionStatus } from "../enums/index.js";
+
 /** 创建或检查实现 Checkpoint 所需的权威输入。 */
 export interface GitCheckpointInput {
   /** Repository 稳定标识。 */
@@ -41,10 +43,40 @@ export interface GitCheckpointExecutionResult {
   readonly errorCode?: string;
 }
 
+/** 已证明当前不存在 Git Checkpoint。 */
+export interface AbsentGitCheckpointInspection {
+  /** 闭合状态。 */
+  readonly status: GitCheckpointInspectionStatus.Absent;
+}
+
+/** 已证明当前存在合法 Git Checkpoint。 */
+export interface PresentGitCheckpointInspection {
+  /** 闭合状态。 */
+  readonly status: GitCheckpointInspectionStatus.Present;
+  /** 从真实 Git 状态重建的 Checkpoint。 */
+  readonly checkpoint: GitCheckpoint;
+}
+
+/** 无法证明 Git Checkpoint 存在或不存在。 */
+export interface UnknownGitCheckpointInspection {
+  /** 闭合状态。 */
+  readonly status: GitCheckpointInspectionStatus.Unknown;
+}
+
+/** Git Checkpoint 存在性与恢复状态的三态结果。 */
+export type GitCheckpointInspection =
+  AbsentGitCheckpointInspection | PresentGitCheckpointInspection | UnknownGitCheckpointInspection;
+
 /** 创建并恢复检查单提交实现 Checkpoint 的 Port。 */
 export interface GitCheckpointPort {
   /** 从洁净基线上的 Write Set Diff 创建一个本地 Commit。 */
   execute(input: GitCheckpointInput): Promise<Result<GitCheckpointExecutionResult, HarnessError>>;
   /** 不产生副作用地检查 Base 到当前 HEAD 是否构成合法 Checkpoint。 */
   inspect(input: GitCheckpointInput): Promise<Result<GitCheckpoint, HarnessError>>;
+}
+
+/** 为自动恢复提供明确三态检查的强化 Git Checkpoint Port。 */
+export interface GitCheckpointRecoveryPort extends GitCheckpointPort {
+  /** 只读区分不存在、已存在和无法证明三种状态。 */
+  assess(input: GitCheckpointInput): Promise<Result<GitCheckpointInspection, HarnessError>>;
 }

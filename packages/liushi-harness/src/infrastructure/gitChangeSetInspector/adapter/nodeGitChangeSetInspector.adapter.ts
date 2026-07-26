@@ -163,7 +163,7 @@ function mapChangeKind(
     case WorktreeChangeKind.Copied:
       return success(CodingTaskSessionChangeKind.Copied);
     case WorktreeChangeKind.Untracked:
-      return success(CodingTaskSessionChangeKind.Untracked);
+      return success(CodingTaskSessionChangeKind.Added);
     case WorktreeChangeKind.TypeChanged:
       return success(CodingTaskSessionChangeKind.TypeChanged);
     case WorktreeChangeKind.Unmerged:

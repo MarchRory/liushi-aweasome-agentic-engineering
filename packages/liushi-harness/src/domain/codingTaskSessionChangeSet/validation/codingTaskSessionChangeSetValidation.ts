@@ -15,6 +15,10 @@ import {
   CODING_TASK_SESSION_CHANGE_SET_SCHEMA_VERSION,
   CODING_TASK_SESSION_CHANGE_SET_SNAPSHOT_SCHEMA_VERSION,
 } from "../constants/index.js";
+import {
+  canonicalizeCodingTaskSessionChange,
+  isCanonicalCodingTaskSessionChangeSet,
+} from "../canonicalization/index.js";
 import type {
   CodingTaskSessionChange,
   CodingTaskSessionChangePathInput,
@@ -82,7 +86,6 @@ export function isSupportedCodingTaskSessionChangeKind(kind: CodingTaskSessionCh
     kind === CodingTaskSessionChangeKind.Deleted ||
     kind === CodingTaskSessionChangeKind.Renamed ||
     kind === CodingTaskSessionChangeKind.Copied ||
-    kind === CodingTaskSessionChangeKind.Untracked ||
     kind === CodingTaskSessionChangeKind.TypeChanged
   );
 }
@@ -105,16 +108,19 @@ export function validateCodingTaskSessionChangeSetInput(
   }
 
   const changes: CodingTaskSessionChange[] = [];
-  const targetPaths = new Set<string>();
   for (const change of input.changes) {
     const validated = validateCodingTaskSessionChange(change);
     if (validated.status === ResultStatus.Failure) return validated;
     if (!isSupportedCodingTaskSessionChangeKind(validated.value.kind)) {
       return failure(invalid("change.kind"));
     }
-    if (targetPaths.has(validated.value.path)) return failure(invalid("changes"));
-    targetPaths.add(validated.value.path);
-    changes.push(validated.value);
+    changes.push(...canonicalizeCodingTaskSessionChange(validated.value));
+  }
+
+  const targetPaths = new Set<string>();
+  for (const change of changes) {
+    if (targetPaths.has(change.path)) return failure(invalid("changes"));
+    targetPaths.add(change.path);
   }
 
   return success({
@@ -131,6 +137,9 @@ export function validateCodingTaskSessionChangeSet(
 ): Result<CodingTaskSessionChangeSet, HarnessErrorType> {
   const validated = validateCodingTaskSessionChangeSetInput(input);
   if (validated.status === ResultStatus.Failure) return validated;
+  if (!isCanonicalCodingTaskSessionChangeSet(input.changes, validated.value.changes)) {
+    return failure(invalid("changes"));
+  }
   const digest = parseContentDigest(input.changeSetDigest);
   if (digest.status === ResultStatus.Failure) return failure(invalid("changeSetDigest"));
   return success({ ...validated.value, changeSetDigest: digest.value });

@@ -14,6 +14,7 @@ import {
   success,
   type Result,
 } from "#common/index.js";
+import { createSanitizedGitCommandEnvironment } from "#infrastructure/gitCommand/index.js";
 import type { CommandRunner } from "#infrastructure/system/index.js";
 import { sameResolvedPath } from "#infrastructure/worktree/path/index.js";
 
@@ -139,6 +140,7 @@ export class NodeWorktreeProvisionRecoveryInspectorAdapter implements WorktreePr
       args: ["worktree", "list", "--porcelain", "-z"],
       cwd: repositoryRoot,
       timeoutMs: this.timeoutMs,
+      environment: createSanitizedGitCommandEnvironment(),
     });
     if (result.status === ResultStatus.Failure || result.value.exitCode !== 0) {
       return failureCode(WorktreeProvisionRecoveryDiagnosticCode.RegistryCommandUnavailable);
@@ -152,6 +154,7 @@ export class NodeWorktreeProvisionRecoveryInspectorAdapter implements WorktreePr
       args: ["show-ref", "--verify", "--quiet", `refs/heads/${branchName}`],
       cwd: repositoryRoot,
       timeoutMs: this.timeoutMs,
+      environment: createSanitizedGitCommandEnvironment(),
     });
     if (result.status === ResultStatus.Failure) {
       return failureCode(WorktreeProvisionRecoveryDiagnosticCode.BranchCommandUnavailable);

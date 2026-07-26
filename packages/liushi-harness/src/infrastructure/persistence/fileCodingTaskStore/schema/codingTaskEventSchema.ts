@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { CODING_TASK_EVENT_SCHEMA_VERSION, ResultStatus, actorRefSchema } from "#common/index.js";
+import {
+  CODING_TASK_EVENT_SCHEMA_VERSION,
+  ResultStatus,
+  actorRefSchema,
+  isCanonicalRepositoryRelativePath,
+} from "#common/index.js";
 import { parseArtifactDigest, parseArtifactId } from "#domain/artifact/index.js";
 import { parseApprovalId } from "#domain/approval/index.js";
 import { GateEvaluationResult, GateId } from "#domain/policy/index.js";
@@ -70,14 +75,9 @@ const authorization = z
     businessLogic: gateBinding.optional(),
   })
   .strict();
-const relativePath = text().refine((value) => {
-  if (value.startsWith("/") || /^[A-Za-z]:/.test(value) || value.includes("\\")) return false;
-  const segments = value.split("/");
-  return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
-}, "必须是规范的相对 POSIX 路径。");
-const changedPath = relativePath.refine(
-  (value) => !/[<>:"|?*\u0000]/.test(value),
-  "不能包含文件名保留字符。",
+const relativePath = text().refine(
+  isCanonicalRepositoryRelativePath,
+  "必须是规范的仓库相对 POSIX 路径。",
 );
 const worktree = z
   .object({ worktreeId: text(), relativePath, branchName: text(), managed: z.boolean() })
@@ -143,7 +143,7 @@ const eventSchema = z.discriminatedUnion("type", [
         .object({
           attemptNumber: z.number().int().positive(),
           targetRevision: text(),
-          changedPaths: z.array(changedPath).min(1),
+          changedPaths: z.array(relativePath).min(1),
         })
         .strict(),
     })

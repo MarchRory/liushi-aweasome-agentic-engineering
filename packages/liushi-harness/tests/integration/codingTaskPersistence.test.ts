@@ -19,6 +19,7 @@ import {
   ExclusiveFileLockManager,
   FileCodingTaskRepository,
   FileParentDirectoryDurability,
+  parseCodingTaskEvent,
   resolveCodingTaskStorePaths,
 } from "../../src/infrastructure/index.js";
 import { TemporaryRuntimeStore } from "../support/runtime/index.js";
@@ -154,6 +155,24 @@ describe("FileCodingTaskRepository", () => {
       }),
     ).toMatchObject({ error: { code: HarnessErrorCode.InvalidStateTransition } });
   });
+
+  it.each(["src/control\u0001path.ts", "src/control\u001fpath.ts", "src/control\u007fpath.ts"])(
+    "Event Schema 拒绝路径中的控制字符：%j",
+    (path) => {
+      expect(() =>
+        parseCodingTaskEvent({
+          ...createdEvent(),
+          sequence: 1,
+          previousHash: "0".repeat(64),
+          hash: "0".repeat(64),
+          payload: {
+            ...createdEvent().payload,
+            writeSet: [path],
+          },
+        }),
+      ).toThrow();
+    },
+  );
 
   it("锁争用返回 LockUnavailable 而不是 OutcomeUnknown", async () => {
     const root = await runtimeStores.create("liushi-coding-task-lock-");

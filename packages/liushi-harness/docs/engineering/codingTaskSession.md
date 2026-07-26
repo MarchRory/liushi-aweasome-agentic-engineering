@@ -4,7 +4,7 @@
 
 **状态：技术边界已确认，按可逆切片实施。** 当前 `cell run` 继续承担预编排 Mutation 的一次性确定性闭环；外部 Agent Session 使用独立协议，不改变 `coding-task.cell.run.v2` 的 Schema、执行顺序或公开语义。
 
-S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。S3 第一切片已实现提交前权威 ChangeSet：从受管 Worktree 读取实际变化，分别计算可跨 Checkpoint 复验的 ChangeSet Digest 与绑定现场身份的 Snapshot Digest，并提供完整摘要重算验证。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。`beginClosing` 当前仅作为内部并发保护门存在；完整 Closeout 在 Checkpoint 双向绑定、Verification 和 PRReady 编排闭合前不开放。
+S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。S3 已实现提交前权威 ChangeSet 与 Git Checkpoint 双向绑定：从受管 Worktree 读取实际变化，分别计算可跨 Checkpoint 复验的 ChangeSet Digest 与绑定现场身份的 Snapshot Digest；提交后再从真实 Commit Diff 和目标原始字节独立重建同一 ChangeSet。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。`beginClosing` 当前仅作为内部并发保护门存在；完整 Closeout 在 Process Manager、Verification 和 PRReady 编排闭合前不开放。
 
 ## 2. 目标
 
@@ -100,7 +100,7 @@ Closeout 不接受调用方自报的 changed paths、Attempt、PlanRisk 或 Work
 6. 计算稳定 ChangeSet Digest，绑定路径、变化类型和目标内容摘要。
 7. 每个实际路径必须由同 Session、同 Attempt、同 Worktree、同 PlanRisk 的 Committed Hook Action 覆盖。
 8. 每个 Action 必须存在唯一 Trace Observation，且查询没有跳过损坏记录。
-9. Git Checkpoint 在写入前后复验同一 ChangeSet Digest；任何漂移都停止提交。
+9. Git Checkpoint 在写入前后复验同一 ChangeSet Digest；提交前漂移停止提交，副作用后无法证明绑定则进入 `outcome_unknown`。
 10. Checkpoint changed paths 必须与门检快照逐项一致，之后才进入 Verification。
 
 Trace 不决定业务授权，但外部 Session 将它作为强制审计完整性门。Trace 写入被丢弃、缺失、损坏或存在多义匹配时，Closeout 必须 fail closed。其他非 Session 路径继续保持 Trace best-effort 语义。
@@ -123,6 +123,8 @@ Application 只能依赖以下边界：
 - `CodingTaskSessionRepository`：持久化 Session Event、Binding 和状态迁移。
 - `SessionActionEvidenceRepository`：在同一 Session 锁协议下完成 Action 准入、闭合和查询。
 - `GitChangeSetInspectorPort`：读取提交前实际变化并生成稳定快照。
+- `GitCommittedChangeSetInspectorPort`：从目标 Commit Diff 与目标原始字节独立重建 ChangeSet。
+- `ChangeSetCheckpointPort`：在调用方持有 Repository Lock 时创建或恢复双向绑定 Checkpoint。
 - `HookBindingStore`：按精确 Binding 身份读取 Session-scoped Binding。
 - 既有 CodingTask、Action Journal、Trace、Repository Lock、Submission、Verification 与 Evidence Port。
 
@@ -154,9 +156,12 @@ Windows、POSIX 路径、Git 命令和文件锁实现必须位于 Infrastructure
 ### S3 Closeout（进行中）
 
 - 已实现：提交前权威 ChangeSet Inspector、原始字节摘要、双摘要职责分离、完整 Snapshot 摘要重算验证和 Composition Root Use Case。
-- 待实现：ChangeSet Digest 与 Git Checkpoint 双向绑定。
+- 已实现：提交后权威 ChangeSet 重建、Added/Rename/Copy 语义规范化、ChangeSet Digest 与 Git Checkpoint 双向绑定，以及副作用前漂移拒绝和幂等恢复。
+- 待实现：持久化 Snapshot、Repository Lock、Session Action/Trace 证据门和阶段恢复组成的 Closeout Process Manager。
 - 待实现：Submission、Verification、Evidence 和 PRReady 编排。
 - 待实现：CLI `coding-task session closeout`。
+
+双向绑定的算法、失败分类和分层边界见 [ChangeSet 与 Git Checkpoint 双向绑定](./changeSetCheckpointBinding.md)。
 
 ### S4 Pilot Metrics
 

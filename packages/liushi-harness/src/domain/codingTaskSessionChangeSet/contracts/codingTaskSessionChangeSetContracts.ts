@@ -17,7 +17,7 @@ export interface CodingTaskSessionChangeSetDigestPort {
 export interface CodingTaskSessionChangePathInput {
   /** 变化后的 Repository 相对 POSIX 路径。 */
   readonly path: string;
-  /** Rename 或 Copy 的原始 Repository 相对 POSIX 路径。 */
+  /** Inspector 提供的 Rename 或 Copy 关系提示；只用于输入，永不进入规范 ChangeSet 输出。 */
   readonly originalPath?: string;
   /** 变化的闭合分类。 */
   readonly kind: CodingTaskSessionChangeKind;

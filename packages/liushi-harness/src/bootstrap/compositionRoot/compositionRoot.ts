@@ -8,7 +8,6 @@ import {
   GetTaskTimelineUseCase,
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
-  InspectGitChangeSetUseCase,
   RunVerificationUseCase,
   RunAndPersistVerificationUseCase,
   AcquireRepositoryLockUseCase,
@@ -47,8 +46,6 @@ import {
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
   NodeFileMutationExecutorAdapter,
-  NodeGitCheckpointAdapter,
-  NodeGitChangeSetInspectorAdapter,
   NodeRepositoryLockAdapter,
   FileActionExecutionLockAdapter,
   NodeCommandRunnerAdapter,
@@ -66,6 +63,7 @@ import {
   createCodingTaskSessionApplication,
   createCodingTaskSessionHookRuntime,
   createCodingTaskAuthorizationResolver,
+  createChangeSetCheckpointApplication,
   createExecutorCompatibilityApplication,
   createExecutorCompatibilityAttestationApplication,
   createManagedFileInstallationApplication,
@@ -143,7 +141,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   });
   const hookApplication = codingTaskSessionHookRuntime.hookApplication;
   const worktreeInspector = new NodeWorktreeInspectorAdapter(commandRunner);
-  const gitChangeSetInspector = new NodeGitChangeSetInspectorAdapter(worktreeInspector, digest);
+  // prettier-ignore
+  const changeSetApplication = createChangeSetCheckpointApplication({ commandRunner, worktreeInspector, digest });
   const repositoryLock = new NodeRepositoryLockAdapter(
     options.storeRoot,
     lockManager,
@@ -209,7 +208,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     repositoryRootResolver,
     repositoryLock,
     journaledActionRunner,
-    new NodeGitCheckpointAdapter(commandRunner, worktreeInspector, digest),
+    changeSetApplication.gitCheckpoint,
     codingTaskCommandHandler,
     digest,
     unresolvedProvisionGuard,
@@ -287,7 +286,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       new RequirementWorkflowCommandHandler(workflowRepository, clock, eventIdGenerator),
     ),
     inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
-    inspectGitChangeSet: new InspectGitChangeSetUseCase(gitChangeSetInspector),
+    inspectGitChangeSet: changeSetApplication.inspectGitChangeSet,
+    changeSetCheckpoints: changeSetApplication.changeSetCheckpoints,
     runVerification: verificationRunner,
     runAndPersistVerification,
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),

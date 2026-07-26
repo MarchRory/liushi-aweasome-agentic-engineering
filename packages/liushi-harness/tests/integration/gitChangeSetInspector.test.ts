@@ -51,12 +51,13 @@ describe("Node Git ChangeSet Inspector Adapter", () => {
     ]);
     expect(first.changedPaths).toEqual(["assets/new.bin", "src/modified.txt"]);
     expect(binaryChange?.targetContentDigest).toBe(rawDigest(binary));
+    expect(binaryChange?.kind).toBe(CodingTaskSessionChangeKind.Added);
     expect(textChange?.targetContentDigest).toBe(rawDigest(Buffer.from("修改后的文本\n")));
     expect(first.changeSetDigest).toBe(second.changeSetDigest);
     expect(first.snapshotDigest).toBe(second.snapshotDigest);
   }, 30_000);
 
-  it("记录 rename 的原始路径与目标摘要，并为 delete 使用 null 摘要", async () => {
+  it("将 Git rename hint canonicalize 为 Deleted 与 Added，并为 delete 使用 null 摘要", async () => {
     const fixture = await createFixture();
     const originalBytes = await readFile(join(fixture.worktreeRoot, "src", "old.txt"));
     await runGit(fixture.worktreeRoot, ["mv", "src/old.txt", "src/new.txt"]);
@@ -65,21 +66,23 @@ describe("Node Git ChangeSet Inspector Adapter", () => {
     const result = requireSuccess(
       await inspect(fixture, ["src/deleted.txt", "src/new.txt", "src/old.txt"]),
     );
-    const renamed = result.changes.find(
-      (change) => change.kind === CodingTaskSessionChangeKind.Renamed,
-    );
-    const deleted = result.changes.find((change) => change.path === "src/deleted.txt");
-
-    expect(renamed).toMatchObject({
-      path: "src/new.txt",
-      originalPath: "src/old.txt",
-      kind: "renamed",
-      targetContentDigest: rawDigest(originalBytes),
-    });
-    expect(deleted).toMatchObject({
-      path: "src/deleted.txt",
-      targetContentDigest: null,
-    });
+    expect(result.changes).toEqual([
+      {
+        path: "src/deleted.txt",
+        kind: CodingTaskSessionChangeKind.Deleted,
+        targetContentDigest: null,
+      },
+      {
+        path: "src/new.txt",
+        kind: CodingTaskSessionChangeKind.Added,
+        targetContentDigest: rawDigest(originalBytes),
+      },
+      {
+        path: "src/old.txt",
+        kind: CodingTaskSessionChangeKind.Deleted,
+        targetContentDigest: null,
+      },
+    ]);
     expect(result.changedPaths).toEqual(["src/deleted.txt", "src/new.txt", "src/old.txt"]);
   }, 30_000);
 

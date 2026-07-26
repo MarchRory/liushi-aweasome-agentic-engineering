@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { GitCheckpointInspectionStatus } from "../../src/application/ports/index.js";
 import { ActionOutcome, ResultStatus, parseRepositoryId } from "../../src/index.js";
 import {
   NodeCommandRunnerAdapter,
@@ -21,6 +22,42 @@ afterEach(async () => {
 });
 
 describe("Node Git Checkpoint Adapter", () => {
+  it("明确区分不存在、已存在与无法证明的 Checkpoint", async () => {
+    const setup = await createSetup();
+
+    expect(await setup.adapter.assess(setup.input)).toEqual({
+      status: ResultStatus.Success,
+      value: { status: GitCheckpointInspectionStatus.Absent },
+    });
+
+    await writeFile(join(setup.worktreeRoot, "src", "index.ts"), "export const value = 2;\n");
+    expect(await setup.adapter.assess(setup.input)).toEqual({
+      status: ResultStatus.Success,
+      value: { status: GitCheckpointInspectionStatus.Absent },
+    });
+
+    await setup.adapter.execute(setup.input);
+    expect(await setup.adapter.assess(setup.input)).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        status: GitCheckpointInspectionStatus.Present,
+        checkpoint: { changedPaths: ["src/index.ts"] },
+      },
+    });
+
+    const unknown = await setup.adapter.assess({
+      ...setup.input,
+      worktreeBinding: {
+        ...setup.input.worktreeBinding,
+        branchName: "feature/untrusted-branch",
+      },
+    });
+    expect(unknown).toEqual({
+      status: ResultStatus.Success,
+      value: { status: GitCheckpointInspectionStatus.Unknown },
+    });
+  });
+
   it("把 Write Set 内 Diff 提交为单一 Checkpoint，并支持无副作用恢复检查", async () => {
     const setup = await createSetup();
     await writeFile(join(setup.worktreeRoot, "src", "index.ts"), "export const value = 2;\n");

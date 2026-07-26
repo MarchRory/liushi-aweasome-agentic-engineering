@@ -1,4 +1,4 @@
-import { HarnessError, HarnessErrorCode } from "#common/index.js";
+import { HarnessError, HarnessErrorCode, normalizeRepositoryRelativePath } from "#common/index.js";
 import { GateEvaluationResult, GateId } from "#domain/policy/index.js";
 
 import type {
@@ -83,21 +83,11 @@ export function assertCodingTaskExecutionAuthorization(
 }
 
 function normalizePath(value: string): string {
-  if (typeof value !== "string") throw invalid("writeSet 路径必须是字符串。", "writeSet");
-  const path = value.trim().replaceAll("\\", "/");
-  if (
-    !path ||
-    path.startsWith("/") ||
-    /^[A-Za-z]:/.test(path) ||
-    path.includes("//") ||
-    /[<>:"|?*\u0000]/.test(path)
-  ) {
+  const normalized = normalizeRepositoryRelativePath(value);
+  if (normalized === undefined) {
     throw invalid("writeSet 只能包含规范相对路径。", "writeSet");
   }
-  const segments = path.split("/");
-  if (segments.some((segment) => segment === "" || segment === "." || segment === ".."))
-    throw invalid("writeSet 路径包含非法段。", "writeSet");
-  return segments.join("/");
+  return normalized;
 }
 
 function isNonBlank(value: string): boolean {

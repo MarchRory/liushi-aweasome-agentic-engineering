@@ -95,16 +95,24 @@ export function verifyCodingTaskSessionChangeSetSnapshot(
   input: CodingTaskSessionChangeSetSnapshot,
   digestPort: CodingTaskSessionChangeSetDigestPort,
 ): Result<CodingTaskSessionChangeSetSnapshot, HarnessErrorType> {
-  const changeSet = createCodingTaskSessionChangeSet(
-    {
-      repositoryId: input.repositoryId,
-      baseRevision: input.baseRevision,
-      changes: input.changes,
-    },
-    digestPort,
-  );
+  const changeSet = validateCodingTaskSessionChangeSet({
+    schemaVersion: CODING_TASK_SESSION_CHANGE_SET_SCHEMA_VERSION,
+    repositoryId: input.repositoryId,
+    baseRevision: input.baseRevision,
+    changes: input.changes,
+    changeSetDigest: input.changeSetDigest,
+  });
   if (changeSet.status === ResultStatus.Failure) return changeSet;
-  if (changeSet.value.changeSetDigest !== input.changeSetDigest) {
+  const expectedChangeSetDigest = digestPort.calculate({
+    schemaVersion: changeSet.value.schemaVersion,
+    repositoryId: changeSet.value.repositoryId,
+    baseRevision: changeSet.value.baseRevision,
+    changes: changeSet.value.changes,
+  });
+  if (expectedChangeSetDigest.status === ResultStatus.Failure) {
+    return expectedChangeSetDigest;
+  }
+  if (expectedChangeSetDigest.value !== input.changeSetDigest) {
     return failure(
       new HarnessError(
         HarnessErrorCode.PreconditionNotMet,

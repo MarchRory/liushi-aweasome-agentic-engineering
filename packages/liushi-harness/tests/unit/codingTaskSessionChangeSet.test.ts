@@ -102,8 +102,28 @@ describe("CodingTask Session ChangeSet 领域契约", () => {
           },
           {
             path: "src/same.ts",
-            kind: CodingTaskSessionChangeKind.Untracked,
+            kind: CodingTaskSessionChangeKind.Added,
             targetContentDigest: digestOf({ bytes: "two" }),
+          },
+        ],
+      },
+      digest,
+    );
+    const canonicalizationConflict = createCodingTaskSessionChangeSet(
+      {
+        repositoryId,
+        baseRevision,
+        changes: [
+          {
+            path: "src/new.ts",
+            originalPath: "src/same.ts",
+            kind: CodingTaskSessionChangeKind.Renamed,
+            targetContentDigest: digestOf({ bytes: "new" }),
+          },
+          {
+            path: "src/same.ts",
+            kind: CodingTaskSessionChangeKind.Modified,
+            targetContentDigest: digestOf({ bytes: "same" }),
           },
         ],
       },
@@ -113,9 +133,10 @@ describe("CodingTask Session ChangeSet 领域契约", () => {
     expect(invalidOriginalPath.status).toBe(ResultStatus.Failure);
     expect(invalidDeletedDigest.status).toBe(ResultStatus.Failure);
     expect(duplicateTargetPath.status).toBe(ResultStatus.Failure);
+    expect(canonicalizationConflict.status).toBe(ResultStatus.Failure);
   });
 
-  it("按目标路径稳定排序，并保留 rename 的原始路径", () => {
+  it("将 rename 和 copy canonicalize 为稳定排序的 Deleted 与 Added", () => {
     const result = requireSuccess(
       createCodingTaskSessionChangeSet(
         {
@@ -133,14 +154,40 @@ describe("CodingTask Session ChangeSet 领域契约", () => {
               kind: CodingTaskSessionChangeKind.Renamed,
               targetContentDigest: digestOf({ bytes: "a" }),
             },
+            {
+              path: "copy.ts",
+              originalPath: "source.ts",
+              kind: CodingTaskSessionChangeKind.Copied,
+              targetContentDigest: digestOf({ bytes: "copy" }),
+            },
           ],
         },
         digest,
       ),
     );
 
-    expect(result.changes.map((change) => change.path)).toEqual(["a.ts", "z.ts"]);
-    expect(result.changes[0]?.originalPath).toBe("old.ts");
+    expect(result.changes).toEqual([
+      {
+        path: "a.ts",
+        kind: CodingTaskSessionChangeKind.Added,
+        targetContentDigest: digestOf({ bytes: "a" }),
+      },
+      {
+        path: "copy.ts",
+        kind: CodingTaskSessionChangeKind.Added,
+        targetContentDigest: digestOf({ bytes: "copy" }),
+      },
+      {
+        path: "old.ts",
+        kind: CodingTaskSessionChangeKind.Deleted,
+        targetContentDigest: null,
+      },
+      {
+        path: "z.ts",
+        kind: CodingTaskSessionChangeKind.Added,
+        targetContentDigest: digestOf({ bytes: "z" }),
+      },
+    ]);
   });
 
   it("重算完整 Snapshot，并拒绝字段或摘要篡改", () => {
@@ -200,6 +247,53 @@ describe("CodingTask Session ChangeSet 领域契约", () => {
     expect(
       verifyCodingTaskSessionChangeSetSnapshot(
         { ...snapshot, snapshotDigest: digestOf({ snapshot: "tampered" }) },
+        digest,
+      ).status,
+    ).toBe(ResultStatus.Failure);
+
+    const renameChangeSet = requireSuccess(
+      createCodingTaskSessionChangeSet(
+        {
+          repositoryId,
+          baseRevision,
+          changes: [
+            {
+              path: "src/new.ts",
+              originalPath: "src/old.ts",
+              kind: CodingTaskSessionChangeKind.Renamed,
+              targetContentDigest: digestOf({ bytes: "renamed" }),
+            },
+          ],
+        },
+        digest,
+      ),
+    );
+    const renameSnapshot = requireSuccess(
+      createCodingTaskSessionChangeSetSnapshot(
+        {
+          changeSet: renameChangeSet,
+          worktreeId: "task-worktree",
+          worktreeRelativePath: "worktrees/task",
+          branchName: "task/worktree",
+          observedHeadRevision: baseRevision,
+          writeSet: ["src/new.ts", "src/old.ts"],
+        },
+        digest,
+      ),
+    );
+    expect(
+      verifyCodingTaskSessionChangeSetSnapshot(
+        {
+          ...renameSnapshot,
+          changes: [
+            {
+              path: "src/new.ts",
+              originalPath: "src/old.ts",
+              kind: CodingTaskSessionChangeKind.Renamed,
+              targetContentDigest: digestOf({ bytes: "renamed" }),
+            },
+          ],
+        },
         digest,
       ).status,
     ).toBe(ResultStatus.Failure);

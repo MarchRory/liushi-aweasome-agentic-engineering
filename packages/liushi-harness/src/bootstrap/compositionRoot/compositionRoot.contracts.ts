@@ -2,6 +2,7 @@ import type {
   ApplicationCommandGateway,
   ApplyInstallPlanUseCase,
   AssemblePrReadyArtifactUseCase,
+  ChangeSetCheckpointPort,
   CodingTaskCellService,
   ActivateCodingTaskSessionService,
   CodingTaskCellRuntimeBinding,
@@ -140,6 +141,8 @@ export interface HarnessApplication {
   inspectWorktree: InspectWorktreeUseCase;
   /** 从受管 Worktree 生成提交前权威 ChangeSet Snapshot。 */
   inspectGitChangeSet: InspectGitChangeSetUseCase;
+  /** 创建或恢复与提交前 ChangeSet 双向绑定的 Git Checkpoint。 */
+  changeSetCheckpoints: ChangeSetCheckpointPort;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
   runVerification: RunVerificationUseCase;
   /** 执行 Verification 并强一致提交 EvidenceBundle。 */

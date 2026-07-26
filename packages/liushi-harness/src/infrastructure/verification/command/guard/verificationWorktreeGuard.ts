@@ -1,5 +1,6 @@
 import { ResultStatus } from "#common/index.js";
 import { VerificationFailureKind } from "#domain/verification/index.js";
+import { createSanitizedGitCommandEnvironment } from "#infrastructure/gitCommand/index.js";
 import type { CommandRunner } from "#infrastructure/system/index.js";
 import { sameResolvedPath } from "#infrastructure/worktree/path/index.js";
 
@@ -93,6 +94,7 @@ async function runGit(
     cwd,
     timeoutMs,
     maxOutputBytes: MAX_GIT_OUTPUT_BYTES,
+    environment: createSanitizedGitCommandEnvironment(),
   });
   return (
     result.status === ResultStatus.Success &&
@@ -113,6 +115,7 @@ async function readGit(
     cwd,
     timeoutMs,
     maxOutputBytes: MAX_GIT_OUTPUT_BYTES,
+    environment: createSanitizedGitCommandEnvironment(),
   });
   return result.status === ResultStatus.Success &&
     result.value.exitCode === 0 &&

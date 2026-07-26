@@ -137,6 +137,16 @@ describe("Artifact proposal contracts", () => {
     expect(result.status).toBe(ResultStatus.Success);
   });
 
+  it.each(["src/control\u0001path.ts", "src/control\u001fpath.ts", "src/control\u007fpath.ts"])(
+    "拒绝 PlanRisk 路径中的控制字符：%j",
+    (path) => {
+      const proposal = createPlanRiskProposal();
+      proposal.payload.writeSet = [path];
+
+      expect(parseArtifactProposal(proposal).status).toBe(ResultStatus.Failure);
+    },
+  );
+
   it("parses a valid ProjectProfileProposal proposal without evidence", () => {
     const result = parseArtifactProposal(createProjectProfileProposal());
 

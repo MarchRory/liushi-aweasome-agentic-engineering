@@ -17,6 +17,7 @@ import {
 } from "#common/index.js";
 import { ActionOutcome } from "#domain/actionJournal/index.js";
 import { WorktreeInspectionStatus } from "#application/ports/worktree/index.js";
+import { createSanitizedGitCommandEnvironment } from "#infrastructure/gitCommand/index.js";
 import type { CommandRunner } from "#infrastructure/system/index.js";
 import { samePathIdentity } from "#infrastructure/system/platformCompatibility/index.js";
 import { isWithinRoot } from "#infrastructure/worktree/path/index.js";
@@ -65,6 +66,7 @@ export class NodeWorktreeProvisionerAdapter implements WorktreeProvisionerPort {
       ],
       cwd: prepared.value.repositoryRoot,
       timeoutMs: this.timeoutMs,
+      environment: createSanitizedGitCommandEnvironment(),
     });
     if (command.status === ResultStatus.Failure) return command;
 
@@ -132,6 +134,7 @@ export class NodeWorktreeProvisionerAdapter implements WorktreeProvisionerPort {
       args: ["rev-parse", "--verify", `${input.baseRevision}^{commit}`],
       cwd: repositoryRoot,
       timeoutMs: this.timeoutMs,
+      environment: createSanitizedGitCommandEnvironment(),
     });
     if (base.status === ResultStatus.Failure) return base;
     const baseCommit = base.value.stdout.trim();
@@ -147,6 +150,7 @@ export class NodeWorktreeProvisionerAdapter implements WorktreeProvisionerPort {
       args: ["show-ref", "--verify", "--quiet", `refs/heads/${branchName}`],
       cwd: repositoryRoot,
       timeoutMs: this.timeoutMs,
+      environment: createSanitizedGitCommandEnvironment(),
     });
     return result.status === ResultStatus.Success && result.value.exitCode === 1;
   }

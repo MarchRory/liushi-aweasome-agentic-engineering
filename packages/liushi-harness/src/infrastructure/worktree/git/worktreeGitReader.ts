@@ -4,6 +4,7 @@ import {
   WorktreeGitOperation,
   type WorktreeChange,
 } from "#application/ports/worktree/index.js";
+import { createSanitizedGitCommandEnvironment } from "#infrastructure/gitCommand/index.js";
 import type { CommandRunResult, CommandRunner } from "#infrastructure/system/index.js";
 
 import { parseWorktreeStatus } from "../status/index.js";
@@ -137,6 +138,7 @@ async function runGit(
     args,
     cwd: input.cwd,
     timeoutMs: input.timeoutMs,
+    environment: createSanitizedGitCommandEnvironment(),
   });
   if (result.status === ResultStatus.Failure) {
     return failure({ code: WorktreeInspectionDiagnosticCode.GitCommandFailed, operation });

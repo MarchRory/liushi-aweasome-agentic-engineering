@@ -263,6 +263,11 @@ describe("CodingTask Aggregate", () => {
       }),
     ).toThrow();
     expect(() => normalizeWriteSet(["src/*.ts"])).toThrow();
+    expect(() => normalizeWriteSet(["src/line\nbreak.ts"])).toThrow();
+    expect(() => normalizeWriteSet(["src/tab\tpath.ts"])).toThrow();
+    expect(() => normalizeWriteSet(["src/control\u0001path.ts"])).toThrow();
+    expect(() => normalizeWriteSet(["src/control\u001fpath.ts"])).toThrow();
+    expect(() => normalizeWriteSet(["src/control\u007fpath.ts"])).toThrow();
   });
 
   it("支持多 Attempt，只有 ImplementationDefect 可以继续", () => {

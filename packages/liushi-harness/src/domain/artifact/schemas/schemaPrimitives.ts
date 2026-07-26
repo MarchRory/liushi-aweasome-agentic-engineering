@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ResultStatus } from "#common/index.js";
+import { isCanonicalRepositoryRelativePath, ResultStatus } from "#common/index.js";
 
 import {
   MAX_ARTIFACT_LIST_ITEMS,
@@ -21,7 +21,12 @@ export const textArraySchema = z
   .max(MAX_ARTIFACT_LIST_ITEMS);
 
 export const pathArraySchema = z
-  .array(nonBlank(MAX_ARTIFACT_PATH_LENGTH))
+  .array(
+    nonBlank(MAX_ARTIFACT_PATH_LENGTH).refine(
+      isCanonicalRepositoryRelativePath,
+      "必须是规范的仓库相对 POSIX 路径。",
+    ),
+  )
   .max(MAX_ARTIFACT_LIST_ITEMS);
 
 export const artifactDigestSchema = z

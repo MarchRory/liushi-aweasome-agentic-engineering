@@ -2,6 +2,7 @@ export * from "./codingTaskCellApplicationFactory.js";
 export * from "./codingTaskSessionApplicationFactory.js";
 export * from "./codingTaskSessionHookRuntimeFactory.js";
 export * from "./codingTaskSessionPersistenceFactory.js";
+export * from "./changeSetCheckpointApplicationFactory.js";
 export * from "./hookApplicationFactory.js";
 export * from "./executorCompatibilityApplicationFactory.js";
 export * from "./executorCompatibilityAttestationApplicationFactory.js";

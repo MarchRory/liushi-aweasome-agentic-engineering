@@ -73,6 +73,7 @@ describe("composition root", () => {
       "NodeFileMutationExecutorAdapter",
       "NodeGitChangeSetInspectorAdapter",
       "NodeGitCheckpointAdapter",
+      "NodeGitCommittedChangeSetInspectorAdapter",
       "NodeHookInputReaderAdapter",
       "NodeJsonDocumentReaderAdapter",
       "NodeManagedFileMutationAdapter",
