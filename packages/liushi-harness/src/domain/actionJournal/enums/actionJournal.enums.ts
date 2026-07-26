@@ -2,7 +2,7 @@
 export enum ActionJournalSchemaVersion {
   /** 兼容既有 Action Journal record 的版本。 */
   Legacy = "1.0.0",
-  /** 携带 Session provenance 的版本。 */
+  /** 携带 Session provenance，并兼容可选 Trace observation digest 的版本。 */
   Session = "2.0.0",
 }
 

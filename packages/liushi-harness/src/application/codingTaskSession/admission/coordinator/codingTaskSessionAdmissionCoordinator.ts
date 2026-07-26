@@ -29,21 +29,21 @@ import type {
 } from "../contracts/index.js";
 import { closeCodingTaskSessionAdmission } from "../closing/index.js";
 import { loadSessionActionAdmissionContext } from "../context/index.js";
-import {
-  createSessionActionIntent,
-  createSessionActionObservation,
-  createSessionActionTraceEvidence,
-} from "../factory/index.js";
+import { createSessionActionIntent } from "../factory/index.js";
 import { validateSessionPostActionIntent } from "../validation/index.js";
 import {
   createSessionActionLocator,
   isHealthyActionMutation,
   isNewHealthyActionMutation,
-  recordSessionActionTraceSafely,
   sessionActionVersionConflict,
   unexpectedSessionAdmissionFailure,
   withSessionAdmissionOperationFailure,
 } from "./sessionActionAdmissionCoordinatorUtils.js";
+import {
+  createSessionActionObservationAfterTrace,
+  recordSessionActionTraceEvidence,
+} from "./sessionActionTraceCoordinator.js";
+import { replayCompletedSessionPostAction } from "./sessionPostActionReplayCoordinator.js";
 import {
   persistSessionAdmissionOutcomeUnknown,
   reconcileSessionAdmissionOutcomeUnknown,
@@ -54,7 +54,6 @@ export class CodingTaskSessionAdmissionCoordinator implements SessionActionHookH
   public constructor(
     private readonly dependencies: CodingTaskSessionAdmissionCoordinatorDependencies,
   ) {}
-
   /** 在 Action Intent 达到健康持久化且 State 已提交后才允许宿主继续。 */
   public async admitPreAction(
     input: SessionActionHookHandlerInput<SessionPreActionHookPayload>,
@@ -77,7 +76,7 @@ export class CodingTaskSessionAdmissionCoordinator implements SessionActionHookH
     if (acquired.status === ResultStatus.Failure) return acquired;
     let result: Result<CodingTaskSessionBeginClosingResult, HarnessError>;
     try {
-      result = await this.beginClosingLocked(input);
+      result = await closeCodingTaskSessionAdmission(this.dependencies, input);
     } catch (error) {
       result = failure(unexpectedSessionAdmissionFailure("Session Admission 关闭失败。", error));
     }
@@ -204,14 +203,22 @@ export class CodingTaskSessionAdmissionCoordinator implements SessionActionHookH
       this.dependencies.digest,
     );
     if (intent.status === ResultStatus.Failure) return intent;
+    const replay = replayCompletedSessionPostAction(
+      input.payload,
+      loaded.value,
+      this.dependencies.digest,
+    );
+    if (replay !== null) return replay;
 
-    const traceOutcome = await recordSessionActionTraceSafely(
-      this.dependencies.traceStore,
+    const trace = await recordSessionActionTraceEvidence(
+      this.dependencies,
+      context.value.state,
       input.payload,
     );
-    const trace = createSessionActionTraceEvidence(traceOutcome, this.dependencies.digest);
     if (trace.status === ResultStatus.Failure) return trace;
-    const observation = createSessionActionObservation(
+    const observation = await createSessionActionObservationAfterTrace(
+      this.dependencies,
+      context.value.state,
       input.payload,
       intent.value,
       loaded.value.lastSequence + 1,
@@ -252,13 +259,6 @@ export class CodingTaskSessionAdmissionCoordinator implements SessionActionHookH
     }
     return success({ committedVersion: resolved.value.state.lastSequence });
   }
-
-  private async beginClosingLocked(
-    input: CodingTaskSessionBeginClosingInput,
-  ): Promise<Result<CodingTaskSessionBeginClosingResult, HarnessError>> {
-    return closeCodingTaskSessionAdmission(this.dependencies, input);
-  }
-
   private async withLease<T>(
     payload: SessionPreActionHookPayload | SessionPostActionHookPayload,
     operation: () => Promise<Result<T, HarnessError>>,

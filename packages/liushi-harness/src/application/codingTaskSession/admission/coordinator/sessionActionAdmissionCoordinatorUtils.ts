@@ -1,7 +1,8 @@
-import { createActionTrace, type SessionPostActionHookPayload } from "#application/hooks/index.js";
+import type { SessionPostActionHookPayload } from "#application/hooks/index.js";
 import {
   TraceDropReason,
   TraceWriteDisposition,
+  type TraceSpanObservation,
   type TraceWriteOutcome,
 } from "#application/observability/index.js";
 import {
@@ -33,10 +34,10 @@ export function createSessionActionLocator(
 /** Trace Store 违反不抛异常约定时降级为可审计的 Dropped 结果。 */
 export async function recordSessionActionTraceSafely(
   traceStore: TraceObservationStore,
-  payload: SessionPostActionHookPayload,
+  observation: TraceSpanObservation,
 ): Promise<TraceWriteOutcome> {
   try {
-    return await traceStore.record(createActionTrace(payload));
+    return await traceStore.record(observation);
   } catch {
     return {
       disposition: TraceWriteDisposition.Dropped,

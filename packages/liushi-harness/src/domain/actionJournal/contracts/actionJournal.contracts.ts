@@ -41,6 +41,8 @@ export interface SessionActionProvenance {
 
 /** Session Action Observation 中可安全持久化的 Trace 证据。 */
 export interface SessionActionTraceEvidence {
+  /** 完整 TraceSpanObservation 的 RFC 8785 内容摘要；旧 v2 record 可能缺失。 */
+  readonly observationDigest?: ContentDigest;
   /** Trace 写入结果。 */
   readonly disposition: SessionActionTraceDisposition;
   /** Trace 被丢弃时的领域原因。 */

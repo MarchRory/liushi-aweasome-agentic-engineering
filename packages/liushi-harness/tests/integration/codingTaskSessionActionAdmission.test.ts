@@ -150,7 +150,17 @@ describe("CodingTask Session v2 Action Admission 黄金路径", () => {
         observations: [expect.anything()],
         resolutions: [expect.anything()],
       });
-    if (traces.status === ResultStatus.Success) expect(traces.value.observations).toHaveLength(1);
+    if (traces.status === ResultStatus.Success) {
+      expect(traces.value.observations).toHaveLength(1);
+      if (journal.status === ResultStatus.Success) {
+        const journalObservation = journal.value.observations[0];
+        const traceObservation = traces.value.observations[0];
+        expect(journalObservation).toMatchObject({
+          trace: { observationDigest: digestOf(traceObservation) },
+        });
+        expect(traceObservation?.actionId).toBe(actionId);
+      }
+    }
     expect(await readJson<AdmissionFile>(admissionPath(fixture))).toMatchObject({
       status: "waiting_agent",
       admittedActionIds: [actionId],

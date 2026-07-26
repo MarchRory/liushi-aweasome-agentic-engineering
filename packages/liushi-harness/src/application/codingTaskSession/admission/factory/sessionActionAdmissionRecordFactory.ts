@@ -9,14 +9,17 @@ import {
 } from "#application/observability/index.js";
 import type { ContentDigestPort } from "#application/ports/index.js";
 import {
+  HarnessError,
+  HarnessErrorCode,
   ResultStatus,
+  failure,
   success,
   type ContentDigest,
-  type HarnessError,
   type Result,
 } from "#common/index.js";
 import {
   SESSION_ACTION_JOURNAL_SCHEMA_VERSION,
+  MAX_SESSION_ACTION_RECOVERY_PATH_DIGESTS,
   ActionJournalRecordType,
   SessionActionTraceDisposition,
   SessionActionTraceDropReason,
@@ -87,6 +90,7 @@ export function createSessionActionObservation(
 /** 将 best-effort Trace 写入结果转换为可审计且不含原始路径的领域证据。 */
 export function createSessionActionTraceEvidence(
   outcome: TraceWriteOutcome,
+  observationDigest: ContentDigest,
   digest: ContentDigestPort,
 ): Result<SessionActionTraceEvidence, HarnessError> {
   const recoveryPathDigests: ContentDigest[] = [];
@@ -98,15 +102,27 @@ export function createSessionActionTraceEvidence(
   const normalizedDigests = [...new Set(recoveryPathDigests)].sort((left, right) =>
     left.localeCompare(right),
   );
+  if (normalizedDigests.length > MAX_SESSION_ACTION_RECOVERY_PATH_DIGESTS) {
+    return failure(
+      new HarnessError(HarnessErrorCode.InvalidInput, "Trace 恢复路径摘要数量超过上限。"),
+    );
+  }
   if (outcome.disposition === TraceWriteDisposition.Persisted) {
     return success({
+      observationDigest,
       disposition: SessionActionTraceDisposition.Persisted,
       recoveryPathDigests: normalizedDigests,
     });
   }
+  if (outcome.reason === undefined) {
+    return failure(
+      new HarnessError(HarnessErrorCode.InvalidInput, "Trace 被丢弃时必须提供稳定原因。"),
+    );
+  }
   return success({
+    observationDigest,
     disposition: SessionActionTraceDisposition.Dropped,
-    ...(outcome.reason === undefined ? {} : { dropReason: mapTraceDropReason(outcome.reason) }),
+    dropReason: mapTraceDropReason(outcome.reason),
     recoveryPathDigests: normalizedDigests,
   });
 }

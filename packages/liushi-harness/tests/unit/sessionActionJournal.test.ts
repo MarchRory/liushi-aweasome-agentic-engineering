@@ -10,6 +10,7 @@ import {
   ActorKind,
   ResultStatus,
   SessionActionTraceDisposition,
+  SessionActionTraceDropReason,
   appendActionObservation,
   appendActionResolution,
   createActionJournalState,
@@ -120,6 +121,44 @@ describe("Session Action Journal 2.0.0", () => {
       parseActionObservation({
         ...sessionObservationInput(),
         trace: {
+          observationDigest: "not-a-content-digest",
+          disposition: SessionActionTraceDisposition.Persisted,
+          recoveryPathDigests: [],
+        },
+      }).status,
+    ).toBe(ResultStatus.Failure);
+    expect(
+      parseActionObservation({
+        ...sessionObservationInput(),
+        trace: {
+          observationDigest: digest,
+          disposition: SessionActionTraceDisposition.Dropped,
+          recoveryPathDigests: [],
+        },
+      }).status,
+    ).toBe(ResultStatus.Failure);
+    expect(
+      parseActionObservation({
+        ...sessionObservationInput(),
+        trace: {
+          observationDigest: digest,
+          disposition: SessionActionTraceDisposition.Persisted,
+          dropReason: SessionActionTraceDropReason.IoFailure,
+          recoveryPathDigests: [],
+        },
+      }).status,
+    ).toBe(ResultStatus.Failure);
+    const legacyTrace = sessionObservationInput();
+    legacyTrace["trace"] = {
+      disposition: SessionActionTraceDisposition.Persisted,
+      recoveryPathDigests: [],
+    };
+    expect(parseActionObservation(legacyTrace).status).toBe(ResultStatus.Success);
+    expect(
+      parseActionObservation({
+        ...sessionObservationInput(),
+        trace: {
+          observationDigest: digest,
           disposition: SessionActionTraceDisposition.Persisted,
           recoveryPathDigests: [digest, digest],
         },
@@ -176,7 +215,11 @@ function sessionObservationInput(): Record<string, unknown> {
     evidenceIds: ["evidence-session-a"],
     sessionProvenance: sessionProvenance(),
     targets: ["src/a.ts", "src/b.ts"],
-    trace: { disposition: SessionActionTraceDisposition.Persisted, recoveryPathDigests: [] },
+    trace: {
+      observationDigest: digest,
+      disposition: SessionActionTraceDisposition.Persisted,
+      recoveryPathDigests: [],
+    },
     actor,
     recordedAt: "2026-07-12T00:01:00.000Z",
   };

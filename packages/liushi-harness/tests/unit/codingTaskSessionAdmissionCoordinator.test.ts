@@ -22,6 +22,7 @@ import {
   type CodingTaskSessionAdmissionLease,
   type CodingTaskSessionAdmissionStateStore,
   type CodingTaskSessionActivationRepository,
+  type ContentDigestPort,
   type HookBindingStore,
   type TraceObservationStore,
 } from "#application/ports/index.js";
@@ -36,6 +37,7 @@ import {
 } from "#application/hooks/index.js";
 import {
   TraceDropReason,
+  type TraceSpanObservation,
   TraceWriteDisposition,
   parseSpanId,
   parseTraceId,
@@ -112,8 +114,60 @@ describe("CodingTask Session Admission Coordinator", () => {
     expect(fixture.state.pendingAdmission).toBeNull();
     expect(fixture.journal.observations).toHaveLength(1);
     expect(fixture.journal.observations[0]?.schemaVersion).toBe("2.0.0");
+    expect(fixture.traceObservations).toHaveLength(1);
+    const traceObservation = fixture.traceObservations[0];
+    const observation = fixture.journal.observations[0];
+    if (traceObservation === undefined || observation === undefined || !("trace" in observation)) {
+      throw new Error("Trace binding fixture should be complete");
+    }
+    expect(observation.trace.observationDigest).toBe(unwrap(digest.calculate(traceObservation)));
+    expect(traceObservation.actionId).toBe(actionId);
     expect(fixture.journal.resolutions[0]?.schemaVersion).toBe("1.0.0");
     expect(fixture.journal.status).toBe(ActionJournalStatus.Committed);
+  });
+
+  it("已闭合 PostAction 的精确重放不会重复写入 Trace", async () => {
+    const fixture = createFixture();
+    const coordinator = new CodingTaskSessionAdmissionCoordinator(fixture.dependencies);
+    await admit(fixture, coordinator);
+    const first = await coordinator.recordPostAction({
+      payload: fixture.post,
+      expectedVersion: 1,
+      invocationProvenance: fixture.invocation,
+    });
+
+    const replay = await coordinator.recordPostAction({
+      payload: fixture.post,
+      expectedVersion: 3,
+      invocationProvenance: fixture.invocation,
+    });
+
+    expect(first.status).toBe(ResultStatus.Success);
+    expect(replay.status).toBe(ResultStatus.Success);
+    expect(fixture.traceObservations).toHaveLength(1);
+    expect(fixture.journal.observations).toHaveLength(1);
+    expect(fixture.journal.resolutions).toHaveLength(1);
+  });
+
+  it("已闭合 PostAction 的内容漂移在写 Trace 前拒绝", async () => {
+    const fixture = createFixture();
+    const coordinator = new CodingTaskSessionAdmissionCoordinator(fixture.dependencies);
+    await admit(fixture, coordinator);
+    await coordinator.recordPostAction({
+      payload: fixture.post,
+      expectedVersion: 1,
+      invocationProvenance: fixture.invocation,
+    });
+
+    const replay = await coordinator.recordPostAction({
+      payload: { ...fixture.post, endedAt: "2026-07-12T00:00:03.000Z" },
+      expectedVersion: 3,
+      invocationProvenance: fixture.invocation,
+    });
+
+    expectFailure(replay, HarnessErrorCode.OperationForbidden);
+    expect(fixture.traceObservations).toHaveLength(1);
+    expect(fixture.journal.observations).toHaveLength(1);
   });
 
   it.each([
@@ -492,6 +546,7 @@ describe("CodingTask Session Admission Coordinator", () => {
     if (observation === undefined || !("trace" in observation)) return;
     const trace = observation.trace;
     expect(trace).toEqual({
+      observationDigest: unwrap(digest.calculate(fixture.traceObservations[0])),
       disposition: SessionActionTraceDisposition.Dropped,
       dropReason: SessionActionTraceDropReason.Contended,
       recoveryPathDigests: recoveryPaths
@@ -500,6 +555,74 @@ describe("CodingTask Session Admission Coordinator", () => {
     });
     expect(JSON.stringify(trace)).not.toContain(recoveryPaths[0]);
     expect(JSON.stringify(trace)).not.toContain(recoveryPaths[1]);
+  });
+
+  it("Trace Observation digest 计算失败时不写入 Trace 或 Observation", async () => {
+    const fixture = createFixture({
+      traceDigestError: new HarnessError(HarnessErrorCode.InvalidInput, "trace digest failed"),
+    });
+    const coordinator = new CodingTaskSessionAdmissionCoordinator(fixture.dependencies);
+    await admit(fixture, coordinator);
+
+    const result = await coordinator.recordPostAction({
+      payload: fixture.post,
+      expectedVersion: 1,
+      invocationProvenance: fixture.invocation,
+    });
+
+    expectFailure(result, HarnessErrorCode.InvalidInput);
+    expect(fixture.traceObservations).toHaveLength(0);
+    expect(fixture.journal.observations).toHaveLength(0);
+    expect(fixture.journal.resolutions).toHaveLength(0);
+  });
+
+  it("Trace 已尝试写入后恢复路径摘要失败时进入 outcome_unknown", async () => {
+    const fixture = createFixture({
+      traceEvidenceDigestError: new HarnessError(
+        HarnessErrorCode.InvalidInput,
+        "trace evidence digest failed",
+      ),
+      traceOutcome: {
+        disposition: TraceWriteDisposition.Persisted,
+        recoveryPaths: ["D:\\runtime\\trace.lock"],
+      },
+    });
+    const coordinator = new CodingTaskSessionAdmissionCoordinator(fixture.dependencies);
+    await admit(fixture, coordinator);
+
+    const result = await coordinator.recordPostAction({
+      payload: fixture.post,
+      expectedVersion: 1,
+      invocationProvenance: fixture.invocation,
+    });
+
+    expectFailure(result, HarnessErrorCode.CodingTaskSessionAdmissionCommitOutcomeUnknown);
+    expect(fixture.traceObservations).toHaveLength(1);
+    expect(fixture.journal.observations).toHaveLength(0);
+    expect(fixture.journal.resolutions).toHaveLength(0);
+    expect(fixture.state.status).toBe(CodingTaskSessionAdmissionStatus.OutcomeUnknown);
+  });
+
+  it("Trace 已写入但恢复证据超过上限时进入 outcome_unknown", async () => {
+    const fixture = createFixture({
+      traceOutcome: {
+        disposition: TraceWriteDisposition.Persisted,
+        recoveryPaths: Array.from({ length: 257 }, (_, index) => `D:\\runtime\\${index}.lock`),
+      },
+    });
+    const coordinator = new CodingTaskSessionAdmissionCoordinator(fixture.dependencies);
+    await admit(fixture, coordinator);
+
+    const result = await coordinator.recordPostAction({
+      payload: fixture.post,
+      expectedVersion: 1,
+      invocationProvenance: fixture.invocation,
+    });
+
+    expectFailure(result, HarnessErrorCode.CodingTaskSessionAdmissionCommitOutcomeUnknown);
+    expect(fixture.traceObservations).toHaveLength(1);
+    expect(fixture.journal.observations).toHaveLength(0);
+    expect(fixture.state.status).toBe(CodingTaskSessionAdmissionStatus.OutcomeUnknown);
   });
 });
 
@@ -516,6 +639,8 @@ interface FixtureOptions {
   readonly replaceFailureCommits?: boolean;
   readonly replaceError?: HarnessError;
   readonly releaseError?: HarnessError;
+  readonly traceDigestError?: HarnessError;
+  readonly traceEvidenceDigestError?: HarnessError;
   readonly traceOutcome?: {
     readonly disposition: TraceWriteDisposition;
     readonly reason?: TraceDropReason;
@@ -551,6 +676,7 @@ interface Fixture {
   readonly leaseReleaseCalls: number;
   readonly journalCreateCalls: number;
   readonly journalAppendCalls: number;
+  readonly traceObservations: readonly TraceSpanObservation[];
   activation: CodingTaskSessionActivationRecord;
   state: CodingTaskSessionAdmissionState;
   /** 为下一次 Closing Journal 读取安装确定性屏障。 */
@@ -580,6 +706,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
   let leaseReleaseCalls = 0;
   let journalCreateCalls = 0;
   let journalAppendCalls = 0;
+  const traceObservations: TraceSpanObservation[] = [];
   let replaceCalls = 0;
   let closingJournalLoadBarrier: Barrier | undefined;
   let admissionLeaseHeld = false;
@@ -710,13 +837,15 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     listRecoverable: () => Promise.resolve(success([])),
   };
   const traceStore: TraceObservationStore = {
-    record: () =>
-      Promise.resolve(
+    record: (observation) => {
+      traceObservations.push(observation);
+      return Promise.resolve(
         options.traceOutcome ?? {
           disposition: TraceWriteDisposition.Persisted,
           recoveryPaths: [],
         },
-      ),
+      );
+    },
     query: () => Promise.resolve(success({ observations: [], skippedRecordCount: 0 })),
   };
   const dependencies: CodingTaskSessionAdmissionCoordinatorDependencies = {
@@ -736,7 +865,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
         return success({ authorized: true });
       },
     },
-    digest,
+    digest: createDigestPort(options.traceDigestError, options.traceEvidenceDigestError),
   };
 
   const fixture: Fixture = {
@@ -750,6 +879,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     leaseReleaseCalls,
     journalCreateCalls,
     journalAppendCalls,
+    traceObservations,
     get activation() {
       return activationValue;
     },
@@ -775,6 +905,31 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     journalAppendCalls: { get: () => journalAppendCalls },
   });
   return fixture;
+}
+
+function createDigestPort(
+  traceDigestError: HarnessError | undefined,
+  traceEvidenceDigestError: HarnessError | undefined,
+): ContentDigestPort {
+  return {
+    calculate(input) {
+      if (traceDigestError !== undefined && isTraceObservationInput(input)) {
+        return failure(traceDigestError);
+      }
+      if (traceEvidenceDigestError !== undefined && isRecoveryPathDigestInput(input)) {
+        return failure(traceEvidenceDigestError);
+      }
+      return digest.calculate(input);
+    },
+  };
+}
+
+function isTraceObservationInput(input: unknown): boolean {
+  return typeof input === "object" && input !== null && "traceId" in input && "spanId" in input;
+}
+
+function isRecoveryPathDigestInput(input: unknown): boolean {
+  return typeof input === "object" && input !== null && "recoveryPath" in input;
 }
 
 function createBarrier(): Barrier {

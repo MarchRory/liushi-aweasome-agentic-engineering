@@ -117,11 +117,26 @@ const recoveryPathDigestsSchema = z
 
 const traceSchema = z
   .object({
+    observationDigest: digestSchema.optional(),
     disposition: z.enum(SessionActionTraceDisposition),
     dropReason: z.enum(SessionActionTraceDropReason).optional(),
     recoveryPathDigests: recoveryPathDigestsSchema,
   })
-  .strict();
+  .strict()
+  .superRefine((trace, context) => {
+    if (
+      trace.disposition === SessionActionTraceDisposition.Persisted &&
+      trace.dropReason !== undefined
+    ) {
+      context.addIssue({ code: "custom", message: "已持久化 Trace 不得提供丢弃原因。" });
+    }
+    if (
+      trace.disposition === SessionActionTraceDisposition.Dropped &&
+      trace.dropReason === undefined
+    ) {
+      context.addIssue({ code: "custom", message: "被丢弃 Trace 必须提供丢弃原因。" });
+    }
+  });
 
 const base = {
   schemaVersion: z.literal(SESSION_ACTION_JOURNAL_SCHEMA_VERSION),
@@ -205,13 +220,14 @@ export function parseSessionActionObservation(
   const parsed = observationSchema.safeParse(input);
   if (!parsed.success) return invalidRecord(parsed.error, "Session Action Observation 无效。");
   const { outputDigest, errorCode, trace, ...record } = parsed.data;
-  const { dropReason, ...traceRecord } = trace;
+  const { observationDigest, dropReason, ...traceRecord } = trace;
   return success({
     ...record,
     ...(outputDigest === undefined ? {} : { outputDigest }),
     ...(errorCode === undefined ? {} : { errorCode }),
     trace: {
       ...traceRecord,
+      ...(observationDigest === undefined ? {} : { observationDigest }),
       ...(dropReason === undefined ? {} : { dropReason }),
     },
   });

@@ -1,6 +1,7 @@
 import type { CommandInvocationProvenance } from "#application/command/index.js";
 import type { SessionHookBinding } from "#application/executorHooks/index.js";
 import {
+  createActionTrace,
   HarnessHookEvent,
   type SessionPostActionHookPayload,
   type SessionPreActionHookPayload,
@@ -19,6 +20,7 @@ import {
 } from "#common/index.js";
 import {
   SESSION_ACTION_JOURNAL_SCHEMA_VERSION,
+  ActionJournalStatus,
   type ActionJournalState,
   type SessionActionIntentRecord,
   type SessionActionProvenance,
@@ -149,6 +151,40 @@ export function validateSessionPostActionIntent(
   return success(intent);
 }
 
+/** 在任何新 Trace 副作用前复验已闭合 PostAction 是否为精确幂等重放。 */
+export function validateSessionPostActionReplay(
+  payload: SessionPostActionHookPayload,
+  state: ActionJournalState,
+  digest: ContentDigestPort,
+): Result<boolean, HarnessErrorType> {
+  if (![ActionJournalStatus.Committed, ActionJournalStatus.Recovered].includes(state.status)) {
+    return success(false);
+  }
+  const observation = state.observations.at(-1);
+  if (
+    observation === undefined ||
+    observation.schemaVersion !== SESSION_ACTION_JOURNAL_SCHEMA_VERSION ||
+    observation.trace.observationDigest === undefined
+  ) {
+    return denied("已闭合 PostAction 缺少可复验的 Trace 摘要。");
+  }
+  const traceDigest = digest.calculate(createActionTrace(payload));
+  if (traceDigest.status === ResultStatus.Failure) return traceDigest;
+  const matches =
+    observation.actionId === payload.actionId &&
+    observation.workspaceId === payload.workspaceId &&
+    observation.taskId === payload.taskId &&
+    observation.outcome === payload.outcome &&
+    observation.outputDigest === payload.outputDigest &&
+    observation.errorCode === payload.errorCode &&
+    observation.actor.kind === payload.actor.kind &&
+    observation.actor.actorId === payload.actor.actorId &&
+    observation.recordedAt === payload.occurredAt &&
+    sameStrings(observation.evidenceIds, payload.evidenceIds) &&
+    observation.trace.observationDigest === traceDigest.value;
+  return matches ? success(true) : denied("已闭合 PostAction 与本次重放内容不一致。");
+}
+
 function sameSessionProvenance(
   left: SessionActionProvenance,
   right: SessionActionProvenance,
@@ -163,6 +199,10 @@ function sameSessionProvenance(
     left.sessionBindingDigest === right.sessionBindingDigest &&
     left.executorSessionIdDigest === right.executorSessionIdDigest
   );
+}
+
+function sameStrings(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function denied(message: string): Result<never, HarnessErrorType> {
