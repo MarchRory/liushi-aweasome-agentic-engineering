@@ -1,7 +1,6 @@
 import {
   ApplicationCommandGateway,
   CodingTaskCommandHandler,
-  CheckRuntimeHealthUseCase,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
@@ -11,7 +10,6 @@ import {
   RunVerificationUseCase,
   RunAndPersistVerificationUseCase,
   AcquireRepositoryLockUseCase,
-  JournaledActionRunner,
   ListTraceObservationsUseCase,
   ListRecoverableActionsUseCase,
   ProposeArtifactUseCase,
@@ -38,7 +36,6 @@ import {
   FileCommandReservationStore,
   FileEvidenceBundleStore,
   FileTraceObservationStore,
-  FileRuntimeHealthAdapter,
   FileSnapshotStore,
   FileTaskRepository,
   FileWorkflowRepository,
@@ -46,8 +43,6 @@ import {
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
   NodeFileMutationExecutorAdapter,
-  NodeRepositoryLockAdapter,
-  FileActionExecutionLockAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
   StructuredProjectConfigParserAdapter,
@@ -55,11 +50,11 @@ import {
   SystemDelayAdapter,
   SystemClock,
   UlidGenerator,
-  NodeCodingTaskCellRuntimePathAdapter,
 } from "#infrastructure/index.js";
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
 import {
   createCodingTaskCellApplication,
+  createCodingTaskSessionExecutionRuntime,
   createCodingTaskSessionApplication,
   createCodingTaskSessionHookRuntime,
   createCodingTaskAuthorizationResolver,
@@ -67,6 +62,7 @@ import {
   createExecutorCompatibilityApplication,
   createExecutorCompatibilityAttestationApplication,
   createManagedFileInstallationApplication,
+  createRuntimeHealthUseCase,
   createUnresolvedProvisionGuard,
   createVerificationExecutor,
   createWorktreeApplication,
@@ -89,12 +85,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const repositoryLockIdGenerator = options.repositoryLockIdGenerator ?? new UlidGenerator();
   const repositoryRootResolver =
     options.repositoryRootResolver ?? new StaticRepositoryRootResolverAdapter();
-  const snapshotStore = new FileSnapshotStore();
   const lockManager = new ExclusiveFileLockManager();
   const parentDirectoryDurability = new FileParentDirectoryDurability();
   const taskRepository = new FileTaskRepository(options.storeRoot, {
     eventIdGenerator,
-    snapshotStore,
+    snapshotStore: new FileSnapshotStore(),
     lockManager,
     parentDirectoryDurability,
   });
@@ -120,7 +115,6 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     parentDirectoryDurability,
   });
   const traceObservationStore = new FileTraceObservationStore(options.storeRoot, { lockManager });
-  const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
   const storeDependencies = { digest, lockManager, parentDirectoryDurability };
   const unresolvedProvisionGuard = createUnresolvedProvisionGuard(actionJournalRepository, digest);
@@ -139,23 +133,27 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     clock,
     commandRunner,
   });
-  const hookApplication = codingTaskSessionHookRuntime.hookApplication;
   const worktreeInspector = new NodeWorktreeInspectorAdapter(commandRunner);
   // prettier-ignore
   const changeSetApplication = createChangeSetCheckpointApplication({ commandRunner, worktreeInspector, digest });
-  const repositoryLock = new NodeRepositoryLockAdapter(
-    options.storeRoot,
-    lockManager,
+  const {
+    repositoryLock,
+    actionExecutionLock,
+    journaledActionRunner,
+    managedWorktreePath,
+    closeoutApplication,
+  } = createCodingTaskSessionExecutionRuntime({
+    storeRoot: options.storeRoot,
+    storeDependencies,
+    codingTaskRepository,
+    hookRuntime: codingTaskSessionHookRuntime,
+    actionJournalRepository,
+    traceObservationStore,
+    repositoryRootResolver,
+    changeSetApplication,
     clock,
     repositoryLockIdGenerator,
-  );
-  const actionExecutionLock = new FileActionExecutionLockAdapter(options.storeRoot, lockManager);
-  const journaledActionRunner = new JournaledActionRunner(
-    actionJournalRepository,
-    clock,
-    actionExecutionLock,
-  );
-  const managedWorktreePath = new NodeCodingTaskCellRuntimePathAdapter();
+  });
   const worktreeApplication = createWorktreeApplication({
     applicationCommandGateway,
     codingTaskRepository,
@@ -247,12 +245,12 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     applicationCommandGateway,
     evidenceBundleStore,
     repositoryRootResolver,
-    checkRuntimeHealth: new CheckRuntimeHealthUseCase(runtimeHealth),
+    checkRuntimeHealth: createRuntimeHealthUseCase(options.storeRoot),
     compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
     createTask: new CreateTaskUseCase(taskRepository, clock, taskIdGenerator),
     getTaskStatus: new GetTaskStatusUseCase(taskRepository),
     getTaskTimeline: new GetTaskTimelineUseCase(taskRepository),
-    ...hookApplication,
+    ...codingTaskSessionHookRuntime.hookApplication,
     ...createExecutorCompatibilityApplication(options.storeRoot, storeDependencies),
     ...createExecutorCompatibilityAttestationApplication(options, digest),
     // prettier-ignore
@@ -288,6 +286,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
     inspectGitChangeSet: changeSetApplication.inspectGitChangeSet,
     changeSetCheckpoints: changeSetApplication.changeSetCheckpoints,
+    ...closeoutApplication,
     runVerification: verificationRunner,
     runAndPersistVerification,
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),

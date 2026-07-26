@@ -154,6 +154,15 @@ describe("CodingTask Session Admission domain state", () => {
       markOutcomeUnknown(closing, { updatedAt: "2026-07-23T00:00:03.000Z" }),
     );
     expect(unknown.status).toBe(CodingTaskSessionAdmissionStatus.OutcomeUnknown);
+    const repeated = beginClosing(closing, { updatedAt: "2026-07-23T00:00:04.000Z" });
+    expect(repeated.status).toBe(ResultStatus.Success);
+    if (repeated.status === ResultStatus.Success) {
+      expect(repeated.value).toEqual(closing);
+      expect(repeated.value.version).toBe(closing.version);
+    }
+    expect(beginClosing(unknown, { updatedAt: "2026-07-23T00:00:05.000Z" }).status).toBe(
+      ResultStatus.Failure,
+    );
   });
 });
 

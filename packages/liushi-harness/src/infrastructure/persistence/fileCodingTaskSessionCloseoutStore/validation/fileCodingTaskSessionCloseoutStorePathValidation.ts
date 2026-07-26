@@ -68,7 +68,7 @@ export async function isCodingTaskSessionCloseoutStatePresent(
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") return success(false);
     return failure(
-      new HarnessError(HarnessErrorCode.CorruptStore, "Closeout State 路径不可用。", {}, error),
+      new HarnessError(HarnessErrorCode.IoFailure, "Closeout State 路径读取失败。", {}, error),
     );
   }
 }

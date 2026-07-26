@@ -108,10 +108,10 @@ export class FileCodingTaskSessionCloseoutStore implements CodingTaskSessionClos
     });
   }
 
-  /** 读取普通 State 文件，并通过 Application 重建完整状态。 */
-  public async load(
+  /** 按 Locator 查找 State；不存在时返回 null。 */
+  public async find(
     locator: CodingTaskSessionCloseoutStateLocator,
-  ): Promise<Result<CodingTaskSessionCloseoutState, HarnessError>> {
+  ): Promise<Result<CodingTaskSessionCloseoutState | null, HarnessError>> {
     const parsed = parseCloseoutStateLocator(locator);
     if (parsed.status === ResultStatus.Failure) return parsed;
     const paths = resolveCodingTaskSessionCloseoutStorePaths(
@@ -121,8 +121,20 @@ export class FileCodingTaskSessionCloseoutStore implements CodingTaskSessionClos
     );
     const prepared = await ensureCodingTaskSessionCloseoutStorePath(paths, false);
     if (prepared.status === ResultStatus.Failure) return prepared;
-    if (!prepared.value) return failure(closeoutStateNotFound());
+    if (!prepared.value) return success(null);
+    const present = await isCodingTaskSessionCloseoutStatePresent(paths.stateFile);
+    if (present.status === ResultStatus.Failure) return present;
+    if (!present.value) return success(null);
     return readCodingTaskSessionCloseoutState(paths, this.digest);
+  }
+
+  /** 读取普通 State 文件；不存在时保留旧的 not-found 语义。 */
+  public async load(
+    locator: CodingTaskSessionCloseoutStateLocator,
+  ): Promise<Result<CodingTaskSessionCloseoutState, HarnessError>> {
+    const found = await this.find(locator);
+    if (found.status === ResultStatus.Failure) return found;
+    return found.value === null ? failure(closeoutStateNotFound()) : success(found.value);
   }
 
   /** 在短时 State Lock 内重新读取当前版本并执行原子 CAS replace。 */

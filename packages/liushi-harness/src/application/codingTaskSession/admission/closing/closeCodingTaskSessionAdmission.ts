@@ -63,6 +63,9 @@ export async function closeCodingTaskSessionAdmission(
   }
   const closing = beginClosing(state.value, { updatedAt: input.updatedAt });
   if (closing.status === ResultStatus.Failure) return closing;
+  if (closing.value.version === state.value.version) {
+    return success({ state: state.value });
+  }
   const persisted = await dependencies.stateStore.replace({
     expectedVersion: state.value.version,
     state: closing.value,

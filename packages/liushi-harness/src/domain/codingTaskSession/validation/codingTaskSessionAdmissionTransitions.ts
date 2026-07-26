@@ -140,6 +140,13 @@ function transitionWithoutPending(
   if (current.status === ResultStatus.Failure) return current;
   const timestamp = parseCodingTaskSessionAdmissionTimestampInput(input);
   if (timestamp.status === ResultStatus.Failure) return timestamp;
+  if (
+    status === CodingTaskSessionAdmissionStatus.Closing &&
+    current.value.status === CodingTaskSessionAdmissionStatus.Closing &&
+    current.value.pendingAdmission === null
+  ) {
+    return success(current.value);
+  }
   if (current.value.status !== CodingTaskSessionAdmissionStatus.WaitingAgent) {
     return transitionError(current.value, `当前 Admission 状态不允许开始${operation}`);
   }

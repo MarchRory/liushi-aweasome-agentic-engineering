@@ -34,6 +34,7 @@ export {
   rebuildCodingTaskSessionCloseoutState,
   validateCodingTaskSessionCloseoutState,
 } from "./codingTaskSessionCloseoutState/validation/index.js";
+export * from "./codingTaskSessionCloseout/index.js";
 export * from "./actionExecution/index.js";
 export * from "./worktreeProvisioning/index.js";
 export * from "./worktreeProvisionRecovery/index.js";

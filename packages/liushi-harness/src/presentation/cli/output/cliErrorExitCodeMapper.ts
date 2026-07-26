@@ -37,6 +37,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.EvidenceBundleConflict:
     case HarnessErrorCode.InstallationRecoveryRequired:
     case HarnessErrorCode.ExecutorCompatibilityAttestationVerificationFailed:
+    case HarnessErrorCode.CodingTaskSessionCloseoutCheckpointNotApplied:
       return CLI_EXIT_CODE_CONFLICT;
     case HarnessErrorCode.LockUnavailable:
     case HarnessErrorCode.ExecutorCompatibilityAttestationSigningFailed:
@@ -61,6 +62,8 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.CodingTaskSessionAdmissionLockReleaseUnknown:
     case HarnessErrorCode.CodingTaskSessionCloseoutCommitOutcomeUnknown:
     case HarnessErrorCode.CodingTaskSessionCloseoutLockReleaseUnknown:
+    case HarnessErrorCode.CodingTaskSessionCloseoutOutcomeUnknown:
+    case HarnessErrorCode.CodingTaskSessionCloseoutCheckpointOutcomeUnknown:
       return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }
 }

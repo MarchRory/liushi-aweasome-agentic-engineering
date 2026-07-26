@@ -50,6 +50,10 @@ export interface CodingTaskSessionCloseoutStateStore<
   create(
     state: TState,
   ): Promise<Result<CodingTaskSessionCloseoutStateCreateResult<TState>, HarnessError>>;
+  /** 按 Workspace/Session 定位 State；目录或文件不存在时返回 null。 */
+  find(
+    locator: CodingTaskSessionCloseoutStateLocator,
+  ): Promise<Result<TState | null, HarnessError>>;
   /** 按 Workspace/Session 定位并严格重建 State。 */
   load(locator: CodingTaskSessionCloseoutStateLocator): Promise<Result<TState, HarnessError>>;
   /** 在同一内部状态锁内执行 expectedVersion CAS 替换。 */

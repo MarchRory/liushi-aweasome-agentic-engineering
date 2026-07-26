@@ -37,6 +37,44 @@ import {
 import { canonicalizeJson } from "../../src/infrastructure/serialization/index.js";
 
 describe("File CodingTaskSession Closeout Store", () => {
+  it("find 区分不存在、v3、完整 v1/v2 与损坏记录，并保持旧字节", async () => {
+    await withTempRoot(async (root) => {
+      const store = createStore(root);
+      const missing = await store.find(locator);
+      expect(missing).toEqual({ status: ResultStatus.Success, value: null });
+      const missingLoad = await store.load(locator);
+      expect(missingLoad).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.PreconditionNotMet },
+      });
+
+      const initial = initialState();
+      unwrap(await store.create(initial));
+      expect(unwrap(await store.find(locator))).toEqual(initial);
+
+      const legacyRecords = [
+        legacyV1PersistedState(initial, snapshot()),
+        legacyV2PersistedState(initial, snapshot()),
+      ];
+      for (const legacy of legacyRecords) {
+        const bytes = `${canonicalizeJson(legacy)}\n`;
+        await writeFile(closeoutStateFile(root), bytes, "utf8");
+        const found = await store.find(locator);
+        expect(found).toMatchObject({
+          status: ResultStatus.Failure,
+          error: { code: HarnessErrorCode.PreconditionNotMet },
+        });
+        expect(await readFile(closeoutStateFile(root), "utf8")).toBe(bytes);
+      }
+
+      await writeFile(closeoutStateFile(root), "{\n", "utf8");
+      expect(await store.find(locator)).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.CorruptStore },
+      });
+    });
+  });
+
   it("支持 Created、Reused、Conflict，并可跨实例 load", async () => {
     await withTempRoot(async (root) => {
       const first = createStore(root);

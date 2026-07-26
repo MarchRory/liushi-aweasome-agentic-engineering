@@ -6,6 +6,7 @@ import {
 } from "#application/index.js";
 import type {
   ActionJournalRepository,
+  HookBindingStore,
   TaskRepository,
   TraceObservationStore,
 } from "#application/ports/index.js";
@@ -53,6 +54,10 @@ export interface CodingTaskSessionHookRuntimeFactoryOutput {
   readonly admissionInitializer: InitializeCodingTaskSessionAdmissionService;
   /** Canonical Hook Dispatcher 与 Codex Adapter。 */
   readonly hookApplication: HookApplicationFactoryOutput;
+  /** 供 Closeout Application 复用的同一 Binding Store。 */
+  readonly bindingStore: HookBindingStore;
+  /** 供 Closeout Application 复用的同一 Admission Coordinator。 */
+  readonly admissionCoordinator: CodingTaskSessionAdmissionCoordinator;
 }
 
 /** 构造共享 Binding、授权策略、Admission Coordinator 与 Hook Application。 */
@@ -90,5 +95,11 @@ export function createCodingTaskSessionHookRuntime(
     clock: input.clock,
     commandRunner: input.commandRunner,
   });
-  return { persistence, admissionInitializer, hookApplication };
+  return {
+    persistence,
+    admissionInitializer,
+    hookApplication,
+    bindingStore: hookBindingStore,
+    admissionCoordinator,
+  };
 }

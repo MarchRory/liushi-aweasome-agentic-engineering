@@ -399,6 +399,31 @@ describe("CodingTask Session Admission Coordinator", () => {
     expect(fixture.state.status).toBe("closing");
   });
 
+  it("重复 beginClosing 会重新复验已准入 Action，并幂等复用 closing 版本", async () => {
+    const fixture = createFixture();
+    const coordinator = new CodingTaskSessionAdmissionCoordinator(fixture.dependencies);
+    await admit(fixture, coordinator);
+    await closeAction(fixture, coordinator);
+
+    const first = await coordinator.beginClosing({
+      workspaceId,
+      sessionId,
+      updatedAt: "2026-07-23T00:00:04.000Z",
+    });
+    expect(first.status).toBe(ResultStatus.Success);
+    const closingVersion = fixture.state.version;
+    const closingReplaceCalls = fixture.replaceCalls;
+
+    const repeated = await coordinator.beginClosing({
+      workspaceId,
+      sessionId,
+      updatedAt: "2026-07-23T00:00:05.000Z",
+    });
+    expect(repeated.status).toBe(ResultStatus.Success);
+    expect(fixture.state.version).toBe(closingVersion);
+    expect(fixture.replaceCalls).toBe(closingReplaceCalls);
+  });
+
   it.each([ActionJournalStatus.WaitingHuman, ActionJournalStatus.RetryPermitted])(
     "%s Action 未经 Human 闭合时阻止 beginClosing",
     async (resolutionStatus) => {
@@ -676,6 +701,8 @@ interface Fixture {
   readonly leaseReleaseCalls: number;
   readonly journalCreateCalls: number;
   readonly journalAppendCalls: number;
+  /** Admission State replace 总次数。 */
+  readonly replaceCalls: number;
   readonly traceObservations: readonly TraceSpanObservation[];
   activation: CodingTaskSessionActivationRecord;
   state: CodingTaskSessionAdmissionState;
@@ -763,6 +790,13 @@ function createFixture(options: FixtureOptions = {}): Fixture {
       if (expectedVersion !== currentState.version) {
         return Promise.resolve(
           failure(new HarnessError(HarnessErrorCode.VersionConflict, "state version conflict")),
+        );
+      }
+      if (nextState.version !== expectedVersion + 1) {
+        return Promise.resolve(
+          failure(
+            new HarnessError(HarnessErrorCode.InvalidInput, "candidate version must increment"),
+          ),
         );
       }
       currentState = nextState;
@@ -879,6 +913,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     leaseReleaseCalls,
     journalCreateCalls,
     journalAppendCalls,
+    replaceCalls,
     traceObservations,
     get activation() {
       return activationValue;
@@ -903,6 +938,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     leaseReleaseCalls: { get: () => leaseReleaseCalls },
     journalCreateCalls: { get: () => journalCreateCalls },
     journalAppendCalls: { get: () => journalAppendCalls },
+    replaceCalls: { get: () => replaceCalls },
   });
   return fixture;
 }

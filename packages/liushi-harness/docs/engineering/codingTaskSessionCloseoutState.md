@@ -1,10 +1,10 @@
 # CodingTask Session Closeout 状态持久化
 
-**状态：Closeout State v3、Action targets 覆盖绑定和 File Store 已实现；完整 Closeout Process Manager 尚未实现。**
+**状态：Closeout State v3、Action targets 覆盖绑定、File Store 和 CodingTaskSessionCloseoutManager 已实现，并已接入 HarnessApplication；Manager 严格停止在 CheckpointBound。**
 
 ## 1. 目标与边界
 
-Closeout 必须在 Git 副作用前留下可恢复的提交前事实，并在 Git Checkpoint 后保存可独立复验的绑定结果。本切片提供 Application 级 Process State 和 Infrastructure File Store，不新增第三个 Domain Aggregate，也不代替后续 Process Manager。
+Closeout 必须在 Git 副作用前留下可恢复的提交前事实，并在 Git Checkpoint 后保存可独立复验的绑定结果。本切片提供 Application 级 Process State、Infrastructure File Store 和可恢复的 Closeout Process Manager，不新增第三个 Domain Aggregate。
 
 已实现：
 
@@ -17,11 +17,12 @@ Closeout 必须在 Git 副作用前留下可恢复的提交前事实，并在 Gi
 - Rename 规范化后的原路径与目标路径都按普通 changed path 分别覆盖；Copy 只覆盖实际新增的目标路径，不把未变化的来源路径计入 changed paths。
 - create-only 初始化、严格 canonical JSON 重建、跨进程短时锁和 `expectedVersion` CAS。
 - 写入结果未知与 Lock 释放结果未知的独立错误分类。
+- `CodingTaskSessionCloseoutManager` 已接入 `HarnessApplication`：在 Repository Lock 内 fresh 读取 Activation、CodingTask、Session Hook Binding、Repository Root 和 Managed Worktree，校验 Command Actor、时间、Attempt、Gate 与完整身份；幂等 `load/create` Closeout State 后依次执行 `beginClosing`、Action Coverage、权威 Snapshot、`persistSnapshot`、ChangeSet-bound Checkpoint 的 execute + inspect 和 `bindCheckpoint`，严格停止在 `CheckpointBound`。
 
 未实现：
 
-- 在 Repository Lock 内驱动 Snapshot、Git Checkpoint、Submission、Verification 和 PRReady。
-- Closeout 恢复 Use Case、CLI、真实 Codex Pilot 和多仓交付编排。
+- Closeout CLI、显式恢复命令/恢复 SOP 自动化和真实 Git E2E。
+- Submission、Verification、PRReady 串联、真实 Codex Pilot 和多仓交付编排。
 
 Coverage Proof 的严格身份、Journal v2 provenance、Trace observation digest 精确集合匹配和 fail-closed 规则不改变现有 Human Gates、多仓写入、Wiki 写入或知识候选晋升边界。
 
@@ -84,6 +85,8 @@ replace 在同一个 Lock 内重新读取当前文件并执行 `expectedVersion`
 
 `CommitOutcomeUnknown` 与 `LockReleaseUnknown` 不能降级为普通 I/O 失败。后续恢复流程必须先只读检查 State 和 Lock，再由 Human 或确定性恢复命令决定是否继续。
 
+Manager 在副作用前遇到只读 `IoFailure` 或 `LockUnavailable` 时保持可安全重试；确定性前置失败落 `Blocked`。Checkpoint 执行、State commit 或 Lock release 结果无法证明时落 `OutcomeUnknown`，或返回稳定不可重试错误。
+
 ## 6. 复用与残余风险
 
 本切片复用既有 `write-file-atomic`、`createOnlyImmutableFile`、`ExclusiveFileLockManager`、strict JSON reader、canonical JSON 和平台耐久层，没有重新实现原子写入或 Windows 目录 `fsync` 兼容。
@@ -92,10 +95,4 @@ replace 在同一个 Lock 内重新读取当前文件并执行 `expectedVersion`
 
 ## 7. 下一切片
 
-下一步由 Closeout Process Manager 在 Repository Lock 内执行：
-
-1. 原子关闭 Session 新 Action 准入。
-2. 调用独立 Coverage Proof，重建 Action、Observation、Resolution 和 Trace 的完整覆盖证明，并把已复验 Intent.targets 投影到 Manifest。
-3. 获取权威 ChangeSet Snapshot，并通过一次 `persistSnapshot` 原子持久化 Snapshot、Coverage Manifest 和外层绑定。
-4. 执行或只读恢复 ChangeSet-bound Git Checkpoint，持久化 `CheckpointBound`。
-5. 接入 Submission、Verification、Evidence 和 PRReady，并提供确定性恢复入口。
+下一步应为 Closeout CLI、显式恢复命令/恢复 SOP 自动化和 S3 Closeout 真实 Git E2E；之后再接入 Submission、Verification、Evidence 和 PRReady 串联、真实 Codex Pilot 与多仓交付编排。已有 Manager 的下一步不是继续宣称其未实现，而是为现有 `CheckpointBound` 边界提供可操作入口和真实验证。

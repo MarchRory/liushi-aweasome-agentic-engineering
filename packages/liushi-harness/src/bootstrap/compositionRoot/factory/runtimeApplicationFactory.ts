@@ -1,4 +1,5 @@
 import {
+  CheckRuntimeHealthUseCase,
   TaskBackedCodingTaskAuthorizationPolicy,
   UnresolvedWorktreeProvisionGuard,
 } from "#application/index.js";
@@ -10,12 +11,18 @@ import type {
 } from "#application/ports/index.js";
 import type { Clock } from "#common/index.js";
 import {
+  FileRuntimeHealthAdapter,
   MockVerificationExecutorAdapter,
   NodeVerificationExecutorAdapter,
 } from "#infrastructure/index.js";
 import type { ContentDigestPort } from "#application/ports/index.js";
 import type { CommandRunner } from "#infrastructure/system/commandRunner/index.js";
 import { VerificationExecutionMode } from "../enums/index.js";
+
+/** 创建文件存储支持的 Runtime Health Use Case。 */
+export function createRuntimeHealthUseCase(storeRoot: string): CheckRuntimeHealthUseCase {
+  return new CheckRuntimeHealthUseCase(new FileRuntimeHealthAdapter(storeRoot));
+}
 
 /** 解析 CodingTask 授权器的默认实现或调用方覆盖。 */
 export function createCodingTaskAuthorizationResolver(

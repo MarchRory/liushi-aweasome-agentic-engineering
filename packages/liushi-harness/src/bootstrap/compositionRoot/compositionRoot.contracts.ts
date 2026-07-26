@@ -24,6 +24,7 @@ import type {
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
   InspectGitChangeSetUseCase,
+  CodingTaskSessionCloseoutManager,
   RunVerificationUseCase,
   RunAndPersistVerificationUseCase,
   VerificationCommandService,
@@ -143,6 +144,8 @@ export interface HarnessApplication {
   inspectGitChangeSet: InspectGitChangeSetUseCase;
   /** 创建或恢复与提交前 ChangeSet 双向绑定的 Git Checkpoint。 */
   changeSetCheckpoints: ChangeSetCheckpointPort;
+  /** 可恢复地关闭 CodingTask Session，并严格停止在 CheckpointBound。 */
+  closeoutCodingTaskSession: CodingTaskSessionCloseoutManager;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
   runVerification: RunVerificationUseCase;
   /** 执行 Verification 并强一致提交 EvidenceBundle。 */
