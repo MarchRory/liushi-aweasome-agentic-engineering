@@ -22,6 +22,7 @@ import type {
   GetTaskTimelineUseCase,
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
+  InspectGitChangeSetUseCase,
   RunVerificationUseCase,
   RunAndPersistVerificationUseCase,
   VerificationCommandService,
@@ -137,6 +138,8 @@ export interface HarnessApplication {
   assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase;
   /** 只读检查 CodingTask 工作树、基线和 Write Set。 */
   inspectWorktree: InspectWorktreeUseCase;
+  /** 从受管 Worktree 生成提交前权威 ChangeSet Snapshot。 */
+  inspectGitChangeSet: InspectGitChangeSetUseCase;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
   runVerification: RunVerificationUseCase;
   /** 执行 Verification 并强一致提交 EvidenceBundle。 */

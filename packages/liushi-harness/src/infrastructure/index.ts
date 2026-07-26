@@ -23,3 +23,4 @@ export * from "./executorCompatibilityPublicationWriter/index.js";
 export * from "./executorCompatibilityAttestation/index.js";
 export * from "./hookInputReader/index.js";
 export * from "./persistence/fileCodingTaskSessionAdmission/index.js";
+export * from "./gitChangeSetInspector/index.js";

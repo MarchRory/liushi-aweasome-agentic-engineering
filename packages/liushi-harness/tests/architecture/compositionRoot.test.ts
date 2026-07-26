@@ -71,6 +71,7 @@ describe("composition root", () => {
       "NodeExecutorCompatibilitySignedManifestArtifactReaderAdapter",
       "NodeExecutorCompatibilitySignedManifestArtifactWriterAdapter",
       "NodeFileMutationExecutorAdapter",
+      "NodeGitChangeSetInspectorAdapter",
       "NodeGitCheckpointAdapter",
       "NodeHookInputReaderAdapter",
       "NodeJsonDocumentReaderAdapter",

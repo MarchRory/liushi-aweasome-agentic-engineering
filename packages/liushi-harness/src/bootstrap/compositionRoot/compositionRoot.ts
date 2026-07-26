@@ -8,6 +8,7 @@ import {
   GetTaskTimelineUseCase,
   GetActionJournalUseCase,
   InspectWorktreeUseCase,
+  InspectGitChangeSetUseCase,
   RunVerificationUseCase,
   RunAndPersistVerificationUseCase,
   AcquireRepositoryLockUseCase,
@@ -47,6 +48,7 @@ import {
   NodeWorktreeInspectorAdapter,
   NodeFileMutationExecutorAdapter,
   NodeGitCheckpointAdapter,
+  NodeGitChangeSetInspectorAdapter,
   NodeRepositoryLockAdapter,
   FileActionExecutionLockAdapter,
   NodeCommandRunnerAdapter,
@@ -71,6 +73,7 @@ import {
   createVerificationExecutor,
   createWorktreeApplication,
 } from "./factory/index.js";
+
 /** 唯一 Composition Root，负责构造具体 Adapter 和 Use Case。 */
 export function createHarnessApplication(options: HarnessApplicationOptions): HarnessApplication {
   if (options.storeRoot.trim().length === 0) {
@@ -140,6 +143,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   });
   const hookApplication = codingTaskSessionHookRuntime.hookApplication;
   const worktreeInspector = new NodeWorktreeInspectorAdapter(commandRunner);
+  const gitChangeSetInspector = new NodeGitChangeSetInspectorAdapter(worktreeInspector, digest);
   const repositoryLock = new NodeRepositoryLockAdapter(
     options.storeRoot,
     lockManager,
@@ -171,10 +175,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   // prettier-ignore
   const verificationExecutor = createVerificationExecutor(options.verificationExecutor, options.verificationExecutionMode, commandRunner, clock);
   const verificationRunner = new RunVerificationUseCase(verificationExecutor, digest, clock);
-  const runAndPersistVerification = new RunAndPersistVerificationUseCase(
-    verificationRunner,
-    evidenceBundleStore,
-  );
+  // prettier-ignore
+  const runAndPersistVerification = new RunAndPersistVerificationUseCase(verificationRunner, evidenceBundleStore);
   const codingTaskCommandHandler = new CodingTaskCommandHandler(
     codingTaskRepository,
     clock,
@@ -285,6 +287,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       new RequirementWorkflowCommandHandler(workflowRepository, clock, eventIdGenerator),
     ),
     inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
+    inspectGitChangeSet: new InspectGitChangeSetUseCase(gitChangeSetInspector),
     runVerification: verificationRunner,
     runAndPersistVerification,
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
