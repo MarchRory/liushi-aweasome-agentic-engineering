@@ -3,6 +3,7 @@ import { appendFile } from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  HarnessErrorCode,
   ResultStatus,
   TRACE_OBSERVATION_SCHEMA_VERSION,
   TraceDropReason,
@@ -14,6 +15,7 @@ import {
   parseWorkspaceId,
 } from "../../src/index.js";
 import { ExclusiveFileLockManager } from "../../src/infrastructure/persistence/fileEventStore/index.js";
+import { FileTraceObservationStore } from "../../src/infrastructure/observability/fileTraceStore/index.js";
 import { resolveTaskStorePaths } from "../../src/infrastructure/persistence/fileEventStore/taskStore/index.js";
 import {
   createWorkflowMigrationApplication,
@@ -98,6 +100,39 @@ describe("File Trace Observation Store", () => {
         reason: TraceDropReason.TaskUnavailable,
         recoveryPaths: [],
       },
+    });
+  });
+  it("pathExists 发生非 ENOENT I/O 异常时查询返回 IoFailure 而不是 reject", async () => {
+    const storeRoot = await runtimeStores.create("liushi-trace-query-io-");
+    const paths = tracePaths(storeRoot);
+    const missingTask = await new FileTraceObservationStore(storeRoot, {
+      lockManager: new ExclusiveFileLockManager(),
+    }).query({
+      workspaceId: paths.workspaceId,
+      taskId: paths.taskId,
+    });
+    expect(missingTask).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.TaskNotFound },
+    });
+
+    const pathExistsError = Object.assign(new Error("permission denied"), { code: "EACCES" });
+    const store = new FileTraceObservationStore(storeRoot, {
+      lockManager: new ExclusiveFileLockManager(),
+      pathExists: (path) => {
+        expect(path).toBe(paths.eventsFile);
+        return Promise.reject(pathExistsError);
+      },
+    });
+
+    const result = await store.query({
+      workspaceId: paths.workspaceId,
+      taskId: paths.taskId,
+    });
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: { code: HarnessErrorCode.IoFailure },
     });
   });
 });

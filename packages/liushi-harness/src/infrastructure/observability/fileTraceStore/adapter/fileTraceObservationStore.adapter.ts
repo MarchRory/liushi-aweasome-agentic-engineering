@@ -31,8 +31,9 @@ export class FileTraceObservationStore implements TraceObservationStore {
       observation.workspaceId,
       observation.taskId,
     );
+    const pathExistsDependency = this.dependencies.pathExists ?? pathExists;
     try {
-      if (!(await pathExists(paths.eventsFile))) {
+      if (!(await pathExistsDependency(paths.eventsFile))) {
         return dropped(TraceDropReason.TaskUnavailable);
       }
     } catch {
@@ -71,12 +72,24 @@ export class FileTraceObservationStore implements TraceObservationStore {
   /** 读取有效 Observation；单条损坏 Trace 不污染语义 Store。 */
   public async query(query: TraceQuery): Promise<Result<TraceQueryResult, HarnessError>> {
     const paths = resolveTaskStorePaths(this.storeRoot, query.workspaceId, query.taskId);
-    if (!(await pathExists(paths.eventsFile))) {
+    const pathExistsDependency = this.dependencies.pathExists ?? pathExists;
+    try {
+      if (!(await pathExistsDependency(paths.eventsFile))) {
+        return failure(
+          new HarnessError(HarnessErrorCode.TaskNotFound, "Trace 对应的 Task 不存在。", {
+            workspaceId: paths.workspaceId,
+            taskId: paths.taskId,
+          }),
+        );
+      }
+    } catch (error) {
       return failure(
-        new HarnessError(HarnessErrorCode.TaskNotFound, "Trace 对应的 Task 不存在。", {
-          workspaceId: paths.workspaceId,
-          taskId: paths.taskId,
-        }),
+        new HarnessError(
+          HarnessErrorCode.IoFailure,
+          "Trace Observation Task 状态检查失败。",
+          { eventsFile: paths.eventsFile },
+          error,
+        ),
       );
     }
     try {
