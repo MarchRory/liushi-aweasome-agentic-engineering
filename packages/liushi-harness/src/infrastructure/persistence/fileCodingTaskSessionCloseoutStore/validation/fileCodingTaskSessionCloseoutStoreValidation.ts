@@ -47,8 +47,8 @@ export function isInitialCloseoutState(state: CodingTaskSessionCloseoutState): b
     state.status === CodingTaskSessionCloseoutStatus.Closing &&
     state.version === 0 &&
     state.snapshot === null &&
-    state.coveredActionIds.length === 0 &&
-    state.actionEvidenceDigest === null &&
+    state.coverageManifest === null &&
+    state.coverageBindingDigest === null &&
     state.checkpoint === null &&
     state.stoppedStage === null &&
     state.errorCode === null &&

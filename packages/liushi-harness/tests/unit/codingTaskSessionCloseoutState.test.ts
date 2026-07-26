@@ -8,31 +8,50 @@ import {
   markOutcomeUnknown,
   persistSnapshot,
   rebuildCodingTaskSessionCloseoutState,
+  validateCodingTaskSessionCloseoutSuccessor,
+  type CodingTaskSessionCloseoutState,
 } from "../../src/application/codingTaskSessionCloseoutState/index.js";
-import type { ChangeSetCheckpoint } from "../../src/application/changeSetCheckpoint/index.js";
-import { HarnessErrorCode, ResultStatus } from "../../src/common/index.js";
 import {
-  actionIds,
+  calculateCodingTaskSessionActionCoverageManifestDigest,
+  type CodingTaskSessionActionCoverageManifest,
+} from "../../src/application/codingTaskSessionActionCoverage/index.js";
+import {
+  createCodingTaskSessionChangeSet,
+  createCodingTaskSessionChangeSetSnapshot,
+} from "../../src/domain/codingTaskSessionChangeSet/index.js";
+import { parseCodingTaskId } from "../../src/domain/codingTask/index.js";
+import { parseTaskId } from "../../src/domain/task/index.js";
+import { parseRepositoryId, parseWorkspaceId } from "../../src/domain/workspace/index.js";
+import { parseCodingTaskSessionId } from "../../src/domain/codingTaskSession/index.js";
+import {
+  HarnessErrorCode,
+  ResultStatus,
+  type HarnessError,
+  type Result,
+} from "../../src/common/index.js";
+import {
   checkpoint,
+  coverageManifest,
+  createdAt,
   digest,
-  evidenceDigest,
   digestOf,
   initialState,
+  repository,
   snapshot,
   unwrap,
 } from "../support/codingTaskSessionCloseout/index.js";
 
-describe("CodingTaskSession Closeout State", () => {
-  it("按 Closing、SnapshotPersisted、CheckpointBound 顺序推进并稳定重建证据", () => {
+describe("CodingTask Session Closeout State v2", () => {
+  it("按 Closing、SnapshotPersisted、CheckpointBound 顺序绑定完整 Manifest", () => {
     const closing = initialState();
     const currentSnapshot = snapshot();
+    const manifest = coverageManifest();
     const persisted = unwrap(
       persistSnapshot(
         closing,
         {
           snapshot: currentSnapshot,
-          coveredActionIds: [...actionIds].reverse(),
-          actionEvidenceDigest: evidenceDigest(currentSnapshot),
+          coverageManifest: manifest,
           updatedAt: "2026-07-26T00:00:01.000Z",
         },
         digest,
@@ -46,15 +65,26 @@ describe("CodingTaskSession Closeout State", () => {
       ),
     );
 
+    expect(closing).toMatchObject({
+      status: CodingTaskSessionCloseoutStatus.Closing,
+      version: 0,
+      coverageManifest: null,
+      coverageBindingDigest: null,
+    });
     expect(persisted).toMatchObject({
       status: CodingTaskSessionCloseoutStatus.SnapshotPersisted,
       version: 1,
-      coveredActionIds: [...actionIds],
+      coverageManifest: manifest,
     });
+    expect(persisted.coverageBindingDigest).toMatch(/^sha256:/u);
+    expect(persisted).not.toHaveProperty("coveredActionIds");
+    expect(persisted).not.toHaveProperty("actionEvidenceDigest");
     expect(bound).toMatchObject({
       status: CodingTaskSessionCloseoutStatus.CheckpointBound,
       version: 2,
       snapshot: currentSnapshot,
+      coverageManifest: manifest,
+      coverageBindingDigest: persisted.coverageBindingDigest,
       checkpoint: checkpoint(currentSnapshot),
     });
     expect(unwrap(rebuildCodingTaskSessionCloseoutState(bound, digest))).toEqual(bound);
@@ -72,11 +102,10 @@ describe("CodingTaskSession Closeout State", () => {
       3,
       CodingTaskSessionCloseoutStage.CheckpointBound,
     ],
-  ] as const)("从 %s 进入 Blocked 时保留前态、版本和 stoppedStage", (_status, version, stage) => {
-    const current = stateAt(_status);
+  ] as const)("从 %s 进入 Blocked 时保留对应证据和版本", (_status, version, stage) => {
     const stopped = unwrap(
       block(
-        current,
+        stateAt(_status),
         {
           errorCode: HarnessErrorCode.PreconditionNotMet,
           recoveryGuidance: "人工复核 Closeout 证据",
@@ -90,34 +119,13 @@ describe("CodingTaskSession Closeout State", () => {
       version,
       stoppedStage: stage,
     });
-    expect(
-      block(
-        stopped,
-        {
-          errorCode: HarnessErrorCode.IoFailure,
-          recoveryGuidance: "停止",
-          updatedAt: "2026-07-26T00:00:04.000Z",
-        },
-        digest,
-      ).status,
-    ).toBe(ResultStatus.Failure);
+    expect(stopped.coverageManifest).toEqual(
+      _status === CodingTaskSessionCloseoutStatus.Closing ? null : coverageManifest(),
+    );
   });
 
-  it.each([
-    [CodingTaskSessionCloseoutStatus.Closing, 1, CodingTaskSessionCloseoutStage.Closing],
-    [
-      CodingTaskSessionCloseoutStatus.SnapshotPersisted,
-      2,
-      CodingTaskSessionCloseoutStage.SnapshotPersisted,
-    ],
-    [
-      CodingTaskSessionCloseoutStatus.CheckpointBound,
-      3,
-      CodingTaskSessionCloseoutStage.CheckpointBound,
-    ],
-  ] as const)(
-    "从 %s 进入 OutcomeUnknown 后保留版本和 stoppedStage 且不可再次推进",
-    (status, version, stage) => {
+  it("从各活动阶段进入 OutcomeUnknown 后不能再次推进", () => {
+    for (const status of Object.values(CodingTaskSessionCloseoutStatus).slice(0, 3)) {
       const stopped = unwrap(
         markOutcomeUnknown(
           stateAt(status),
@@ -129,11 +137,7 @@ describe("CodingTaskSession Closeout State", () => {
           digest,
         ),
       );
-      expect(stopped).toMatchObject({
-        status: CodingTaskSessionCloseoutStatus.OutcomeUnknown,
-        version,
-        stoppedStage: stage,
-      });
+      expect(stopped.status).toBe(CodingTaskSessionCloseoutStatus.OutcomeUnknown);
       expect(
         markOutcomeUnknown(
           stopped,
@@ -145,134 +149,170 @@ describe("CodingTaskSession Closeout State", () => {
           digest,
         ).status,
       ).toBe(ResultStatus.Failure);
-    },
-  );
+    }
+  });
 
-  it("拒绝重复 Action ID、摘要漂移、路径或时间错误以及未知字段", () => {
-    const currentSnapshot = snapshot();
-    const base = initialState();
-    const duplicate = persistSnapshot(
-      base,
+  it.each([
+    ["workspaceId", unwrap(parseWorkspaceId("other-workspace"))],
+    ["sessionId", unwrap(parseCodingTaskSessionId("01ARZ3NDEKTSV4RRFFQ69G5FAZ"))],
+    ["codingTaskId", unwrap(parseCodingTaskId("other-coding-task"))],
+    ["sourceTaskId", unwrap(parseTaskId("01ARZ3NDEKTSV4RRFFQ69G5FB0"))],
+    ["repositoryId", unwrap(parseRepositoryId("other-repository"))],
+    ["attemptNumber", 2],
+    ["activationBindingDigest", digestOf({ binding: "other-activation" })],
+    ["sessionBindingDigest", digestOf({ binding: "other-session" })],
+  ] as const)("拒绝 Manifest %s identity 漂移", (field, value) => {
+    const result = persistSnapshot(
+      initialState(),
       {
-        snapshot: currentSnapshot,
-        coveredActionIds: [actionIds[0], actionIds[0]],
-        actionEvidenceDigest: evidenceDigest(currentSnapshot),
+        snapshot: snapshot(),
+        coverageManifest: manifestWith({ [field]: value }),
         updatedAt: "2026-07-26T00:00:01.000Z",
       },
       digest,
     );
-    const drift = persistSnapshot(
-      base,
-      {
-        snapshot: currentSnapshot,
-        coveredActionIds: actionIds,
-        actionEvidenceDigest: evidenceDigest(currentSnapshot, [actionIds[0]]),
-        updatedAt: "2026-07-26T00:00:01.000Z",
-      },
-      digest,
-    );
-    expect(duplicate.status).toBe(ResultStatus.Failure);
-    expect(drift.status).toBe(ResultStatus.Failure);
+    expectFailure(result, HarnessErrorCode.PreconditionNotMet);
+  });
 
-    const malformedSnapshot = { ...currentSnapshot, writeSet: ["src/other.ts"] };
-    expect(
+  it.each(["repositoryId", "worktreeId"] as const)("拒绝 Snapshot %s 漂移", (field) => {
+    const current = snapshot();
+    const changed = snapshotWith(
+      field === "repositoryId" ? unwrap(parseRepositoryId("other-repository")) : repository,
+      field === "worktreeId" ? "other-worktree" : current.worktreeId,
+    );
+    expectFailure(
       persistSnapshot(
-        base,
+        initialState(),
         {
-          snapshot: malformedSnapshot,
-          coveredActionIds: actionIds,
-          actionEvidenceDigest: evidenceDigest(currentSnapshot),
+          snapshot: changed,
+          coverageManifest: coverageManifest(),
           updatedAt: "2026-07-26T00:00:01.000Z",
         },
         digest,
-      ).status,
-    ).toBe(ResultStatus.Failure);
+      ),
+      HarnessErrorCode.PreconditionNotMet,
+    );
+  });
 
+  it("拒绝 Manifest digest、外层 binding、action 排序和未知字段篡改", () => {
+    const base = initialState();
+    const currentSnapshot = snapshot();
+    const manifest = coverageManifest();
     const persisted = unwrap(
       persistSnapshot(
         base,
         {
           snapshot: currentSnapshot,
-          coveredActionIds: actionIds,
-          actionEvidenceDigest: evidenceDigest(currentSnapshot),
+          coverageManifest: manifest,
           updatedAt: "2026-07-26T00:00:01.000Z",
         },
         digest,
       ),
     );
-    expect(
-      bindCheckpoint(
-        persisted,
+    expectFailure(
+      persistSnapshot(
+        base,
         {
-          checkpoint: checkpoint(currentSnapshot),
-          updatedAt: "2026-07-26T00:00:00.000Z",
+          snapshot: currentSnapshot,
+          coverageManifest: { ...manifest, manifestDigest: digestOf("manifest-drift") },
+          updatedAt: "2026-07-26T00:00:01.000Z",
         },
         digest,
-      ).status,
-    ).toBe(ResultStatus.Failure);
-    const badCheckpoint = {
-      ...checkpoint(currentSnapshot),
-      preSubmitSnapshotDigest: digestOf("wrong"),
-    };
-    expect(
-      bindCheckpoint(
-        persisted,
-        { checkpoint: badCheckpoint, updatedAt: "2026-07-26T00:00:02.000Z" },
-        digest,
-      ).status,
-    ).toBe(ResultStatus.Failure);
-    const pathCheckpoint = checkpoint(currentSnapshot);
-    const mismatchedPaths = ["src/closeout-a.ts", "src/other.ts"] as const;
-    const pathDigest = digestOf({
-      targetRevision: pathCheckpoint.checkpoint.targetRevision,
-      changedPaths: mismatchedPaths,
-    });
-    const pathBinding = digestOf({
-      schemaVersion: pathCheckpoint.schemaVersion,
-      checkpointDigest: pathDigest,
-      changeSetDigest: pathCheckpoint.changeSetDigest,
-      preSubmitSnapshotDigest: pathCheckpoint.preSubmitSnapshotDigest,
-    });
-    const mismatchedCheckpoint: ChangeSetCheckpoint = {
-      schemaVersion: pathCheckpoint.schemaVersion,
-      checkpoint: {
-        targetRevision: pathCheckpoint.checkpoint.targetRevision,
-        changedPaths: [...mismatchedPaths],
-        checkpointDigest: pathDigest,
-      },
-      changeSetDigest: pathCheckpoint.changeSetDigest,
-      preSubmitSnapshotDigest: pathCheckpoint.preSubmitSnapshotDigest,
-      bindingDigest: pathBinding,
-    };
-    expect(
-      bindCheckpoint(
-        persisted,
-        {
-          checkpoint: mismatchedCheckpoint,
-          updatedAt: "2026-07-26T00:00:02.000Z",
-        },
-        digest,
-      ).status,
-    ).toBe(ResultStatus.Failure);
-    expect(rebuildCodingTaskSessionCloseoutState({ ...base, version: 1 }, digest).status).toBe(
-      ResultStatus.Failure,
+      ),
+      HarnessErrorCode.PreconditionNotMet,
     );
-    expect(
+    expectFailure(
+      rebuildCodingTaskSessionCloseoutState(
+        { ...persisted, coverageBindingDigest: digestOf("binding-drift") },
+        digest,
+      ),
+      HarnessErrorCode.PreconditionNotMet,
+    );
+    expectFailure(
+      persistSnapshot(
+        base,
+        {
+          snapshot: currentSnapshot,
+          coverageManifest: manifestWith({ actions: [...manifest.actions].reverse() }),
+          updatedAt: "2026-07-26T00:00:01.000Z",
+        },
+        digest,
+      ),
+      HarnessErrorCode.PreconditionNotMet,
+    );
+    expectFailure(
+      persistSnapshot(
+        base,
+        {
+          snapshot: currentSnapshot,
+          coverageManifest: manifestWith({
+            extra: true,
+          }),
+          updatedAt: "2026-07-26T00:00:01.000Z",
+        },
+        digest,
+      ),
+      HarnessErrorCode.PreconditionNotMet,
+    );
+  });
+
+  it("拒绝 successor 替换完整 Manifest 或 binding", () => {
+    const persisted = stateAt(CodingTaskSessionCloseoutStatus.SnapshotPersisted);
+    const bound = unwrap(
+      bindCheckpoint(
+        persisted,
+        { checkpoint: checkpoint(snapshot()), updatedAt: "2026-07-26T00:00:02.000Z" },
+        digest,
+      ),
+    );
+    const terminal = unwrap(
+      block(
+        bound,
+        {
+          errorCode: HarnessErrorCode.PreconditionNotMet,
+          recoveryGuidance: "人工复核",
+          updatedAt: "2026-07-26T00:00:03.000Z",
+        },
+        digest,
+      ),
+    );
+    const replacement = manifestWith({ executorSessionIdDigest: digestOf("replacement") });
+    const candidate = {
+      ...terminal,
+      coverageManifest: replacement,
+      coverageBindingDigest: unwrap(calculateBinding(terminal.snapshot!, replacement)),
+    } as CodingTaskSessionCloseoutState;
+    expectFailure(
+      validateCodingTaskSessionCloseoutSuccessor(bound, candidate, digest),
+      HarnessErrorCode.InvalidStateTransition,
+    );
+  });
+
+  it("拒绝旧字段、跳过阶段和倒退时间", () => {
+    const base = initialState();
+    expectFailure(
+      rebuildCodingTaskSessionCloseoutState({ ...base, coveredActionIds: [] }, digest),
+      HarnessErrorCode.InvalidInput,
+    );
+    expectFailure(
       rebuildCodingTaskSessionCloseoutState(
         { ...base, status: CodingTaskSessionCloseoutStatus.SnapshotPersisted },
         digest,
-      ).status,
-    ).toBe(ResultStatus.Failure);
-    expect(
-      rebuildCodingTaskSessionCloseoutState({ ...base, errorCode: "future_error" }, digest).status,
-    ).toBe(ResultStatus.Failure);
-    expect(
-      rebuildCodingTaskSessionCloseoutState({ ...base, unexpected: true }, digest).status,
-    ).toBe(ResultStatus.Failure);
+      ),
+      HarnessErrorCode.InvalidStateTransition,
+    );
+    expectFailure(
+      persistSnapshot(
+        stateAt(CodingTaskSessionCloseoutStatus.SnapshotPersisted),
+        { snapshot: snapshot(), coverageManifest: coverageManifest(), updatedAt: createdAt },
+        digest,
+      ),
+      HarnessErrorCode.InvalidStateTransition,
+    );
   });
 });
 
-function stateAt(status: CodingTaskSessionCloseoutStatus) {
+function stateAt(status: CodingTaskSessionCloseoutStatus): CodingTaskSessionCloseoutState {
   const base = initialState();
   if (status === CodingTaskSessionCloseoutStatus.Closing) return base;
   const currentSnapshot = snapshot();
@@ -281,8 +321,7 @@ function stateAt(status: CodingTaskSessionCloseoutStatus) {
       base,
       {
         snapshot: currentSnapshot,
-        coveredActionIds: actionIds,
-        actionEvidenceDigest: evidenceDigest(currentSnapshot),
+        coverageManifest: coverageManifest(),
         updatedAt: "2026-07-26T00:00:01.000Z",
       },
       digest,
@@ -297,4 +336,60 @@ function stateAt(status: CodingTaskSessionCloseoutStatus) {
           digest,
         ),
       );
+}
+
+function manifestWith(changes: Record<string, unknown>): CodingTaskSessionActionCoverageManifest {
+  const candidate = {
+    ...coverageManifest(),
+    ...changes,
+  } as CodingTaskSessionActionCoverageManifest;
+  return {
+    ...candidate,
+    manifestDigest: unwrap(
+      calculateCodingTaskSessionActionCoverageManifestDigest(candidate, digest),
+    ),
+  };
+}
+
+function snapshotWith(repositoryId: typeof repository, worktreeId: string) {
+  const current = snapshot();
+  const changeSet = unwrap(
+    createCodingTaskSessionChangeSet(
+      {
+        repositoryId,
+        baseRevision: current.baseRevision,
+        changes: current.changes,
+      },
+      digest,
+    ),
+  );
+  return unwrap(
+    createCodingTaskSessionChangeSetSnapshot(
+      {
+        changeSet,
+        worktreeId,
+        worktreeRelativePath: current.worktreeRelativePath,
+        branchName: current.branchName,
+        observedHeadRevision: current.observedHeadRevision,
+        writeSet: current.writeSet,
+      },
+      digest,
+    ),
+  );
+}
+
+function calculateBinding(
+  currentSnapshot: NonNullable<CodingTaskSessionCloseoutState["snapshot"]>,
+  manifest: CodingTaskSessionActionCoverageManifest,
+) {
+  return digest.calculate({
+    schemaVersion: "coding-task-session.closeout-coverage-binding.v1",
+    snapshotDigest: currentSnapshot.snapshotDigest,
+    manifestDigest: manifest.manifestDigest,
+  });
+}
+
+function expectFailure(result: Result<unknown, HarnessError>, code: HarnessErrorCode): void {
+  expect(result.status).toBe(ResultStatus.Failure);
+  if (result.status === ResultStatus.Failure) expect(result.error.code).toBe(code);
 }

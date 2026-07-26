@@ -5,17 +5,17 @@ import type {
   HarnessErrorCode,
   Result,
 } from "#common/index.js";
-import type { ActionId } from "#domain/actionJournal/index.js";
 import type { CodingTaskId } from "#domain/codingTask/index.js";
 import type { CodingTaskSessionId } from "#domain/codingTaskSession/index.js";
 import type { CodingTaskSessionChangeSetSnapshot } from "#domain/codingTaskSessionChangeSet/index.js";
 import type { TaskId } from "#domain/task/index.js";
 import type { RepositoryId, WorkspaceId } from "#domain/workspace/index.js";
 
+import type { CodingTaskSessionActionCoverageManifest } from "#application/codingTaskSessionActionCoverage/index.js";
 import type { ChangeSetCheckpoint } from "#application/changeSetCheckpoint/index.js";
 
 import type {
-  CODING_TASK_SESSION_CLOSEOUT_ACTION_EVIDENCE_SCHEMA_VERSION,
+  CODING_TASK_SESSION_CLOSEOUT_COVERAGE_BINDING_SCHEMA_VERSION,
   CODING_TASK_SESSION_CLOSEOUT_STATE_SCHEMA_VERSION,
 } from "../constants/index.js";
 import type {
@@ -65,10 +65,10 @@ export interface CodingTaskSessionCloseoutState extends CodingTaskSessionCloseou
   readonly status: CodingTaskSessionCloseoutStatus;
   /** 已验证的完整提交前 Snapshot。 */
   readonly snapshot: CodingTaskSessionChangeSetSnapshot | null;
-  /** 已覆盖且规范排序的 Action ID。 */
-  readonly coveredActionIds: readonly ActionId[];
-  /** 绑定 Snapshot 的 Action Evidence 摘要。 */
-  readonly actionEvidenceDigest: ContentDigest | null;
+  /** 与 Snapshot 原子绑定的完整 Coverage Manifest。 */
+  readonly coverageManifest: CodingTaskSessionActionCoverageManifest | null;
+  /** Snapshot 与 Coverage Manifest 的外层绑定摘要。 */
+  readonly coverageBindingDigest: ContentDigest | null;
   /** 已验证且与 Snapshot 双向绑定的 Checkpoint。 */
   readonly checkpoint: ChangeSetCheckpoint | null;
   /** 发生阻断或未知结果的阶段。 */
@@ -92,14 +92,12 @@ export interface CodingTaskSessionCloseoutStateTimestampInput {
   readonly updatedAt: string;
 }
 
-/** 持久化 Snapshot 与 Action Evidence 的转换输入。 */
+/** 一次性持久化 Snapshot 与 Coverage Manifest 的转换输入。 */
 export interface CodingTaskSessionCloseoutPersistSnapshotInput extends CodingTaskSessionCloseoutStateTimestampInput {
   /** 完整且已验证的提交前 Snapshot。 */
   readonly snapshot: CodingTaskSessionChangeSetSnapshot;
-  /** 本次 Closeout 覆盖的 Action ID 集合。 */
-  readonly coveredActionIds: readonly ActionId[];
-  /** 绑定 Snapshot 摘要的 Action Evidence 摘要。 */
-  readonly actionEvidenceDigest: ContentDigest;
+  /** 完整且已验证的 CodingTask Session Coverage Manifest。 */
+  readonly coverageManifest: CodingTaskSessionActionCoverageManifest;
 }
 
 /** 绑定 ChangeSet Checkpoint 的转换输入。 */
@@ -116,14 +114,14 @@ export interface CodingTaskSessionCloseoutTerminalInput extends CodingTaskSessio
   readonly recoveryGuidance: string;
 }
 
-/** Action Evidence 摘要计算所使用的规范输入。 */
-export interface CodingTaskSessionCloseoutActionEvidenceDigestInput {
-  /** Action Evidence Digest Schema 版本。 */
-  readonly schemaVersion: typeof CODING_TASK_SESSION_CLOSEOUT_ACTION_EVIDENCE_SCHEMA_VERSION;
+/** Closeout Coverage 外层绑定摘要计算所使用的规范输入。 */
+export interface CodingTaskSessionCloseoutCoverageBindingDigestInput {
+  /** Closeout Coverage Binding Schema 版本。 */
+  readonly schemaVersion: typeof CODING_TASK_SESSION_CLOSEOUT_COVERAGE_BINDING_SCHEMA_VERSION;
   /** 完整 Snapshot 摘要。 */
   readonly snapshotDigest: ContentDigest;
-  /** 规范排序后的 Action ID。 */
-  readonly coveredActionIds: readonly ActionId[];
+  /** 完整 Coverage Manifest 摘要。 */
+  readonly manifestDigest: ContentDigest;
 }
 
 /** Closeout 状态转换的统一返回类型。 */

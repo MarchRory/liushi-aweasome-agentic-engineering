@@ -121,11 +121,8 @@ function preservesSnapshotEvidence(
 ): boolean {
   return (
     current.snapshot?.snapshotDigest === candidate.snapshot?.snapshotDigest &&
-    current.actionEvidenceDigest === candidate.actionEvidenceDigest &&
-    current.coveredActionIds.length === candidate.coveredActionIds.length &&
-    current.coveredActionIds.every(
-      (actionId, index) => actionId === candidate.coveredActionIds[index],
-    )
+    current.coverageManifest?.manifestDigest === candidate.coverageManifest?.manifestDigest &&
+    current.coverageBindingDigest === candidate.coverageBindingDigest
   );
 }
 

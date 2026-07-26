@@ -1,14 +1,19 @@
 import {
-  createCodingTaskSessionCloseoutState,
-  createCloseoutActionEvidenceDigestInput,
+  block,
   CodingTaskSessionCloseoutStage,
   CodingTaskSessionCloseoutStatus,
-  block,
+  createCodingTaskSessionCloseoutState,
   persistSnapshot,
-  type CodingTaskSessionCloseoutStateInput,
   type CodingTaskSessionCloseoutState,
+  type CodingTaskSessionCloseoutStateInput,
 } from "../../../src/application/codingTaskSessionCloseoutState/index.js";
 import { CHANGE_SET_CHECKPOINT_SCHEMA_VERSION } from "../../../src/application/changeSetCheckpoint/index.js";
+import {
+  calculateCodingTaskSessionActionCoverageManifestDigest,
+  CODING_TASK_SESSION_ACTION_COVERAGE_MANIFEST_SCHEMA_VERSION,
+  type CodingTaskSessionActionCoverageManifest,
+  type CodingTaskSessionActionCoverageManifestDigestInput,
+} from "../../../src/application/codingTaskSessionActionCoverage/index.js";
 import {
   CodingTaskSessionChangeKind,
   createCodingTaskSessionChangeSet,
@@ -16,9 +21,9 @@ import {
   type CodingTaskSessionChangeSetSnapshot,
 } from "../../../src/domain/codingTaskSessionChangeSet/index.js";
 import { parseActionId, type ActionId } from "../../../src/domain/actionJournal/index.js";
+import { parseCodingTaskId } from "../../../src/domain/codingTask/index.js";
 import { parseCodingTaskSessionId } from "../../../src/domain/codingTaskSession/index.js";
 import { parseTaskId } from "../../../src/domain/task/index.js";
-import { parseCodingTaskId } from "../../../src/domain/codingTask/index.js";
 import { parseRepositoryId, parseWorkspaceId } from "../../../src/domain/workspace/index.js";
 import {
   ActorKind,
@@ -45,6 +50,8 @@ export const actionIds = [
   unwrap(parseActionId("01ARZ3NDEKTSV4RRFFQ69G5FAY")),
 ] as const;
 export const createdAt = "2026-07-26T00:00:00.000Z";
+export const activationBindingDigest = digestOf({ binding: "activation" });
+export const sessionBindingDigest = digestOf({ binding: "session" });
 
 export function initialState(
   overrides: Partial<CodingTaskSessionCloseoutStateInput> = {},
@@ -57,8 +64,8 @@ export function initialState(
       sourceTaskId: sourceTask,
       repositoryId: repository,
       attemptNumber: 1,
-      activationBindingDigest: digestOf({ binding: "activation" }),
-      sessionBindingDigest: digestOf({ binding: "session" }),
+      activationBindingDigest,
+      sessionBindingDigest,
       requestDigest: digestOf({ request: "closeout" }),
       idempotencyKey: "closeout-idempotency-key",
       commandId: "closeout-command",
@@ -107,11 +114,41 @@ export function snapshot(): CodingTaskSessionChangeSetSnapshot {
   );
 }
 
-export function evidenceDigest(
+export function coverageManifest(): CodingTaskSessionActionCoverageManifest {
+  const input: CodingTaskSessionActionCoverageManifestDigestInput = {
+    schemaVersion: CODING_TASK_SESSION_ACTION_COVERAGE_MANIFEST_SCHEMA_VERSION,
+    workspaceId: workspace,
+    sessionId: session,
+    codingTaskId: codingTask,
+    sourceTaskId: sourceTask,
+    repositoryId: repository,
+    attemptNumber: 1,
+    activationBindingDigest,
+    sessionBindingDigest,
+    worktreeId: "closeout-worktree",
+    worktreeRootDigest: digestOf({ worktreeRoot: "closeout" }),
+    executorSessionIdDigest: digestOf({ executorSession: "closeout" }),
+    actions: actionIds.map((actionId) => ({
+      actionId,
+      journalDigest: digestOf({ journal: actionId }),
+      traceObservationDigests: [digestOf({ trace: actionId })],
+    })),
+  };
+  return {
+    ...input,
+    manifestDigest: unwrap(calculateCodingTaskSessionActionCoverageManifestDigest(input, digest)),
+  };
+}
+
+export function legacyActionEvidenceDigest(
   currentSnapshot: CodingTaskSessionChangeSetSnapshot,
   ids: readonly ActionId[] = actionIds,
 ): ContentDigest {
-  return digestOf(createCloseoutActionEvidenceDigestInput(currentSnapshot.snapshotDigest, ids));
+  return digestOf({
+    schemaVersion: "coding-task-session.closeout-action-evidence.v1",
+    snapshotDigest: currentSnapshot.snapshotDigest,
+    coveredActionIds: ids,
+  });
 }
 
 export function checkpoint(
@@ -143,10 +180,11 @@ export function checkpointBoundState(
   state: CodingTaskSessionCloseoutState,
   updatedAt: string,
 ): CodingTaskSessionCloseoutState {
+  const currentSnapshot = state.snapshot ?? snapshot();
   return {
     ...state,
     status: CodingTaskSessionCloseoutStatus.CheckpointBound,
-    checkpoint: checkpoint(),
+    checkpoint: checkpoint(currentSnapshot),
     version: 2,
     updatedAt,
   };
@@ -156,10 +194,11 @@ export function outcomeUnknownCheckpointBoundState(
   state: CodingTaskSessionCloseoutState,
   updatedAt: string,
 ): CodingTaskSessionCloseoutState {
+  const currentSnapshot = state.snapshot ?? snapshot();
   return {
     ...state,
     status: CodingTaskSessionCloseoutStatus.OutcomeUnknown,
-    checkpoint: checkpoint(),
+    checkpoint: checkpoint(currentSnapshot),
     stoppedStage: CodingTaskSessionCloseoutStage.CheckpointBound,
     errorCode: HarnessErrorCode.IoFailure,
     recoveryGuidance: "等待外部结果确认",
@@ -194,13 +233,49 @@ export function persistedState(
       base,
       {
         snapshot: currentSnapshot,
-        coveredActionIds: actionIds,
-        actionEvidenceDigest: evidenceDigest(currentSnapshot),
+        coverageManifest: coverageManifest(),
         updatedAt: "2026-07-26T00:00:01.000Z",
       },
       digest,
     ),
   );
+}
+
+export function legacyV1PersistedState(
+  state: CodingTaskSessionCloseoutState,
+  currentSnapshot: CodingTaskSessionChangeSetSnapshot = snapshot(),
+): Record<string, unknown> {
+  const identity = {
+    workspaceId: state.workspaceId,
+    sessionId: state.sessionId,
+    codingTaskId: state.codingTaskId,
+    sourceTaskId: state.sourceTaskId,
+    repositoryId: state.repositoryId,
+    attemptNumber: state.attemptNumber,
+    activationBindingDigest: state.activationBindingDigest,
+    sessionBindingDigest: state.sessionBindingDigest,
+    requestDigest: state.requestDigest,
+    idempotencyKey: state.idempotencyKey,
+    commandId: state.commandId,
+    correlationId: state.correlationId,
+    ...(state.causationId === undefined ? {} : { causationId: state.causationId }),
+    actor: state.actor,
+    createdAt: state.createdAt,
+  };
+  return {
+    ...identity,
+    schemaVersion: "coding-task-session.closeout-state.v1",
+    status: CodingTaskSessionCloseoutStatus.SnapshotPersisted,
+    snapshot: currentSnapshot,
+    coveredActionIds: [...actionIds],
+    actionEvidenceDigest: legacyActionEvidenceDigest(currentSnapshot),
+    checkpoint: null,
+    stoppedStage: null,
+    errorCode: null,
+    recoveryGuidance: null,
+    version: 1,
+    updatedAt: "2026-07-26T00:00:01.000Z",
+  };
 }
 
 export function digestOf(input: unknown): ContentDigest {

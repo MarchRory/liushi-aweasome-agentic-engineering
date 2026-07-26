@@ -3,12 +3,10 @@ import {
   HarnessErrorCode,
   ResultStatus,
   failure,
-  success,
   type HarnessError as HarnessErrorType,
   type Result,
 } from "#common/index.js";
 import type { ContentDigestPort } from "#application/ports/contentDigest/index.js";
-import { parseActionId, type ActionId } from "#domain/actionJournal/index.js";
 
 import type {
   CodingTaskSessionCloseoutBindCheckpointInput,
@@ -18,19 +16,20 @@ import type {
   CodingTaskSessionCloseoutTerminalInput,
 } from "../contracts/index.js";
 import { CodingTaskSessionCloseoutStage, CodingTaskSessionCloseoutStatus } from "../enums/index.js";
+import { calculateCloseoutCoverageBindingDigest } from "../digest/index.js";
 import {
   invalid,
-  parseDigest,
   parseHarnessErrorCode,
   parseIsoUtc,
   parseSafeText,
   rebuildCodingTaskSessionCloseoutState,
   rebuildCloseoutCheckpoint,
+  rebuildCloseoutCoverageManifest,
   rebuildCloseoutSnapshot,
-  verifyCloseoutActionEvidenceDigest,
+  validateCloseoutCoverageIdentity,
 } from "../validation/index.js";
 
-/** 仅从 Closing 持久化 Snapshot 与非空 Action Evidence。 */
+/** 仅从 Closing 一次性持久化 Snapshot 与完整 Coverage Manifest。 */
 export function persistSnapshot(
   state: CodingTaskSessionCloseoutState,
   input: CodingTaskSessionCloseoutPersistSnapshotInput,
@@ -45,34 +44,34 @@ export function persistSnapshot(
   if (updatedAt.status === ResultStatus.Failure) return updatedAt;
   const snapshot = rebuildCloseoutSnapshot(input?.snapshot, digestPort);
   if (snapshot.status === ResultStatus.Failure) return snapshot;
-  if (snapshot.value.repositoryId !== current.value.repositoryId) {
-    return failure(mismatch("Snapshot Repository 身份与 Closeout 不一致。"));
-  }
-  const normalizedIds = normalizeActionIds(input?.coveredActionIds);
-  if (normalizedIds.status === ResultStatus.Failure) return normalizedIds;
-  const evidence = verifyCloseoutActionEvidenceDigest(
+  const coverageManifest = rebuildCloseoutCoverageManifest(input?.coverageManifest, digestPort);
+  if (coverageManifest.status === ResultStatus.Failure) return coverageManifest;
+  const identity = validateCloseoutCoverageIdentity(
+    current.value,
+    snapshot.value,
+    coverageManifest.value,
+  );
+  if (identity.status === ResultStatus.Failure) return identity;
+  const coverageBindingDigest = calculateCloseoutCoverageBindingDigest(
     snapshot.value.snapshotDigest,
-    normalizedIds.value,
-    input?.actionEvidenceDigest,
+    coverageManifest.value.manifestDigest,
     digestPort,
   );
-  if (evidence.status === ResultStatus.Failure) return evidence;
-  const evidenceDigest = parseDigest(input?.actionEvidenceDigest, "actionEvidenceDigest");
-  if (evidenceDigest.status === ResultStatus.Failure) return evidenceDigest;
+  if (coverageBindingDigest.status === ResultStatus.Failure) return coverageBindingDigest;
   return nextState(
     current.value,
     {
       status: CodingTaskSessionCloseoutStatus.SnapshotPersisted,
       snapshot: snapshot.value,
-      coveredActionIds: evidence.value,
-      actionEvidenceDigest: evidenceDigest.value,
+      coverageManifest: coverageManifest.value,
+      coverageBindingDigest: coverageBindingDigest.value,
       updatedAt: updatedAt.value,
     },
     digestPort,
   );
 }
 
-/** 仅从 SnapshotPersisted 绑定摘要一致的 ChangeSet Checkpoint。 */
+/** 仅从 SnapshotPersisted 绑定与 Snapshot 一致的 ChangeSet Checkpoint。 */
 export function bindCheckpoint(
   state: CodingTaskSessionCloseoutState,
   input: CodingTaskSessionCloseoutBindCheckpointInput,
@@ -187,21 +186,6 @@ function nextState(
     },
     digestPort,
   );
-}
-
-function normalizeActionIds(input: unknown): Result<readonly ActionId[], HarnessError> {
-  if (!Array.isArray(input)) return failure(invalid("coveredActionIds"));
-  const parsed: ActionId[] = [];
-  for (const value of input) {
-    if (typeof value !== "string") return failure(invalid("coveredActionIds"));
-    const actionId = parseActionId(value);
-    if (actionId.status === ResultStatus.Failure) return failure(invalid("coveredActionIds"));
-    parsed.push(actionId.value);
-  }
-  if (new Set(parsed).size !== parsed.length) {
-    return failure(invalid("coveredActionIds"));
-  }
-  return success(Object.freeze([...parsed].sort()));
 }
 
 function activeStage(

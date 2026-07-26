@@ -20,6 +20,7 @@ export * from "./changeSetCheckpoint/index.js";
 export * from "./codingTaskSessionCloseoutState/constants/index.js";
 export type * from "./codingTaskSessionCloseoutState/contracts/index.js";
 export * from "./codingTaskSessionCloseoutState/enums/index.js";
+export * from "./codingTaskSessionCloseoutState/digest/index.js";
 export {
   bindCheckpoint,
   block,
@@ -27,9 +28,9 @@ export {
   persistSnapshot,
 } from "./codingTaskSessionCloseoutState/transitions/index.js";
 export {
-  createCloseoutActionEvidenceDigestInput,
   createCodingTaskSessionCloseoutState,
   parseCodingTaskSessionCloseoutState,
+  rebuildCloseoutCoverageManifest,
   rebuildCodingTaskSessionCloseoutState,
   validateCodingTaskSessionCloseoutState,
 } from "./codingTaskSessionCloseoutState/validation/index.js";

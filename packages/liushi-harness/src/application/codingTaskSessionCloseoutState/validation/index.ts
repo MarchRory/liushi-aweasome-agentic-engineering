@@ -1,11 +1,24 @@
 export * from "./codingTaskSessionCloseoutStateValidation.js";
 export * from "./codingTaskSessionCloseoutSuccessorValidation.js";
-export { parseHarnessErrorCode } from "./codingTaskSessionCloseoutFieldValidation.js";
+export * from "./codingTaskSessionCloseoutCoverageValidation.js";
 export {
-  createCloseoutActionEvidenceDigestInput,
-  parseCanonicalActionIds,
+  parseCloseoutStatus,
+  parseCloseoutVersion,
+  parseHarnessErrorCode,
+  parseNullableCloseoutStage,
+  parseNullableHarnessErrorCode,
+  parseNullableSafeText,
+} from "./codingTaskSessionCloseoutFieldValidation.js";
+export { parseCloseoutIdentity } from "./codingTaskSessionCloseoutIdentityValidation.js";
+export {
   rebuildCloseoutCheckpoint,
   rebuildCloseoutSnapshot,
-  verifyCloseoutActionEvidenceDigest,
 } from "./codingTaskSessionCloseoutNestedValidation.js";
-export { invalid, parseDigest, parseIsoUtc, parseSafeText } from "./closeoutValidationSupport.js";
+export {
+  hasExactKeys,
+  invalid,
+  isRecord,
+  parseDigest,
+  parseIsoUtc,
+  parseSafeText,
+} from "./closeoutValidationSupport.js";

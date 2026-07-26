@@ -1,7 +1,7 @@
 /** Closeout Process State 的持久化 Schema 版本。 */
 export const CODING_TASK_SESSION_CLOSEOUT_STATE_SCHEMA_VERSION =
-  "coding-task-session.closeout-state.v1" as const;
+  "coding-task-session.closeout-state.v2" as const;
 
-/** Closeout Action Evidence Digest 的输入 Schema 版本。 */
-export const CODING_TASK_SESSION_CLOSEOUT_ACTION_EVIDENCE_SCHEMA_VERSION =
-  "coding-task-session.closeout-action-evidence.v1" as const;
+/** Closeout Snapshot 与 Coverage Manifest 外层绑定的输入 Schema 版本。 */
+export const CODING_TASK_SESSION_CLOSEOUT_COVERAGE_BINDING_SCHEMA_VERSION =
+  "coding-task-session.closeout-coverage-binding.v1" as const;

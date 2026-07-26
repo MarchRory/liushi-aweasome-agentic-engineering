@@ -10,32 +10,19 @@ import type { ContentDigestPort } from "#application/ports/contentDigest/index.j
 
 import type { CodingTaskSessionCloseoutState } from "../contracts/index.js";
 import { CodingTaskSessionCloseoutStage, CodingTaskSessionCloseoutStatus } from "../enums/index.js";
-import { verifyCloseoutActionEvidenceDigest } from "./codingTaskSessionCloseoutNestedValidation.js";
+import { validateCloseoutCoverageBinding } from "./codingTaskSessionCloseoutCoverageValidation.js";
 
 /** 验证 Closeout 阶段、版本、证据和时间的不变量。 */
 export function validateCloseoutStateInvariants(
   state: CodingTaskSessionCloseoutState,
   digestPort: ContentDigestPort,
 ): Result<void, HarnessError> {
+  const coverage = validateCloseoutCoverageBinding(state, digestPort);
+  if (coverage.status === ResultStatus.Failure) return coverage;
   const hasSnapshot = state.snapshot !== null;
-  const hasEvidence = state.coveredActionIds.length > 0 && state.actionEvidenceDigest !== null;
-  if (!hasSnapshot && (state.coveredActionIds.length > 0 || state.actionEvidenceDigest !== null)) {
-    return failure(invariant("Snapshot 与 Action Evidence 必须同时存在。"));
-  }
-  if (hasSnapshot && !hasEvidence) {
-    return failure(invariant("完整 Snapshot 必须保留非空 Action Evidence。"));
-  }
+  const hasCoverage = state.coverageManifest !== null && state.coverageBindingDigest !== null;
   if (hasSnapshot && state.snapshot.repositoryId !== state.repositoryId) {
     return failure(invariant("Snapshot Repository 身份漂移。"));
-  }
-  if (hasEvidence && state.snapshot !== null) {
-    const evidence = verifyCloseoutActionEvidenceDigest(
-      state.snapshot.snapshotDigest,
-      state.coveredActionIds,
-      state.actionEvidenceDigest,
-      digestPort,
-    );
-    if (evidence.status === ResultStatus.Failure) return evidence;
   }
   if (state.checkpoint !== null && (state.snapshot === null || !sameCheckpointBinding(state))) {
     return failure(invariant("Checkpoint 必须与完整 Snapshot 双向绑定。"));
@@ -46,14 +33,14 @@ export function validateCloseoutStateInvariants(
 
   switch (state.status) {
     case CodingTaskSessionCloseoutStatus.Closing:
-      return validateClosing(state, hasSnapshot);
+      return validateClosing(state, hasSnapshot, hasCoverage);
     case CodingTaskSessionCloseoutStatus.SnapshotPersisted:
-      return validateSnapshotPersisted(state, hasSnapshot, hasEvidence);
+      return validateSnapshotPersisted(state, hasSnapshot, hasCoverage);
     case CodingTaskSessionCloseoutStatus.CheckpointBound:
-      return validateCheckpointBound(state, hasSnapshot, hasEvidence);
+      return validateCheckpointBound(state, hasSnapshot, hasCoverage);
     case CodingTaskSessionCloseoutStatus.Blocked:
     case CodingTaskSessionCloseoutStatus.OutcomeUnknown:
-      return validateTerminal(state, hasSnapshot, hasEvidence);
+      return validateTerminal(state, hasSnapshot, hasCoverage);
   }
 }
 
@@ -66,17 +53,18 @@ export function freezeCloseoutState(
     ...required,
     ...(causationId === undefined ? {} : { causationId }),
     actor: Object.freeze({ ...state.actor }),
-    coveredActionIds: Object.freeze([...state.coveredActionIds]),
   });
 }
 
 function validateClosing(
   state: CodingTaskSessionCloseoutState,
   hasSnapshot: boolean,
+  hasCoverage: boolean,
 ): Result<void, HarnessError> {
   return state.version === 0 &&
     state.updatedAt === state.createdAt &&
     !hasSnapshot &&
+    !hasCoverage &&
     state.checkpoint === null &&
     hasNoTerminalDetails(state)
     ? success(undefined)
@@ -86,25 +74,25 @@ function validateClosing(
 function validateSnapshotPersisted(
   state: CodingTaskSessionCloseoutState,
   hasSnapshot: boolean,
-  hasEvidence: boolean,
+  hasCoverage: boolean,
 ): Result<void, HarnessError> {
   return state.version === 1 &&
     hasSnapshot &&
-    hasEvidence &&
+    hasCoverage &&
     state.checkpoint === null &&
     hasNoTerminalDetails(state)
     ? success(undefined)
-    : failure(invariant("SnapshotPersisted 必须是 version=1 且保留完整证据。"));
+    : failure(invariant("SnapshotPersisted 必须是 version=1 且保留完整 Coverage 证据。"));
 }
 
 function validateCheckpointBound(
   state: CodingTaskSessionCloseoutState,
   hasSnapshot: boolean,
-  hasEvidence: boolean,
+  hasCoverage: boolean,
 ): Result<void, HarnessError> {
   return state.version === 2 &&
     hasSnapshot &&
-    hasEvidence &&
+    hasCoverage &&
     state.checkpoint !== null &&
     hasNoTerminalDetails(state)
     ? success(undefined)
@@ -114,17 +102,17 @@ function validateCheckpointBound(
 function validateTerminal(
   state: CodingTaskSessionCloseoutState,
   hasSnapshot: boolean,
-  hasEvidence: boolean,
+  hasCoverage: boolean,
 ): Result<void, HarnessError> {
   if (state.stoppedStage === null || state.errorCode === null || state.recoveryGuidance === null) {
     return failure(invariant("终止状态必须保留完整停止信息。"));
   }
   const matchesStage =
     state.stoppedStage === CodingTaskSessionCloseoutStage.Closing
-      ? state.version === 1 && !hasSnapshot && !hasEvidence && state.checkpoint === null
+      ? state.version === 1 && !hasSnapshot && !hasCoverage && state.checkpoint === null
       : state.stoppedStage === CodingTaskSessionCloseoutStage.SnapshotPersisted
-        ? state.version === 2 && hasSnapshot && hasEvidence && state.checkpoint === null
-        : state.version === 3 && hasSnapshot && hasEvidence && state.checkpoint !== null;
+        ? state.version === 2 && hasSnapshot && hasCoverage && state.checkpoint === null
+        : state.version === 3 && hasSnapshot && hasCoverage && state.checkpoint !== null;
   return matchesStage
     ? success(undefined)
     : failure(invariant("终止状态与停止阶段的版本或证据不一致。"));

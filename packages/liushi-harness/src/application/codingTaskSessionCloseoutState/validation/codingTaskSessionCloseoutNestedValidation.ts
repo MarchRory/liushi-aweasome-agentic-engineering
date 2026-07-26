@@ -1,15 +1,6 @@
-import {
-  HarnessError,
-  HarnessErrorCode,
-  ResultStatus,
-  failure,
-  success,
-  type ContentDigest,
-  type Result,
-} from "#common/index.js";
+import { ResultStatus, failure, success, type HarnessError, type Result } from "#common/index.js";
 import type { ContentDigestPort } from "#application/ports/contentDigest/index.js";
 import { normalizeWriteSet } from "#domain/codingTask/index.js";
-import { parseActionId, type ActionId } from "#domain/actionJournal/index.js";
 import {
   verifyCodingTaskSessionChangeSetSnapshot,
   type CodingTaskSessionChangeSetSnapshot,
@@ -18,8 +9,6 @@ import {
 import { CHANGE_SET_CHECKPOINT_SCHEMA_VERSION } from "#application/changeSetCheckpoint/index.js";
 import type { ChangeSetCheckpoint } from "#application/changeSetCheckpoint/index.js";
 
-import { CODING_TASK_SESSION_CLOSEOUT_ACTION_EVIDENCE_SCHEMA_VERSION } from "../constants/index.js";
-import type { CodingTaskSessionCloseoutActionEvidenceDigestInput } from "../contracts/index.js";
 import {
   hasExactKeys,
   invalid,
@@ -148,67 +137,10 @@ export function rebuildCloseoutCheckpoint(
   );
 }
 
-/** 创建绑定 Snapshot 摘要的规范 Action Evidence Digest 输入。 */
-export function createCloseoutActionEvidenceDigestInput(
-  snapshotDigest: ContentDigest,
-  coveredActionIds: readonly ActionId[],
-): CodingTaskSessionCloseoutActionEvidenceDigestInput {
-  return {
-    schemaVersion: CODING_TASK_SESSION_CLOSEOUT_ACTION_EVIDENCE_SCHEMA_VERSION,
-    snapshotDigest,
-    coveredActionIds,
-  };
-}
-
-/** 计算并验证 Action Evidence 摘要确实绑定完整 Snapshot。 */
-export function verifyCloseoutActionEvidenceDigest(
-  snapshotDigest: ContentDigest,
-  coveredActionIds: readonly ActionId[],
-  actionEvidenceDigest: unknown,
-  digestPort: ContentDigestPort,
-): Result<readonly ActionId[], HarnessError> {
-  const ids = parseCanonicalActionIds(coveredActionIds);
-  if (ids.status === ResultStatus.Failure || ids.value.length === 0) {
-    return failure(invalid("coveredActionIds"));
-  }
-  const parsedDigest = parseDigest(actionEvidenceDigest, "actionEvidenceDigest");
-  if (parsedDigest.status === ResultStatus.Failure) return parsedDigest;
-  const expected = digestPort.calculate(
-    createCloseoutActionEvidenceDigestInput(snapshotDigest, ids.value),
-  );
-  if (expected.status === ResultStatus.Failure || expected.value !== parsedDigest.value) {
-    return failure(
-      new HarnessError(
-        HarnessErrorCode.PreconditionNotMet,
-        "Action Evidence 摘要未绑定完整 Snapshot。",
-        { field: "actionEvidenceDigest" },
-      ),
-    );
-  }
-  return success(Object.freeze([...ids.value]));
-}
-
-/** 验证 Action ID 集合的唯一性、格式与规范排序。 */
-export function parseCanonicalActionIds(input: unknown): Result<readonly ActionId[], HarnessError> {
-  if (!Array.isArray(input)) return failure(invalid("coveredActionIds"));
-  const values: ActionId[] = [];
-  for (const item of input) {
-    if (typeof item !== "string") return failure(invalid("coveredActionIds"));
-    const parsed = parseActionId(item);
-    if (parsed.status === ResultStatus.Failure) return failure(invalid("coveredActionIds"));
-    values.push(parsed.value);
-  }
-  if (new Set(values).size !== values.length) return failure(invalid("coveredActionIds"));
-  const sorted = [...values].sort();
-  if (values.some((value, index) => value !== sorted[index])) {
-    return failure(invalid("coveredActionIds"));
-  }
-  return success(Object.freeze(values));
-}
-
 function validateSnapshotNestedShapes(snapshot: UnknownRecord): boolean {
-  if (!Array.isArray(snapshot["writeSet"]) || !Array.isArray(snapshot["changedPaths"]))
+  if (!Array.isArray(snapshot["writeSet"]) || !Array.isArray(snapshot["changedPaths"])) {
     return false;
+  }
   if (!Array.isArray(snapshot["changes"])) return false;
   return snapshot["changes"].every((change) => {
     if (

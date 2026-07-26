@@ -13,6 +13,7 @@ import {
   rebuildCodingTaskSessionCloseoutState,
   type CodingTaskSessionCloseoutState,
 } from "#application/codingTaskSessionCloseoutState/index.js";
+import { classifyCodingTaskSessionCloseoutV1 } from "#application/codingTaskSessionCloseoutState/validation/legacy/index.js";
 import {
   StrictJsonCanonicalPolicy,
   readStrictJsonFile,
@@ -66,6 +67,12 @@ export async function readCodingTaskSessionCloseoutState(
       ),
     );
   }
+  const legacyError = classifyCodingTaskSessionCloseoutV1(
+    parsed.value,
+    { workspaceId: paths.workspaceId, sessionId: paths.sessionId },
+    digestPort,
+  );
+  if (legacyError !== undefined) return failure(legacyError);
   const rebuilt = rebuildCodingTaskSessionCloseoutState(parsed.value, digestPort);
   if (rebuilt.status === ResultStatus.Failure) {
     return failure(

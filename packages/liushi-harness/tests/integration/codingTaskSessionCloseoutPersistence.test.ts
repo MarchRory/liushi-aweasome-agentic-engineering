@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { CodingTaskSessionCloseoutStatus } from "../../src/application/codingTaskSessionCloseoutState/index.js";
 import { CodingTaskSessionCloseoutStateCreateDisposition } from "../../src/application/ports/codingTaskSessionCloseoutStateStore/index.js";
 import { ParentDirectorySyncStatus } from "../../src/application/ports/index.js";
 import { HarnessErrorCode, ResultStatus } from "../../src/common/index.js";
@@ -14,7 +15,9 @@ import {
   closeoutStateFile,
   createStore,
   digest,
+  digestOf,
   initialState,
+  legacyV1PersistedState,
   locator,
   outcomeUnknownCheckpointBoundState,
   persistedState,
@@ -27,6 +30,7 @@ import {
   unwrap,
   withTempRoot,
 } from "../support/codingTaskSessionCloseout/index.js";
+import { canonicalizeJson } from "../../src/infrastructure/serialization/index.js";
 
 describe("File CodingTaskSession Closeout Store", () => {
   it("支持 Created、Reused、Conflict，并可跨实例 load", async () => {
@@ -47,6 +51,16 @@ describe("File CodingTaskSession Closeout Store", () => {
       const resumed = unwrap(await second.create(state));
       expect(resumed.disposition).toBe(CodingTaskSessionCloseoutStateCreateDisposition.Reused);
       expect(resumed.state.version).toBe(1);
+      const persistedJson = JSON.parse(await readFile(closeoutStateFile(root), "utf8")) as Record<
+        string,
+        unknown
+      >;
+      expect(persistedJson["coverageManifest"]).toMatchObject({
+        manifestDigest: resumed.state.coverageManifest?.manifestDigest,
+      });
+      expect(persistedJson["coverageBindingDigest"]).toBe(resumed.state.coverageBindingDigest);
+      expect(persistedJson).not.toHaveProperty("coveredActionIds");
+      expect(persistedJson).not.toHaveProperty("actionEvidenceDigest");
       const conflict = await second.create(
         initialState({ requestDigest: unwrap(digest.calculate({ request: "different" })) }),
       );
@@ -199,6 +213,74 @@ describe("File CodingTaskSession Closeout Store", () => {
       expect(symlinkResult.status).toBe(ResultStatus.Failure);
       if (symlinkResult.status === ResultStatus.Failure)
         expect(symlinkResult.error.code).toBe(HarnessErrorCode.CorruptStore);
+    });
+  });
+
+  it("旧 v1 完整弱证据只返回 PreconditionNotMet 且不覆盖文件", async () => {
+    await withTempRoot(async (root) => {
+      const store = createStore(root);
+      const initial = initialState();
+      unwrap(await store.create(initial));
+      const legacy = legacyV1PersistedState(initial, snapshot());
+      const bytes = `${canonicalizeJson(legacy)}\n`;
+      await writeFile(closeoutStateFile(root), bytes, "utf8");
+
+      const result = await store.load(locator);
+      expect(result.status).toBe(ResultStatus.Failure);
+      if (result.status === ResultStatus.Failure) {
+        expect(result.error.code).toBe(HarnessErrorCode.PreconditionNotMet);
+        expect(result.error.message).toContain("证据不足");
+      }
+      expect(await readFile(closeoutStateFile(root), "utf8")).toBe(bytes);
+    });
+  });
+
+  it.each(["unknown field", "digest drift", "Closing time drift"] as const)(
+    "损坏旧 v1 返回 CorruptStore：%s",
+    async (kind) => {
+      await withTempRoot(async (root) => {
+        const store = createStore(root);
+        const initial = initialState();
+        unwrap(await store.create(initial));
+        const legacy = legacyV1PersistedState(initial, snapshot());
+        const damaged =
+          kind === "unknown field"
+            ? { ...legacy, unexpected: true }
+            : kind === "digest drift"
+              ? { ...legacy, actionEvidenceDigest: digestOf("drift") }
+              : {
+                  ...legacy,
+                  status: CodingTaskSessionCloseoutStatus.Closing,
+                  snapshot: null,
+                  coveredActionIds: [],
+                  actionEvidenceDigest: null,
+                  version: 0,
+                };
+        await writeFile(closeoutStateFile(root), `${canonicalizeJson(damaged)}\n`, "utf8");
+
+        const result = await store.load(locator);
+        expect(result).toMatchObject({
+          status: ResultStatus.Failure,
+          error: { code: HarnessErrorCode.CorruptStore },
+        });
+      });
+    },
+  );
+
+  it("旧 v1 locator 漂移仍返回 CorruptStore", async () => {
+    await withTempRoot(async (root) => {
+      const store = createStore(root);
+      const initial = initialState();
+      const drifted = initialState({ sessionId: secondSession });
+      unwrap(await store.create(initial));
+      const legacy = legacyV1PersistedState(drifted, snapshot());
+      await writeFile(closeoutStateFile(root), `${canonicalizeJson(legacy)}\n`, "utf8");
+
+      const result = await store.load(locator);
+      expect(result).toMatchObject({
+        status: ResultStatus.Failure,
+        error: { code: HarnessErrorCode.CorruptStore },
+      });
     });
   });
 

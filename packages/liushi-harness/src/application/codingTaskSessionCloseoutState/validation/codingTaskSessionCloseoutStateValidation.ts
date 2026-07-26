@@ -17,10 +17,10 @@ import {
   validateCloseoutStateInvariants,
 } from "./codingTaskSessionCloseoutInvariantValidation.js";
 import {
-  parseCanonicalActionIds,
   rebuildCloseoutCheckpoint,
   rebuildCloseoutSnapshot,
 } from "./codingTaskSessionCloseoutNestedValidation.js";
+import { rebuildCloseoutCoverageManifest } from "./codingTaskSessionCloseoutCoverageValidation.js";
 import {
   hasExactKeys,
   invalid,
@@ -50,8 +50,8 @@ const STATE_KEYS = [
   ...IDENTITY_KEYS,
   "status",
   "snapshot",
-  "coveredActionIds",
-  "actionEvidenceDigest",
+  "coverageManifest",
+  "coverageBindingDigest",
   "checkpoint",
   "stoppedStage",
   "errorCode",
@@ -75,8 +75,8 @@ export function createCodingTaskSessionCloseoutState(
       ...identity.value,
       status: CodingTaskSessionCloseoutStatus.Closing,
       snapshot: null,
-      coveredActionIds: [],
-      actionEvidenceDigest: null,
+      coverageManifest: null,
+      coverageBindingDigest: null,
       checkpoint: null,
       stoppedStage: null,
       errorCode: null,
@@ -107,13 +107,16 @@ export function rebuildCodingTaskSessionCloseoutState(
       ? success(null)
       : rebuildCloseoutSnapshot(input["snapshot"], digestPort);
   if (snapshot.status === ResultStatus.Failure) return snapshot;
-  const coveredActionIds = parseCanonicalActionIds(input["coveredActionIds"]);
-  if (coveredActionIds.status === ResultStatus.Failure) return coveredActionIds;
-  const actionEvidenceDigest =
-    input["actionEvidenceDigest"] === null
+  const coverageManifest =
+    input["coverageManifest"] === null
       ? success(null)
-      : parseDigest(input["actionEvidenceDigest"], "actionEvidenceDigest");
-  if (actionEvidenceDigest.status === ResultStatus.Failure) return actionEvidenceDigest;
+      : rebuildCloseoutCoverageManifest(input["coverageManifest"], digestPort);
+  if (coverageManifest.status === ResultStatus.Failure) return coverageManifest;
+  const coverageBindingDigest =
+    input["coverageBindingDigest"] === null
+      ? success(null)
+      : parseDigest(input["coverageBindingDigest"], "coverageBindingDigest");
+  if (coverageBindingDigest.status === ResultStatus.Failure) return coverageBindingDigest;
   const checkpoint =
     input["checkpoint"] === null
       ? success(null)
@@ -135,8 +138,8 @@ export function rebuildCodingTaskSessionCloseoutState(
     ...identity.value,
     status: status.value,
     snapshot: snapshot.value,
-    coveredActionIds: coveredActionIds.value,
-    actionEvidenceDigest: actionEvidenceDigest.value,
+    coverageManifest: coverageManifest.value,
+    coverageBindingDigest: coverageBindingDigest.value,
     checkpoint: checkpoint.value,
     stoppedStage: stoppedStage.value,
     errorCode: errorCode.value,
@@ -153,5 +156,5 @@ export function rebuildCodingTaskSessionCloseoutState(
 /** parse 是 rebuild 的公开别名，统一执行相同的严格校验。 */
 export const parseCodingTaskSessionCloseoutState = rebuildCodingTaskSessionCloseoutState;
 
-/** validate 是 rebuild 的公开别名，拒绝字段或摘要漂移。 */
+/** validate 是 rebuild 的公开别名，拒绝未知字段或摘要漂移。 */
 export const validateCodingTaskSessionCloseoutState = rebuildCodingTaskSessionCloseoutState;
