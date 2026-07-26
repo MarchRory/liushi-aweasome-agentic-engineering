@@ -17,6 +17,7 @@ import {
 import {
   executeCellRun,
   executeCodingTaskSessionActivate,
+  executeCodingTaskSessionCloseout,
   executeDoctor,
   executeExecutorCompatibilityCommand,
   executeHookBind,
@@ -132,6 +133,12 @@ async function executeCommand(
       return executeCellRun(command, resolveCliApplication(command, dependencies), dependencies);
     case CliCommand.CodingTaskSessionActivate:
       return executeCodingTaskSessionActivate(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
+    case CliCommand.CodingTaskSessionCloseout:
+      return executeCodingTaskSessionCloseout(
         command,
         resolveCliApplication(command, dependencies),
         dependencies,

@@ -13,7 +13,8 @@ export function resolveCliApplication(
   const storeRoot = command.storeRoot ?? dependencies.defaultStoreRoot;
   if (
     command.command !== CliCommand.CellRun &&
-    command.command !== CliCommand.CodingTaskSessionActivate
+    command.command !== CliCommand.CodingTaskSessionActivate &&
+    command.command !== CliCommand.CodingTaskSessionCloseout
   ) {
     return dependencies.applicationFactory.create(storeRoot);
   }

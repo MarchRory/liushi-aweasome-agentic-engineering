@@ -99,6 +99,10 @@ export function writeSuccess<T>(
       writeCodingTaskSessionActivationSummary(dependencies, data);
       return;
     }
+    if (command === CliCommand.CodingTaskSessionCloseout) {
+      writeCodingTaskSessionCloseoutSummary(dependencies, data);
+      return;
+    }
     if (command === CliCommand.InitDryRun) {
       const plan = data["plan"];
       if (isRecord(plan)) {
@@ -158,6 +162,10 @@ export function writeBlocked<T>(
   }
   if (command === CliCommand.CodingTaskSessionActivate) {
     writeCodingTaskSessionActivationSummary(dependencies, data);
+    return;
+  }
+  if (command === CliCommand.CodingTaskSessionCloseout) {
+    writeCodingTaskSessionCloseoutSummary(dependencies, data);
   }
 }
 
@@ -247,6 +255,22 @@ function writeCodingTaskSessionActivationSummary(
   dependencies.writer.stdout(
     `CodingTask session activation: status=${scalarString(data["status"])} stoppedStage=${stoppedStage === undefined ? "none" : scalarString(stoppedStage)} receipts=${countEntries(data["receipts"])} worktreeRoot=${worktreeRoot === undefined ? "none" : scalarString(worktreeRoot)}.\n`,
   );
+}
+
+function writeCodingTaskSessionCloseoutSummary(
+  dependencies: RunCliDependencies,
+  data: unknown,
+): void {
+  if (!isRecord(data)) return;
+  const stoppedStage = data["stoppedStage"];
+  const errorCode = data["errorCode"];
+  dependencies.writer.stdout(
+    `CodingTask session closeout: status=${scalarString(data["status"])} stoppedStage=${stoppedStage === null || stoppedStage === undefined ? "none" : scalarString(stoppedStage)} version=${scalarString(data["version"])} snapshot=${String(isPresent(data["snapshot"]))} coverage=${String(isPresent(data["coverageManifest"]))} checkpoint=${String(isPresent(data["checkpoint"]))} errorCode=${errorCode === null || errorCode === undefined ? "none" : scalarString(errorCode)}.\n`,
+  );
+}
+
+function isPresent(value: unknown): boolean {
+  return value !== null && value !== undefined;
 }
 
 function countEntries(value: unknown): number {

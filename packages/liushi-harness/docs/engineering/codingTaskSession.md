@@ -4,7 +4,7 @@
 
 **状态：技术边界已确认，按可逆切片实施。** 当前 `cell run` 继续承担预编排 Mutation 的一次性确定性闭环；外部 Agent Session 使用独立协议，不改变 `coding-task.cell.run.v2` 的 Schema、执行顺序或公开语义。
 
-S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。S3 已实现提交前权威 ChangeSet 与 Git Checkpoint 双向绑定：从受管 Worktree 读取实际变化，分别计算可跨 Checkpoint 复验的 ChangeSet Digest 与绑定现场身份的 Snapshot Digest；提交后再从真实 Commit Diff 和目标原始字节独立重建同一 ChangeSet。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。`beginClosing` 当前仅作为内部并发保护门存在；完整 Closeout 在 Process Manager、Verification 和 PRReady 编排闭合前不开放。
+S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。S3 已实现提交前权威 ChangeSet 与 Git Checkpoint 双向绑定、Closeout Process Manager、CLI `coding-task session closeout` 和真实 Git E2E：从受管 Worktree 读取实际变化，分别计算可跨 Checkpoint 复验的 ChangeSet Digest 与绑定现场身份的 Snapshot Digest；提交后再从真实 Commit Diff 和目标原始字节独立重建同一 ChangeSet。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。当前 Closeout 严格停止在 `CheckpointBound`；Human-gated 终态恢复、Verification 和 PRReady 串联仍未开放。
 
 ## 2. 目标
 
@@ -174,9 +174,10 @@ Coverage Proof 现在由 Closeout State v3 消费：`snapshot.changedPaths` 必�
 - 已实现：Closeout Process State v3 与 File Store，按精确版本持久化完整 Snapshot、Action Coverage Manifest v2 和双向绑定 Checkpoint，并提供 create-only、内部短时锁、CAS、严格重建与未知结果分类。
 - 已实现：Closeout v3 的 changed-path 覆盖验证；Snapshot changed paths 必须属于 Action targets union，全部 Action targets 必须属于 Write Set，允许 Write Set 内获准但无最终 diff 的 target。
 - 已实现：旧 Closeout v1 与旧 v2 的独立分类；完整自洽旧 v2 保留原始 bytes 并返回显式迁移所需的 `PreconditionNotMet`，unknown field、manifest/binding/locator/stage 漂移返回 `CorruptStore`。
-- 待实现：Repository Lock、Coverage Proof 消费和阶段恢复 Use Case 组成的 Closeout Process Manager 接入。
+- 已实现：Repository Lock、Coverage Proof 消费和阶段恢复组成的 Closeout Process Manager，活动状态可幂等推进到 `CheckpointBound`。
 - 待实现：Submission、Verification、Evidence 和 PRReady 编排。
-- 待实现：CLI `coding-task session closeout`。
+- 已实现：CLI `coding-task session closeout` 与真实 Git 唯一 Checkpoint、跨 Application 重放 E2E。
+- 待实现：`Blocked` / `OutcomeUnknown` 的只读 Assessment 与 Human-gated Reconcile。
 
 双向绑定算法见 [ChangeSet 与 Git Checkpoint 双向绑定](./changeSetCheckpointBinding.md)，阶段持久化见 [Closeout 状态持久化](./codingTaskSessionCloseoutState.md)。
 

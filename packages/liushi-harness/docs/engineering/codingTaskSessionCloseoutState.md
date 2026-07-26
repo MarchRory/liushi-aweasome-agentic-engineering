@@ -1,6 +1,6 @@
 # CodingTask Session Closeout 状态持久化
 
-**状态：Closeout State v3、Action targets 覆盖绑定、File Store 和 CodingTaskSessionCloseoutManager 已实现，并已接入 HarnessApplication；Manager 严格停止在 CheckpointBound。**
+**状态：Closeout State v3、Action targets 覆盖绑定、File Store、CodingTaskSessionCloseoutManager、生产 CLI 和真实 Git E2E 已实现；Manager 严格停止在 CheckpointBound。**
 
 ## 1. 目标与边界
 
@@ -18,10 +18,12 @@ Closeout 必须在 Git 副作用前留下可恢复的提交前事实，并在 Gi
 - create-only 初始化、严格 canonical JSON 重建、跨进程短时锁和 `expectedVersion` CAS。
 - 写入结果未知与 Lock 释放结果未知的独立错误分类。
 - `CodingTaskSessionCloseoutManager` 已接入 `HarnessApplication`：在 Repository Lock 内 fresh 读取 Activation、CodingTask、Session Hook Binding、Repository Root 和 Managed Worktree，校验 Command Actor、时间、Attempt、Gate 与完整身份；幂等 `load/create` Closeout State 后依次执行 `beginClosing`、Action Coverage、权威 Snapshot、`persistSnapshot`、ChangeSet-bound Checkpoint 的 execute + inspect 和 `bindCheckpoint`，严格停止在 `CheckpointBound`。
+- CLI `coding-task session closeout` 读取完整 Closeout Command Envelope，并要求 Workspace、Repository、绝对 Root 与 Agent Actor 的显式运行时绑定。CLI 不生成 ID、时间或摘要；`CheckpointBound`、`Blocked` 与 `OutcomeUnknown` 分别映射为成功、冲突和专用未知结果。
+- 真实 Git E2E 通过生产 API 建立 Task、Human Gate、Activation、Binding、Admission、Journal 和 Trace，在真实受管 Worktree 中产生 Write Set 内变更，再通过生产 CLI 创建唯一 ChangeSet-bound Checkpoint；新 Application 重放同一 Command 后，HEAD、Commit 数量和关键持久化证据原始字节均不变化。
 
 未实现：
 
-- Closeout CLI、显式恢复命令/恢复 SOP 自动化和真实 Git E2E。
+- `Blocked` / `OutcomeUnknown` 的只读 Assessment、Human-gated 显式恢复命令和恢复 SOP 自动化。
 - Submission、Verification、PRReady 串联、真实 Codex Pilot 和多仓交付编排。
 
 Coverage Proof 的严格身份、Journal v2 provenance、Trace observation digest 精确集合匹配和 fail-closed 规则不改变现有 Human Gates、多仓写入、Wiki 写入或知识候选晋升边界。
@@ -87,6 +89,8 @@ replace 在同一个 Lock 内重新读取当前文件并执行 `expectedVersion`
 
 Manager 在副作用前遇到只读 `IoFailure` 或 `LockUnavailable` 时保持可安全重试；确定性前置失败落 `Blocked`。Checkpoint 执行、State commit 或 Lock release 结果无法证明时落 `OutcomeUnknown`，或返回稳定不可重试错误。
 
+普通 Closeout Command 只允许活动状态继续推进；`Blocked` 和 `OutcomeUnknown` 的重放保持终态且不再次执行 Checkpoint。后续恢复必须先生成绑定原状态版本与真实 Git 现场的 canonical Assessment，再由 Human Command 绑定 Assessment Digest；任何状态、Snapshot、Coverage、Checkpoint 或工作树漂移都必须关闭式拒绝。
+
 ## 6. 复用与残余风险
 
 本切片复用既有 `write-file-atomic`、`createOnlyImmutableFile`、`ExclusiveFileLockManager`、strict JSON reader、canonical JSON 和平台耐久层，没有重新实现原子写入或 Windows 目录 `fsync` 兼容。
@@ -95,4 +99,4 @@ Manager 在副作用前遇到只读 `IoFailure` 或 `LockUnavailable` 时保持�
 
 ## 7. 下一切片
 
-下一步应为 Closeout CLI、显式恢复命令/恢复 SOP 自动化和 S3 Closeout 真实 Git E2E；之后再接入 Submission、Verification、Evidence 和 PRReady 串联、真实 Codex Pilot 与多仓交付编排。已有 Manager 的下一步不是继续宣称其未实现，而是为现有 `CheckpointBound` 边界提供可操作入口和真实验证。
+下一步应为 Human-gated Closeout Recovery：先只读评估终态与真实 Checkpoint，再由绑定精确 Assessment Digest 和 Closeout Version 的 Human Command 对账；不得把未知结果改写成自动重试。恢复边界完成后，再接入 Submission、Verification、Evidence 和 PRReady 串联、真实 Codex Pilot 与多仓交付编排。

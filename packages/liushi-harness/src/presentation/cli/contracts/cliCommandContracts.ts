@@ -24,6 +24,8 @@ export enum CliCommand {
   CellRun = "cell.run",
   /** 激活外部 Agent CodingTask Session。 */
   CodingTaskSessionActivate = "coding_task.session.activate",
+  /** 关闭外部 Agent CodingTask Session，并停在 CheckpointBound。 */
+  CodingTaskSessionCloseout = "coding_task.session.closeout",
   /** 绑定 Hook 工作区。 */
   HookBind = "hook.bind",
   /** 处理执行器 Hook。 */

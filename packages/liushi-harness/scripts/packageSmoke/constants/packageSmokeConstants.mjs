@@ -6,6 +6,7 @@ export const EXPECTED_HELP_COMMANDS = [
   "doctor",
   "cell run",
   "coding-task session activate",
+  "coding-task session closeout",
   "hook probe",
 ];
 

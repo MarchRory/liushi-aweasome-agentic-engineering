@@ -1,6 +1,7 @@
 import {
   CliCommand,
   type CodingTaskSessionActivateCliCommand,
+  type CodingTaskSessionCloseoutCliCommand,
   type CliOutputFormat,
 } from "../../contracts/index.js";
 import type { CollectedCliArguments } from "../collection/index.js";
@@ -16,10 +17,9 @@ export function parseCodingTaskSessionCliCommand(
   collected: CollectedCliArguments,
   outputFormat: CliOutputFormat,
   storeRoot: string | undefined,
-): CodingTaskSessionActivateCliCommand | undefined {
-  if (!isExactCliCommand(collected.positionals, ["coding-task", "session", "activate"])) {
-    return undefined;
-  }
+): CodingTaskSessionActivateCliCommand | CodingTaskSessionCloseoutCliCommand | undefined {
+  const command = parseCodingTaskSessionCommandName(collected);
+  if (command === undefined) return undefined;
   validateAllowedCliOptions(
     collected,
     new Set([
@@ -33,7 +33,7 @@ export function parseCodingTaskSessionCliCommand(
     ]),
   );
   return {
-    command: CliCommand.CodingTaskSessionActivate,
+    command,
     outputFormat,
     ...(storeRoot === undefined ? {} : { storeRoot }),
     filePath: requireCliOptionValue(collected, CliOptionName.File),
@@ -45,4 +45,16 @@ export function parseCodingTaskSessionCliCommand(
     ),
     actorId: requireCliOptionValue(collected, CliOptionName.ActorId),
   };
+}
+
+function parseCodingTaskSessionCommandName(
+  collected: CollectedCliArguments,
+): CliCommand.CodingTaskSessionActivate | CliCommand.CodingTaskSessionCloseout | undefined {
+  if (isExactCliCommand(collected.positionals, ["coding-task", "session", "activate"])) {
+    return CliCommand.CodingTaskSessionActivate;
+  }
+  if (isExactCliCommand(collected.positionals, ["coding-task", "session", "closeout"])) {
+    return CliCommand.CodingTaskSessionCloseout;
+  }
+  return undefined;
 }

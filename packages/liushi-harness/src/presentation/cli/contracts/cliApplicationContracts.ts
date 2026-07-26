@@ -2,6 +2,7 @@ import type {
   BindHookWorkspaceUseCase,
   ApplyInstallPlanUseCase,
   ActivateCodingTaskSessionService,
+  CodingTaskSessionCloseoutManager,
   CodingTaskCellService,
   CheckRuntimeHealthUseCase,
   CodexHookHandler,
@@ -38,7 +39,7 @@ export interface CliApplicationStartupConfig {
   readonly repositoryBinding: CliRepositoryBinding;
   /** 只有 Cell 命令需要显式选择 Verification 模式。 */
   readonly verificationMode?: CliVerificationMode;
-  /** 只有 Session Activation 使用的启动期 Agent 审计身份。 */
+  /** Session Activation 与 Closeout 使用的启动期 Agent 审计身份。 */
   readonly sessionActorId?: string;
 }
 
@@ -58,6 +59,8 @@ export interface CliApplication {
   runCodingTaskCell: CodingTaskCellService;
   /** 激活外部 Agent CodingTask Session。 */
   activateCodingTaskSession: ActivateCodingTaskSessionService;
+  /** 可恢复地关闭外部 Agent CodingTask Session。 */
+  closeoutCodingTaskSession: CodingTaskSessionCloseoutManager;
   /** Runtime 健康检查 Use Case。 */
   checkRuntimeHealth: CheckRuntimeHealthUseCase;
   /** Project Profile 编译 Use Case。 */
