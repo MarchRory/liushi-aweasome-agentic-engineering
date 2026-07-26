@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：技术方案已冻结，实现进行中。Closeout State v3 的终态语义保持不变。**
+**状态：只读 Assessment 已实现；Recovery Process、Human Command 与执行链仍在实现。Closeout State v3 的终态语义保持不变。**
 
 ## 1. 决策
 
@@ -128,9 +128,9 @@ Recovery Store 复用 canonical JSON、create-only 初始化、短时文件锁�
 
 ## 8. 实现顺序
 
-1. 增加 ChangeSet Checkpoint 只读三态 Recovery Port。
-2. 实现 Closeout Recovery Assessment 与 canonical digest。
-3. 实现独立 Recovery Process State 和 File Store。
+1. 已完成 ChangeSet Checkpoint 只读三态 Recovery Port。
+2. 已完成 Closeout Recovery Assessment 与 canonical digest。
+3. 下一步实现独立 Recovery Process State 和 File Store。
 4. 实现 Human Command、Repository Lock 内 fresh reassessment 与至多一次执行。
 5. 实现 Effective Resolver。
 6. 接入 CLI、故障注入、真实 Git E2E 和恢复 SOP。

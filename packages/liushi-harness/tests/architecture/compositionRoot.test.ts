@@ -139,6 +139,26 @@ describe("composition root", () => {
     ).toBe(application.createExecutorCompatibilityPublicationBundle);
   });
 
+  it("公开 Closeout Recovery Assessment 并复用 Closeout State Store", () => {
+    const application = createHarnessApplication({
+      storeRoot: resolve(".tmp", "closeout-recovery-assessment-store"),
+    });
+    const assessmentService = requireObject(
+      readHiddenProperty(application.assessCodingTaskSessionCloseoutRecovery, "service"),
+    );
+    const assessmentDependencies = requireObject(
+      readHiddenProperty(assessmentService, "dependencies"),
+    );
+    const closeoutDependencies = requireObject(
+      readHiddenProperty(application.closeoutCodingTaskSession, "dependencies"),
+    );
+
+    expect(application.assessCodingTaskSessionCloseoutRecovery).toBeDefined();
+    expect(readHiddenProperty(assessmentDependencies, "stateStore")).toBe(
+      readHiddenProperty(closeoutDependencies, "stateStore"),
+    );
+  });
+
   it("保留调用方注入的 Repository Root Resolver", () => {
     const repositoryRootResolver: RepositoryRootResolverPort = {
       resolve: () => Promise.resolve(success({ repositoryRoot: resolve("repository") })),
@@ -173,3 +193,14 @@ describe("composition root", () => {
     expect("signExecutorCompatibilityReleaseManifest" in application).toBe(false);
   });
 });
+
+function readHiddenProperty(target: object, property: string): unknown {
+  return Reflect.get(target, property) as unknown;
+}
+
+function requireObject(value: unknown): object {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("Composition Root 私有依赖必须是对象。");
+  }
+  return value;
+}

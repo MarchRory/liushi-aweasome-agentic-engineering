@@ -96,6 +96,7 @@ export function createCodingTaskSessionExecutionRuntime(
     repositoryLock,
     inspectGitChangeSet: input.changeSetApplication.inspectGitChangeSet,
     changeSetCheckpoints: input.changeSetApplication.changeSetCheckpoints,
+    changeSetCheckpointRecovery: input.changeSetApplication.changeSetCheckpointRecovery,
     digest: input.storeDependencies.digest,
     clock: input.clock,
   });

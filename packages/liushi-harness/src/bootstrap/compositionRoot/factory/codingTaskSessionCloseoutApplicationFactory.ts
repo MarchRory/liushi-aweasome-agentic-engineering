@@ -1,8 +1,12 @@
 import {
+  AssessCodingTaskSessionCloseoutRecoveryUseCase,
   CodingTaskSessionActionCoverageService,
   CodingTaskSessionCloseoutManager,
   type ChangeSetCheckpointPort,
+  type ChangeSetCheckpointRecoveryPort,
+  CodingTaskSessionCloseoutRecoveryAssessmentService,
   type CodingTaskSessionCloseoutManagerDependencies,
+  type CodingTaskSessionCloseoutRecoveryAssessmentServiceDependencies,
   type InspectGitChangeSetUseCase,
 } from "#application/index.js";
 import type { CodingTaskSessionAdmissionCoordinator } from "#application/index.js";
@@ -54,6 +58,8 @@ export interface CodingTaskSessionCloseoutApplicationFactoryInput {
   readonly inspectGitChangeSet: InspectGitChangeSetUseCase;
   /** ChangeSet-bound Checkpoint 执行端口。 */
   readonly changeSetCheckpoints: ChangeSetCheckpointPort;
+  /** 只读 ChangeSet-bound Checkpoint Recovery 端口。 */
+  readonly changeSetCheckpointRecovery: ChangeSetCheckpointRecoveryPort;
   /** 统一 RFC 8785 Digest。 */
   readonly digest: ContentDigestPort;
   /** 统一时钟。 */
@@ -64,6 +70,8 @@ export interface CodingTaskSessionCloseoutApplicationFactoryInput {
 export interface CodingTaskSessionCloseoutApplicationFactoryOutput {
   /** 可恢复的 CodingTask Session Closeout Manager。 */
   readonly closeoutCodingTaskSession: CodingTaskSessionCloseoutManager;
+  /** 只读评估 Closeout Recovery 当前唯一可行 Resolution。 */
+  readonly assessCodingTaskSessionCloseoutRecovery: AssessCodingTaskSessionCloseoutRecoveryUseCase;
 }
 
 /** 创建不暴露基础设施实现的 Closeout Manager。 */
@@ -96,5 +104,24 @@ export function createCodingTaskSessionCloseoutApplication(
     digest: input.digest,
     clock: input.clock,
   };
-  return { closeoutCodingTaskSession: new CodingTaskSessionCloseoutManager(dependencies) };
+  const recoveryDependencies: CodingTaskSessionCloseoutRecoveryAssessmentServiceDependencies = {
+    stateStore,
+    activationRepository: input.activationRepository,
+    codingTaskRepository: input.codingTaskRepository,
+    bindingStore: input.bindingStore,
+    repositoryRootResolver: input.repositoryRootResolver,
+    managedWorktreePath: input.managedWorktreePath,
+    snapshotInspector: input.inspectGitChangeSet,
+    checkpointRecovery: input.changeSetCheckpointRecovery,
+    digest: input.digest,
+  };
+  const recoveryAssessment = new CodingTaskSessionCloseoutRecoveryAssessmentService(
+    recoveryDependencies,
+  );
+  return {
+    closeoutCodingTaskSession: new CodingTaskSessionCloseoutManager(dependencies),
+    assessCodingTaskSessionCloseoutRecovery: new AssessCodingTaskSessionCloseoutRecoveryUseCase(
+      recoveryAssessment,
+    ),
+  };
 }

@@ -25,6 +25,7 @@ import type {
   InspectWorktreeUseCase,
   InspectGitChangeSetUseCase,
   CodingTaskSessionCloseoutManager,
+  AssessCodingTaskSessionCloseoutRecoveryUseCase,
   RunVerificationUseCase,
   RunAndPersistVerificationUseCase,
   VerificationCommandService,
@@ -146,6 +147,8 @@ export interface HarnessApplication {
   changeSetCheckpoints: ChangeSetCheckpointPort;
   /** 可恢复地关闭 CodingTask Session，并严格停止在 CheckpointBound。 */
   closeoutCodingTaskSession: CodingTaskSessionCloseoutManager;
+  /** 只读评估 Closeout Recovery 当前唯一可行 Resolution。 */
+  assessCodingTaskSessionCloseoutRecovery: AssessCodingTaskSessionCloseoutRecoveryUseCase;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
   runVerification: RunVerificationUseCase;
   /** 执行 Verification 并强一致提交 EvidenceBundle。 */
