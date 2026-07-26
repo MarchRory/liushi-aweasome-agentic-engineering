@@ -4,7 +4,7 @@ import { ACTION_ID_PATTERN } from "../constants/index.js";
 
 declare const actionIdBrand: unique symbol;
 
-/** 经过 ULID 格式校验的 Action ID。 */
+/** 通过 ULID 格式校验的 Action ID。 */
 export type ActionId = string & { readonly [actionIdBrand]: true };
 
 /** 将外部字符串校验并转换为 Action ID。 */

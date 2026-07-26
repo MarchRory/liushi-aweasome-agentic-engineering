@@ -23,12 +23,14 @@ import {
   type ArtifactDigest,
   type ArtifactId,
 } from "#domain/artifact/index.js";
+import { parseCodingTaskSessionId } from "#domain/codingTaskSession/index.js";
 import { parseTaskId, type TaskId } from "#domain/task/index.js";
 import { parseWorkspaceId, type WorkspaceId } from "#domain/workspace/index.js";
 
 import { parseSpanId, parseTraceId, type SpanId, type TraceId } from "../../observability/index.js";
 import {
   CANONICAL_HOOK_SCHEMA_VERSION,
+  CANONICAL_SESSION_HOOK_SCHEMA_VERSION,
   MAX_HOOK_EXECUTION_ID_LENGTH,
   MAX_HOOK_EXECUTOR_ID_LENGTH,
   MAX_HOOK_TARGETS_SERIALIZED_LENGTH,
@@ -39,6 +41,11 @@ import type {
   PreActionHookPayload,
 } from "../contracts/index.js";
 import { HarnessHookEvent, HookExecutorKind } from "../enums/index.js";
+import {
+  invalidHookPayload,
+  isRepositoryRelativePath,
+  readHookSchemaVersion,
+} from "./hookValidationUtils.js";
 
 const nonBlank = (maxLength: number): z.ZodString =>
   z
@@ -67,8 +74,7 @@ const contentDigestSchema = brandedString<ContentDigest>(parseContentDigest);
 const traceIdSchema = brandedString<TraceId>(parseTraceId);
 const spanIdSchema = brandedString<SpanId>(parseSpanId);
 
-const base = {
-  schemaVersion: z.literal(CANONICAL_HOOK_SCHEMA_VERSION),
+const sharedBase = {
   hookExecutionId: nonBlank(MAX_HOOK_EXECUTION_ID_LENGTH),
   executor: z.enum(HookExecutorKind),
   sessionId: nonBlank(MAX_HOOK_EXECUTOR_ID_LENGTH),
@@ -82,6 +88,13 @@ const base = {
   causationId: nonBlank(128).optional(),
   occurredAt: z.string().datetime({ offset: true }),
 };
+
+const sessionContextSchema = z
+  .object({
+    sessionId: brandedString(parseCodingTaskSessionId),
+    sessionBindingDigest: contentDigestSchema,
+  })
+  .strict();
 
 const targetsSchema = z
   .array(nonBlank(512))
@@ -107,67 +120,89 @@ const targetsSchema = z
     }
   });
 
-const preActionSchema = z
+const preFields = {
+  event: z.literal(HarnessHookEvent.PreAction),
+  idempotencyKey: nonBlank(256),
+  actionKind: z.enum(ActionKind),
+  targets: targetsSchema,
+  inputDigest: contentDigestSchema,
+  postconditionDigest: contentDigestSchema,
+  baseRevision: nonBlank(512).optional(),
+  recoveryGuidance: nonBlank(2_000),
+  planRiskArtifactId: artifactIdSchema,
+  planRiskArtifactDigest: artifactDigestSchema,
+};
+
+const legacyPreActionSchema = z
   .object({
-    ...base,
-    event: z.literal(HarnessHookEvent.PreAction),
-    idempotencyKey: nonBlank(256),
-    actionKind: z.enum(ActionKind),
-    targets: targetsSchema,
-    inputDigest: contentDigestSchema,
-    postconditionDigest: contentDigestSchema,
-    baseRevision: nonBlank(512).optional(),
-    recoveryGuidance: nonBlank(2_000),
-    planRiskArtifactId: artifactIdSchema,
-    planRiskArtifactDigest: artifactDigestSchema,
+    schemaVersion: z.literal(CANONICAL_HOOK_SCHEMA_VERSION),
+    ...sharedBase,
+    ...preFields,
   })
   .strict();
 
-const postActionSchema = z
+const sessionPreActionSchema = z
   .object({
-    ...base,
-    event: z.literal(HarnessHookEvent.PostAction),
-    causationId: nonBlank(128),
-    outcome: z.enum(ActionOutcome),
-    evidenceIds: z.array(nonBlank(256)).superRefine((values, context) => {
-      if (new Set(values).size !== values.length) {
-        context.addIssue({ code: "custom", message: "Evidence ID 不能重复。" });
-      }
-    }),
-    outputDigest: contentDigestSchema.optional(),
-    errorCode: nonBlank(256).optional(),
-    traceId: traceIdSchema,
-    spanId: spanIdSchema,
-    parentSpanId: spanIdSchema.optional(),
-    toolName: nonBlank(256),
-    toolCallId: nonBlank(256),
-    startedAt: z.string().datetime({ offset: true }),
-    endedAt: z.string().datetime({ offset: true }),
+    schemaVersion: z.literal(CANONICAL_SESSION_HOOK_SCHEMA_VERSION),
+    ...sharedBase,
+    sessionContext: sessionContextSchema,
+    ...preFields,
+  })
+  .strict();
+
+const postFields = {
+  event: z.literal(HarnessHookEvent.PostAction),
+  causationId: nonBlank(128),
+  outcome: z.enum(ActionOutcome),
+  evidenceIds: z.array(nonBlank(256)).superRefine((values, context) => {
+    if (new Set(values).size !== values.length) {
+      context.addIssue({ code: "custom", message: "Evidence ID 不能重复。" });
+    }
+  }),
+  outputDigest: contentDigestSchema.optional(),
+  errorCode: nonBlank(256).optional(),
+  traceId: traceIdSchema,
+  spanId: spanIdSchema,
+  parentSpanId: spanIdSchema.optional(),
+  toolName: nonBlank(256),
+  toolCallId: nonBlank(256),
+  startedAt: z.string().datetime({ offset: true }),
+  endedAt: z.string().datetime({ offset: true }),
+};
+
+/** PostAction 跨版本共享校验所需的字段类型。 */
+type PostActionValidationInput = z.output<z.ZodObject<typeof postFields>>;
+
+const legacyPostActionSchema = z
+  .object({
+    schemaVersion: z.literal(CANONICAL_HOOK_SCHEMA_VERSION),
+    ...sharedBase,
+    ...postFields,
   })
   .strict()
-  .superRefine((payload, context) => {
-    if (Date.parse(payload.endedAt) < Date.parse(payload.startedAt)) {
-      context.addIssue({ code: "custom", message: "Tool 结束时间不能早于开始时间。" });
-    }
-    if (
-      [ActionOutcome.Failed, ActionOutcome.OutcomeUnknown].includes(payload.outcome) &&
-      payload.errorCode === undefined
-    ) {
-      context.addIssue({ code: "custom", message: "失败或未知结果必须提供 errorCode。" });
-    }
-    if (payload.parentSpanId === payload.spanId) {
-      context.addIssue({ code: "custom", message: "Span 不能以自身作为父 Span。" });
-    }
-  });
+  .superRefine(validatePostAction);
 
-/** 根据 Event 判别字段严格解析 Action Hook Payload。 */
+const sessionPostActionSchema = z
+  .object({
+    schemaVersion: z.literal(CANONICAL_SESSION_HOOK_SCHEMA_VERSION),
+    ...sharedBase,
+    sessionContext: sessionContextSchema,
+    ...postFields,
+  })
+  .strict()
+  .superRefine(validatePostAction);
+
+/** 根据 Event 与 Schema 版本严格解析 Action Hook Payload。 */
 export function parseActionHookPayload(input: unknown): Result<ActionHookPayload, HarnessError> {
-  const event = z
-    .object({ event: z.enum(HarnessHookEvent) })
+  const selector = z
+    .object({
+      event: z.enum(HarnessHookEvent),
+      schemaVersion: z.enum([CANONICAL_HOOK_SCHEMA_VERSION, CANONICAL_SESSION_HOOK_SCHEMA_VERSION]),
+    })
     .passthrough()
     .safeParse(input);
-  if (!event.success) return invalidPayload(event.error);
-  switch (event.data.event) {
+  if (!selector.success) return invalidHookPayload(selector.error);
+  switch (selector.data.event) {
     case HarnessHookEvent.PreAction:
       return parsePreActionHookPayload(input);
     case HarnessHookEvent.PostAction:
@@ -181,35 +216,56 @@ export function parseActionHookPayload(input: unknown): Result<ActionHookPayload
     case HarnessHookEvent.TurnStop:
       return failure(
         new HarnessError(HarnessErrorCode.InvalidInput, "当前 Dispatcher 仅支持 Action Hook。", {
-          event: event.data.event,
+          event: selector.data.event,
         }),
       );
   }
 }
 
-function isRepositoryRelativePath(value: string): boolean {
-  if (value.includes("\\") || value.startsWith("/") || /^[A-Za-z]:/u.test(value)) return false;
-  const segments = value.split("/");
-  return segments.every((segment) => segment !== "" && segment !== "." && segment !== "..");
-}
-
-/** 严格解析 PreAction Hook Payload。 */
+/** 严格解析 Legacy 或 Session-scoped PreAction Hook Payload。 */
 export function parsePreActionHookPayload(
   input: unknown,
 ): Result<PreActionHookPayload, HarnessError> {
-  const parsed = preActionSchema.safeParse(input);
-  return parsed.success ? success(compactPreAction(parsed.data)) : invalidPayload(parsed.error);
+  const schema = readHookSchemaVersion(input);
+  const parsed =
+    schema === CANONICAL_SESSION_HOOK_SCHEMA_VERSION
+      ? sessionPreActionSchema.safeParse(input)
+      : legacyPreActionSchema.safeParse(input);
+  return parsed.success ? success(compactPreAction(parsed.data)) : invalidHookPayload(parsed.error);
 }
 
-/** 严格解析 PostAction Hook Payload。 */
+/** 严格解析 Legacy 或 Session-scoped PostAction Hook Payload。 */
 export function parsePostActionHookPayload(
   input: unknown,
 ): Result<PostActionHookPayload, HarnessError> {
-  const parsed = postActionSchema.safeParse(input);
-  return parsed.success ? success(compactPostAction(parsed.data)) : invalidPayload(parsed.error);
+  const schema = readHookSchemaVersion(input);
+  const parsed =
+    schema === CANONICAL_SESSION_HOOK_SCHEMA_VERSION
+      ? sessionPostActionSchema.safeParse(input)
+      : legacyPostActionSchema.safeParse(input);
+  return parsed.success
+    ? success(compactPostAction(parsed.data))
+    : invalidHookPayload(parsed.error);
 }
 
-function compactPreAction(input: z.output<typeof preActionSchema>): PreActionHookPayload {
+function validatePostAction(payload: PostActionValidationInput, context: z.RefinementCtx): void {
+  if (Date.parse(payload.endedAt) < Date.parse(payload.startedAt)) {
+    context.addIssue({ code: "custom", message: "Tool 结束时间不能早于开始时间。" });
+  }
+  if (
+    [ActionOutcome.Failed, ActionOutcome.OutcomeUnknown].includes(payload.outcome) &&
+    payload.errorCode === undefined
+  ) {
+    context.addIssue({ code: "custom", message: "失败或未知结果必须提供 errorCode。" });
+  }
+  if (payload.parentSpanId === payload.spanId) {
+    context.addIssue({ code: "custom", message: "Span 不能以自身作为父 Span。" });
+  }
+}
+
+function compactPreAction(
+  input: z.output<typeof legacyPreActionSchema> | z.output<typeof sessionPreActionSchema>,
+): PreActionHookPayload {
   const { causationId, baseRevision, ...required } = input;
   return {
     ...required,
@@ -218,7 +274,9 @@ function compactPreAction(input: z.output<typeof preActionSchema>): PreActionHoo
   };
 }
 
-function compactPostAction(input: z.output<typeof postActionSchema>): PostActionHookPayload {
+function compactPostAction(
+  input: z.output<typeof legacyPostActionSchema> | z.output<typeof sessionPostActionSchema>,
+): PostActionHookPayload {
   const { outputDigest, errorCode, parentSpanId, ...required } = input;
   return {
     ...required,
@@ -226,16 +284,4 @@ function compactPostAction(input: z.output<typeof postActionSchema>): PostAction
     ...(errorCode === undefined ? {} : { errorCode }),
     ...(parentSpanId === undefined ? {} : { parentSpanId }),
   };
-}
-
-function invalidPayload<T>(error: z.ZodError): Result<T, HarnessError> {
-  const issue = error.issues[0];
-  return failure(
-    new HarnessError(
-      HarnessErrorCode.InvalidInput,
-      "Canonical Hook Payload 无效。",
-      { path: issue?.path.join(".") ?? "unknown", issue: issue?.message ?? "unknown" },
-      error,
-    ),
-  );
 }

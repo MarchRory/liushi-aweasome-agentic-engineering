@@ -1,6 +1,7 @@
 import {
   ActivateCodingTaskSessionService,
   type CodingTaskCommandService,
+  type CodingTaskSessionAdmissionInitializerPort,
   type CodingTaskSessionRuntimeBinding,
   type WorktreeProvisionCommandService,
 } from "#application/index.js";
@@ -24,6 +25,8 @@ export interface CodingTaskSessionApplicationFactoryInput {
   readonly activationRepository: CodingTaskSessionActivationRepository;
   /** 跨进程 Session Activation 排他 Lease。 */
   readonly activationLease: CodingTaskSessionActivationLease;
+  /** 从权威 Activation Record 初始化 Session Action Admission。 */
+  readonly admissionInitializer: CodingTaskSessionAdmissionInitializerPort;
   /** 统一的 RFC 8785 Content Digest Port。 */
   readonly digest: ContentDigestPort;
   /** 隔离宿主路径差异的 Worktree Path Port。 */
@@ -51,6 +54,7 @@ export function createCodingTaskSessionApplication(
       input.digest,
       input.runtimePath,
       input.activationLease,
+      input.admissionInitializer,
       input.runtimeBinding,
     ),
   };

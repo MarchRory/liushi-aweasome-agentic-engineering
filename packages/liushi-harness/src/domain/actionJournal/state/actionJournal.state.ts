@@ -1,12 +1,19 @@
 import { HarnessError, HarnessErrorCode, failure, success, type Result } from "#common/index.js";
 
+import { SESSION_ACTION_JOURNAL_SCHEMA_VERSION } from "../constants/index.js";
 import type {
   ActionIntentRecord,
   ActionJournalState,
   ActionObservationRecord,
   ActionResolutionRecord,
+  SessionActionProvenance,
 } from "../contracts/index.js";
-import { ActionJournalStatus, ActionOutcome, ActionResolution } from "../enums/index.js";
+import {
+  ActionJournalRecordType,
+  ActionJournalStatus,
+  ActionOutcome,
+  ActionResolution,
+} from "../enums/index.js";
 
 /** 从已持久化 Intent 创建 Action Journal 初始状态。 */
 export function createActionJournalState(intent: ActionIntentRecord): ActionJournalState {
@@ -30,9 +37,7 @@ export function appendActionObservation(
     ActionJournalStatus.WaitingHuman,
   ];
   const identityError = validateRecordIdentity(state, observation);
-  if (identityError !== undefined) {
-    return failure(identityError);
-  }
+  if (identityError !== undefined) return failure(identityError);
   if (!allowed.includes(state.status)) {
     return invalidTransition(state, "当前状态不允许追加 Action Observation。");
   }
@@ -50,9 +55,7 @@ export function appendActionResolution(
   resolution: ActionResolutionRecord,
 ): Result<ActionJournalState, HarnessError> {
   const identityError = validateRecordIdentity(state, resolution);
-  if (identityError !== undefined) {
-    return failure(identityError);
-  }
+  if (identityError !== undefined) return failure(identityError);
   const latest = state.observations[state.observations.length - 1];
   if (state.status !== ActionJournalStatus.AwaitingResolution || latest === undefined) {
     return invalidTransition(state, "没有等待处置的 Action Observation。");
@@ -79,13 +82,17 @@ function validateRecordIdentity(
   ) {
     return new HarnessError(
       HarnessErrorCode.InvalidInput,
-      "Action Record 绑定了错误的 Action 或 Task 作用域。",
+      "Action record 绑定了错误的 Action 或 Task 作用域。",
     );
+  }
+  if (record.recordType === ActionJournalRecordType.Observation) {
+    const mismatch = validateObservationBinding(state.intent, record);
+    if (mismatch !== undefined) return mismatch;
   }
   if (record.sequence !== state.lastSequence + 1) {
     return new HarnessError(
       HarnessErrorCode.VersionConflict,
-      "Action Journal Sequence 已变化，必须重新加载后提交。",
+      "Action Journal sequence 已变化，必须重新加载后提交。",
       {
         expectedSequence: String(state.lastSequence + 1),
         actualSequence: String(record.sequence),
@@ -93,6 +100,52 @@ function validateRecordIdentity(
     );
   }
   return undefined;
+}
+
+function validateObservationBinding(
+  intent: ActionIntentRecord,
+  observation: ActionObservationRecord,
+): HarnessError | undefined {
+  const intentIsSession = intent.schemaVersion === SESSION_ACTION_JOURNAL_SCHEMA_VERSION;
+  const observationIsSession = observation.schemaVersion === SESSION_ACTION_JOURNAL_SCHEMA_VERSION;
+  if (intentIsSession !== observationIsSession) {
+    return new HarnessError(
+      HarnessErrorCode.InvalidInput,
+      "Action Intent 与 Observation 的 Schema 版本不能混用。",
+    );
+  }
+  if (intentIsSession && observationIsSession) {
+    if (!sameProvenance(intent.sessionProvenance, observation.sessionProvenance)) {
+      return new HarnessError(
+        HarnessErrorCode.InvalidInput,
+        "Session Action Observation 的 provenance 与 Intent 不一致。",
+      );
+    }
+    if (!sameTargets(intent.targets, observation.targets)) {
+      return new HarnessError(
+        HarnessErrorCode.InvalidInput,
+        "Session Action Observation 的 targets 与 Intent 不一致。",
+      );
+    }
+  }
+  return undefined;
+}
+
+function sameProvenance(left: SessionActionProvenance, right: SessionActionProvenance): boolean {
+  return (
+    left.sessionId === right.sessionId &&
+    left.codingTaskId === right.codingTaskId &&
+    left.attemptNumber === right.attemptNumber &&
+    left.worktreeId === right.worktreeId &&
+    left.worktreeRootDigest === right.worktreeRootDigest &&
+    left.activationBindingDigest === right.activationBindingDigest &&
+    left.sessionBindingDigest === right.sessionBindingDigest &&
+    left.executorSessionIdDigest === right.executorSessionIdDigest
+  );
+}
+
+function sameTargets(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((target, index) => target === right[index]);
 }
 
 function isCompatibleResolution(outcome: ActionOutcome, resolution: ActionResolution): boolean {

@@ -1,6 +1,6 @@
 import {
+  isDurableParentDirectorySyncStatus,
   LockReleaseStatus,
-  ParentDirectorySyncStatus,
   PersistenceHealth,
   type ActionJournalLocator,
   type ActionJournalMutationOutput,
@@ -256,7 +256,7 @@ export class FileActionJournalRepository implements ActionJournalRepository {
     }
     const overall =
       actionLock === LockReleaseStatus.Released &&
-      journalDirectory === ParentDirectorySyncStatus.Synced &&
+      isDurableParentDirectorySyncStatus(journalDirectory) &&
       recoveryPaths.length === 0
         ? PersistenceHealth.Healthy
         : PersistenceHealth.Degraded;

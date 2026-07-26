@@ -1,5 +1,8 @@
 /** Hook Binding Store 文件 Schema 版本。 */
-export const FILE_HOOK_BINDING_STORE_SCHEMA_VERSION = "1.0.0";
+export const LEGACY_FILE_HOOK_BINDING_STORE_SCHEMA_VERSION = "1.0.0" as const;
+
+/** Hook Binding Store 当前文件 Schema 版本。 */
+export const FILE_HOOK_BINDING_STORE_SCHEMA_VERSION = "2.0.0" as const;
 
 /** Hook Binding Store 在 Runtime Store 下的目录名。 */
 export const HOOK_BINDINGS_DIRECTORY_NAME = "hookBindings";

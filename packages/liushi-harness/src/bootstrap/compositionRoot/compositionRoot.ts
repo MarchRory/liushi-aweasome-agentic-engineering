@@ -62,8 +62,7 @@ import type { HarnessApplication, HarnessApplicationOptions } from "./compositio
 import {
   createCodingTaskCellApplication,
   createCodingTaskSessionApplication,
-  createCodingTaskSessionPersistence,
-  createHookApplication,
+  createCodingTaskSessionHookRuntime,
   createCodingTaskAuthorizationResolver,
   createExecutorCompatibilityApplication,
   createExecutorCompatibilityAttestationApplication,
@@ -123,19 +122,15 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const runtimeHealth = new FileRuntimeHealthAdapter(options.storeRoot);
   const digest = new Rfc8785Sha256DigestAdapter();
   const storeDependencies = { digest, lockManager, parentDirectoryDurability };
-  const codingTaskSessionPersistence = createCodingTaskSessionPersistence(
-    options.storeRoot,
-    storeDependencies,
-  );
   const unresolvedProvisionGuard = createUnresolvedProvisionGuard(actionJournalRepository, digest);
   const evidenceBundleStore = new FileEvidenceBundleStore(options.storeRoot, storeDependencies);
   const projectFileSystem = new NodeProjectFileSystemAdapter();
   const projectConfigParser = new StructuredProjectConfigParserAdapter();
   const applicationCommandGateway = new ApplicationCommandGateway(commandReservationStore, delay);
   const commandRunner = new NodeCommandRunnerAdapter();
-  const hookApplication = createHookApplication({
-    ...storeDependencies,
+  const codingTaskSessionHookRuntime = createCodingTaskSessionHookRuntime({
     storeRoot: options.storeRoot,
+    storeDependencies,
     applicationCommandGateway,
     taskRepository,
     actionJournalRepository,
@@ -143,6 +138,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     clock,
     commandRunner,
   });
+  const hookApplication = codingTaskSessionHookRuntime.hookApplication;
   const worktreeInspector = new NodeWorktreeInspectorAdapter(commandRunner);
   const repositoryLock = new NodeRepositoryLockAdapter(
     options.storeRoot,
@@ -237,8 +233,9 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     codingTaskCommands: codingTaskCellApplication.codingTaskCommands,
     worktreeProvisionCommands: worktreeApplication.worktreeProvisionCommands,
     codingTaskRepository,
-    activationRepository: codingTaskSessionPersistence.activationRepository,
-    activationLease: codingTaskSessionPersistence.activationLease,
+    activationRepository: codingTaskSessionHookRuntime.persistence.activationRepository,
+    activationLease: codingTaskSessionHookRuntime.persistence.activationLease,
+    admissionInitializer: codingTaskSessionHookRuntime.admissionInitializer,
     digest,
     runtimePath: managedWorktreePath,
     ...(options.codingTaskSessionRuntimeBinding === undefined

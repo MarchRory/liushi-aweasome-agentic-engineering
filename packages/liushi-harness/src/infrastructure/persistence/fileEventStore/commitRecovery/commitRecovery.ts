@@ -1,4 +1,5 @@
 import {
+  isDurableParentDirectorySyncStatus,
   LockReleaseStatus,
   ParentDirectorySyncStatus,
   PersistenceHealth,
@@ -83,8 +84,8 @@ export function determinePersistenceHealth(input: {
   return input.snapshot === SnapshotPersistenceStatus.Written &&
     input.taskLock === LockReleaseStatus.Released &&
     input.workspaceLock === LockReleaseStatus.Released &&
-    input.eventDirectory === ParentDirectorySyncStatus.Synced &&
-    input.snapshotDirectory === ParentDirectorySyncStatus.Synced &&
+    isDurableParentDirectorySyncStatus(input.eventDirectory) &&
+    isDurableParentDirectorySyncStatus(input.snapshotDirectory) &&
     input.recoveryPaths.length === 0
     ? PersistenceHealth.Healthy
     : PersistenceHealth.Degraded;

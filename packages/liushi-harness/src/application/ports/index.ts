@@ -14,6 +14,8 @@ export type * from "./workflowRepository/index.js";
 export type * from "./codingTaskRepository/index.js";
 export * from "./codingTaskSessionActivationRepository/index.js";
 export type * from "./codingTaskSessionActivationLease/index.js";
+export * from "./codingTaskSessionAdmissionStateStore/index.js";
+export type * from "./codingTaskSessionAdmissionLease/index.js";
 export type * from "./codingTaskAuthorization/index.js";
 export * from "./worktree/index.js";
 export type * from "./managedWorktreePath/index.js";

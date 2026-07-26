@@ -143,6 +143,29 @@ describe("Application Command Gateway", () => {
     });
   });
 
+  it.each([
+    HarnessErrorCode.HookBindingCommitOutcomeUnknown,
+    HarnessErrorCode.HookBindingLockReleaseUnknown,
+    HarnessErrorCode.CodingTaskSessionAdmissionCommitOutcomeUnknown,
+    HarnessErrorCode.CodingTaskSessionAdmissionLockReleaseUnknown,
+  ])("将 Runtime 持久化未知结果 %s 映射为 OutcomeUnknown Receipt", async (errorCode) => {
+    const result = await new ApplicationCommandGateway(completingStore(), immediateDelay).execute(
+      command(),
+      {
+        execute: () =>
+          Promise.resolve(failure(new HarnessError(errorCode, "session admission unknown"))),
+      },
+    );
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        status: CommandStatus.OutcomeUnknown,
+        errorCode: CommandErrorCode.OutcomeUnknown,
+      },
+    });
+  });
+
   it("锁不可用映射为 ResourceUnavailable", async () => {
     const handler: CommandHandler = {
       execute: () =>

@@ -1,3 +1,5 @@
+import type { ParentDirectorySyncStatus } from "./durability/index.js";
+
 /** Task create 持久化结果的整体健康状态。 */
 export enum PersistenceHealth {
   /** Event、Snapshot、Lock cleanup 和目录耐久性步骤均达到强一致预期。 */
@@ -20,14 +22,6 @@ export enum LockReleaseStatus {
   Released = "released",
   /** Event 已提交，但 Lock 文件仍需显式恢复。 */
   RecoveryRequired = "recovery_required",
-}
-
-/** 父目录耐久性刷新结果。 */
-export enum ParentDirectorySyncStatus {
-  /** 父目录已成功 fsync。 */
-  Synced = "synced",
-  /** 当前平台或文件系统不支持目录 fsync，已记录为 best-effort。 */
-  BestEffort = "best_effort",
 }
 
 /** Event commit 之后的持久化附属步骤结果。 */

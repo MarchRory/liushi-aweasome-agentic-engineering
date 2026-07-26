@@ -11,6 +11,8 @@ import {
   ActionResolution,
   ActorKind,
   HarnessErrorCode,
+  ParentDirectorySyncStatus,
+  PersistenceHealth,
   ResultStatus,
   createHarnessApplication,
   parseActionIntent,
@@ -26,6 +28,8 @@ import {
   ExclusiveFileLockManager,
   FileActionJournalRepository,
   FileParentDirectoryDurability,
+  type ParentDirectoryDurability,
+  type ParentDirectorySyncOutcome,
 } from "../../src/infrastructure/index.js";
 import { resolveTaskStorePaths } from "../../src/infrastructure/persistence/fileEventStore/taskStore/index.js";
 import { TemporaryRuntimeStore } from "../support/runtime/index.js";
@@ -110,6 +114,29 @@ describe("File Action Journal Repository", () => {
       taskId: setup.task.taskId,
     });
     expect(taskStatus.status).toBe(ResultStatus.Success);
+  });
+
+  it.each([
+    [ParentDirectorySyncStatus.PlatformEquivalent, PersistenceHealth.Healthy],
+    [ParentDirectorySyncStatus.BestEffort, PersistenceHealth.Degraded],
+  ] as const)("目录状态 %s 映射为预期 Action Journal 健康状态", async (directoryStatus, health) => {
+    const setup = await createSetup(`liushi-action-journal-${directoryStatus}-`);
+    const repository = createRepository(
+      setup.storeRoot,
+      new FixedParentDirectoryDurability(directoryStatus),
+    );
+
+    const result = await repository.createIntent(
+      intent(setup.task, actionIds[0], `directory-${directoryStatus}`),
+    );
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Success) {
+      expect(result.value.persistence).toMatchObject({
+        overall: health,
+        journalDirectory: directoryStatus,
+      });
+    }
   });
 
   it("并发相同幂等意图只追加一条 Intent，不同内容返回冲突", async () => {
@@ -199,11 +226,22 @@ async function createSetup(prefix: string): Promise<{
   };
 }
 
-function createRepository(storeRoot: string): FileActionJournalRepository {
+function createRepository(
+  storeRoot: string,
+  parentDirectoryDurability: ParentDirectoryDurability = new FileParentDirectoryDurability(),
+): FileActionJournalRepository {
   return new FileActionJournalRepository(storeRoot, {
     lockManager: new ExclusiveFileLockManager(),
-    parentDirectoryDurability: new FileParentDirectoryDurability(),
+    parentDirectoryDurability,
   });
+}
+
+class FixedParentDirectoryDurability implements ParentDirectoryDurability {
+  public constructor(private readonly status: ParentDirectorySyncStatus) {}
+
+  public syncParentDirectory(): Promise<ParentDirectorySyncOutcome> {
+    return Promise.resolve({ status: this.status });
+  }
 }
 
 function intent(

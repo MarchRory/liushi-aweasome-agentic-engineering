@@ -23,12 +23,14 @@ import {
 } from "#common/index.js";
 
 import type { ActionHookAuthorizationPolicy } from "../authorization/index.js";
+import { CANONICAL_SESSION_HOOK_SCHEMA_VERSION } from "../constants/index.js";
 import type {
   ActionHookPayload,
   CanonicalHookDispatcherPort,
   HookDispatchResult,
   PostActionHookPayload,
   PreActionHookPayload,
+  SessionActionHookHandlerPort,
 } from "../contracts/index.js";
 import { HarnessHookEvent } from "../enums/index.js";
 import { parseActionHookPayload } from "../validation/index.js";
@@ -51,6 +53,7 @@ export class CanonicalHookDispatcher implements CanonicalHookDispatcherPort {
     private readonly actionJournal: ActionJournalRepository,
     private readonly traceStore: TraceObservationStore,
     private readonly digest: ContentDigestPort,
+    private readonly sessionActionHandler?: SessionActionHookHandlerPort,
   ) {}
 
   /** 严格校验 Hook Command，并以 fail-closed 语义返回稳定决策。 */
@@ -63,7 +66,12 @@ export class CanonicalHookDispatcher implements CanonicalHookDispatcherPort {
     if (binding.status === ResultStatus.Failure) return binding;
 
     const receipt = await this.gateway.execute(input, {
-      execute: async () => this.handle(payload.value, command.value.expectedVersion),
+      execute: async () =>
+        this.handle(
+          payload.value,
+          command.value.expectedVersion,
+          command.value.invocationProvenance,
+        ),
     });
     if (receipt.status === ResultStatus.Failure) return receipt;
     return this.projectResult(payload.value, receipt.value);
@@ -102,7 +110,31 @@ export class CanonicalHookDispatcher implements CanonicalHookDispatcherPort {
   private handle(
     payload: ActionHookPayload,
     expectedVersion: number,
+    invocationProvenance: CommandEnvelope["invocationProvenance"],
   ): Promise<Result<CommandHandlerSuccess, HarnessError>> {
+    if (payload.schemaVersion === CANONICAL_SESSION_HOOK_SCHEMA_VERSION) {
+      if (this.sessionActionHandler === undefined || invocationProvenance === undefined) {
+        return Promise.resolve(
+          failure(
+            new HarnessError(
+              HarnessErrorCode.OperationForbidden,
+              "Session Hook 缺少 Admission Handler 或调用来源证明。",
+            ),
+          ),
+        );
+      }
+      return payload.event === HarnessHookEvent.PreAction
+        ? this.sessionActionHandler.admitPreAction({
+            payload,
+            expectedVersion,
+            invocationProvenance,
+          })
+        : this.sessionActionHandler.recordPostAction({
+            payload,
+            expectedVersion,
+            invocationProvenance,
+          });
+    }
     return payload.event === HarnessHookEvent.PreAction
       ? this.handlePreAction(payload, expectedVersion)
       : this.handlePostAction(payload, expectedVersion);
@@ -166,7 +198,10 @@ export class CanonicalHookDispatcher implements CanonicalHookDispatcherPort {
     receipt: CommandReceipt,
   ): Promise<Result<HookDispatchResult, HarnessError>> {
     if (![CommandStatus.Committed, CommandStatus.Duplicate].includes(receipt.status)) {
-      return success(projectCommandReceiptDecision(payload.event, receipt));
+      return success({
+        ...projectCommandReceiptDecision(payload.event, receipt),
+        schemaVersion: payload.schemaVersion,
+      });
     }
     const state = await this.actionJournal.load({
       workspaceId: payload.workspaceId,
@@ -174,7 +209,10 @@ export class CanonicalHookDispatcher implements CanonicalHookDispatcherPort {
       actionId: payload.actionId,
     });
     if (state.status === ResultStatus.Failure) return state;
-    return success(projectActionStateDecision(payload.event, receipt, state.value));
+    return success({
+      ...projectActionStateDecision(payload.event, receipt, state.value),
+      schemaVersion: payload.schemaVersion,
+    });
   }
 }
 

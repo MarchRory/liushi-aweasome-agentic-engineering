@@ -1,3 +1,11 @@
+/** Action Journal 支持的 Schema 版本。 */
+export enum ActionJournalSchemaVersion {
+  /** 兼容既有 Action Journal record 的版本。 */
+  Legacy = "1.0.0",
+  /** 携带 Session provenance 的版本。 */
+  Session = "2.0.0",
+}
+
 /** Harness 需要审计的封闭副作用类别。 */
 export enum ActionKind {
   /** 写入、移动或删除文件。 */
@@ -16,7 +24,7 @@ export enum ActionKind {
   PullRequestWrite = "pull_request_write",
 }
 
-/** Action Journal append-only Record 的封闭类别。 */
+/** Action Journal append-only record 的封闭类别。 */
 export enum ActionJournalRecordType {
   /** 执行副作用前记录的 Intent。 */
   Intent = "action_intent",
@@ -40,9 +48,9 @@ export enum ActionOutcome {
 
 /** Action Observation 之后允许记录的封闭处置。 */
 export enum ActionResolution {
-  /** 正常执行已满足后置条件并完成提交。 */
+  /** 正常执行满足后置条件并完成提交。 */
   Committed = "committed",
-  /** 恢复检查证明既有副作用已经满足后置条件。 */
+  /** 恢复检查证明既有副作用已满足后置条件。 */
   Recovered = "recovered",
   /** 证据证明未产生副作用，允许使用同一幂等键重试。 */
   RetryPermitted = "retry_permitted",
@@ -64,4 +72,22 @@ export enum ActionJournalStatus {
   Committed = "committed",
   /** Action 已通过恢复检查确认完成。 */
   Recovered = "recovered",
+}
+
+/** Session Action Observation 的 Trace 写入结果。 */
+export enum SessionActionTraceDisposition {
+  /** Trace Observation 已持久化。 */
+  Persisted = "persisted",
+  /** Trace Observation 被丢弃。 */
+  Dropped = "dropped",
+}
+
+/** Session Action Trace 被丢弃时允许记录的领域原因。 */
+export enum SessionActionTraceDropReason {
+  /** 关联 Task 不可用。 */
+  TaskUnavailable = "task_unavailable",
+  /** Trace 写入锁被竞争。 */
+  Contended = "contended",
+  /** Trace Adapter 发生输入或输出错误。 */
+  IoFailure = "io_failure",
 }

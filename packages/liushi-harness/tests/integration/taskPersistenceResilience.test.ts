@@ -163,6 +163,21 @@ describe("Task persistence resilience", () => {
         eventDirectory: ParentDirectorySyncStatus.BestEffort,
         snapshotDirectory: ParentDirectorySyncStatus.BestEffort,
       });
+
+      const equivalentRepository = createRepository(storeRoot, {
+        parentDirectoryDurability: new FixedParentDirectoryDurability(
+          ParentDirectorySyncStatus.PlatformEquivalent,
+        ),
+      });
+      const equivalent = await equivalentRepository.create(makeTask(TASK_ID_B, WORKSPACE_ID_B));
+      expect(equivalent.status).toBe(ResultStatus.Success);
+      if (equivalent.status === ResultStatus.Success) {
+        expect(equivalent.value.persistence).toMatchObject({
+          overall: PersistenceHealth.Healthy,
+          eventDirectory: ParentDirectorySyncStatus.PlatformEquivalent,
+          snapshotDirectory: ParentDirectorySyncStatus.PlatformEquivalent,
+        });
+      }
     }
   });
 

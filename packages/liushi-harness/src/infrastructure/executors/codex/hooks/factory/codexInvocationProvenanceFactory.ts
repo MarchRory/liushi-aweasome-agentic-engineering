@@ -59,6 +59,8 @@ export interface CodexInvocationScopeInput {
   readonly taskId: string;
   /** 已通过结构摘要生成的宿主调用标识。 */
   readonly invocationId: ContentDigest;
+  /** v2 Binding 的摘要；v1 不提供此字段以保持原有作用域算法。 */
+  readonly sessionBindingDigest?: ContentDigest;
 }
 
 /** 将宿主调用与 Harness Workspace、Task 绑定为全局 Command 作用域摘要。 */
@@ -72,5 +74,8 @@ export function createCodexInvocationScopeId(
     workspaceId: input.workspaceId,
     taskId: input.taskId,
     invocationId: input.invocationId,
+    ...(input.sessionBindingDigest === undefined
+      ? {}
+      : { sessionBindingDigest: input.sessionBindingDigest }),
   });
 }

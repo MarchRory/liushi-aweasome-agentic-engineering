@@ -4,7 +4,7 @@
 
 **状态：技术边界已确认，按可逆切片实施。** 当前 `cell run` 继续承担预编排 Mutation 的一次性确定性闭环；外部 Agent Session 使用独立协议，不改变 `coding-task.cell.run.v2` 的 Schema、执行顺序或公开语义。
 
-S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。成功状态 `waiting_agent` 只是技术检查点，不是写入授权，也不代表外部 Agent 已可受控编码。Session-scoped Hook Binding v2 不在 S1；它与 Action Admission 同属 S2，因为 Binding 本身不开放写权限。Closeout 在 Action 准入屏障、提交前变更集摘要和证据查询全部闭合前不开放。
+S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。`beginClosing` 当前仅作为内部并发保护门存在；完整 Closeout 在提交前 ChangeSet、Checkpoint、Verification 和 PRReady 编排闭合前不开放。
 
 ## 2. 目标
 
@@ -59,7 +59,7 @@ Activation Manifest 使用独立版本 `coding-task.session.activate.v1`，只�
 - Worktree Provision Command 与本次 Runtime Root。
 - StartAttempt Command。
 
-`agentActorId` 不属于 Manifest，必须由启动期 Runtime Binding 注入，并与三个命令信封中的 Agent Actor 精确复验。公开 CLI 的 `--root` 与 `--actor-id` 是操作员提供的启动声明，不构成身份认证或 Repository 授权；S1 因此只能作为受控操作员入口，不能暴露给不受信 Agent。进入 S2 或真实 Pilot 前，企业包装器或持久化 Registry 必须从 Human 已批准配置注入 Repository Root 与 Actor 身份。
+`agentActorId` 不属于 Manifest，必须由启动期 Runtime Binding 注入，并与三个命令信封中的 Agent Actor 精确复验。公开 CLI 的 `--root` 与 `--actor-id` 是操作员提供的启动声明，不构成身份认证或 Repository 授权；S1 CLI 因此只能作为受控操作员入口，不能暴露给不受信 Agent。S2 Composition Root 测试使用显式可信 Runtime Binding；进入真实 Pilot 前，企业包装器或持久化 Registry 仍必须从 Human 已批准配置注入 Repository Root 与 Actor 身份。
 
 Manifest 不允许包含 Implementation、Submission 或 Verification。Activation 成功后必须从权威 CodingTask Aggregate 重建 Session Binding，禁止信任调用方重复提交以下字段：
 
@@ -86,7 +86,7 @@ Session Binding 必须额外绑定：
 - `worktreeRootDigest`。
 - Session Binding Digest。
 
-S2 Action Admission 实现后，Hook PreAction 只有在 Session 状态为 `waiting_agent` 且全部身份精确一致时才可准入并写入 Action Intent；S1 的 `waiting_agent` 本身不产生该权限。Closeout 把 Session 原子迁移到 `closing` 后，任何新的 PreAction 都必须拒绝；已经准入但未完成 PostAction 的 Action 会阻断 Closeout。
+S2 已实现：Hook PreAction 只有在 Session 状态为 `waiting_agent` 且全部身份精确一致时才可准入并写入 Action Intent；S1 的 `waiting_agent` 本身不产生该权限。PreAction 在同一 Lease 内复验 Activation、Binding、Runtime Provenance、PlanRisk/G2/G4/Write Set，Admission State 先记录 `pending`，再提交健康 v2 Intent，最后提交 `admittedActionIds`；Intent 已提交但最终状态写入不确定时进入 `outcome_unknown`。`IntentRecorded` 表示 v2 Intent 已耐久记录，不等于 Action 已完成或可以绕过 PostAction。Closeout 把 Session 原子迁移到 `closing` 后，任何新的 PreAction 都必须拒绝；已经准入但未完成 PostAction 的 Action 会阻断 Closeout。PostAction 在 `waiting_agent` 或 `closing` 中均可处理已准入 Action，但必须复验对应 v2 Intent，并写入 Trace、v2 Observation 与受其因果绑定的 Resolution；重复投递按 Action/Intent 身份幂等重放。Observation 或 Resolution 的提交结果不健康时，Admission State 即使已经处于 `closing` 也会进入 `outcome_unknown`。
 
 ## 7. Closeout 证据门
 
@@ -140,12 +140,16 @@ Windows、POSIX 路径、Git 命令和文件锁实现必须位于 Infrastructure
 - 跨实例幂等复用和真实 Git E2E。
 - `waiting_agent` 仅表示 Activation 技术检查点，不授予文件写入权限。
 
-### S2 Action Admission
+### S2 Action Admission（已实现）
 
-- Session-scoped Hook Binding v2。
-- Session 状态与 PreAction 原子准入。
-- PostAction Session Provenance、显式 Targets 和 Trace 写入结果。
-- Session Action 查询与 In-flight 关闭门。
+- Session-scoped Hook Binding v2、Admission State/File Store 和非等待 Lease。
+- Activation 自动初始化 Binding/State；Session 状态与 PreAction 在同一 Lease 内原子准入。
+- `pending` 表示准入写入尚未完成；健康 v2 Intent 提交后才记录 `admittedActionIds`。
+- `IntentRecorded` 只表示 Intent 已耐久记录，不表示执行完成；失败或持久化不确定时 fail-closed/`outcome_unknown`。
+- PostAction 在 `waiting_agent`/`closing` 中处理已准入 Action，复验 Session Provenance 和 v2 Intent，写入显式 Targets、Trace、v2 Observation 与受其因果绑定的 Resolution，重放幂等。
+- Observation 或 Resolution 的跨 Store 提交不确定时，Session 从 `waiting_agent` 或 `closing` 进入 `outcome_unknown`。
+- Session Action 查询与 In-flight 关闭门；缺失 Post、WaitingHuman、RetryPermitted、pending 或未知结果都会阻止 beginClosing。
+- Windows 的目录 `fsync` 兼容只在 Infrastructure 平台层把精确 `win32 + EPERM + fsync` 映射为等价耐久；其他 best-effort 结果仍为降级。
 
 ### S3 Closeout
 

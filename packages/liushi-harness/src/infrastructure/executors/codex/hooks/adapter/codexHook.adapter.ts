@@ -1,16 +1,12 @@
 import {
   CodexHookEvent,
   HarnessHookEvent,
-  createCommandEnvelope,
   parsePostActionHookPayload,
   parsePreActionHookPayload,
-  type ActionHookPayload,
   type CanonicalHookDispatcherPort,
-  type CommandEnvelope,
-  type CommandInvocationProvenance,
   type CodexHookHandler,
   type CodexHookResponse,
-  type HookWorkspaceBinding,
+  type HookBinding,
 } from "#application/index.js";
 import type {
   ActionJournalRepository,
@@ -40,6 +36,7 @@ import type { CodexPostToolUseInput, CodexPreToolUseInput } from "../contracts/i
 import {
   classifyCodexToolOutcome,
   createCodexBasePayload,
+  createCodexHookCommand,
   createCodexInvocationContext,
   deriveCodexKey,
   parseCodexHookBindingIdentity,
@@ -49,7 +46,11 @@ import {
 } from "../factory/index.js";
 import { deriveDeterministicHex } from "../identity/index.js";
 import { mapCodexHookResponse } from "../mapper/index.js";
-import { parseApplyPatchTargets, parseCodexHookInput } from "../validation/index.js";
+import {
+  isCodexIntentCompatibleWithBinding,
+  parseApplyPatchTargets,
+  parseCodexHookInput,
+} from "../validation/index.js";
 
 /** 将 Codex PreToolUse/PostToolUse 映射为 Canonical Action Hook。 */
 export class CodexHookAdapter implements CodexHookHandler {
@@ -82,7 +83,7 @@ export class CodexHookAdapter implements CodexHookHandler {
 
   private async handlePre(
     input: CodexPreToolUseInput,
-    binding: HookWorkspaceBinding,
+    binding: HookBinding,
     identity: CodexHookBindingIdentity,
   ): Promise<Result<CodexHookResponse, HarnessErrorType>> {
     const tool = parseCodexSupportedTool(input.tool_name);
@@ -101,6 +102,9 @@ export class CodexHookAdapter implements CodexHookHandler {
         workspaceRoot: binding.workspaceRoot,
         workspaceId: identity.workspaceId,
         taskId: identity.taskId,
+        ...(identity.schemaVersion !== "2.0.0"
+          ? {}
+          : { sessionBindingDigest: identity.session.sessionBindingDigest }),
       },
       this.digest,
     );
@@ -146,7 +150,14 @@ export class CodexHookAdapter implements CodexHookHandler {
     ) {
       return conflict("同一 Codex tool_use_id 的 PreToolUse 输入摘要发生变化。");
     }
-    const command = this.createCommand(payload.value, invocation.value.provenance, 0, undefined);
+    const command = createCodexHookCommand(
+      {
+        payload: payload.value,
+        invocationProvenance: invocation.value.provenance,
+        expectedVersion: 0,
+      },
+      this.digest,
+    );
     if (command.status === ResultStatus.Failure) return command;
     const result = await this.dispatcher.execute(command.value);
     return result.status === ResultStatus.Failure
@@ -156,7 +167,7 @@ export class CodexHookAdapter implements CodexHookHandler {
 
   private async handlePost(
     input: CodexPostToolUseInput,
-    binding: HookWorkspaceBinding,
+    binding: HookBinding,
     identity: CodexHookBindingIdentity,
   ): Promise<Result<CodexHookResponse, HarnessErrorType>> {
     const tool = parseCodexSupportedTool(input.tool_name);
@@ -175,6 +186,9 @@ export class CodexHookAdapter implements CodexHookHandler {
         workspaceRoot: binding.workspaceRoot,
         workspaceId: identity.workspaceId,
         taskId: identity.taskId,
+        ...(identity.schemaVersion !== "2.0.0"
+          ? {}
+          : { sessionBindingDigest: identity.session.sessionBindingDigest }),
       },
       this.digest,
     );
@@ -186,12 +200,16 @@ export class CodexHookAdapter implements CodexHookHandler {
       actionId,
     });
     if (loaded.status === ResultStatus.Failure) return loaded;
+    if (!isCodexIntentCompatibleWithBinding(loaded.value.intent, binding)) {
+      return conflict("PostToolUse 的 Action Intent 与当前 Binding 版本或 Session 不一致。");
+    }
     if (loaded.value.intent.inputDigest !== inputDigest.value) {
       return conflict("PostToolUse 输入摘要与 Action Intent 不一致。");
     }
     const outputDigest = this.digest.calculate(input.tool_response);
     if (outputDigest.status === ResultStatus.Failure) return outputDigest;
     const previousObservation = loaded.value.observations.at(-1);
+    const postRecordedAt = previousObservation?.recordedAt ?? this.clock.now().toISOString();
     const outcome = previousObservation?.outcome ?? classifyCodexToolOutcome(input.tool_response);
     if (
       previousObservation?.outputDigest !== undefined &&
@@ -206,8 +224,8 @@ export class CodexHookAdapter implements CodexHookHandler {
         identity,
         actionId,
         invocation.value.scopeId,
-        previousObservation?.recordedAt ?? loaded.value.intent.recordedAt,
-        this.clock.now().toISOString(),
+        previousObservation?.recordedAt,
+        postRecordedAt,
       ),
       event: HarnessHookEvent.PostAction,
       causationId: loaded.value.intent.commandId,
@@ -216,52 +234,35 @@ export class CodexHookAdapter implements CodexHookHandler {
       outputDigest: outputDigest.value,
       ...(outcome === ActionOutcome.Succeeded
         ? {}
-        : { errorCode: previousObservation?.errorCode ?? "codex_tool_failed" }),
+        : {
+            errorCode:
+              previousObservation?.errorCode ??
+              (outcome === ActionOutcome.OutcomeUnknown
+                ? "codex_tool_outcome_unknown"
+                : "codex_tool_failed"),
+          }),
       traceId: deriveDeterministicHex(`trace:${invocation.value.scopeId}`, 32),
       spanId: deriveDeterministicHex(`span:${invocation.value.scopeId}`, 16),
       toolName: input.tool_name,
       toolCallId: invocation.value.provenance.toolCallIdDigest,
       startedAt: loaded.value.intent.recordedAt,
-      endedAt: previousObservation?.recordedAt ?? loaded.value.intent.recordedAt,
+      endedAt: postRecordedAt,
     });
     if (payload.status === ResultStatus.Failure) return payload;
-    const command = this.createCommand(
-      payload.value,
-      invocation.value.provenance,
-      loaded.value.lastSequence,
-      loaded.value.intent.commandId,
+    const command = createCodexHookCommand(
+      {
+        payload: payload.value,
+        invocationProvenance: invocation.value.provenance,
+        expectedVersion: loaded.value.lastSequence,
+        causationId: loaded.value.intent.commandId,
+      },
+      this.digest,
     );
     if (command.status === ResultStatus.Failure) return command;
     const result = await this.dispatcher.execute(command.value);
     return result.status === ResultStatus.Failure
       ? result
       : success(mapCodexHookResponse(result.value));
-  }
-
-  private createCommand(
-    payload: ActionHookPayload,
-    invocationProvenance: CommandInvocationProvenance,
-    expectedVersion: number,
-    causationId: string | undefined,
-  ): Result<CommandEnvelope, HarnessErrorType> {
-    const requestDigest = this.digest.calculate(payload);
-    if (requestDigest.status === ResultStatus.Failure) return requestDigest;
-    return createCommandEnvelope({
-      commandId: String(payload["commandId"]),
-      commandType: `hook.${String(payload["event"])}`,
-      aggregateType: "action",
-      aggregateId: String(payload["actionId"]),
-      expectedVersion,
-      idempotencyKey: String(payload["hookExecutionId"]),
-      requestDigest: requestDigest.value,
-      actor: payload.actor,
-      authorizationContext: { executor: "codex" },
-      correlationId: String(payload["correlationId"]),
-      ...(causationId === undefined ? {} : { causationId }),
-      submittedAt: String(payload["occurredAt"]),
-      invocationProvenance,
-      payload,
-    });
   }
 
   private async loadOptionalAction(

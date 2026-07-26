@@ -12,6 +12,7 @@ import {
   RiskLevel,
   ActorKind,
   createHarnessApplication,
+  type Clock,
 } from "../../src/index.js";
 import { Rfc8785Sha256DigestAdapter } from "../../src/infrastructure/index.js";
 import { TemporaryRuntimeStore } from "../support/runtime/index.js";
@@ -71,6 +72,68 @@ describe("Codex Hook Adapter", () => {
     expect(persistedEvidenceText).not.toContain("session-1");
     expect(persistedEvidenceText).not.toContain("turn-1");
     expect(persistedEvidenceText).not.toContain("tool-1");
+  });
+
+  it("首次 Post 使用实际完成时间闭合 Trace，而不是复制 Intent 时间", async () => {
+    const clock = new MutableClock("2026-07-23T00:00:00.000Z");
+    const setup = await createBoundApplication(clock);
+    const toolInput = createPatchInput("packages/liushi-harness/src/index.ts");
+    const pre = await setup.application.handleCodexHook.execute(
+      createPreInput(setup.workspaceRoot, "tool-trace-time", toolInput),
+    );
+    expect(pre.status).toBe(ResultStatus.Success);
+
+    clock.set("2026-07-23T00:00:05.000Z");
+    const post = await setup.application.handleCodexHook.execute(
+      createPostInput(setup.workspaceRoot, "tool-trace-time", toolInput, { success: true }),
+    );
+    expect(post.status).toBe(ResultStatus.Success);
+
+    const [trace] = await readJsonLines(
+      join(setup.storeRoot, "workspaces", setup.workspaceId, "tasks", setup.taskId, "traces.jsonl"),
+    );
+    expect(trace).toMatchObject({
+      startedAt: "2026-07-23T00:00:00.000Z",
+      endedAt: "2026-07-23T00:00:05.000Z",
+    });
+  });
+
+  it("PostToolUse 缺少明确结果证据时进入 HumanRequired，而不是误判成功", async () => {
+    const setup = await createBoundApplication();
+    const toolInput = createPatchInput("packages/liushi-harness/src/index.ts");
+    const pre = await setup.application.handleCodexHook.execute(
+      createPreInput(setup.workspaceRoot, "tool-unknown-outcome", toolInput),
+    );
+    expect(pre.status).toBe(ResultStatus.Success);
+
+    const firstPost = await setup.application.handleCodexHook.execute(
+      createPostInput(setup.workspaceRoot, "tool-unknown-outcome", toolInput, {}),
+    );
+    const replayedPost = await setup.application.handleCodexHook.execute(
+      createPostInput(setup.workspaceRoot, "tool-unknown-outcome", toolInput, {}),
+    );
+
+    expect(firstPost).toMatchObject({
+      status: ResultStatus.Success,
+      value: {
+        body: {
+          decision: "block",
+        },
+      },
+    });
+    expect(replayedPost).toEqual(firstPost);
+    expect(await readActionRecords(setup)).toEqual([
+      expect.objectContaining({ recordType: "action_intent" }),
+      expect.objectContaining({
+        recordType: "action_observation",
+        outcome: "outcome_unknown",
+        errorCode: "codex_tool_outcome_unknown",
+      }),
+      expect.objectContaining({
+        recordType: "action_resolution",
+        resolution: "human_required",
+      }),
+    ]);
   });
 
   it("相同 tool_use_id 跨 Session 时生成不同 provenance、Trace 与 Span", async () => {
@@ -225,9 +288,12 @@ describe("Codex Hook Adapter", () => {
   });
 });
 
-async function createBoundApplication() {
+async function createBoundApplication(clock?: Clock) {
   const storeRoot = await runtimeStores.create("liushi-codex-hook-");
-  const application = createHarnessApplication({ storeRoot });
+  const application = createHarnessApplication({
+    storeRoot,
+    ...(clock === undefined ? {} : { clock }),
+  });
   const workspaceId = "workspace-codex";
   const created = await application.createTask.execute({
     workspaceId,
@@ -300,6 +366,8 @@ interface HookReservationFixture {
 interface TraceFixture {
   readonly traceId: string;
   readonly spanId: string;
+  readonly startedAt: string;
+  readonly endedAt: string;
 }
 
 async function readHookReservations(storeRoot: string): Promise<HookReservationFixture[]> {
@@ -345,6 +413,16 @@ async function readActionRecordTypes(setup: {
   readonly workspaceId: string;
   readonly taskId: string;
 }): Promise<string[]> {
+  return (await readActionRecords(setup)).map((record) =>
+    typeof record["recordType"] === "string" ? record["recordType"] : "",
+  );
+}
+
+async function readActionRecords(setup: {
+  readonly storeRoot: string;
+  readonly workspaceId: string;
+  readonly taskId: string;
+}): Promise<Record<string, unknown>[]> {
   const path = join(
     setup.storeRoot,
     "workspaces",
@@ -357,8 +435,8 @@ async function readActionRecordTypes(setup: {
     .trim()
     .split(/\r?\n/u)
     .map((line) => {
-      const envelope = JSON.parse(line) as { readonly record?: { readonly recordType?: string } };
-      return envelope.record?.recordType ?? "";
+      const envelope = JSON.parse(line) as { readonly record?: Record<string, unknown> };
+      return envelope.record ?? {};
     });
 }
 
@@ -484,4 +562,23 @@ function planRiskProposal() {
       requiredGates: [],
     },
   };
+}
+
+/** 测试中可显式推进的确定性时钟。 */
+class MutableClock implements Clock {
+  private instant: Date;
+
+  public constructor(isoInstant: string) {
+    this.instant = new Date(isoInstant);
+  }
+
+  /** 返回当前测试时间的副本。 */
+  public now(): Date {
+    return new Date(this.instant);
+  }
+
+  /** 将后续读取推进到指定规范时间。 */
+  public set(isoInstant: string): void {
+    this.instant = new Date(isoInstant);
+  }
 }

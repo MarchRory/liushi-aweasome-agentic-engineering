@@ -30,6 +30,8 @@ export interface CodexInvocationContextInput {
   readonly workspaceId: string;
   /** Harness Task 标识。 */
   readonly taskId: string;
+  /** v2 Binding 的摘要；v1 不提供此字段以保持原有作用域算法。 */
+  readonly sessionBindingDigest?: ContentDigest;
 }
 
 /** Codex Adapter 在 Pre/Post 阶段共享的无歧义调用上下文。 */
@@ -60,6 +62,9 @@ export function createCodexInvocationContext(
       workspaceId: input.workspaceId,
       taskId: input.taskId,
       invocationId: provenance.value.invocationId,
+      ...(input.sessionBindingDigest === undefined
+        ? {}
+        : { sessionBindingDigest: input.sessionBindingDigest }),
     },
     digest,
   );

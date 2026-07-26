@@ -54,7 +54,11 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.ExecutorCompatibilityPublicationCommitOutcomeUnknown:
     case HarnessErrorCode.ExecutorCompatibilityReleaseArtifactCommitOutcomeUnknown:
     case HarnessErrorCode.InstallationCommitOutcomeUnknown:
+    case HarnessErrorCode.HookBindingCommitOutcomeUnknown:
+    case HarnessErrorCode.HookBindingLockReleaseUnknown:
     case HarnessErrorCode.CodingTaskSessionActivationCommitOutcomeUnknown:
+    case HarnessErrorCode.CodingTaskSessionAdmissionCommitOutcomeUnknown:
+    case HarnessErrorCode.CodingTaskSessionAdmissionLockReleaseUnknown:
       return CLI_EXIT_CODE_OUTCOME_UNKNOWN;
   }
 }

@@ -485,6 +485,9 @@ function createHarness(options: HarnessOptions = {}): Harness {
           : failure(options.activationLeaseError),
       ),
   };
+  const admissionInitializer = {
+    ensure: () => Promise.resolve(success({ binding: {}, state: {} } as never)),
+  };
   const service = new ActivateCodingTaskSessionService(
     codingTaskCommands as unknown as ConstructorParameters<
       typeof ActivateCodingTaskSessionService
@@ -499,6 +502,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
     digest,
     runtimePath,
     options.activationLease ?? defaultActivationLease,
+    admissionInitializer,
     options.omitRuntimeBinding ? undefined : RUNTIME_BINDING,
   );
 

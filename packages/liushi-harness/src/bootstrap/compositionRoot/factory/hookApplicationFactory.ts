@@ -1,13 +1,15 @@
 import {
-  ActionHookAuthorizationPolicy,
   BindHookWorkspaceUseCase,
   CanonicalHookDispatcher,
   ProbeCodexCapabilitiesUseCase,
   type ApplicationCommandGateway,
+  type ActionHookAuthorizationPolicy,
+  type SessionActionHookHandlerPort,
 } from "#application/index.js";
 import type {
   ActionJournalRepository,
   ContentDigestPort,
+  HookBindingStore,
   TaskRepository,
   TraceObservationStore,
 } from "#application/ports/index.js";
@@ -15,9 +17,6 @@ import type { Clock } from "#common/index.js";
 import {
   CodexCapabilityProbeAdapter,
   CodexHookAdapter,
-  FileHookBindingStore,
-  type FileLockManager,
-  type ParentDirectoryDurability,
   type CommandRunner,
 } from "#infrastructure/index.js";
 
@@ -29,6 +28,12 @@ export interface HookApplicationFactoryInput {
   readonly applicationCommandGateway: ApplicationCommandGateway;
   /** Task 与 Human Gate 的权威 Repository。 */
   readonly taskRepository: TaskRepository;
+  /** v1/v2 Hook Binding 的共享权威 Store。 */
+  readonly hookBindingStore: HookBindingStore;
+  /** Task Replay 与 Human Gate 的权威 Action 授权策略。 */
+  readonly authorizationPolicy: ActionHookAuthorizationPolicy;
+  /** Session Hook 的原子 Admission Handler。 */
+  readonly sessionActionHandler: SessionActionHookHandlerPort;
   /** Action Intent 与 Observation 的权威 Repository。 */
   readonly actionJournalRepository: ActionJournalRepository;
   /** 可丢失 Trace Observation Store。 */
@@ -39,10 +44,6 @@ export interface HookApplicationFactoryInput {
   readonly clock: Clock;
   /** 宿主命令执行边界。 */
   readonly commandRunner: CommandRunner;
-  /** 跨进程文件锁。 */
-  readonly lockManager: FileLockManager;
-  /** 原子写入后的父目录耐久化边界。 */
-  readonly parentDirectoryDurability: ParentDirectoryDurability;
 }
 
 /** Hook Application 对 Composition Root 暴露的能力。 */
@@ -61,28 +62,24 @@ export interface HookApplicationFactoryOutput {
 export function createHookApplication(
   input: HookApplicationFactoryInput,
 ): HookApplicationFactoryOutput {
-  const hookBindingStore = new FileHookBindingStore(input.storeRoot, {
-    lockManager: input.lockManager,
-    parentDirectoryDurability: input.parentDirectoryDurability,
-  });
-  const authorizationPolicy = new ActionHookAuthorizationPolicy(input.taskRepository);
   const dispatcher = new CanonicalHookDispatcher(
     input.applicationCommandGateway,
-    authorizationPolicy,
+    input.authorizationPolicy,
     input.actionJournalRepository,
     input.traceObservationStore,
     input.digest,
+    input.sessionActionHandler,
   );
   return {
     bindHookWorkspace: new BindHookWorkspaceUseCase(
       input.taskRepository,
-      hookBindingStore,
+      input.hookBindingStore,
       input.clock,
     ),
     handleHook: dispatcher,
     handleCodexHook: new CodexHookAdapter(
       dispatcher,
-      hookBindingStore,
+      input.hookBindingStore,
       input.actionJournalRepository,
       input.taskRepository,
       input.digest,

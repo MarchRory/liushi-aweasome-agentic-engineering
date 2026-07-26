@@ -30,11 +30,16 @@ import type {
 } from "../contracts/index.js";
 import {
   ActionJournalRecordType,
+  ActionJournalSchemaVersion,
   ActionKind,
   ActionOutcome,
   ActionResolution,
 } from "../enums/index.js";
 import { parseActionId, type ActionId } from "../identity/index.js";
+import {
+  parseSessionActionIntent,
+  parseSessionActionObservation,
+} from "./sessionActionJournal.validation.js";
 
 const nonBlank = (maxLength: number): z.ZodString =>
   z
@@ -44,41 +49,20 @@ const nonBlank = (maxLength: number): z.ZodString =>
     .refine((value) => value === value.trim())
     .refine((value) => !value.includes("\0"));
 
-const actionIdSchema = z.string().transform((value, context): ActionId => {
-  const parsed = parseActionId(value);
-  if (parsed.status === ResultStatus.Failure) {
-    context.addIssue({ code: "custom", message: parsed.error.message });
-    return z.NEVER;
-  }
-  return parsed.value;
-});
+const branded = <T>(parser: (value: string) => Result<T, HarnessError>) =>
+  z.string().transform((value, context): T => {
+    const parsed = parser(value);
+    if (parsed.status === ResultStatus.Failure) {
+      context.addIssue({ code: "custom", message: parsed.error.message });
+      return z.NEVER;
+    }
+    return parsed.value;
+  });
 
-const workspaceIdSchema = z.string().transform((value, context): WorkspaceId => {
-  const parsed = parseWorkspaceId(value);
-  if (parsed.status === ResultStatus.Failure) {
-    context.addIssue({ code: "custom", message: parsed.error.message });
-    return z.NEVER;
-  }
-  return parsed.value;
-});
-
-const taskIdSchema = z.string().transform((value, context): TaskId => {
-  const parsed = parseTaskId(value);
-  if (parsed.status === ResultStatus.Failure) {
-    context.addIssue({ code: "custom", message: parsed.error.message });
-    return z.NEVER;
-  }
-  return parsed.value;
-});
-
-const digestSchema = z.string().transform((value, context): ContentDigest => {
-  const parsed = parseContentDigest(value);
-  if (parsed.status === ResultStatus.Failure) {
-    context.addIssue({ code: "custom", message: parsed.error.message });
-    return z.NEVER;
-  }
-  return parsed.value;
-});
+const actionIdSchema = branded<ActionId>(parseActionId);
+const workspaceIdSchema = branded<WorkspaceId>(parseWorkspaceId);
+const taskIdSchema = branded<TaskId>(parseTaskId);
+const digestSchema = branded<ContentDigest>(parseContentDigest);
 
 const recordBase = {
   schemaVersion: z.literal(ACTION_JOURNAL_SCHEMA_VERSION),
@@ -112,6 +96,7 @@ const observationSchema = z
   .object({
     ...recordBase,
     recordType: z.literal(ActionJournalRecordType.Observation),
+    sequence: z.number().int().positive(),
     outcome: z.enum(ActionOutcome),
     evidenceIds: z.array(nonBlank(256)).superRefine((values, context) => {
       if (new Set(values).size !== values.length) {
@@ -145,15 +130,17 @@ const resolutionSchema = z
   .strict();
 
 const recordTypeSchema = z.object({ recordType: z.enum(ActionJournalRecordType) }).passthrough();
+const schemaVersionSchema = z
+  .object({ schemaVersion: z.enum(ActionJournalSchemaVersion) })
+  .passthrough();
 
-/** 根据封闭判别字段严格解析任意 Action Journal Record。 */
+/** 根据封闭 recordType 与 schemaVersion 严格解析任意 Action Journal record。 */
 export function parseActionJournalRecord(
   input: unknown,
 ): Result<ActionJournalRecord, HarnessError> {
   const recordType = recordTypeSchema.safeParse(input);
-  if (!recordType.success) {
-    return invalidRecord(recordType.error, "Action Journal Record 缺少有效类别。");
-  }
+  if (!recordType.success)
+    return invalidRecord(recordType.error, "Action Journal record 类型无效。");
   switch (recordType.data.recordType) {
     case ActionJournalRecordType.Intent:
       return parseActionIntent(input);
@@ -164,37 +151,27 @@ export function parseActionJournalRecord(
   }
 }
 
-/** 严格解析一个 Action Intent Record。 */
+/** 严格解析 legacy 或 Session Action Intent record。 */
 export function parseActionIntent(input: unknown): Result<ActionIntentRecord, HarnessError> {
-  const parsed = intentSchema.safeParse(input);
-  if (!parsed.success) {
-    return invalidRecord(parsed.error, "Action Intent 无效。");
-  }
-  const { causationId, baseRevision, ...record } = parsed.data;
-  return success({
-    ...record,
-    ...(causationId === undefined ? {} : { causationId }),
-    ...(baseRevision === undefined ? {} : { baseRevision }),
-  });
+  const version = schemaVersionSchema.safeParse(input);
+  if (!version.success) return invalidRecord(version.error, "Action Intent Schema 版本无效。");
+  return version.data.schemaVersion === ActionJournalSchemaVersion.Session
+    ? parseSessionActionIntent(input)
+    : parseLegacyActionIntent(input);
 }
 
-/** 严格解析一个 Action Observation Record。 */
+/** 严格解析 legacy 或 Session Action Observation record。 */
 export function parseActionObservation(
   input: unknown,
 ): Result<ActionObservationRecord, HarnessError> {
-  const parsed = observationSchema.safeParse(input);
-  if (!parsed.success) {
-    return invalidRecord(parsed.error, "Action Observation 无效。");
-  }
-  const { outputDigest, errorCode, ...record } = parsed.data;
-  return success({
-    ...record,
-    ...(outputDigest === undefined ? {} : { outputDigest }),
-    ...(errorCode === undefined ? {} : { errorCode }),
-  });
+  const version = schemaVersionSchema.safeParse(input);
+  if (!version.success) return invalidRecord(version.error, "Action Observation Schema 版本无效。");
+  return version.data.schemaVersion === ActionJournalSchemaVersion.Session
+    ? parseSessionActionObservation(input)
+    : parseLegacyActionObservation(input);
 }
 
-/** 严格解析一个 Action Resolution Record。 */
+/** 严格解析 Action Resolution record。 */
 export function parseActionResolution(
   input: unknown,
 ): Result<ActionResolutionRecord, HarnessError> {
@@ -204,16 +181,37 @@ export function parseActionResolution(
     : invalidRecord(parsed.error, "Action Resolution 无效。");
 }
 
+function parseLegacyActionIntent(input: unknown): Result<ActionIntentRecord, HarnessError> {
+  const parsed = intentSchema.safeParse(input);
+  if (!parsed.success) return invalidRecord(parsed.error, "Legacy Action Intent 无效。");
+  const { causationId, baseRevision, ...record } = parsed.data;
+  return success({
+    ...record,
+    ...(causationId === undefined ? {} : { causationId }),
+    ...(baseRevision === undefined ? {} : { baseRevision }),
+  });
+}
+
+function parseLegacyActionObservation(
+  input: unknown,
+): Result<ActionObservationRecord, HarnessError> {
+  const parsed = observationSchema.safeParse(input);
+  if (!parsed.success) return invalidRecord(parsed.error, "Legacy Action Observation 无效。");
+  const { outputDigest, errorCode, ...record } = parsed.data;
+  return success({
+    ...record,
+    ...(outputDigest === undefined ? {} : { outputDigest }),
+    ...(errorCode === undefined ? {} : { errorCode }),
+  });
+}
+
 function invalidRecord<T>(error: z.ZodError, message: string): Result<T, HarnessError> {
   const issue = error.issues[0];
   return failure(
     new HarnessError(
       HarnessErrorCode.InvalidInput,
       message,
-      {
-        path: issue?.path.join(".") ?? "unknown",
-        issue: issue?.message ?? "unknown",
-      },
+      { path: issue?.path.join(".") ?? "unknown", issue: issue?.message ?? "unknown" },
       error,
     ),
   );

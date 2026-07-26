@@ -1,9 +1,9 @@
 import type { ActorRef, ContentDigest, HarnessError, Result } from "#common/index.js";
 import type {
   ActionId,
+  ActionJournalStatus,
   ActionKind,
   ActionOutcome,
-  ActionJournalStatus,
 } from "#domain/actionJournal/index.js";
 import type { ArtifactDigest, ArtifactId } from "#domain/artifact/index.js";
 import type { TaskId } from "#domain/task/index.js";
@@ -11,7 +11,10 @@ import type { WorkspaceId } from "#domain/workspace/index.js";
 
 import type { CommandReceipt } from "../../command/index.js";
 import type { SpanId, TraceId } from "../../observability/index.js";
-import type { CANONICAL_HOOK_SCHEMA_VERSION } from "../constants/index.js";
+import type {
+  CANONICAL_HOOK_SCHEMA_VERSION,
+  CANONICAL_SESSION_HOOK_SCHEMA_VERSION,
+} from "../constants/index.js";
 import type {
   HarnessHookEvent,
   HookDecision,
@@ -19,12 +22,16 @@ import type {
   HookFailureKind,
 } from "../enums/index.js";
 
+/** Session Hook 从受信 Binding 解析出的最小上下文。 */
+export interface CodingTaskSessionHookContext {
+  /** 外部 CodingTask Session 标识。 */
+  readonly sessionId: string;
+  /** Session Hook Binding 的规范内容摘要。 */
+  readonly sessionBindingDigest: ContentDigest;
+}
+
 /** PreAction 与 PostAction 共用的 Task、因果和 Actor 字段。 */
-export interface ActionHookPayloadBase {
-  /** Canonical Hook Schema 版本。 */
-  readonly schemaVersion: typeof CANONICAL_HOOK_SCHEMA_VERSION;
-  /** 当前 Canonical 生命周期事件。 */
-  readonly event: HarnessHookEvent;
+interface ActionHookPayloadCommon {
   /** 单次 Hook Handler 执行标识。 */
   readonly hookExecutionId: string;
   /** Executor 家族。 */
@@ -45,16 +52,30 @@ export interface ActionHookPayloadBase {
   readonly commandId: string;
   /** 贯穿当前执行链的 Correlation ID。 */
   readonly correlationId: string;
-  /** 直接触发当前 Action 的 Causation ID。 */
-  readonly causationId?: string;
   /** Executor 调用当前 Hook 的时间。 */
   readonly occurredAt: string;
 }
 
-/** 执行副作用前提供给 Canonical Dispatcher 的严格 Payload。 */
-export interface PreActionHookPayload extends ActionHookPayloadBase {
+/** Legacy Hook Payload 的公共版本字段。 */
+export interface LegacyActionHookPayloadBase extends ActionHookPayloadCommon {
+  /** Legacy Canonical Hook Schema 版本。 */
+  readonly schemaVersion: typeof CANONICAL_HOOK_SCHEMA_VERSION;
+}
+
+/** Session Hook Payload 的公共版本与绑定字段。 */
+export interface SessionActionHookPayloadBase extends ActionHookPayloadCommon {
+  /** Session-scoped Canonical Hook Schema 版本。 */
+  readonly schemaVersion: typeof CANONICAL_SESSION_HOOK_SCHEMA_VERSION;
+  /** 必须由持久化 v2 Binding 投影的 Session 上下文。 */
+  readonly sessionContext: CodingTaskSessionHookContext;
+}
+
+/** PreAction 的版本无关字段。 */
+interface PreActionHookFields {
   /** 当前事件固定为 PreAction。 */
   readonly event: HarnessHookEvent.PreAction;
+  /** 直接触发当前 Action 的可选 Causation ID。 */
+  readonly causationId?: string;
   /** Action 幂等键。 */
   readonly idempotencyKey: string;
   /** 副作用类别。 */
@@ -75,8 +96,19 @@ export interface PreActionHookPayload extends ActionHookPayloadBase {
   readonly planRiskArtifactDigest: ArtifactDigest;
 }
 
-/** 执行副作用后提供给 Canonical Dispatcher 的严格 Payload。 */
-export interface PostActionHookPayload extends ActionHookPayloadBase {
+/** Legacy 执行前 Hook Payload。 */
+export interface LegacyPreActionHookPayload
+  extends LegacyActionHookPayloadBase, PreActionHookFields {}
+
+/** Session-scoped 执行前 Hook Payload。 */
+export interface SessionPreActionHookPayload
+  extends SessionActionHookPayloadBase, PreActionHookFields {}
+
+/** Dispatcher 接受的完整 PreAction union。 */
+export type PreActionHookPayload = LegacyPreActionHookPayload | SessionPreActionHookPayload;
+
+/** PostAction 的版本无关字段。 */
+interface PostActionHookFields {
   /** 当前事件固定为 PostAction。 */
   readonly event: HarnessHookEvent.PostAction;
   /** 必须精确指向创建 Action Intent 的 PreAction Command。 */
@@ -105,13 +137,25 @@ export interface PostActionHookPayload extends ActionHookPayloadBase {
   readonly endedAt: string;
 }
 
+/** Legacy 执行后 Hook Payload。 */
+export interface LegacyPostActionHookPayload
+  extends LegacyActionHookPayloadBase, PostActionHookFields {}
+
+/** Session-scoped 执行后 Hook Payload。 */
+export interface SessionPostActionHookPayload
+  extends SessionActionHookPayloadBase, PostActionHookFields {}
+
+/** Dispatcher 接受的完整 PostAction union。 */
+export type PostActionHookPayload = LegacyPostActionHookPayload | SessionPostActionHookPayload;
+
 /** 当前切片支持的 Canonical Action Hook Payload。 */
 export type ActionHookPayload = PreActionHookPayload | PostActionHookPayload;
 
 /** Canonical Hook Dispatcher 的稳定结果。 */
 export interface HookDispatchResult {
   /** Hook Result Schema 版本。 */
-  readonly schemaVersion: typeof CANONICAL_HOOK_SCHEMA_VERSION;
+  readonly schemaVersion:
+    typeof CANONICAL_HOOK_SCHEMA_VERSION | typeof CANONICAL_SESSION_HOOK_SCHEMA_VERSION;
   /** 已处理的 Canonical Event。 */
   readonly event: HarnessHookEvent;
   /** Executor 后续行为。 */

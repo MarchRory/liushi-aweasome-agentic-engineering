@@ -33,6 +33,7 @@ import type {
   CodingTaskSessionRuntimeBinding,
   PreparedCodingTaskSessionActivation,
 } from "../contracts/index.js";
+import type { CodingTaskSessionAdmissionInitializerPort } from "../admission/contracts/index.js";
 import {
   CodingTaskSessionActivationStage,
   CodingTaskSessionActivationStatus,
@@ -56,6 +57,7 @@ export class ActivateCodingTaskSessionService {
     private readonly digest: ContentDigestPort,
     private readonly runtimePath: ManagedWorktreePathPort,
     private readonly activationLease: CodingTaskSessionActivationLease,
+    private readonly admissionInitializer: CodingTaskSessionAdmissionInitializerPort,
     private readonly runtimeBinding?: CodingTaskSessionRuntimeBinding,
   ) {}
 
@@ -189,14 +191,12 @@ export class ActivateCodingTaskSessionService {
         ),
       );
     }
-    return success({
-      schemaVersion: CODING_TASK_SESSION_ACTIVATION_REPORT_SCHEMA_VERSION,
-      status: CodingTaskSessionActivationStatus.WaitingAgent,
+    return this.createWaitingAgentReport(
+      prepared,
+      persisted.value.record,
+      persisted.value.disposition,
       receipts,
-      worktreeRoot: prepared.worktreeRoot,
-      activation: persisted.value.record,
-      persistenceDisposition: persisted.value.disposition,
-    });
+    );
   }
 
   private async loadExisting(
@@ -220,13 +220,34 @@ export class ActivateCodingTaskSessionService {
         ),
       );
     }
+    return this.createWaitingAgentReport(
+      prepared,
+      loaded.value,
+      CodingTaskSessionActivationDisposition.Reused,
+      [],
+    );
+  }
+
+  private async createWaitingAgentReport(
+    prepared: PreparedCodingTaskSessionActivation,
+    activation: CodingTaskSessionActivationRecord,
+    disposition: CodingTaskSessionActivationDisposition,
+    receipts: readonly CodingTaskSessionActivationStageReceipt[],
+  ): Promise<Result<CodingTaskSessionActivationReport, HarnessError>> {
+    const initialized = await this.admissionInitializer.ensure({
+      activation,
+      worktreeRoot: prepared.worktreeRoot,
+    });
+    if (initialized.status === ResultStatus.Failure) {
+      return failure(withStage(initialized.error, CodingTaskSessionActivationStage.Persistence));
+    }
     return success({
       schemaVersion: CODING_TASK_SESSION_ACTIVATION_REPORT_SCHEMA_VERSION,
       status: CodingTaskSessionActivationStatus.WaitingAgent,
-      receipts: [],
+      receipts,
       worktreeRoot: prepared.worktreeRoot,
-      activation: loaded.value,
-      persistenceDisposition: CodingTaskSessionActivationDisposition.Reused,
+      activation,
+      persistenceDisposition: disposition,
     });
   }
 

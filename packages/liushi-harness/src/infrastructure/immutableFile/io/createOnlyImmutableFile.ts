@@ -3,6 +3,7 @@ import type { BigIntStats } from "node:fs";
 import { type FileHandle, link, lstat, mkdir, open, rm } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
+import { isDurableParentDirectorySyncStatus } from "#application/ports/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
 
 import type { CreateOnlyImmutableFileInput } from "../contracts/index.js";
@@ -42,13 +43,29 @@ export async function createOnlyImmutableFile(
       return requireExisting(input);
     }
     await rm(temporaryFilePath);
-    await input.parentDirectoryDurability.syncParentDirectory(input.outputFilePath);
+    const directorySync = await input.parentDirectoryDurability.syncParentDirectory(
+      input.outputFilePath,
+    );
+    if (!isDurableParentDirectorySyncStatus(directorySync.status)) {
+      throw new HarnessError(
+        input.commitOutcomeUnknownCode,
+        `${input.artifactName} 父目录未达到受支持的耐久性。`,
+        {
+          outputFilePath: input.outputFilePath,
+          parentDirectorySyncStatus: directorySync.status,
+          reason: directorySync.reason ?? "not_reported",
+        },
+      );
+    }
     await requireExisting(input);
     return ImmutableFileWriteDisposition.Created;
   } catch (error) {
     await closeBestEffort(temporaryHandle);
     if (!targetPublished) await removeBestEffort(temporaryFilePath);
     if (targetPublished) {
+      if (error instanceof HarnessError && error.code === input.commitOutcomeUnknownCode) {
+        throw error;
+      }
       throw new HarnessError(
         input.commitOutcomeUnknownCode,
         `${input.artifactName} commit outcome is unknown.`,

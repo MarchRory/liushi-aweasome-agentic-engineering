@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ActionOutcome,
+  CANONICAL_SESSION_HOOK_SCHEMA_VERSION,
   HarnessErrorCode,
   ResultStatus,
   parseActionHookPayload,
@@ -16,6 +17,34 @@ describe("Canonical Action Hook validation", () => {
     expect(parsePostActionHookPayload(createPostActionHookInput()).status).toBe(
       ResultStatus.Success,
     );
+  });
+
+  it("要求 Session 1.1 Payload 携带不可省略的绑定上下文", () => {
+    const sessionContext = {
+      sessionId: "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+      sessionBindingDigest: `sha256:${"3".repeat(64)}`,
+    };
+    const pre = parsePreActionHookPayload(
+      createPreActionHookInput({
+        schemaVersion: CANONICAL_SESSION_HOOK_SCHEMA_VERSION,
+        sessionContext,
+      }),
+    );
+    const post = parsePostActionHookPayload(
+      createPostActionHookInput({
+        schemaVersion: CANONICAL_SESSION_HOOK_SCHEMA_VERSION,
+        sessionContext,
+      }),
+    );
+    const missing = parsePreActionHookPayload(
+      createPreActionHookInput({ schemaVersion: CANONICAL_SESSION_HOOK_SCHEMA_VERSION }),
+    );
+    const legacySmuggling = parsePreActionHookPayload(createPreActionHookInput({ sessionContext }));
+
+    expect(pre.status).toBe(ResultStatus.Success);
+    expect(post.status).toBe(ResultStatus.Success);
+    expect(missing.status).toBe(ResultStatus.Failure);
+    expect(legacySmuggling.status).toBe(ResultStatus.Failure);
   });
 
   it.each([
