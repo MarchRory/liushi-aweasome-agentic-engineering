@@ -48,6 +48,7 @@ describe("composition root", () => {
       "FileCodingTaskSessionActivationRepository",
       "FileCodingTaskSessionAdmissionLease",
       "FileCodingTaskSessionAdmissionStateStore",
+      "FileCodingTaskSessionCloseoutRecoveryStore",
       "FileCodingTaskSessionCloseoutStore",
       "FileCommandReservationStore",
       "FileEvidenceBundleStore",

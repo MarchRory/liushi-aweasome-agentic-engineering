@@ -23,4 +23,11 @@ describe("CLI 错误退出码", () => {
       CLI_EXIT_CODE_OUTCOME_UNKNOWN,
     );
   });
+
+  it.each([
+    HarnessErrorCode.CodingTaskSessionCloseoutRecoveryCommitOutcomeUnknown,
+    HarnessErrorCode.CodingTaskSessionCloseoutRecoveryLockReleaseUnknown,
+  ])("为 %s 映射禁止自动重试的退出码", (errorCode) => {
+    expect(mapErrorExitCode(errorCode)).toBe(CLI_EXIT_CODE_OUTCOME_UNKNOWN);
+  });
 });

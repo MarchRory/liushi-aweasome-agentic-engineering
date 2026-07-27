@@ -90,6 +90,10 @@ export enum HarnessErrorCode {
   CodingTaskSessionCloseoutCheckpointNotApplied = "coding_task_session_closeout_checkpoint_not_applied",
   /** Closeout Checkpoint 的 Git 副作用结果无法证明，禁止自动重试。 */
   CodingTaskSessionCloseoutCheckpointOutcomeUnknown = "coding_task_session_closeout_checkpoint_outcome_unknown",
+  /** Closeout Recovery State 已开始写入但提交结果未知，禁止自动重试。 */
+  CodingTaskSessionCloseoutRecoveryCommitOutcomeUnknown = "coding_task_session_closeout_recovery_commit_outcome_unknown",
+  /** Closeout Recovery State Lock 释放结果未知，必须先恢复锁状态。 */
+  CodingTaskSessionCloseoutRecoveryLockReleaseUnknown = "coding_task_session_closeout_recovery_lock_release_unknown",
 }
 
 /** Harness 跨层返回的可分类错误。 */

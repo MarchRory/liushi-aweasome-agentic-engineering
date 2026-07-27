@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment 与 Recovery Process State 已实现；File Store、Human Command 与执行链仍在实现。Closeout State v3 的终态语义保持不变。**
+**状态：只读 Assessment、Recovery Process State 与 File Store 已实现；Human Command 与执行链仍在实现。Closeout State v3 的终态语义保持不变。**
 
 ## 1. 决策
 
@@ -120,6 +120,16 @@ Process State 保存已经由严格 Human Command parser 验证的 `requestDiges
 
 Recovery Store 复用 canonical JSON、create-only 初始化、短时文件锁、`expectedVersion` CAS、原子替换、父目录耐久化和读后复验。Repository Lock 覆盖锁内 reassessment、Intent、Checkpoint 和结果闭合；文件锁只保护 Recovery Record 的单次本地变更。
 
+File Store 已实现以下关闭式语义：
+
+- 只允许 `Approved v0` 初始化；相同恢复身份复用现有进度，不同身份返回显式冲突。
+- `replace` 在独立文件锁内重读 current，校验精确 `expectedVersion` 与合法 successor，再原子替换并读后复验。
+- 写入开始后的文件替换、父目录耐久化或读后复验异常统一返回 Recovery 专属 `CommitOutcomeUnknown`，禁止隐式重试。
+- 文件锁释放结果未知返回 Recovery 专属稳定错误码，并保留锁内操作原始失败。
+- `IoFailure`、读取期实体漂移与内容损坏保持不同错误语义；相邻 `closeout.json` 不被读取或修改。
+
+当前路径校验与共享 File Store 一致，会拒绝校验时可见的符号链接和目录联接；“校验完成后祖先目录被并发替换”的 TOCTOU 风险尚未由共享文件基础设施关闭。该风险不能在 Recovery Store 内混入平台特判，必须作为共享路径句柄/no-follow 能力独立设计并在不可信目录真实 Pilot 前完成。
+
 ## 7. Effective Resolver
 
 后续 Submission 不直接判断“原 Closeout 或 Recovery 哪个成功”，只消费 Effective Resolver：
@@ -135,8 +145,8 @@ Recovery Store 复用 canonical JSON、create-only 初始化、短时文件锁�
 1. 已完成 ChangeSet Checkpoint 只读三态 Recovery Port。
 2. 已完成 Closeout Recovery Assessment 与 canonical digest。
 3. 已完成独立 Recovery Process State、精确状态可达性与 successor 校验。
-4. 下一步实现 Recovery Process File Store。
-5. 实现 Human Command、Repository Lock 内 fresh reassessment 与至多一次执行。
+4. 已完成 Recovery Process File Store、create-only 初始化、CAS、严格重建与未知结果分类。
+5. 下一步实现 Human Command、Repository Lock 内 fresh reassessment 与至多一次执行。
 6. 实现 Effective Resolver。
 7. 接入 CLI、故障注入、真实 Git E2E 和恢复 SOP。
 
