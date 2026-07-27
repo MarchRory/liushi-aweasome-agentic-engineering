@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment、Recovery Process State 与 File Store 已实现；Human Command 与执行链仍在实现。Closeout State v3 的终态语义保持不变。**
+**状态：只读 Assessment、Recovery Process State、File Store 与 Human Command Contract 已实现；锁内执行链仍在实现。Closeout State v3 的终态语义保持不变。**
 
 ## 1. 决策
 
@@ -64,11 +64,13 @@ Assessment Digest 只覆盖规范化正文，不覆盖自身 digest 或由 diges
 Recovery Command 必须是完整 Command Envelope，并满足：
 
 - `actor.kind = human`。
-- 固定 Command Type 和 `coding_task_session` Aggregate Type。
+- `commandType = coding_task_session.closeout.recover.v1`，Aggregate Type 固定为 `coding_task_session`。
 - `aggregateId` 等于 Session ID。
 - `expectedVersion` 精确绑定原 Closeout State version。
-- Payload 只包含 Workspace、Session、Assessment Digest 和请求的 Resolution。
+- Payload 只包含 `workspaceId`、`sessionId`、`expectedAssessmentDigest` 和 `requestedResolution`。
 - `requestDigest` 与严格 Payload 规范摘要一致。
+
+严格 parser 只验证 Envelope 与规范 Payload，不在锁外猜测 `expectedVersion` 是否仍匹配现场。`expectedVersion`、`expectedAssessmentDigest` 与 `requestedResolution` 必须在 Repository Lock 内 fresh reassessment 后共同复验，任一漂移都保持零执行副作用。
 
 Resolution 使用封闭枚举：
 
@@ -105,7 +107,7 @@ stateDiagram-v2
 8. Checkpoint 必须匹配 Process State 锁定的提交前 Snapshot 与 ChangeSet；`BindExisting` 还必须匹配 Assessment 已复验的 Checkpoint Binding。
 9. `RetryNotApplied` 与 `OutcomeUnknown` 只能携带各自对应的稳定错误码，禁止状态与诊断相互矛盾。
 
-Process State 保存已经由严格 Human Command parser 验证的 `requestDigest`，并在全部 successor 中保持不可变。State 与 Store 不自行猜测尚未冻结的 Command Payload Schema；Human Command 切片必须负责 canonical payload 摘要重算，Store 只负责严格重建、身份连续性与 CAS。
+Process State 保存已经由严格 Human Command parser 验证的 `requestDigest`，并在全部 successor 中保持不可变。Command Payload Schema 与 canonical 摘要重算由 Human Command 模块统一负责；State 与 Store 不重复解析 Command，只负责严格重建、身份连续性与 CAS。
 
 ## 6. 持久化
 
@@ -146,9 +148,10 @@ File Store 已实现以下关闭式语义：
 2. 已完成 Closeout Recovery Assessment 与 canonical digest。
 3. 已完成独立 Recovery Process State、精确状态可达性与 successor 校验。
 4. 已完成 Recovery Process File Store、create-only 初始化、CAS、严格重建与未知结果分类。
-5. 下一步实现 Human Command、Repository Lock 内 fresh reassessment 与至多一次执行。
-6. 实现 Effective Resolver。
-7. 接入 CLI、故障注入、真实 Git E2E 和恢复 SOP。
+5. 已完成 Human Command Contract、严格 parser 与 canonical request digest 重算。
+6. 下一步实现 Repository Lock 内 fresh reassessment 与至多一次执行。
+7. 实现 Effective Resolver。
+8. 接入 CLI、故障注入、真实 Git E2E 和恢复 SOP。
 
 每个切片必须独立提交，并保持原 Closeout v3、CLI Exit Code 和真实 Git E2E 全部回归通过。
 
