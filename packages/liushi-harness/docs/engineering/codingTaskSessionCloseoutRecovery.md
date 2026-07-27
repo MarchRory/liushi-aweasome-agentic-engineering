@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root 与 CLI 已实现；故障注入和真实 Git 恢复 E2E 尚未实现。Closeout State v3 的终态语义保持不变。**
+**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root、CLI、确定性故障注入与真实 Git 恢复 E2E 已实现。Closeout State v3 的终态语义保持不变；真实 Codex Pilot 与后续交付串联尚未完成。**
 
 ## 1. 决策
 
@@ -177,6 +177,16 @@ File Store 已实现以下关闭式语义：
 
 本切片只定义并测试 Resolver，没有修改 Submission、Verification 或 PRReady。
 
+### 7.1 真实 Git 恢复证据
+
+确定性 E2E 复用生产 Composition Root 中与 Closeout Manager 同一实例的 Checkpoint Port，只对一次调用注入结果边界；`assess`、`recover` 与 `effective` 均通过 `createProductionCliApplicationFactory` 和 `runCli` 重新创建生产 Application：
+
+- `NotApplied` 场景从 `Blocked@SnapshotPersisted`、Checkpoint `Absent` 开始，经 Human 明确选择 `RetryOnce` 后从零 Commit 变为唯一一个 Commit。
+- 真实 Checkpoint 已提交但结果观察丢失的场景进入 `OutcomeUnknown@SnapshotPersisted`，Assessment 复验为 `Present` 后只允许 `BindExisting`，恢复前后始终只有一个 Commit。
+- 两个场景都复验精确 Human Command、真实 Git HEAD、干净 Worktree、Effective Checkpoint 来源和原 `closeout.json` 字节不变；精确 Command 重放返回首个稳定回执且不产生第二次 Git 副作用。
+
+这些证据验证确定性本地恢复协议，不替代真实 Codex/企业 Pilot、外部身份认证、不可信 Runtime Store 的祖先目录 TOCTOU 验收，也不证明 Submission、Verification 与 PRReady 已完成生产串联。
+
 ## 8. 实现顺序
 
 1. 已完成 ChangeSet Checkpoint 只读三态 Recovery Port。
@@ -187,7 +197,8 @@ File Store 已实现以下关闭式语义：
 6. 已完成 Repository Lock 内 fresh reassessment、create-only/CAS 状态推进、至多一次 Checkpoint 执行、Executing 只读恢复和 Command Gateway Service。
 7. 已完成 Effective Resolver、原成功短路、恢复精确绑定和稳定 unresolved 分类。
 8. 已完成生产 Composition Root、三个 Recovery CLI 入口、稳定退出码、Human 脱敏摘要和恢复 SOP。
-9. 下一步补齐故障注入与真实 Git 恢复 E2E。
+9. 已完成 `RetryOnce` 与 `BindExisting` 的确定性故障注入和真实 Git 恢复 E2E。
+10. 下一步串联 Submission、Verification 与 PRReady，再开展真实 Codex Pilot。
 
 每个切片必须独立提交，并保持原 Closeout v3、CLI Exit Code 和真实 Git E2E 全部回归通过。
 

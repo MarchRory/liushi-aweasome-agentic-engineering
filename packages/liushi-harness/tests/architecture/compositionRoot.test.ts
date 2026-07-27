@@ -166,6 +166,9 @@ describe("composition root", () => {
     expect(application.assessCodingTaskSessionCloseoutRecovery).toBeDefined();
     expect(application.recoverCodingTaskSessionCloseout).toBeDefined();
     expect(application.resolveCodingTaskSessionEffectiveCloseout).toBeDefined();
+    expect(readHiddenProperty(closeoutDependencies, "checkpointPort")).toBe(
+      application.changeSetCheckpoints,
+    );
     expect(readHiddenProperty(assessmentDependencies, "stateStore")).toBe(
       readHiddenProperty(closeoutDependencies, "stateStore"),
     );
