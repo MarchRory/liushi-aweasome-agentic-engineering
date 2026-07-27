@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment 已实现；Recovery Process、Human Command 与执行链仍在实现。Closeout State v3 的终态语义保持不变。**
+**状态：只读 Assessment 与 Recovery Process State 已实现；File Store、Human Command 与执行链仍在实现。Closeout State v3 的终态语义保持不变。**
 
 ## 1. 决策
 
@@ -102,6 +102,10 @@ stateDiagram-v2
 5. `CheckpointBound` 必须保存完整 `ChangeSetCheckpoint`、原 Closeout Digest、Assessment Digest 和 Human Actor。
 6. 同一原 Closeout Digest 最多存在一个恢复 Process Record；不同命令身份不能覆盖。
 7. 结果写入未知时保留 `Executing` 或 `OutcomeUnknown`，不能推断成功或许可第二次执行。
+8. Checkpoint 必须匹配 Process State 锁定的提交前 Snapshot 与 ChangeSet；`BindExisting` 还必须匹配 Assessment 已复验的 Checkpoint Binding。
+9. `RetryNotApplied` 与 `OutcomeUnknown` 只能携带各自对应的稳定错误码，禁止状态与诊断相互矛盾。
+
+Process State 保存已经由严格 Human Command parser 验证的 `requestDigest`，并在全部 successor 中保持不可变。State 与 Store 不自行猜测尚未冻结的 Command Payload Schema；Human Command 切片必须负责 canonical payload 摘要重算，Store 只负责严格重建、身份连续性与 CAS。
 
 ## 6. 持久化
 
@@ -130,10 +134,11 @@ Recovery Store 复用 canonical JSON、create-only 初始化、短时文件锁�
 
 1. 已完成 ChangeSet Checkpoint 只读三态 Recovery Port。
 2. 已完成 Closeout Recovery Assessment 与 canonical digest。
-3. 下一步实现独立 Recovery Process State 和 File Store。
-4. 实现 Human Command、Repository Lock 内 fresh reassessment 与至多一次执行。
-5. 实现 Effective Resolver。
-6. 接入 CLI、故障注入、真实 Git E2E 和恢复 SOP。
+3. 已完成独立 Recovery Process State、精确状态可达性与 successor 校验。
+4. 下一步实现 Recovery Process File Store。
+5. 实现 Human Command、Repository Lock 内 fresh reassessment 与至多一次执行。
+6. 实现 Effective Resolver。
+7. 接入 CLI、故障注入、真实 Git E2E 和恢复 SOP。
 
 每个切片必须独立提交，并保持原 Closeout v3、CLI Exit Code 和真实 Git E2E 全部回归通过。
 
