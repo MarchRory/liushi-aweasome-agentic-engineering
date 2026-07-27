@@ -150,6 +150,10 @@ describe("Application Command Gateway", () => {
     HarnessErrorCode.CodingTaskSessionAdmissionLockReleaseUnknown,
     HarnessErrorCode.CodingTaskSessionCloseoutCommitOutcomeUnknown,
     HarnessErrorCode.CodingTaskSessionCloseoutLockReleaseUnknown,
+    HarnessErrorCode.CodingTaskSessionCloseoutRecoveryCommitOutcomeUnknown,
+    HarnessErrorCode.CodingTaskSessionCloseoutRecoveryLockReleaseUnknown,
+    HarnessErrorCode.CodingTaskSessionCloseoutRecoveryRepositoryLockReleaseUnknown,
+    HarnessErrorCode.CodingTaskSessionCloseoutCheckpointOutcomeUnknown,
   ])("将 Runtime 持久化未知结果 %s 映射为 OutcomeUnknown Receipt", async (errorCode) => {
     const result = await new ApplicationCommandGateway(completingStore(), immediateDelay).execute(
       command(),

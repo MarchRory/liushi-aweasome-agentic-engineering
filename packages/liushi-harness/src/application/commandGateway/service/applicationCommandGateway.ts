@@ -141,6 +141,10 @@ function errorReceipt(command: CommandEnvelope, error: HarnessError): CommandRec
     error.code === HarnessErrorCode.CodingTaskSessionAdmissionLockReleaseUnknown ||
     error.code === HarnessErrorCode.CodingTaskSessionCloseoutCommitOutcomeUnknown ||
     error.code === HarnessErrorCode.CodingTaskSessionCloseoutLockReleaseUnknown ||
+    error.code === HarnessErrorCode.CodingTaskSessionCloseoutRecoveryCommitOutcomeUnknown ||
+    error.code === HarnessErrorCode.CodingTaskSessionCloseoutRecoveryLockReleaseUnknown ||
+    error.code === HarnessErrorCode.CodingTaskSessionCloseoutRecoveryRepositoryLockReleaseUnknown ||
+    error.code === HarnessErrorCode.CodingTaskSessionCloseoutCheckpointOutcomeUnknown ||
     error.code === HarnessErrorCode.CommandGatewayCommitOutcomeUnknown ||
     error.code === HarnessErrorCode.IoFailure
   ) {

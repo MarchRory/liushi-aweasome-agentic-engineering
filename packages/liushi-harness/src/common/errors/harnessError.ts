@@ -94,6 +94,8 @@ export enum HarnessErrorCode {
   CodingTaskSessionCloseoutRecoveryCommitOutcomeUnknown = "coding_task_session_closeout_recovery_commit_outcome_unknown",
   /** Closeout Recovery State Lock 释放结果未知，必须先恢复锁状态。 */
   CodingTaskSessionCloseoutRecoveryLockReleaseUnknown = "coding_task_session_closeout_recovery_lock_release_unknown",
+  /** Closeout Recovery Repository Lock 释放结果未知，禁止自动重试。 */
+  CodingTaskSessionCloseoutRecoveryRepositoryLockReleaseUnknown = "coding_task_session_closeout_recovery_repository_lock_release_unknown",
 }
 
 /** Harness 跨层返回的可分类错误。 */
