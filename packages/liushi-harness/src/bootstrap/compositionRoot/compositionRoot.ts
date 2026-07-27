@@ -153,6 +153,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     changeSetApplication,
     clock,
     repositoryLockIdGenerator,
+    applicationCommandGateway,
   });
   const worktreeApplication = createWorktreeApplication({
     applicationCommandGateway,

@@ -153,10 +153,33 @@ describe("composition root", () => {
     const closeoutDependencies = requireObject(
       readHiddenProperty(application.closeoutCodingTaskSession, "dependencies"),
     );
+    const recoveryHandler = requireObject(
+      readHiddenProperty(application.recoverCodingTaskSessionCloseout, "handler"),
+    );
+    const recoveryHandlerDependencies = requireObject(
+      readHiddenProperty(recoveryHandler, "dependencies"),
+    );
+    const effectiveCloseoutDependencies = requireObject(
+      readHiddenProperty(application.resolveCodingTaskSessionEffectiveCloseout, "dependencies"),
+    );
 
     expect(application.assessCodingTaskSessionCloseoutRecovery).toBeDefined();
+    expect(application.recoverCodingTaskSessionCloseout).toBeDefined();
+    expect(application.resolveCodingTaskSessionEffectiveCloseout).toBeDefined();
     expect(readHiddenProperty(assessmentDependencies, "stateStore")).toBe(
       readHiddenProperty(closeoutDependencies, "stateStore"),
+    );
+    expect(readHiddenProperty(effectiveCloseoutDependencies, "closeoutStateStore")).toBe(
+      readHiddenProperty(closeoutDependencies, "stateStore"),
+    );
+    expect(readHiddenProperty(recoveryHandlerDependencies, "recoveryStateStore")).toBe(
+      readHiddenProperty(effectiveCloseoutDependencies, "recoveryStateStore"),
+    );
+    expect(readHiddenProperty(application.recoverCodingTaskSessionCloseout, "gateway")).toBe(
+      application.applicationCommandGateway,
+    );
+    expect(readHiddenProperty(recoveryHandlerDependencies, "assessmentService")).toBe(
+      assessmentService,
     );
   });
 

@@ -2,14 +2,20 @@ import {
   AssessCodingTaskSessionCloseoutRecoveryUseCase,
   CodingTaskSessionActionCoverageService,
   CodingTaskSessionCloseoutManager,
+  CodingTaskSessionCloseoutRecoveryCommandHandler,
+  CodingTaskSessionCloseoutRecoveryCommandService,
   type ChangeSetCheckpointPort,
   type ChangeSetCheckpointRecoveryPort,
   CodingTaskSessionCloseoutRecoveryAssessmentService,
+  CodingTaskSessionEffectiveCloseoutResolver,
   type CodingTaskSessionCloseoutManagerDependencies,
   type CodingTaskSessionCloseoutRecoveryAssessmentServiceDependencies,
   type InspectGitChangeSetUseCase,
 } from "#application/index.js";
-import type { CodingTaskSessionAdmissionCoordinator } from "#application/index.js";
+import type {
+  ApplicationCommandGateway,
+  CodingTaskSessionAdmissionCoordinator,
+} from "#application/index.js";
 import type {
   ActionJournalRepository,
   CodingTaskRepository,
@@ -25,6 +31,7 @@ import type {
 import type { Clock } from "#common/index.js";
 import {
   FileCodingTaskSessionCloseoutStore,
+  FileCodingTaskSessionCloseoutRecoveryStore,
   type FileCodingTaskSessionActivationRepositoryDependencies,
 } from "#infrastructure/index.js";
 
@@ -64,6 +71,8 @@ export interface CodingTaskSessionCloseoutApplicationFactoryInput {
   readonly digest: ContentDigestPort;
   /** 统一时钟。 */
   readonly clock: Clock;
+  /** 复用 Composition Root 唯一的幂等命令执行网关。 */
+  readonly applicationCommandGateway: ApplicationCommandGateway;
 }
 
 /** 独立 Closeout Application Factory 的公开结果。 */
@@ -72,6 +81,10 @@ export interface CodingTaskSessionCloseoutApplicationFactoryOutput {
   readonly closeoutCodingTaskSession: CodingTaskSessionCloseoutManager;
   /** 只读评估 Closeout Recovery 当前唯一可行 Resolution。 */
   readonly assessCodingTaskSessionCloseoutRecovery: AssessCodingTaskSessionCloseoutRecoveryUseCase;
+  /** 通过统一命令网关执行经 Human Gate 批准的 Closeout Recovery。 */
+  readonly recoverCodingTaskSessionCloseout: CodingTaskSessionCloseoutRecoveryCommandService;
+  /** 解析原始 Closeout 与 Recovery 后的最终有效 Checkpoint。 */
+  readonly resolveCodingTaskSessionEffectiveCloseout: CodingTaskSessionEffectiveCloseoutResolver;
 }
 
 /** 创建不暴露基础设施实现的 Closeout Manager。 */
@@ -79,6 +92,10 @@ export function createCodingTaskSessionCloseoutApplication(
   input: CodingTaskSessionCloseoutApplicationFactoryInput,
 ): CodingTaskSessionCloseoutApplicationFactoryOutput {
   const stateStore = new FileCodingTaskSessionCloseoutStore(
+    input.storeRoot,
+    input.storeDependencies,
+  );
+  const recoveryStateStore = new FileCodingTaskSessionCloseoutRecoveryStore(
     input.storeRoot,
     input.storeDependencies,
   );
@@ -118,10 +135,28 @@ export function createCodingTaskSessionCloseoutApplication(
   const recoveryAssessment = new CodingTaskSessionCloseoutRecoveryAssessmentService(
     recoveryDependencies,
   );
+  const recoveryHandler = new CodingTaskSessionCloseoutRecoveryCommandHandler({
+    assessmentService: recoveryAssessment,
+    activationRepository: input.activationRepository,
+    repositoryLock: input.repositoryLock,
+    checkpoint: input.changeSetCheckpoints,
+    digest: input.digest,
+    clock: input.clock,
+    recoveryStateStore,
+  });
   return {
     closeoutCodingTaskSession: new CodingTaskSessionCloseoutManager(dependencies),
     assessCodingTaskSessionCloseoutRecovery: new AssessCodingTaskSessionCloseoutRecoveryUseCase(
       recoveryAssessment,
     ),
+    recoverCodingTaskSessionCloseout: new CodingTaskSessionCloseoutRecoveryCommandService(
+      input.applicationCommandGateway,
+      recoveryHandler,
+    ),
+    resolveCodingTaskSessionEffectiveCloseout: new CodingTaskSessionEffectiveCloseoutResolver({
+      closeoutStateStore: stateStore,
+      recoveryStateStore,
+      digest: input.digest,
+    }),
   };
 }

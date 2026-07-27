@@ -1,4 +1,5 @@
 import { JournaledActionRunner } from "#application/index.js";
+import type { ApplicationCommandGateway } from "#application/index.js";
 import type {
   ActionExecutionLockPort,
   ActionJournalRepository,
@@ -45,6 +46,8 @@ export interface CodingTaskSessionExecutionRuntimeFactoryInput {
   readonly clock: Clock;
   /** Repository Lock ID 生成器。 */
   readonly repositoryLockIdGenerator: IdGenerator;
+  /** 复用 Composition Root 唯一的幂等命令执行网关。 */
+  readonly applicationCommandGateway: ApplicationCommandGateway;
 }
 
 /** Session 执行链共享的基础设施与 Closeout Application。 */
@@ -99,6 +102,7 @@ export function createCodingTaskSessionExecutionRuntime(
     changeSetCheckpointRecovery: input.changeSetApplication.changeSetCheckpointRecovery,
     digest: input.storeDependencies.digest,
     clock: input.clock,
+    applicationCommandGateway: input.applicationCommandGateway,
   });
   return {
     repositoryLock,
