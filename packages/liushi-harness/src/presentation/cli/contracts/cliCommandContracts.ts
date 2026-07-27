@@ -26,6 +26,12 @@ export enum CliCommand {
   CodingTaskSessionActivate = "coding_task.session.activate",
   /** 关闭外部 Agent CodingTask Session，并停在 CheckpointBound。 */
   CodingTaskSessionCloseout = "coding_task.session.closeout",
+  /** 评估 CodingTask Session Closeout Recovery。 */
+  CodingTaskSessionCloseoutRecoveryAssess = "coding_task.session.closeout.recovery.assess",
+  /** 执行 CodingTask Session Closeout Recovery。 */
+  CodingTaskSessionCloseoutRecover = "coding_task.session.closeout.recover",
+  /** 解析 CodingTask Session 的 Effective Closeout。 */
+  CodingTaskSessionEffectiveCloseout = "coding_task.session.closeout.effective",
   /** 绑定 Hook 工作区。 */
   HookBind = "hook.bind",
   /** 处理执行器 Hook。 */

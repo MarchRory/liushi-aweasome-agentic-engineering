@@ -4,7 +4,7 @@
 
 **状态：技术边界已确认，按可逆切片实施。** 当前 `cell run` 继续承担预编排 Mutation 的一次性确定性闭环；外部 Agent Session 使用独立协议，不改变 `coding-task.cell.run.v2` 的 Schema、执行顺序或公开语义。
 
-S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。S3 已实现提交前权威 ChangeSet 与 Git Checkpoint 双向绑定、Closeout Process Manager、CLI `coding-task session closeout` 和真实 Git E2E：从受管 Worktree 读取实际变化，分别计算可跨 Checkpoint 复验的 ChangeSet Digest 与绑定现场身份的 Snapshot Digest；提交后再从真实 Commit Diff 和目标原始字节独立重建同一 ChangeSet。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。当前 Closeout 严格停止在 `CheckpointBound`；Human-gated 终态恢复、Verification 和 PRReady 串联仍未开放。
+S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。S3 已实现提交前权威 ChangeSet 与 Git Checkpoint 双向绑定、Closeout Process Manager、CLI `coding-task session closeout` 和真实 Git E2E：从受管 Worktree 读取实际变化，分别计算可跨 Checkpoint 复验的 ChangeSet Digest 与绑定现场身份的 Snapshot Digest；提交后再从真实 Commit Diff 和目标原始字节独立重建同一 ChangeSet。Human-gated Recovery 已接入生产 Composition Root 与 `assess`、`recover`、`effective` CLI，但故障注入和真实 Git 恢复 E2E 尚未完成。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。原 Closeout 终态保持不变；Verification 和 PRReady 串联仍未开放。
 
 ## 2. 目标
 

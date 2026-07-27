@@ -20,6 +20,8 @@ export enum CliOptionName {
   Store = "--store",
   /** 指定 Workspace ID。 */
   Workspace = "--workspace",
+  /** 指定 CodingTask Session ID。 */
+  Session = "--session",
   /** 指定 Hook 绑定的工作区根目录。 */
   Root = "--root",
   /** 指定单一写入 Repository ID。 */

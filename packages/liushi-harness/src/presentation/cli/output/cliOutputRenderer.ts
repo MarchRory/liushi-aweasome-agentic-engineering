@@ -16,6 +16,14 @@ import {
   type CliSuccessEnvelope,
   type RunCliDependencies,
 } from "../contracts/index.js";
+import {
+  writeCodingTaskCellSummary,
+  writeCodingTaskSessionActivationSummary,
+  writeCodingTaskSessionCloseoutRecoveryAssessmentSummary,
+  writeCodingTaskSessionCloseoutRecoverySummary,
+  writeCodingTaskSessionCloseoutSummary,
+  writeCodingTaskSessionEffectiveCloseoutSummary,
+} from "./summary/index.js";
 
 /** 将成功结果渲染为稳定 JSON Schema 或 Human 文本。 */
 export function writeSuccess<T>(
@@ -92,15 +100,27 @@ export function writeSuccess<T>(
       return;
     }
     if (command === CliCommand.CellRun) {
-      writeCodingTaskCellSummary(dependencies, data);
+      writeCodingTaskCellSummary(dependencies.writer, data);
       return;
     }
     if (command === CliCommand.CodingTaskSessionActivate) {
-      writeCodingTaskSessionActivationSummary(dependencies, data);
+      writeCodingTaskSessionActivationSummary(dependencies.writer, data);
       return;
     }
     if (command === CliCommand.CodingTaskSessionCloseout) {
-      writeCodingTaskSessionCloseoutSummary(dependencies, data);
+      writeCodingTaskSessionCloseoutSummary(dependencies.writer, data);
+      return;
+    }
+    if (command === CliCommand.CodingTaskSessionCloseoutRecoveryAssess) {
+      writeCodingTaskSessionCloseoutRecoveryAssessmentSummary(dependencies.writer, data);
+      return;
+    }
+    if (command === CliCommand.CodingTaskSessionCloseoutRecover) {
+      writeCodingTaskSessionCloseoutRecoverySummary(dependencies.writer, data);
+      return;
+    }
+    if (command === CliCommand.CodingTaskSessionEffectiveCloseout) {
+      writeCodingTaskSessionEffectiveCloseoutSummary(dependencies.writer, data);
       return;
     }
     if (command === CliCommand.InitDryRun) {
@@ -157,15 +177,27 @@ export function writeBlocked<T>(
     return;
   }
   if (command === CliCommand.CellRun) {
-    writeCodingTaskCellSummary(dependencies, data);
+    writeCodingTaskCellSummary(dependencies.writer, data);
     return;
   }
   if (command === CliCommand.CodingTaskSessionActivate) {
-    writeCodingTaskSessionActivationSummary(dependencies, data);
+    writeCodingTaskSessionActivationSummary(dependencies.writer, data);
     return;
   }
   if (command === CliCommand.CodingTaskSessionCloseout) {
-    writeCodingTaskSessionCloseoutSummary(dependencies, data);
+    writeCodingTaskSessionCloseoutSummary(dependencies.writer, data);
+    return;
+  }
+  if (command === CliCommand.CodingTaskSessionCloseoutRecoveryAssess) {
+    writeCodingTaskSessionCloseoutRecoveryAssessmentSummary(dependencies.writer, data);
+    return;
+  }
+  if (command === CliCommand.CodingTaskSessionCloseoutRecover) {
+    writeCodingTaskSessionCloseoutRecoverySummary(dependencies.writer, data);
+    return;
+  }
+  if (command === CliCommand.CodingTaskSessionEffectiveCloseout) {
+    writeCodingTaskSessionEffectiveCloseoutSummary(dependencies.writer, data);
   }
 }
 
@@ -235,42 +267,6 @@ function writeProjectProfileBundleSummary(dependencies: RunCliDependencies, data
   dependencies.writer.stdout(
     `Project profile bundle ${String(data["digest"])}: workspace=${String(data["workspaceId"])} graphRevision=${String(data["workspaceGraphRevision"])} revision=${String(data["revision"])} profiles=${countEntries(data["profiles"])} rules=${isRecord(ruleCatalog) ? countEntries(ruleCatalog["rules"]) : 0}.\n`,
   );
-}
-
-function writeCodingTaskCellSummary(dependencies: RunCliDependencies, data: unknown): void {
-  if (!isRecord(data)) return;
-  const stoppedStage = data["stoppedStage"];
-  dependencies.writer.stdout(
-    `CodingTask cell: status=${scalarString(data["status"])} stoppedStage=${stoppedStage === undefined ? "none" : scalarString(stoppedStage)} receipts=${countEntries(data["receipts"])}.\n`,
-  );
-}
-
-function writeCodingTaskSessionActivationSummary(
-  dependencies: RunCliDependencies,
-  data: unknown,
-): void {
-  if (!isRecord(data)) return;
-  const stoppedStage = data["stoppedStage"];
-  const worktreeRoot = data["worktreeRoot"];
-  dependencies.writer.stdout(
-    `CodingTask session activation: status=${scalarString(data["status"])} stoppedStage=${stoppedStage === undefined ? "none" : scalarString(stoppedStage)} receipts=${countEntries(data["receipts"])} worktreeRoot=${worktreeRoot === undefined ? "none" : scalarString(worktreeRoot)}.\n`,
-  );
-}
-
-function writeCodingTaskSessionCloseoutSummary(
-  dependencies: RunCliDependencies,
-  data: unknown,
-): void {
-  if (!isRecord(data)) return;
-  const stoppedStage = data["stoppedStage"];
-  const errorCode = data["errorCode"];
-  dependencies.writer.stdout(
-    `CodingTask session closeout: status=${scalarString(data["status"])} stoppedStage=${stoppedStage === null || stoppedStage === undefined ? "none" : scalarString(stoppedStage)} version=${scalarString(data["version"])} snapshot=${String(isPresent(data["snapshot"]))} coverage=${String(isPresent(data["coverageManifest"]))} checkpoint=${String(isPresent(data["checkpoint"]))} errorCode=${errorCode === null || errorCode === undefined ? "none" : scalarString(errorCode)}.\n`,
-  );
-}
-
-function isPresent(value: unknown): boolean {
-  return value !== null && value !== undefined;
 }
 
 function countEntries(value: unknown): number {

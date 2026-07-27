@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service 与 Effective Resolver 已实现；Composition Root/CLI 接线和真实 Git 恢复 E2E 尚未实现。Closeout State v3 的终态语义保持不变。**
+**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root 与 CLI 已实现；故障注入和真实 Git 恢复 E2E 尚未实现。Closeout State v3 的终态语义保持不变。**
 
 ## 1. 决策
 
@@ -92,6 +92,26 @@ Resolution 使用封闭枚举：
 
 任何其他 Human 文本只能作为外部说明，不能成为状态机输入。
 
+### 4.1 CLI 与操作顺序
+
+CLI 只暴露三个窄入口，不生成 Human Command，也不接受可以绕过领域校验的 Resolution 参数：
+
+```text
+liushi-harness coding-task session closeout assess --workspace <id> --session <id> --repository <id> --root <absolute-path> --json
+liushi-harness coding-task session closeout recover --file <human-command.json> --workspace <id> --session <id> --repository <id> --root <absolute-path> --actor-id <human-id> --json
+liushi-harness coding-task session closeout effective --workspace <id> --session <id> --json
+```
+
+标准操作顺序：
+
+1. Human 运行 `assess`，审阅 `assessmentDigest`、`disposition`、`allowedResolution` 与 `diagnostic`。
+2. 只有 `disposition=resolution_available` 时，Human 才按第 4 节创建完整 Command Envelope；`requestedResolution` 必须等于 Assessment 唯一允许值。
+3. Human 运行 `recover`。CLI 先复验命令行 Actor、Workspace、Session 与文档绑定，再由 Application Command Gateway 在 Repository Lock 内重新评估；CLI 不直接写 Recovery State 或 Checkpoint。
+4. `committed` 或 `duplicate` 返回退出码 `0`；冲突或需要 Human 决策返回 `4`；Repository Lock 暂不可用返回 `5`；结果未知返回 `8`，调用方不得自动重试。
+5. Human 或后续流水线运行 `effective`。只有返回 `resolved`，下游才可消费其 Checkpoint；`unresolved` 返回退出码 `4`。
+
+`--root` 与 `--actor-id` 仍是操作员声明，不是身份认证。企业接入必须由受信包装器或批准后的 Registry 注入 Repository Root 和 Human 身份；Coding Agent 不应拥有 Runtime Store 写权限。
+
 ## 5. Recovery Process State
 
 独立 Recovery Record 使用以下状态：
@@ -166,7 +186,8 @@ File Store 已实现以下关闭式语义：
 5. 已完成 Human Command Contract、严格 parser 与 canonical request digest 重算。
 6. 已完成 Repository Lock 内 fresh reassessment、create-only/CAS 状态推进、至多一次 Checkpoint 执行、Executing 只读恢复和 Command Gateway Service。
 7. 已完成 Effective Resolver、原成功短路、恢复精确绑定和稳定 unresolved 分类。
-8. 下一步接入 Composition Root/CLI、故障注入、真实 Git E2E 和恢复 SOP。
+8. 已完成生产 Composition Root、三个 Recovery CLI 入口、稳定退出码、Human 脱敏摘要和恢复 SOP。
+9. 下一步补齐故障注入与真实 Git 恢复 E2E。
 
 每个切片必须独立提交，并保持原 Closeout v3、CLI Exit Code 和真实 Git E2E 全部回归通过。
 

@@ -10,6 +10,7 @@ import {
 import {
   CLI_EXIT_CODE_CONFLICT,
   CliCommand,
+  CliApplicationBindingScope,
   CliResponseStatus,
   CliVerificationMode,
   runCli,
@@ -35,6 +36,7 @@ describe("CodingTask Cell CLI", () => {
       },
     });
     expect(setup.createApplication).toHaveBeenCalledWith(".runtime", {
+      scope: CliApplicationBindingScope.CodingTaskCell,
       repositoryBinding: {
         workspaceId: "workspace-1",
         repositoryId: "repository-1",

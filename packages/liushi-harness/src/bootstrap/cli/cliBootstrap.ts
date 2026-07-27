@@ -1,6 +1,7 @@
 import {
   NodeJsonDocumentReaderAdapter,
   runCli,
+  CliApplicationBindingScope,
   CliVerificationMode,
   type CliApplicationFactory,
   type CliApplicationStartupConfig,
@@ -37,33 +38,40 @@ export async function runCliBootstrap(args: readonly string[]): Promise<number> 
   });
 }
 
-/** 创建将 Cell CLI 启动配置映射到真实 Composition Root 的生产工厂。 */
+/** 按明确作用域将 CLI 启动配置映射到真实 Composition Root。 */
 export function createProductionCliApplicationFactory(): CliApplicationFactory {
   return {
     create(storeRoot: string, startupConfig?: CliApplicationStartupConfig) {
       if (startupConfig === undefined)
         return createHarnessApplication({ storeRoot, packageVersion: packageJson.version });
       const repositoryBinding = startupConfig.repositoryBinding;
-      return createHarnessApplication({
-        storeRoot,
-        packageVersion: packageJson.version,
-        repositoryRootResolver: new StaticRepositoryRootResolverAdapter([repositoryBinding]),
-        ...(startupConfig.sessionActorId === undefined
-          ? { codingTaskCellRuntimeBinding: repositoryBinding }
-          : {
-              codingTaskSessionRuntimeBinding: {
-                ...repositoryBinding,
-                agentActorId: startupConfig.sessionActorId,
-              },
-            }),
-        ...(startupConfig.verificationMode === undefined
-          ? {}
-          : {
-              verificationExecutionMode: mapVerificationExecutionMode(
-                startupConfig.verificationMode,
-              ),
-            }),
-      });
+      const repositoryRootResolver = new StaticRepositoryRootResolverAdapter([repositoryBinding]);
+      switch (startupConfig.scope) {
+        case CliApplicationBindingScope.Repository:
+          return createHarnessApplication({
+            storeRoot,
+            packageVersion: packageJson.version,
+            repositoryRootResolver,
+          });
+        case CliApplicationBindingScope.CodingTaskCell:
+          return createHarnessApplication({
+            storeRoot,
+            packageVersion: packageJson.version,
+            repositoryRootResolver,
+            codingTaskCellRuntimeBinding: repositoryBinding,
+            verificationExecutionMode: mapVerificationExecutionMode(startupConfig.verificationMode),
+          });
+        case CliApplicationBindingScope.CodingTaskSession:
+          return createHarnessApplication({
+            storeRoot,
+            packageVersion: packageJson.version,
+            repositoryRootResolver,
+            codingTaskSessionRuntimeBinding: {
+              ...repositoryBinding,
+              agentActorId: startupConfig.sessionActorId,
+            },
+          });
+      }
     },
   };
 }

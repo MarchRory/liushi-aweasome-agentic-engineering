@@ -18,6 +18,7 @@ import {
   CLI_EXIT_CODE_OUTCOME_UNKNOWN,
   CLI_EXIT_CODE_SUCCESS,
   CliCommand,
+  CliApplicationBindingScope,
   CliOutputFormat,
   CliResponseStatus,
   parseCliArguments,
@@ -89,6 +90,7 @@ describe("CodingTask Session Closeout CLI runner", () => {
     expect(setup.read).toHaveBeenCalledWith("closeout.json");
     expect(setup.execute).toHaveBeenCalledWith(setup.document);
     expect(setup.createApplication).toHaveBeenCalledWith(".custom", {
+      scope: CliApplicationBindingScope.CodingTaskSession,
       repositoryBinding: {
         workspaceId: "workspace-1",
         repositoryId: "repository-1",

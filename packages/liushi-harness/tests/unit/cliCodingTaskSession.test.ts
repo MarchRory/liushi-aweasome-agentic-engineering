@@ -19,6 +19,7 @@ import {
   CLI_EXIT_CODE_OUTCOME_UNKNOWN,
   CLI_EXIT_CODE_SUCCESS,
   CliCommand,
+  CliApplicationBindingScope,
   CliOutputFormat,
   CliResponseStatus,
   parseCliArguments,
@@ -104,6 +105,7 @@ describe("CodingTask Session Activate CLI runner", () => {
     expect(setup.read).toHaveBeenCalledWith("activation.json");
     expect(setup.execute).toHaveBeenCalledWith(setup.manifest);
     expect(setup.createApplication).toHaveBeenCalledWith(".custom", {
+      scope: CliApplicationBindingScope.CodingTaskSession,
       repositoryBinding: {
         workspaceId: "workspace-1",
         repositoryId: "repository-1",

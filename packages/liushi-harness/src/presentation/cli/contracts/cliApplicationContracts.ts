@@ -3,6 +3,9 @@ import type {
   ApplyInstallPlanUseCase,
   ActivateCodingTaskSessionService,
   CodingTaskSessionCloseoutManager,
+  AssessCodingTaskSessionCloseoutRecoveryUseCase,
+  CodingTaskSessionCloseoutRecoveryCommandService,
+  CodingTaskSessionEffectiveCloseoutResolver,
   CodingTaskCellService,
   CheckRuntimeHealthUseCase,
   CodexHookHandler,
@@ -21,7 +24,7 @@ import type {
 } from "#application/index.js";
 
 import type { HookInputReader, JsonDocumentReader } from "../input/index.js";
-import type { CliVerificationMode } from "../enums/index.js";
+import type { CliApplicationBindingScope, CliVerificationMode } from "../enums/index.js";
 
 /** CLI 启动期由操作员显式提供的 Repository 绑定。 */
 export interface CliRepositoryBinding {
@@ -33,15 +36,39 @@ export interface CliRepositoryBinding {
   readonly repositoryRoot: string;
 }
 
-/** 一次 CLI Application 创建所需的可选启动配置。 */
-export interface CliApplicationStartupConfig {
-  /** Cell 或 Session 命令使用的操作员单仓绑定。 */
+/** Repository 作用域的 CLI Application 启动配置。 */
+export interface CliRepositoryApplicationStartupConfig {
+  /** 明确的 Application 绑定作用域。 */
+  readonly scope: CliApplicationBindingScope.Repository;
+  /** Repository 作用域使用的单仓绑定。 */
   readonly repositoryBinding: CliRepositoryBinding;
-  /** 只有 Cell 命令需要显式选择 Verification 模式。 */
-  readonly verificationMode?: CliVerificationMode;
-  /** Session Activation 与 Closeout 使用的启动期 Agent 审计身份。 */
-  readonly sessionActorId?: string;
 }
+
+/** CodingTask Cell 作用域的 CLI Application 启动配置。 */
+export interface CliCodingTaskCellApplicationStartupConfig {
+  /** 明确的 Application 绑定作用域。 */
+  readonly scope: CliApplicationBindingScope.CodingTaskCell;
+  /** Cell 作用域使用的单仓绑定。 */
+  readonly repositoryBinding: CliRepositoryBinding;
+  /** Cell 作用域使用的 Verification 模式。 */
+  readonly verificationMode: CliVerificationMode;
+}
+
+/** CodingTask Session 作用域的 CLI Application 启动配置。 */
+export interface CliCodingTaskSessionApplicationStartupConfig {
+  /** 明确的 Application 绑定作用域。 */
+  readonly scope: CliApplicationBindingScope.CodingTaskSession;
+  /** Session 作用域使用的单仓绑定。 */
+  readonly repositoryBinding: CliRepositoryBinding;
+  /** Session 作用域使用的启动期 Agent 审计身份。 */
+  readonly sessionActorId: string;
+}
+
+/** CLI Application 的 discriminated union 启动配置。 */
+export type CliApplicationStartupConfig =
+  | CliRepositoryApplicationStartupConfig
+  | CliCodingTaskCellApplicationStartupConfig
+  | CliCodingTaskSessionApplicationStartupConfig;
 
 /** 生成只读、可序列化的执行器配置投影。 */
 export interface HookConfigProjector {
@@ -61,6 +88,12 @@ export interface CliApplication {
   activateCodingTaskSession: ActivateCodingTaskSessionService;
   /** 可恢复地关闭外部 Agent CodingTask Session。 */
   closeoutCodingTaskSession: CodingTaskSessionCloseoutManager;
+  /** 只读评估当前 Closeout Recovery。 */
+  assessCodingTaskSessionCloseoutRecovery: AssessCodingTaskSessionCloseoutRecoveryUseCase;
+  /** 执行 Human Gate 批准的 Closeout Recovery。 */
+  recoverCodingTaskSessionCloseout: CodingTaskSessionCloseoutRecoveryCommandService;
+  /** 解析原始 Closeout 与 Recovery 后的 Effective Closeout。 */
+  resolveCodingTaskSessionEffectiveCloseout: CodingTaskSessionEffectiveCloseoutResolver;
   /** Runtime 健康检查 Use Case。 */
   checkRuntimeHealth: CheckRuntimeHealthUseCase;
   /** Project Profile 编译 Use Case。 */

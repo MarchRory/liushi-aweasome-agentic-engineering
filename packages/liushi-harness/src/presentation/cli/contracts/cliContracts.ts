@@ -12,6 +12,9 @@ import type { InitApplyCliCommand, InitDryRunCliCommand } from "./cliInstallatio
 import type {
   CodingTaskSessionActivateCliCommand,
   CodingTaskSessionCloseoutCliCommand,
+  CodingTaskSessionCloseoutRecoveryAssessCliCommand,
+  CodingTaskSessionCloseoutRecoverCliCommand,
+  CodingTaskSessionEffectiveCloseoutCliCommand,
 } from "./cliCodingTaskSessionContracts.js";
 
 /** CLI 接受的 Human Approval 决策值。 */
@@ -207,6 +210,9 @@ export type ParsedCliCommand =
   | CellRunCliCommand
   | CodingTaskSessionActivateCliCommand
   | CodingTaskSessionCloseoutCliCommand
+  | CodingTaskSessionCloseoutRecoveryAssessCliCommand
+  | CodingTaskSessionCloseoutRecoverCliCommand
+  | CodingTaskSessionEffectiveCloseoutCliCommand
   | HookBindCliCommand
   | HookHandleCliCommand
   | HookConfigCliCommand
