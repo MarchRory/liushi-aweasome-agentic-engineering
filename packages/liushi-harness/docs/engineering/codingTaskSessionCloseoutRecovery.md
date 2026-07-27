@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment、Recovery Process State、File Store 与 Human Command Contract 已实现；锁内执行链仍在实现。Closeout State v3 的终态语义保持不变。**
+**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract 与锁内 Handler/Service 已实现；Effective Resolver、Composition Root/CLI 接线和真实 Git 恢复 E2E 尚未实现。Closeout State v3 的终态语义保持不变。**
 
 ## 1. 决策
 
@@ -71,6 +71,19 @@ Recovery Command 必须是完整 Command Envelope，并满足：
 - `requestDigest` 与严格 Payload 规范摘要一致。
 
 严格 parser 只验证 Envelope 与规范 Payload，不在锁外猜测 `expectedVersion` 是否仍匹配现场。`expectedVersion`、`expectedAssessmentDigest` 与 `requestedResolution` 必须在 Repository Lock 内 fresh reassessment 后共同复验，任一漂移都保持零执行副作用。
+
+锁内处理使用以下固定决策：
+
+| Recovery State     | Resolution     | 锁内动作                                                                                | `execute`              |
+| ------------------ | -------------- | --------------------------------------------------------------------------------------- | ---------------------- |
+| 不存在             | 任一允许值     | Fresh 三元组精确匹配后 create-only `Approved v0`                                        | 否                     |
+| `Approved`         | `BindExisting` | 使用 fresh Assessment 已完整复验的 Present Checkpoint，CAS 为 `CheckpointBound v1`      | 永不调用               |
+| `Approved`         | `RetryOnce`    | Fresh Assessment 必须仍为 Absent；先 CAS 为 `Executing v1`                              | 仅本次 CAS winner 一次 |
+| `Executing`        | `RetryOnce`    | 只读 assess/inspect；Present 时绑定，Absent/Unknown 或无法证明时进入 `HumanRequired v2` | 禁止调用               |
+| 任一活动状态       | 现场漂移       | 已有 Record 时 CAS `HumanRequired`；尚无 Record 时直接拒绝                              | 否                     |
+| 任一 Recovery 终态 | 任一值         | 返回既有结果，不覆盖、不迁移                                                            | 禁止调用               |
+
+`Executing` 重放不能要求 fresh Assessment Digest 仍等于 Human Command 中的旧值，因为首次 Checkpoint 尝试本身可能把现场从 Absent 改为 Present。重放只允许复验 Recovery Record 的不可变命令、Closeout、Snapshot 与 ChangeSet 身份，再只读 inspect；旧 Assessment 只证明首次执行授权，绝不授权第二次 `execute`。
 
 Resolution 使用封闭枚举：
 
@@ -149,8 +162,8 @@ File Store 已实现以下关闭式语义：
 3. 已完成独立 Recovery Process State、精确状态可达性与 successor 校验。
 4. 已完成 Recovery Process File Store、create-only 初始化、CAS、严格重建与未知结果分类。
 5. 已完成 Human Command Contract、严格 parser 与 canonical request digest 重算。
-6. 下一步实现 Repository Lock 内 fresh reassessment 与至多一次执行。
-7. 实现 Effective Resolver。
+6. 已完成 Repository Lock 内 fresh reassessment、create-only/CAS 状态推进、至多一次 Checkpoint 执行、Executing 只读恢复和 Command Gateway Service。
+7. 下一步实现 Effective Resolver。
 8. 接入 CLI、故障注入、真实 Git E2E 和恢复 SOP。
 
 每个切片必须独立提交，并保持原 Closeout v3、CLI Exit Code 和真实 Git E2E 全部回归通过。

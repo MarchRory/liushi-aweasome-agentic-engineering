@@ -66,6 +66,8 @@ export interface CodingTaskSessionCloseoutRecoveryHarnessOptions {
 }
 /** 可直接调用公开 Use Case 的 Assessment Harness。 */
 export interface CodingTaskSessionCloseoutRecoveryHarness {
+  /** 供锁内 Handler 组合测试复用的真实 Assessment Service。 */
+  readonly service: CodingTaskSessionCloseoutRecoveryAssessmentService;
   /** 公开 Assessment Use Case。 */
   readonly useCase: AssessCodingTaskSessionCloseoutRecoveryUseCase;
   /** 固定测试身份。 */
@@ -150,6 +152,7 @@ export function createCodingTaskSessionCloseoutRecoveryHarness(
   const service = new CodingTaskSessionCloseoutRecoveryAssessmentService(dependencies);
   const useCase = new AssessCodingTaskSessionCloseoutRecoveryUseCase(service);
   return {
+    service,
     useCase,
     authority,
     calls,
