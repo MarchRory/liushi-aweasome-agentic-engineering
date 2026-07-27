@@ -15,6 +15,7 @@ import {
   CLOSEOUT_CLI_REPOSITORY_ID,
   CLOSEOUT_CLI_SESSION_ID,
   CLOSEOUT_CLI_SOURCE_TASK_ID,
+  CLOSEOUT_CLI_SUBMITTED_AT,
   CLOSEOUT_CLI_WORKSPACE_ID,
 } from "./codingTaskSessionCloseoutCliConstants.js";
 import {
@@ -27,6 +28,7 @@ import {
   runCloseoutCliGit,
 } from "./codingTaskSessionCloseoutCliGitFixture.js";
 import type { CodingTaskSessionCloseoutCliSetup } from "./codingTaskSessionCloseoutCliContracts.js";
+import { FixedClock } from "../runtime/index.js";
 
 /** 创建真实 Git、审批状态、Session Activation、Hook Evidence 与 Closeout Command。 */
 export async function createCodingTaskSessionCloseoutCliSetup(
@@ -86,6 +88,7 @@ async function initializeRepository(repositoryRoot: string): Promise<void> {
 function createPreparationApplication(storeRoot: string, repositoryRoot: string) {
   return createHarnessApplication({
     storeRoot,
+    clock: new FixedClock(CLOSEOUT_CLI_SUBMITTED_AT),
     taskIdGenerator: { next: () => CLOSEOUT_CLI_SOURCE_TASK_ID },
     repositoryRootResolver: new StaticRepositoryRootResolverAdapter([
       {
