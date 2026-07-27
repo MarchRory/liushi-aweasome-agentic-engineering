@@ -1,10 +1,10 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract 与锁内 Handler/Service 已实现；Effective Resolver、Composition Root/CLI 接线和真实 Git 恢复 E2E 尚未实现。Closeout State v3 的终态语义保持不变。**
+**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service 与 Effective Resolver 已实现；Composition Root/CLI 接线和真实 Git 恢复 E2E 尚未实现。Closeout State v3 的终态语义保持不变。**
 
 ## 1. 决策
 
-`Blocked` 和 `OutcomeUnknown` 不能通过原 Closeout Command 重放恢复。恢复使用独立的 `CloseoutRecovery` Process Record，并由只读 Effective Resolver 在未来向 Submission 投影可消费的 `CheckpointBound`。
+`Blocked` 和 `OutcomeUnknown` 不能通过原 Closeout Command 重放恢复。恢复使用独立的 `CloseoutRecovery` Process Record，并由只读 Effective Resolver 向后续 Submission 投影可消费的 `CheckpointBound`。
 
 不选择修改 `closeout.json` 的原因：
 
@@ -153,7 +153,9 @@ File Store 已实现以下关闭式语义：
 - 原 Closeout 为终态且存在精确绑定的 Recovery `CheckpointBound` 时返回恢复 Checkpoint。
 - Recovery Record 缺失、非终态、摘要漂移或身份不一致时返回 unresolved。
 
-本切片只定义并测试 Resolver，不提前修改 Submission、Verification 或 PRReady。
+当前 Resolver 严格只接受 `workspaceId` 与 `sessionId`，并以只读 `load`/`find` 能力组合两份持久化事实。原 `CheckpointBound` 会短路返回，不读取 Recovery 或计算摘要；恢复路径必须逐项匹配 Workspace、Session、CodingTask、Task、Repository、Attempt、原 Closeout version 与完整 State Digest，以及 Snapshot、ChangeSet、Checkpoint 路径绑定。Store 损坏、I/O 或摘要计算异常保持失败，不能降级成 unresolved。
+
+本切片只定义并测试 Resolver，没有修改 Submission、Verification 或 PRReady。
 
 ## 8. 实现顺序
 
@@ -163,8 +165,8 @@ File Store 已实现以下关闭式语义：
 4. 已完成 Recovery Process File Store、create-only 初始化、CAS、严格重建与未知结果分类。
 5. 已完成 Human Command Contract、严格 parser 与 canonical request digest 重算。
 6. 已完成 Repository Lock 内 fresh reassessment、create-only/CAS 状态推进、至多一次 Checkpoint 执行、Executing 只读恢复和 Command Gateway Service。
-7. 下一步实现 Effective Resolver。
-8. 接入 CLI、故障注入、真实 Git E2E 和恢复 SOP。
+7. 已完成 Effective Resolver、原成功短路、恢复精确绑定和稳定 unresolved 分类。
+8. 下一步接入 Composition Root/CLI、故障注入、真实 Git E2E 和恢复 SOP。
 
 每个切片必须独立提交，并保持原 Closeout v3、CLI Exit Code 和真实 Git E2E 全部回归通过。
 
