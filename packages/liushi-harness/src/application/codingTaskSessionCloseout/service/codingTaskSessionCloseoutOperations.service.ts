@@ -8,7 +8,7 @@ import {
   failure,
   type Result,
 } from "#common/index.js";
-import { CODING_TASK_SESSION_CLOSEOUT_COMMIT_MESSAGE_PREFIX } from "../constants/index.js";
+import { createCodingTaskSessionCheckpointInput } from "../checkpointInput/index.js";
 import type {
   CodingTaskSessionCloseoutAuthority,
   CodingTaskSessionCloseoutCheckpointResult,
@@ -36,18 +36,11 @@ export function createCheckpointInput(
   authority: CodingTaskSessionCloseoutAuthority,
   snapshot: NonNullable<CodingTaskSessionCloseoutState["snapshot"]>,
 ): ChangeSetCheckpointInput {
-  const aggregate = authority.codingTask.aggregate;
-  return {
-    checkpointInput: {
-      repositoryId: aggregate.repositoryId,
-      repositoryRoot: authority.repositoryRoot,
-      worktreeBinding: aggregate.worktreeBinding,
-      baseRevision: aggregate.baseRevision,
-      writeSet: aggregate.writeSet,
-      commitMessage: `${CODING_TASK_SESSION_CLOSEOUT_COMMIT_MESSAGE_PREFIX} ${aggregate.codingTaskId}`,
-    },
-    preSubmitSnapshot: snapshot,
-  };
+  return createCodingTaskSessionCheckpointInput({
+    repositoryRoot: authority.repositoryRoot,
+    aggregate: authority.codingTask.aggregate,
+    snapshot,
+  });
 }
 
 /** 调用 Admission 关闭窄契约，并把抛出转换为可分类失败。 */

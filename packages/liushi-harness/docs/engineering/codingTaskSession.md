@@ -175,7 +175,8 @@ Coverage Proof 现在由 Closeout State v3 消费：`snapshot.changedPaths` 必�
 - 已实现：Closeout v3 的 changed-path 覆盖验证；Snapshot changed paths 必须属于 Action targets union，全部 Action targets 必须属于 Write Set，允许 Write Set 内获准但无最终 diff 的 target。
 - 已实现：旧 Closeout v1 与旧 v2 的独立分类；完整自洽旧 v2 保留原始 bytes 并返回显式迁移所需的 `PreconditionNotMet`，unknown field、manifest/binding/locator/stage 漂移返回 `CorruptStore`。
 - 已实现：Repository Lock、Coverage Proof 消费和阶段恢复组成的 Closeout Process Manager，活动状态可幂等推进到 `CheckpointBound`。
-- 待实现：Submission、Verification、Evidence 和 PRReady 编排。
+- 已实现：独立 Delivery Submission 将 Effective Closeout 接入 CodingTask。
+- 待实现：Verification、Evidence 和 PRReady 自动编排。
 - 已实现：CLI `coding-task session closeout` 与真实 Git 唯一 Checkpoint、跨 Application 重放 E2E。
 - 待实现：`Blocked` / `OutcomeUnknown` 的只读 Assessment 与 Human-gated Reconcile。
 

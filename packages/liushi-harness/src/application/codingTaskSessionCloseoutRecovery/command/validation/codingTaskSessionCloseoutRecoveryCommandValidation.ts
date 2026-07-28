@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { parseCommandEnvelope } from "#application/command/index.js";
+import { isCanonicalCommandTimestamp, parseCommandEnvelope } from "#application/command/index.js";
 import { CODING_TASK_SESSION_CLOSEOUT_AGGREGATE_TYPE } from "#application/codingTaskSessionCloseout/index.js";
 import type { ContentDigestPort } from "#application/ports/contentDigest/index.js";
 import {
@@ -45,7 +45,7 @@ export function parseCodingTaskSessionCloseoutRecoveryCommand(
   if (envelope.value.actor.kind !== ActorKind.Human) {
     return forbidden("Closeout Recovery Command 必须由 Human Actor 提交。");
   }
-  if (!isCanonicalIsoUtc(envelope.value.submittedAt)) {
+  if (!isCanonicalCommandTimestamp(envelope.value.submittedAt)) {
     return invalid("Closeout Recovery Command submittedAt 必须是规范 UTC 时间。");
   }
 
@@ -88,16 +88,4 @@ function invalid(message: string, cause?: unknown): Result<never, HarnessError> 
 
 function forbidden(message: string): Result<never, HarnessError> {
   return failure(new HarnessError(HarnessErrorCode.OperationForbidden, message));
-}
-
-function isCanonicalIsoUtc(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u.test(value)) {
-    return false;
-  }
-  const expected = value.includes(".") ? value : `${value.slice(0, -1)}.000Z`;
-  try {
-    return new Date(value).toISOString() === expected;
-  } catch {
-    return false;
-  }
 }

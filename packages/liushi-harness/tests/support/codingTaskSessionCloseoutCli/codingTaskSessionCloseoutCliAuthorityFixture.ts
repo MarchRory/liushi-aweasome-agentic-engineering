@@ -38,7 +38,7 @@ export async function createCodingTaskSessionCloseoutCliSetup(
   const repositoryRoot = await createCloseoutCliTemporaryRoot(roots, "liushi-closeout-repo-");
   await initializeRepository(repositoryRoot);
   const baseRevision = await runCloseoutCliGit(repositoryRoot, ["rev-parse", "HEAD"]);
-  const application = createPreparationApplication(storeRoot, repositoryRoot);
+  const application = createCodingTaskSessionCloseoutCliApplication(storeRoot, repositoryRoot);
   const executionAuthorization = await createCloseoutCliApprovedAuthorization(application);
   const worktreeRoot = join(repositoryRoot, "worktrees", "session");
   const manifest = createCloseoutCliSessionManifest({
@@ -68,6 +68,7 @@ export async function createCodingTaskSessionCloseoutCliSetup(
     workspaceId: CLOSEOUT_CLI_WORKSPACE_ID,
     repositoryId: CLOSEOUT_CLI_REPOSITORY_ID,
     sessionId: CLOSEOUT_CLI_SESSION_ID,
+    codingTaskId: CLOSEOUT_CLI_CODING_TASK_ID,
     agentActorId: CLOSEOUT_CLI_AGENT_ACTOR_ID,
     evidenceFiles: evidenceFiles(storeRoot, closeoutStateFile),
     executionAuthorization,
@@ -85,7 +86,11 @@ async function initializeRepository(repositoryRoot: string): Promise<void> {
   await runCloseoutCliGit(repositoryRoot, ["commit", "-m", "base"]);
 }
 
-function createPreparationApplication(storeRoot: string, repositoryRoot: string) {
+/** 使用相同可信绑定重建生产 Composition Root，用于跨进程语义重放。 */
+export function createCodingTaskSessionCloseoutCliApplication(
+  storeRoot: string,
+  repositoryRoot: string,
+): ReturnType<typeof createHarnessApplication> {
   return createHarnessApplication({
     storeRoot,
     clock: new FixedClock(CLOSEOUT_CLI_SUBMITTED_AT),

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { parseCommandEnvelope } from "#application/command/index.js";
+import { isCanonicalCommandTimestamp, parseCommandEnvelope } from "#application/command/index.js";
 import type { ContentDigestPort } from "#application/ports/contentDigest/index.js";
 import {
   ActorKind,
@@ -64,7 +64,7 @@ export function parseCodingTaskSessionCloseoutCommand(
   if (envelope.value.actor.kind !== ActorKind.Agent) {
     return invalid("Closeout Command 必须由 Agent Actor 发起。");
   }
-  if (!isCanonicalIsoUtc(envelope.value.submittedAt)) {
+  if (!isCanonicalCommandTimestamp(envelope.value.submittedAt)) {
     return invalid("Closeout Command submittedAt 必须是规范 UTC 时间。");
   }
   const payload = payloadSchema.safeParse(envelope.value.payload);
@@ -262,12 +262,4 @@ function invalid(message: string, cause?: unknown): Result<never, HarnessError> 
 
 function precondition(message: string, cause?: unknown): Result<never, HarnessError> {
   return failure(new HarnessError(HarnessErrorCode.PreconditionNotMet, message, {}, cause));
-}
-
-function isCanonicalIsoUtc(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u.test(value)) {
-    return false;
-  }
-  const expected = value.includes(".") ? value : `${value.slice(0, -1)}.000Z`;
-  return new Date(value).toISOString() === expected;
 }

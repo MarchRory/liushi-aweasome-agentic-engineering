@@ -217,6 +217,19 @@ export function isCommandErrorCode(value: unknown): value is CommandErrorCode {
   return Object.values(CommandErrorCode).some((code) => code === value);
 }
 
+/** 判断时间字符串是否为可稳定重建的规范 UTC Command 时间。 */
+export function isCanonicalCommandTimestamp(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u.test(value)) {
+    return false;
+  }
+  const expected = value.includes(".") ? value : `${value.slice(0, -1)}.000Z`;
+  try {
+    return new Date(value).toISOString() === expected;
+  } catch {
+    return false;
+  }
+}
+
 function createCommandSchemaError(error: z.ZodError, message: string): HarnessError {
   const issue = error.issues[0];
   return new HarnessError(

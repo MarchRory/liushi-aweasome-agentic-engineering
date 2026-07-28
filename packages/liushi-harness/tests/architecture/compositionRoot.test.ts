@@ -186,6 +186,29 @@ describe("composition root", () => {
     );
   });
 
+  it("Session Delivery 复用 Effective Resolver、Checkpoint Port 与 Command Gateway", () => {
+    const application = createHarnessApplication({
+      storeRoot: resolve(".tmp", "session-delivery-composition-store"),
+    });
+    const service = requireObject(application.submitCodingTaskSessionDelivery);
+    const handler = requireObject(readHiddenProperty(service, "handler"));
+    const dependencies = requireObject(readHiddenProperty(handler, "dependencies"));
+
+    expect(readHiddenProperty(service, "gateway")).toBe(application.applicationCommandGateway);
+    expect(readHiddenProperty(dependencies, "effectiveCloseoutResolver")).toBe(
+      application.resolveCodingTaskSessionEffectiveCloseout,
+    );
+    expect(readHiddenProperty(dependencies, "checkpointInspector")).toBe(
+      application.changeSetCheckpoints,
+    );
+    const implementationHandler = requireObject(
+      readHiddenProperty(application.implementationSubmissions, "handler"),
+    );
+    expect(readHiddenProperty(dependencies, "unresolvedProvisionGuard")).toBe(
+      readHiddenProperty(implementationHandler, "unresolvedProvisionGuard"),
+    );
+  });
+
   it("保留调用方注入的 Repository Root Resolver", () => {
     const repositoryRootResolver: RepositoryRootResolverPort = {
       resolve: () => Promise.resolve(success({ repositoryRoot: resolve("repository") })),

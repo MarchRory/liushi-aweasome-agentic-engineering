@@ -26,6 +26,7 @@ import type {
   InspectGitChangeSetUseCase,
   CodingTaskSessionCloseoutManager,
   CodingTaskSessionCloseoutRecoveryCommandService,
+  CodingTaskSessionDeliverySubmissionService,
   CodingTaskSessionEffectiveCloseoutResolver,
   AssessCodingTaskSessionCloseoutRecoveryUseCase,
   RunVerificationUseCase,
@@ -155,6 +156,8 @@ export interface HarnessApplication {
   recoverCodingTaskSessionCloseout: CodingTaskSessionCloseoutRecoveryCommandService;
   /** 解析原始 Closeout 与 Recovery 后的最终有效 Checkpoint。 */
   resolveCodingTaskSessionEffectiveCloseout: CodingTaskSessionEffectiveCloseoutResolver;
+  /** 将 Effective Closeout 接纳为 CodingTask ImplementationSubmitted Event。 */
+  submitCodingTaskSessionDelivery: CodingTaskSessionDeliverySubmissionService;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
   runVerification: RunVerificationUseCase;
   /** 执行 Verification 并强一致提交 EvidenceBundle。 */

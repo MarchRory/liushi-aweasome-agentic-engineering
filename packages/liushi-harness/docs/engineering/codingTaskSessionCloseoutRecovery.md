@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root、CLI、确定性故障注入与真实 Git 恢复 E2E 已实现。Closeout State v3 的终态语义保持不变；真实 Codex Pilot 与后续交付串联尚未完成。**
+**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root、CLI、确定性故障注入与真实 Git 恢复 E2E 已实现。下游 Delivery 已消费 Effective Resolver；自动 Verification/Evidence/PRReady 与真实 Codex Pilot 尚未完成。**
 
 ## 1. 决策
 
@@ -175,7 +175,7 @@ File Store 已实现以下关闭式语义：
 
 当前 Resolver 严格只接受 `workspaceId` 与 `sessionId`，并以只读 `load`/`find` 能力组合两份持久化事实。原 `CheckpointBound` 会短路返回，不读取 Recovery 或计算摘要；恢复路径必须逐项匹配 Workspace、Session、CodingTask、Task、Repository、Attempt、原 Closeout version 与完整 State Digest，以及 Snapshot、ChangeSet、Checkpoint 路径绑定。Store 损坏、I/O 或摘要计算异常保持失败，不能降级成 unresolved。
 
-本切片只定义并测试 Resolver，没有修改 Submission、Verification 或 PRReady。
+Resolver 本身仍保持只读。后续独立 Delivery Submission 已将其结果接入 CodingTask，不修改 Recovery State 或原 Closeout State。
 
 ### 7.1 真实 Git 恢复证据
 
@@ -185,7 +185,7 @@ File Store 已实现以下关闭式语义：
 - 真实 Checkpoint 已提交但结果观察丢失的场景进入 `OutcomeUnknown@SnapshotPersisted`，Assessment 复验为 `Present` 后只允许 `BindExisting`，恢复前后始终只有一个 Commit。
 - 两个场景都复验精确 Human Command、真实 Git HEAD、干净 Worktree、Effective Checkpoint 来源和原 `closeout.json` 字节不变；精确 Command 重放返回首个稳定回执且不产生第二次 Git 副作用。
 
-这些证据验证确定性本地恢复协议，不替代真实 Codex/企业 Pilot、外部身份认证、不可信 Runtime Store 的祖先目录 TOCTOU 验收，也不证明 Submission、Verification 与 PRReady 已完成生产串联。
+这些证据验证确定性本地恢复协议。独立 Delivery E2E 已进一步证明 Recovery Checkpoint 可在不重复 Git Commit 的前提下进入 CodingTask Verification；它仍不替代真实 Codex/企业 Pilot、外部身份认证、不可信 Runtime Store 的祖先目录 TOCTOU 验收，也不证明 Verification/Evidence/PRReady 已自动串联。
 
 ## 8. 实现顺序
 
@@ -198,7 +198,7 @@ File Store 已实现以下关闭式语义：
 7. 已完成 Effective Resolver、原成功短路、恢复精确绑定和稳定 unresolved 分类。
 8. 已完成生产 Composition Root、三个 Recovery CLI 入口、稳定退出码、Human 脱敏摘要和恢复 SOP。
 9. 已完成 `RetryOnce` 与 `BindExisting` 的确定性故障注入和真实 Git 恢复 E2E。
-10. 下一步串联 Submission、Verification 与 PRReady，再开展真实 Codex Pilot。
+10. 已完成独立 Delivery Submission 与 Original/Recovery 真实 Git E2E；下一步串联 Verification、Evidence 与 PRReady，再开展真实 Codex Pilot。
 
 每个切片必须独立提交，并保持原 Closeout v3、CLI Exit Code 和真实 Git E2E 全部回归通过。
 
@@ -207,5 +207,5 @@ File Store 已实现以下关闭式语义：
 - 不自动重试 `OutcomeUnknown`。
 - 不允许 Human 直接写入 checkpoint、digest、Snapshot 或 Recovery State。
 - 不增加 Artifact 过期算法；现场变化由精确 Assessment Digest 和版本冲突处理。
-- 不在本阶段接入多仓补偿、后台 Worker、Submission 或真实 Codex Pilot。
+- 不在 Recovery 阶段接入多仓补偿、后台 Worker、Verification 编排或真实 Codex Pilot。
 - 不重写共享 File Lock 的历史替换风险；该问题必须独立评审。

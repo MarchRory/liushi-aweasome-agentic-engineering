@@ -1,6 +1,6 @@
 # CodingTask Session Closeout 状态持久化
 
-**状态：Closeout State v3、Action targets 覆盖绑定、File Store、CodingTaskSessionCloseoutManager、生产 CLI 和真实 Git E2E 已实现；Manager 严格停止在 CheckpointBound。**
+**状态：Closeout State v3、Action targets 覆盖绑定、File Store、CodingTaskSessionCloseoutManager、生产 CLI 和真实 Git E2E 已实现；Manager 严格停止在 CheckpointBound，后续 Delivery 由独立 Command 接入 CodingTask。**
 
 ## 1. 目标与边界
 
@@ -21,10 +21,7 @@ Closeout 必须在 Git 副作用前留下可恢复的提交前事实，并在 Gi
 - CLI `coding-task session closeout` 读取完整 Closeout Command Envelope，并要求 Workspace、Repository、绝对 Root 与 Agent Actor 的显式运行时绑定。CLI 不生成 ID、时间或摘要；`CheckpointBound`、`Blocked` 与 `OutcomeUnknown` 分别映射为成功、冲突和专用未知结果。
 - 真实 Git E2E 通过生产 API 建立 Task、Human Gate、Activation、Binding、Admission、Journal 和 Trace，在真实受管 Worktree 中产生 Write Set 内变更，再通过生产 CLI 创建唯一 ChangeSet-bound Checkpoint；新 Application 重放同一 Command 后，HEAD、Commit 数量和关键持久化证据原始字节均不变化。
 
-未实现：
-
-- `Blocked` / `OutcomeUnknown` 的只读 Assessment、Human-gated 显式恢复命令和恢复 SOP 自动化。
-- Submission、Verification、PRReady 串联、真实 Codex Pilot 和多仓交付编排。
+本切片之后已完成 Human-gated Closeout Recovery 和独立 Delivery Submission。尚未实现自动 Verification/Evidence/PRReady 串联、真实 Codex Pilot 和多仓交付编排。
 
 Coverage Proof 的严格身份、Journal v2 provenance、Trace observation digest 精确集合匹配和 fail-closed 规则不改变现有 Human Gates、多仓写入、Wiki 写入或知识候选晋升边界。
 
@@ -97,6 +94,6 @@ Manager 在副作用前遇到只读 `IoFailure` 或 `LockUnavailable` 时保持�
 
 共享 `ExclusiveFileLockManager` 当前仍存在独立的历史风险：若外部进程在持锁期间删除并替换 Lock 文件，旧句柄释放时可能删除替换后的路径；目录检查也无法消除拥有本机写权限的对手在检查后的替换竞争。本切片不静默修改该公共锁实现。修复它会影响所有 File Store，必须作为独立高风险变更接受 Human 评审和全仓故障注入。
 
-## 7. 下一切片
+## 7. 后续衔接
 
-下一步应为 Human-gated Closeout Recovery：先只读评估终态与真实 Checkpoint，再由绑定精确 Assessment Digest 和 Closeout Version 的 Human Command 对账；不得把未知结果改写成自动重试。恢复边界完成后，再接入 Submission、Verification、Evidence 和 PRReady 串联、真实 Codex Pilot 与多仓交付编排。
+Human-gated Closeout Recovery 已使用独立 Process Record 闭合，Delivery Submission 也已把 Effective Checkpoint 接纳为唯一 `ImplementationSubmitted` Event。下一步应串联 Verification、Evidence 和 PRReady；不得修改本状态机终态或把未知结果改写成自动重试。真实 Codex Pilot 与多仓交付编排仍须在后续独立验证。

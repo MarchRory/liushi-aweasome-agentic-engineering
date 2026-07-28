@@ -13,7 +13,7 @@ Hooks 将 Harness 的确定性规则接入执行器生命周期；Agent Runtime 
 
 ### 1.1 当前实现状态
 
-**状态：S1/S2、停止在 CheckpointBound 的 S3 Closeout，以及 Human-gated Recovery Composition Root/CLI 与确定性真实 Git E2E 已实现，整体仍部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。S2 进一步提供 Session Hook Binding v2、Admission State/File Store 和非等待跨进程 Lease；Activation 会自动初始化 Binding/State。PreAction 在同一 Lease 内复验 Activation、Binding、Runtime Provenance、权威 PlanRisk/G2/G4/Write Set，先写入 `pending`，再提交健康 v2 Intent，最后提交 `admittedActionIds`；任一失败均 fail closed，持久化不确定时为 `outcome_unknown`。PostAction 允许 `waiting_agent` 或 `closing` 中已准入 Action，复验 v2 Intent，写入 Trace、绑定 Trace 摘要的 v2 Observation 与受其因果绑定的 Resolution，并支持重放幂等。S3 的 `CodingTaskSessionCloseoutManager`、生产 CLI 和真实 Git E2E 已完成 Action Coverage、Snapshot、唯一 ChangeSet-bound Checkpoint 与跨 Application 幂等重放。Recovery E2E 已覆盖 `RetryOnce` 与 `BindExisting` 的至多一次 Git 副作用；Submission/Verification/PRReady 串联、真实 Codex TUI 项目 Pilot、其他平台 Projection、Role Runtime 和 Human Battle Runtime 尚未实现。
+**状态：S1/S2、停止在 CheckpointBound 的 S3 Closeout、Human-gated Recovery，以及独立 Delivery Submission 已实现，整体仍部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。S2 进一步提供 Session Hook Binding v2、Admission State/File Store 和非等待跨进程 Lease；Activation 会自动初始化 Binding/State。PreAction 在同一 Lease 内复验 Activation、Binding、Runtime Provenance、权威 PlanRisk/G2/G4/Write Set，先写入 `pending`，再提交健康 v2 Intent，最后提交 `admittedActionIds`；任一失败均 fail closed，持久化不确定时为 `outcome_unknown`。PostAction 允许 `waiting_agent` 或 `closing` 中已准入 Action，复验 v2 Intent，写入 Trace、绑定 Trace 摘要的 v2 Observation 与受其因果绑定的 Resolution，并支持重放幂等。S3 Closeout 与 Recovery E2E 已证明唯一 ChangeSet-bound Checkpoint 和至多一次 Git 副作用；Delivery E2E 已把 Original/Recovery Checkpoint 接入唯一 `ImplementationSubmitted` Event，且不创建第二个 Commit。自动 Verification/Evidence/PRReady、真实 Codex TUI 项目 Pilot、其他平台 Projection、Role Runtime 和 Human Battle Runtime 尚未实现。
 
 Workflow、Cell、Agent、Skill、Executor 与 Hook 的职责边界已经在 [21 需求生命周期 Workflow Runtime](./21-requirement-workflow-runtime.md) 中建立；本章后续只定义 Hook 映射和 Agent Runtime，不拥有 Workflow 状态。
 
@@ -142,7 +142,7 @@ S2 的 Session Action Admission 已将上述原则落到可恢复的状态协议
 
 - `waiting_agent` 允许新的 PreAction 竞争同一 Session Lease；`closing` 拒绝新的 PreAction，但允许已经准入的 Action 完成 PostAction。
 - PreAction 在 Lease 内复验 Activation、Session Hook Binding v2、Runtime Provenance、PlanRisk/G2/G4 和 Write Set；Admission State 先进入 `pending`，只有健康 v2 Intent 提交成功后才把 Action ID 追加到 `admittedActionIds`。
-- `pending`、缺失 PostAction、`WaitingHuman`、`RetryPermitted` 或 `outcome_unknown` 都会阻止 `beginClosing`。S3 Process Manager 会在 Repository Lock 内驱动 Action/Trace Coverage、Snapshot 和 Checkpoint，并由生产 CLI 停在 `CheckpointBound`；Verification 与 PRReady 仍属于后续阶段。
+- `pending`、缺失 PostAction、`WaitingHuman`、`RetryPermitted` 或 `outcome_unknown` 都会阻止 `beginClosing`。S3 Process Manager 会在 Repository Lock 内驱动 Action/Trace Coverage、Snapshot 和 Checkpoint，并由生产 CLI 停在 `CheckpointBound`；独立 Delivery Command 才能接入 CodingTask，Verification 执行与 PRReady 仍属于后续阶段。
 - PostAction 必须复验对应 v2 Intent，再记录 Trace、绑定 Trace 摘要的 v2 Observation 和受其因果绑定的 Resolution；重复投递按稳定 Action/Intent 身份幂等重放。Trace 恢复证据、Observation 或 Resolution 提交不健康时，Session 从 `waiting_agent` 或 `closing` 进入 `outcome_unknown`。
 - Codex `tool_response` 没有跨工具统一的成功字段；Adapter 只把显式成功证据归为 `succeeded`，显式失败证据归为 `failed`，空值、空对象或未识别结构统一归为 `outcome_unknown` 并进入 `human_required`。
 - Lease 竞争、重入、状态复验或持久化结果不确定时均不放行；无法证明结果时保持 fail-closed 或 `outcome_unknown`，不把普通 Hook 进程失败解释为安全拒绝。

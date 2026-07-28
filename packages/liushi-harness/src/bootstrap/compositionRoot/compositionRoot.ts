@@ -1,6 +1,5 @@
 import {
   ApplicationCommandGateway,
-  CodingTaskCommandHandler,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
@@ -22,10 +21,6 @@ import {
   SelectVerificationPlanUseCase,
   ScanProjectUseCase,
   RequirementWorkflowCommandHandler,
-  VerificationActionExecutor,
-  VerificationCommandHandler,
-  ImplementationCommandHandler,
-  ImplementationSubmissionHandler,
   WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
@@ -42,7 +37,6 @@ import {
   FileCodingTaskRepository,
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
-  NodeFileMutationExecutorAdapter,
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
   StructuredProjectConfigParserAdapter,
@@ -54,6 +48,7 @@ import {
 import type { HarnessApplication, HarnessApplicationOptions } from "./compositionRoot.contracts.js";
 import {
   createCodingTaskCellApplication,
+  createCodingTaskExecutionApplication,
   createCodingTaskSessionExecutionRuntime,
   createCodingTaskSessionApplication,
   createCodingTaskSessionHookRuntime,
@@ -175,50 +170,32 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const verificationRunner = new RunVerificationUseCase(verificationExecutor, digest, clock);
   // prettier-ignore
   const runAndPersistVerification = new RunAndPersistVerificationUseCase(verificationRunner, evidenceBundleStore);
-  const codingTaskCommandHandler = new CodingTaskCommandHandler(
+  const codingTaskExecutionApplication = createCodingTaskExecutionApplication({
+    storeRoot: options.storeRoot,
+    storeDependencies,
+    applicationCommandGateway,
     codingTaskRepository,
-    clock,
-    eventIdGenerator,
-    codingTaskAuthorizationResolver,
-  );
-  const verificationCommandHandler = new VerificationCommandHandler(
-    codingTaskRepository,
-    codingTaskAuthorizationResolver,
-    repositoryLock,
-    journaledActionRunner,
-    new VerificationActionExecutor(runAndPersistVerification),
-    evidenceBundleStore,
-    codingTaskCommandHandler,
-    digest,
-    unresolvedProvisionGuard,
-  );
-  const implementationCommandHandler = new ImplementationCommandHandler(
-    codingTaskRepository,
-    codingTaskAuthorizationResolver,
-    repositoryLock,
-    journaledActionRunner,
-    new NodeFileMutationExecutorAdapter(worktreeInspector, digest),
-    digest,
-    unresolvedProvisionGuard,
-  );
-  const implementationSubmissionHandler = new ImplementationSubmissionHandler(
-    codingTaskRepository,
-    codingTaskAuthorizationResolver,
+    authorizationResolver: codingTaskAuthorizationResolver,
     repositoryRootResolver,
     repositoryLock,
     journaledActionRunner,
-    changeSetApplication.gitCheckpoint,
-    codingTaskCommandHandler,
-    digest,
+    worktreeInspector,
+    evidenceBundleStore,
+    runAndPersistVerification,
     unresolvedProvisionGuard,
-  );
+    changeSetApplication,
+    effectiveCloseoutResolver: closeoutApplication.resolveCodingTaskSessionEffectiveCloseout,
+    digest,
+    clock,
+    eventIdGenerator,
+  });
   const codingTaskCellApplication = createCodingTaskCellApplication({
     applicationCommandGateway,
-    codingTaskCommandHandler,
+    codingTaskCommandHandler: codingTaskExecutionApplication.codingTaskCommandHandler,
     worktreeProvisionCommands: worktreeApplication.worktreeProvisionCommands,
-    implementationCommandHandler,
-    implementationSubmissionHandler,
-    verificationCommandHandler,
+    implementationCommandHandler: codingTaskExecutionApplication.implementationCommandHandler,
+    implementationSubmissionHandler: codingTaskExecutionApplication.implementationSubmissionHandler,
+    verificationCommandHandler: codingTaskExecutionApplication.verificationCommandHandler,
     evidenceBundleStore,
     codingTaskRepository,
     taskRepository,
@@ -288,6 +265,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     inspectGitChangeSet: changeSetApplication.inspectGitChangeSet,
     changeSetCheckpoints: changeSetApplication.changeSetCheckpoints,
     ...closeoutApplication,
+    ...codingTaskExecutionApplication.deliveryApplication,
     runVerification: verificationRunner,
     runAndPersistVerification,
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),

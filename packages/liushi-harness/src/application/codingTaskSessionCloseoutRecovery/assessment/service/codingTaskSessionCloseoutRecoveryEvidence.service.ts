@@ -1,5 +1,6 @@
 import {
   ChangeSetCheckpointRecoveryStatus,
+  hasSameChangeSetCheckpoint,
   type ChangeSetCheckpoint,
   type ChangeSetCheckpointInput,
   type ChangeSetCheckpointRecoveryAssessment,
@@ -63,15 +64,7 @@ export function hasSameRecoveryCheckpoint(
   >,
   retained: ChangeSetCheckpoint,
 ): boolean {
-  return (
-    recovery.checkpoint.schemaVersion === retained.schemaVersion &&
-    recovery.checkpoint.bindingDigest === retained.bindingDigest &&
-    recovery.checkpoint.changeSetDigest === retained.changeSetDigest &&
-    recovery.checkpoint.preSubmitSnapshotDigest === retained.preSubmitSnapshotDigest &&
-    recovery.checkpoint.checkpoint.targetRevision === retained.checkpoint.targetRevision &&
-    recovery.checkpoint.checkpoint.checkpointDigest === retained.checkpoint.checkpointDigest &&
-    samePaths(recovery.checkpoint.checkpoint.changedPaths, retained.checkpoint.changedPaths)
-  );
+  return hasSameChangeSetCheckpoint(recovery.checkpoint, retained);
 }
 
 /** 创建无法证明 Checkpoint 状态的封闭结果。 */

@@ -28,6 +28,8 @@ export interface CodingTaskSessionCloseoutCliSetup {
   readonly repositoryId: string;
   /** Session 标识。 */
   readonly sessionId: string;
+  /** CodingTask 标识。 */
+  readonly codingTaskId: string;
   /** Agent Actor 标识。 */
   readonly agentActorId: string;
   /** Closeout 关键持久化证据文件。 */
