@@ -169,6 +169,7 @@ export function createCloseoutManagerHarness(
         events.push("worktree");
         return success(options.resolvedWorktreeRoot ?? closeoutManagerWorktreeRoot);
       },
+      hasSamePathIdentity: (left, right) => left === right,
     },
     repositoryLock: {
       acquire: () => {

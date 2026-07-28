@@ -15,6 +15,7 @@ import {
   SMOKE_AGENT_ACTOR_ID,
   SUBMITTED_AT,
   VERIFICATION_PLAN_ID,
+  VERIFICATION_PLAN_SCHEMA_VERSION,
   VERIFICATION_RUN_ID,
   WORKSPACE_ID,
   WORKTREE_BRANCH,
@@ -110,12 +111,13 @@ function createVerificationPayload(worktreeRoot, binding) {
     attemptNumber: 1,
     worktreeRootDigest: calculateDigest({ worktreeRoot }),
     plan: {
-      schemaVersion: 1,
+      schemaVersion: VERIFICATION_PLAN_SCHEMA_VERSION,
       planId: VERIFICATION_PLAN_ID,
       repositoryId: PUBLIC_REPOSITORY_ID,
       worktreeId: binding.worktreeId,
       expectedBranchName: binding.branchName,
       baseRevision: PUBLIC_REPOSITORY_REVISION,
+      sourceRefs: verificationPlanSourceRefs(),
       checks: [
         verificationCheck({
           checkId: "worktree-offline-install",
@@ -132,6 +134,16 @@ function createVerificationPayload(worktreeRoot, binding) {
       ],
     },
     failedVerificationTaxonomy: "implementation_defect",
+  };
+}
+
+function verificationPlanSourceRefs() {
+  return {
+    projectProfileBundleDigest: calculateDigest("public-smoke-project-profile-bundle"),
+    projectProfileDigest: calculateDigest("public-smoke-project-profile"),
+    proposalArtifactDigest: calculateDigest("public-smoke-profile-proposal"),
+    profileApprovalId: "01ARZ3NDEKTSV4RRFFQ69G5HBP",
+    applicableRuleBundleDigest: calculateDigest("public-smoke-applicable-rule-bundle"),
   };
 }
 

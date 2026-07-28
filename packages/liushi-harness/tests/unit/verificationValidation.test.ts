@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ResultStatus } from "../../src/common/index.js";
 import {
+  VERIFICATION_PLAN_SCHEMA_VERSION,
   VerificationFailureKind,
   VerificationKind,
   VerificationRequirement,
@@ -12,16 +13,26 @@ import {
   validateVerificationCheck,
   validateVerificationPlan,
 } from "../../src/domain/verification/index.js";
+import { Rfc8785Sha256DigestAdapter } from "../../src/infrastructure/index.js";
+
+const digest = new Rfc8785Sha256DigestAdapter();
 
 function createPlan(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    schemaVersion: 1,
+    schemaVersion: VERIFICATION_PLAN_SCHEMA_VERSION,
     planId: "plan-1",
     repositoryId: "verification-repository",
     worktreeId: "worktree-1",
     expectedBranchName: "main",
     baseRevision: "base-revision",
     targetRevision: "target-revision",
+    sourceRefs: {
+      projectProfileBundleDigest: `sha256:${"1".repeat(64)}`,
+      projectProfileDigest: `sha256:${"2".repeat(64)}`,
+      proposalArtifactDigest: `sha256:${"3".repeat(64)}`,
+      profileApprovalId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      applicableRuleBundleDigest: `sha256:${"4".repeat(64)}`,
+    },
     checks: [
       {
         checkId: "build",
@@ -49,6 +60,32 @@ describe("Verification Plan validation", () => {
     if (result.status === ResultStatus.Failure) return;
     expect(result.value.repositoryId).toBe("verification-repository");
     expect(result.value.checks[0]?.kind).toBe(VerificationKind.Build);
+  });
+
+  it.each([
+    ["拒绝旧版 Plan", { schemaVersion: 1 }],
+    ["拒绝缺失权威来源", { sourceRefs: undefined }],
+  ])("%s", (_name, overrides) => {
+    expect(validateVerificationPlan(createPlan(overrides)).status).toBe(ResultStatus.Failure);
+  });
+
+  it("来源摘要漂移会改变完整 Plan Digest", () => {
+    const original = validateVerificationPlan(createPlan());
+    const drifted = validateVerificationPlan(
+      createPlan({
+        sourceRefs: {
+          ...(createPlan()["sourceRefs"] as Record<string, unknown>),
+          applicableRuleBundleDigest: `sha256:${"5".repeat(64)}`,
+        },
+      }),
+    );
+
+    expect(original.status).toBe(ResultStatus.Success);
+    expect(drifted.status).toBe(ResultStatus.Success);
+    if (original.status === ResultStatus.Failure || drifted.status === ResultStatus.Failure) {
+      return;
+    }
+    expect(unwrapDigest(original.value)).not.toBe(unwrapDigest(drifted.value));
   });
 
   const baseCheck = (createPlan()["checks"] as unknown[])[0] as Record<string, unknown>;
@@ -113,6 +150,12 @@ describe("Verification Plan validation", () => {
     expect(result.status).toBe(ResultStatus.Failure);
   });
 });
+
+function unwrapDigest(input: unknown): string {
+  const result = digest.calculate(input);
+  if (result.status === ResultStatus.Failure) throw result.error;
+  return result.value;
+}
 
 describe("Project Verification Check validation", () => {
   const projectCheck = {

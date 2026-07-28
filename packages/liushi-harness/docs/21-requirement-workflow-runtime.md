@@ -6,7 +6,7 @@
 
 `liushi-harness` 的 Workflow 是本地优先、Human-gated、可审计、可恢复的需求交付语义内核。它编排从 PRD 输入到每个 Repository 达到 PR-ready 的完整生命周期，但不是通用 DAG、低代码平台或模型聊天外壳。
 
-当前实现仍属于 Harness 前置机制：持久化 Command Gateway/Receipt、Revision/Context、Golden Replay、Timeline、Action Journal、JournaledActionRunner、Trace、Canonical Hook Core、RequirementWorkflow Domain/Store/Command，以及 CodingTask Domain/Store/Command、权威授权、单一纵向 CodingTask CLI Cell、Managed Worktree Provision/Inspector、未知 Provision Human 对账、未闭合 Provision 下游 Guard、Repository Lock、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted、版本化 Verification Command、G8 Profile-backed 单仓影响面、Local Command Runner、EvidenceBundle Store、单仓 PRReadyArtifact 权威装配和 G0 InstallPlan dry-run 已落地。现有 CLI 写命令尚未全部迁移到 Gateway，平台 G0 Apply/Revision、实时 Span、OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、Import Graph、多仓影响传播、失败重试和 Studio 均未实现。
+当前实现仍属于 Harness 前置机制：持久化 Command Gateway/Receipt、Revision/Context、Golden Replay、Timeline、Action Journal、JournaledActionRunner、Trace、Canonical Hook Core、RequirementWorkflow Domain/Store/Command，以及 CodingTask Domain/Store/Command、权威授权、受信预编排 CodingTask CLI Cell、Managed Worktree Provision/Inspector、未知 Provision Human 对账、未闭合 Provision 下游 Guard、Repository Lock、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted、版本化 Verification Command、G8 Profile-backed 单仓影响面、Local Command Runner、EvidenceBundle Store、单仓 PRReadyArtifact 权威装配、Session Delivery Completion 和 G0 InstallPlan dry-run 已落地。现有 CLI 写命令尚未全部迁移到 Gateway，实时 Span、OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、Import Graph、多仓影响传播、失败重试和 Studio 均未实现。
 
 六角色评审后的核心结论：
 
@@ -276,7 +276,7 @@ S3 已通过 Windows 本地 Tarball 干净安装 Smoke，并将同一脚本接�
 
 ## 12.1 S3 CodingTask 实现修订
 
-当前 `CodingTask` 已具备可恢复的 File Store、严格 Schema/Hash Replay、Versioned Command Gateway/Service 和默认 Task-backed Authorization Policy。该 Policy 会回读上游 Task 的 PlanRisk、Business Logic Artifact、Approval 和 Write Set，未通过 Human Gate 或发生 Write Set 漂移时拒绝创建。受控文件变更、Git Checkpoint、Attempt 收口和 Verification Command 均复用 Repository Lock 与 Action Journal；Git/Event 无法形成 ACID 事务时固定进入 Human 恢复。Session Closeout 已具备独立 Process State、Action/Trace 覆盖门、Human-gated Recovery 和 Effective Resolver；独立 Delivery Submission 已复验 Original/Recovery Checkpoint，并只追加唯一 `ImplementationSubmitted` Event。后续 Verification/Evidence/PRReady 自动串联与真实 Codex Pilot 仍未实现。
+当前 `CodingTask` 已具备可恢复的 File Store、严格 Schema/Hash Replay、Versioned Command Gateway/Service 和默认 Task-backed Authorization Policy。该 Policy 会回读上游 Task 的 PlanRisk、Business Logic Artifact、Approval 和 Write Set，未通过 Human Gate 或发生 Write Set 漂移时拒绝创建。受控文件变更、Git Checkpoint、Attempt 收口和 Verification Command 均复用 Repository Lock 与 Action Journal；Git/Event 无法形成 ACID 事务时固定进入 Human 恢复。Session Closeout 已具备独立 Process State、Action/Trace 覆盖门、Human-gated Recovery 和 Effective Resolver；Delivery Submission 已复验 Original/Recovery Checkpoint，并只追加唯一 `ImplementationSubmitted` Event。`completeCodingTaskSessionDelivery` 已继续串联 G8 Profile、Rule、Plan、平台路径身份、Verification、Evidence 与 PR-ready。真实 Codex Pilot 仍未实现。
 
 当前仍缺少 Worktree 清理/重建、重试/Flaky、Waiver、Child Workflow 和完整 RequirementWorkflow Cell Runtime；Workflow Studio 仍是同级独立包。单一 CodingTask Cell 只串行复用已有受控命令，不读取 PRD、不替代 Human Gate，也不等同于自主 Agent。Worktree Provision 与 Recovery 不执行删除、Reset、Checkout、Merge、自动修复或自动重试；当前也不提供 Agent 自主代码生成、PR、推送、合并、发布或部署。
 

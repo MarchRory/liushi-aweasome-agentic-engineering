@@ -1,4 +1,5 @@
 import type { ContentDigest } from "#common/index.js";
+import type { ApprovalId } from "#domain/approval/identifiers/index.js";
 import type { EvidenceRef } from "#domain/evidence/index.js";
 import type { ApplicableRuleEntry, RuleResolutionTarget } from "#domain/rule/index.js";
 import type { RepositoryId } from "#domain/workspace/index.js";
@@ -109,7 +110,21 @@ export interface VerificationImpactSelection {
   diagnostics: readonly VerificationImpactDiagnostic[];
 }
 
-/** 一个绑定 Repository、Worktree 和 Revision 的确定性 Verification Plan。 */
+/** Verification Plan 选择所绑定的权威 Profile 与 Rule 来源。 */
+export interface VerificationPlanSourceRefs {
+  /** 多仓 Project Profile Bundle 摘要。 */
+  projectProfileBundleDigest: ContentDigest;
+  /** 当前仓库 Project Profile 摘要。 */
+  projectProfileDigest: ContentDigest;
+  /** G8 批准的 Project Profile Proposal Artifact 摘要。 */
+  proposalArtifactDigest: ContentDigest;
+  /** G8 批准本次 Profile 编译的 Approval ID。 */
+  profileApprovalId: ApprovalId;
+  /** 当前 Applicable Rule Bundle 摘要。 */
+  applicableRuleBundleDigest: ContentDigest;
+}
+
+/** 一个绑定来源、Repository、Worktree 和 Revision 的确定性 Verification Plan。 */
 export interface VerificationPlan {
   /** Plan Schema 版本。 */
   schemaVersion: typeof VERIFICATION_PLAN_SCHEMA_VERSION;
@@ -125,6 +140,8 @@ export interface VerificationPlan {
   baseRevision: string;
   /** Verification 应观察的 Target Revision。 */
   targetRevision: string;
+  /** 生成当前 Plan 的权威 Profile、Approval 与 Rule 来源。 */
+  sourceRefs: VerificationPlanSourceRefs;
   /** 按 Check ID 排序且不可重复的检查集合。 */
   checks: readonly VerificationCheck[];
 }

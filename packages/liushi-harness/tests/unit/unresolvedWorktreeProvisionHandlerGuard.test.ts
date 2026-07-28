@@ -24,6 +24,7 @@ import {
   VerificationRequirement,
   WORKTREE_PROVISION_COMMAND_TYPE,
   WorktreeProvisionCommandHandler,
+  parseApprovalId,
   success,
   type ActionIntentRecord,
   type ActionJournalRepository,
@@ -45,6 +46,11 @@ import {
 import { Rfc8785Sha256DigestAdapter } from "../../src/infrastructure/index.js";
 
 const digest = new Rfc8785Sha256DigestAdapter();
+const profileApprovalId = (() => {
+  const result = parseApprovalId("01ARZ3NDEKTSV4RRFFQ69G5FAV");
+  if (result.status === ResultStatus.Failure) throw result.error;
+  return result.value;
+})();
 const runtime = { repositoryRoot: "C:\\repository" };
 const verificationRuntime = { worktreeRoot: "C:\\repository\\.worktrees\\task" };
 const commandActionId = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
@@ -314,6 +320,13 @@ function verificationPlan(aggregateValue: CodingTaskAggregate) {
     expectedBranchName: aggregateValue.worktreeBinding.branchName,
     baseRevision: aggregateValue.baseRevision,
     targetRevision: "target-revision-1",
+    sourceRefs: {
+      projectProfileBundleDigest: calculateDigest({ source: "profile-bundle" }),
+      projectProfileDigest: calculateDigest({ source: "profile" }),
+      proposalArtifactDigest: calculateDigest({ source: "proposal" }),
+      profileApprovalId,
+      applicableRuleBundleDigest: calculateDigest({ source: "rule-bundle" }),
+    },
     checks: [
       {
         checkId: "check-1",

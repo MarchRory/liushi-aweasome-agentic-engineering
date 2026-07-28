@@ -3,9 +3,11 @@ import {
   HarnessErrorCode,
   ResultStatus,
   failure,
+  parseContentDigest,
   success,
   type Result,
 } from "#common/index.js";
+import { parseApprovalId } from "#domain/approval/identifiers/index.js";
 import { parseRepositoryId } from "#domain/workspace/index.js";
 
 import {
@@ -20,7 +22,16 @@ import type {
   VerificationCheck,
   VerificationCommandSpec,
   VerificationPlan,
+  VerificationPlanSourceRefs,
 } from "../contracts/index.js";
+
+const PLAN_SOURCE_REF_FIELDS = [
+  "projectProfileBundleDigest",
+  "projectProfileDigest",
+  "proposalArtifactDigest",
+  "profileApprovalId",
+  "applicableRuleBundleDigest",
+] as const;
 
 /** 校验并返回可供 Verification Use Case 使用的规范 Plan。 */
 export function validateVerificationPlan(input: unknown): Result<VerificationPlan, HarnessError> {
@@ -43,6 +54,8 @@ export function validateVerificationPlan(input: unknown): Result<VerificationPla
   if (expectedBranchName === undefined) return failure(invalid("expectedBranchName"));
   if (baseRevision === undefined) return failure(invalid("baseRevision"));
   if (targetRevision === undefined) return failure(invalid("targetRevision"));
+  const sourceRefs = parseVerificationPlanSourceRefs(input["sourceRefs"]);
+  if (sourceRefs.status === ResultStatus.Failure) return sourceRefs;
   if (!Array.isArray(input["checks"]) || input["checks"].length === 0) {
     return failure(invalid("checks"));
   }
@@ -72,7 +85,63 @@ export function validateVerificationPlan(input: unknown): Result<VerificationPla
     expectedBranchName,
     baseRevision,
     targetRevision,
+    sourceRefs: sourceRefs.value,
     checks,
+  });
+}
+
+/** 严格解析 Verification Plan 的权威来源绑定。 */
+export function parseVerificationPlanSourceRefs(
+  input: unknown,
+): Result<VerificationPlanSourceRefs, HarnessError> {
+  if (
+    !isRecord(input) ||
+    Object.keys(input).length !== PLAN_SOURCE_REF_FIELDS.length ||
+    !PLAN_SOURCE_REF_FIELDS.every((field) => Object.hasOwn(input, field))
+  ) {
+    return failure(invalid("sourceRefs"));
+  }
+  if (typeof input["projectProfileBundleDigest"] !== "string") {
+    return failure(invalid("sourceRefs.projectProfileBundleDigest"));
+  }
+  const projectProfileBundleDigest = parseContentDigest(input["projectProfileBundleDigest"]);
+  if (projectProfileBundleDigest.status === ResultStatus.Failure) {
+    return failure(invalid("sourceRefs.projectProfileBundleDigest"));
+  }
+  if (typeof input["projectProfileDigest"] !== "string") {
+    return failure(invalid("sourceRefs.projectProfileDigest"));
+  }
+  const projectProfileDigest = parseContentDigest(input["projectProfileDigest"]);
+  if (projectProfileDigest.status === ResultStatus.Failure) {
+    return failure(invalid("sourceRefs.projectProfileDigest"));
+  }
+  if (typeof input["proposalArtifactDigest"] !== "string") {
+    return failure(invalid("sourceRefs.proposalArtifactDigest"));
+  }
+  const proposalArtifactDigest = parseContentDigest(input["proposalArtifactDigest"]);
+  if (proposalArtifactDigest.status === ResultStatus.Failure) {
+    return failure(invalid("sourceRefs.proposalArtifactDigest"));
+  }
+  if (typeof input["profileApprovalId"] !== "string") {
+    return failure(invalid("sourceRefs.profileApprovalId"));
+  }
+  const profileApprovalId = parseApprovalId(input["profileApprovalId"]);
+  if (profileApprovalId.status === ResultStatus.Failure) {
+    return failure(invalid("sourceRefs.profileApprovalId"));
+  }
+  if (typeof input["applicableRuleBundleDigest"] !== "string") {
+    return failure(invalid("sourceRefs.applicableRuleBundleDigest"));
+  }
+  const applicableRuleBundleDigest = parseContentDigest(input["applicableRuleBundleDigest"]);
+  if (applicableRuleBundleDigest.status === ResultStatus.Failure) {
+    return failure(invalid("sourceRefs.applicableRuleBundleDigest"));
+  }
+  return success({
+    projectProfileBundleDigest: projectProfileBundleDigest.value,
+    projectProfileDigest: projectProfileDigest.value,
+    proposalArtifactDigest: proposalArtifactDigest.value,
+    profileApprovalId: profileApprovalId.value,
+    applicableRuleBundleDigest: applicableRuleBundleDigest.value,
   });
 }
 

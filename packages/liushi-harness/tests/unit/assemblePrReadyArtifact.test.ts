@@ -128,6 +128,11 @@ describe("AssemblePrReadyArtifactUseCase", () => {
       evidenceBundle({ verificationRunId: "other-verification-run" }),
       HarnessErrorCode.InvalidInput,
     ],
+    [
+      "plan digest mismatch",
+      evidenceBundle({ planDigest: calculateDigest({ plan: "other-plan" }) }),
+      HarnessErrorCode.InvalidInput,
+    ],
   ])("拒绝 Evidence %s", async (_caseName, evidenceBundleInput, errorCode) => {
     const result = await createSetup({ evidence: evidenceBundleInput }).useCase.execute(input());
 
@@ -494,7 +499,12 @@ function taskRecord(artifacts: readonly SupportedArtifact[]): TaskAggregateRecor
 }
 
 function input() {
-  return { workspaceId, codingTaskId, verificationRunId: "verification-run-1" };
+  return {
+    workspaceId,
+    codingTaskId,
+    verificationRunId: "verification-run-1",
+    expectedPlanDigest: calculateDigest({ plan: "verification-plan-1" }),
+  };
 }
 
 /** Evidence Fixture 的权威身份覆盖。 */
@@ -502,6 +512,7 @@ interface EvidenceOverrides {
   readonly repositoryId?: typeof repositoryId;
   readonly targetRevision?: string;
   readonly verificationRunId?: string;
+  readonly planDigest?: EvidenceBundle["planDigest"];
 }
 
 function evidenceBundle(overrides: EvidenceOverrides = {}): EvidenceBundle {
@@ -514,7 +525,7 @@ function evidenceBundle(overrides: EvidenceOverrides = {}): EvidenceBundle {
     worktreeId: "worktree-1",
     baseRevision: "base-revision",
     targetRevision,
-    planDigest: calculateDigest({ plan: "verification-plan-1" }),
+    planDigest: overrides.planDigest ?? calculateDigest({ plan: "verification-plan-1" }),
     status: VerificationStatus.Passed,
     generatedAt: "2026-07-14T00:00:02.000Z",
     checks: [

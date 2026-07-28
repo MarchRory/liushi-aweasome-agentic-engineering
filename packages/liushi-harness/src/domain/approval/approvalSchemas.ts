@@ -21,15 +21,18 @@ import { GateId, RiskLevel } from "#domain/policy/index.js";
 import { TaskPhase, parseTaskId } from "#domain/task/index.js";
 
 import {
-  APPROVAL_ULID_PATTERN,
   MAX_APPROVAL_IDEMPOTENCY_KEY_LENGTH,
   MAX_APPROVAL_REASON_LENGTH,
   MAX_DECISION_ACTION_LENGTH,
   MAX_RESUME_CHECKPOINT_LENGTH,
 } from "./approvalConstants.js";
 import type { ApprovalRecord, DecisionRequest } from "./approvalContracts.js";
-import type { ApprovalId, DecisionRequestId } from "./approvalId.js";
 import { ApprovalDecision } from "./approvalEnums.js";
+import {
+  APPROVAL_ULID_PATTERN,
+  type ApprovalId,
+  type DecisionRequestId,
+} from "./identifiers/index.js";
 
 const nonBlank = (maxLength: number): z.ZodString =>
   z

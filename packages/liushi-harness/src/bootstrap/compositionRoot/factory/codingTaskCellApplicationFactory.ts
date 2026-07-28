@@ -15,6 +15,7 @@ import {
   type VerificationCommandHandler,
   type WorktreeProvisionCommandService,
 } from "#application/index.js";
+import { CodingTaskVerificationCompletionService } from "#application/codingTaskVerificationCompletion/index.js";
 import type {
   CodingTaskExecutionAuthorizationResolver,
   CodingTaskRepository,
@@ -67,6 +68,8 @@ export interface CodingTaskCellApplicationFactoryOutput {
   readonly runCodingTaskCell: CodingTaskCellService;
   /** 从权威 Store 组装 PR-ready Repository Delivery Artifact。 */
   readonly assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase;
+  /** 供兼容 Cell 与权威 Delivery Completion 共用的 Verification 尾链。 */
+  readonly verificationCompletion: CodingTaskVerificationCompletionService;
 }
 
 /** 在 Bootstrap 层复用同一组命令服务构造 CodingTask Cell。 */
@@ -96,21 +99,26 @@ export function createCodingTaskCellApplication(
     input.evidenceBundleStore,
     input.digest,
   );
+  const verificationCompletion = new CodingTaskVerificationCompletionService(
+    verificationCommands,
+    input.evidenceBundleStore,
+    assemblePrReadyArtifact,
+    input.digest,
+  );
   return {
     codingTaskCommands,
     implementationCommands,
     implementationSubmissions,
     verificationCommands,
     assemblePrReadyArtifact,
+    verificationCompletion,
     runCodingTaskCell: new CodingTaskCellService(
       codingTaskCommands,
       input.worktreeProvisionCommands,
       implementationCommands,
       implementationSubmissions,
       new CodingTaskCellVerificationBindingService(input.codingTaskRepository, input.digest),
-      verificationCommands,
-      input.evidenceBundleStore,
-      assemblePrReadyArtifact,
+      verificationCompletion,
       input.digest,
       input.runtimePath,
       input.runtimeBinding,

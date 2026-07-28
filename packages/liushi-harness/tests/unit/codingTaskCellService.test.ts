@@ -28,26 +28,29 @@ import {
   WORKTREE_PROVISION_COMMAND_TYPE,
   failure,
   parseArtifactId,
+  parseApprovalId,
   parseCodingTaskId,
   parseContentDigest,
   parseRepositoryId,
   parseTaskId,
   parseWorkspaceId,
   success,
-  type AssemblePrReadyArtifactUseCase,
   type CodingTaskCommandService,
   type CodingTaskCellRuntimeBinding,
   type CodingTaskCellVerificationBindingService,
   type CommandEnvelope,
   type CommandReceipt,
   type EvidenceBundle,
-  type EvidenceBundleStore,
   type ImplementationCommandService,
   type ImplementationSubmissionService,
   type PrReadyArtifact,
-  type VerificationCommandService,
   type WorktreeProvisionCommandService,
 } from "../../src/index.js";
+import { CODING_TASK_VERIFICATION_COMPLETION_REPORT_SCHEMA_VERSION } from "../../src/application/codingTaskVerificationCompletion/constants/index.js";
+import {
+  CodingTaskVerificationCompletionStage,
+  CodingTaskVerificationCompletionStatus,
+} from "../../src/application/codingTaskVerificationCompletion/enums/index.js";
 import {
   NodeCodingTaskCellRuntimePathAdapter,
   Rfc8785Sha256DigestAdapter,
@@ -460,6 +463,35 @@ function createSetup(options: SetupOptions = {}) {
         : failure(options.prReadyFailure),
     );
   });
+  const verificationCompletion = vi.fn(async (input: { readonly command: CommandEnvelope }) => {
+    const verification = await executeVerification(input.command);
+    const loadedEvidence = await loadEvidence();
+    const evidenceStatus = loadedEvidence.value.status;
+    if (evidenceStatus !== VerificationStatus.Passed) {
+      return success({
+        schemaVersion: CODING_TASK_VERIFICATION_COMPLETION_REPORT_SCHEMA_VERSION,
+        status:
+          evidenceStatus === VerificationStatus.Failed
+            ? CodingTaskVerificationCompletionStatus.VerificationFailed
+            : CodingTaskVerificationCompletionStatus.VerificationBlocked,
+        receipt: verification.value,
+        evidenceBundle: loadedEvidence.value,
+      });
+    }
+    const artifact = await assemblePrReady();
+    if (artifact.status === ResultStatus.Failure) {
+      return failure(
+        withCompletionStage(artifact.error, CodingTaskVerificationCompletionStage.PrReady),
+      );
+    }
+    return success({
+      schemaVersion: CODING_TASK_VERIFICATION_COMPLETION_REPORT_SCHEMA_VERSION,
+      status: CodingTaskVerificationCompletionStatus.ReviewReady,
+      receipt: verification.value,
+      evidenceBundle: loadedEvidence.value,
+      prReadyArtifact: artifact.value,
+    });
+  });
   return {
     calls,
     assemblePrReady,
@@ -471,9 +503,7 @@ function createSetup(options: SetupOptions = {}) {
       { execute: executeImplementation } as unknown as ImplementationCommandService,
       { execute: executeSubmission } as unknown as ImplementationSubmissionService,
       { bind: bindVerification } as unknown as CodingTaskCellVerificationBindingService,
-      { execute: executeVerification } as unknown as VerificationCommandService,
-      { load: loadEvidence } as unknown as EvidenceBundleStore,
-      { execute: assemblePrReady } as unknown as AssemblePrReadyArtifactUseCase,
+      { execute: verificationCompletion },
       digest,
       new NodeCodingTaskCellRuntimePathAdapter(),
       options.omitRuntimeBinding === true
@@ -490,11 +520,24 @@ function createSetup(options: SetupOptions = {}) {
       executeImplementation,
       executeSubmission,
       bindVerification,
+      verificationCompletion,
       executeVerification,
       loadEvidence,
       assemblePrReady,
     ],
   };
+}
+
+function withCompletionStage(
+  error: HarnessError,
+  completionStage: CodingTaskVerificationCompletionStage,
+): HarnessError {
+  return new HarnessError(
+    error.code,
+    error.message,
+    { ...error.details, completionStage },
+    error.cause,
+  );
 }
 
 function expectNoServiceCalls(setup: ReturnType<typeof createSetup>): void {
@@ -666,6 +709,13 @@ function verificationPayload() {
       worktreeId: "worktree-1",
       expectedBranchName: "feature/cell",
       baseRevision: "base-revision-1",
+      sourceRefs: {
+        projectProfileBundleDigest: unwrapDigest(calculateDigest({ source: "profile-bundle" })),
+        projectProfileDigest: unwrapDigest(calculateDigest({ source: "profile" })),
+        proposalArtifactDigest: unwrapDigest(calculateDigest({ source: "proposal" })),
+        profileApprovalId: unwrap(parseApprovalId("01ARZ3NDEKTSV4RRFFQ69G5FAV")),
+        applicableRuleBundleDigest: unwrapDigest(calculateDigest({ source: "rule-bundle" })),
+      },
       checks: [
         {
           checkId: "check-1",

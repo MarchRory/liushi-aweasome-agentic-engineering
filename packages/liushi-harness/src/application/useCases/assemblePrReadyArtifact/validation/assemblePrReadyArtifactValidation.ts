@@ -3,6 +3,7 @@ import {
   HarnessErrorCode,
   ResultStatus,
   failure,
+  parseContentDigest,
   success,
   type Result,
 } from "#common/index.js";
@@ -25,7 +26,12 @@ import { parseWorkspaceId } from "#domain/workspace/index.js";
 
 import type { AssemblePrReadyArtifactInput } from "../contracts/index.js";
 
-const INPUT_FIELDS = ["workspaceId", "codingTaskId", "verificationRunId"] as const;
+const INPUT_FIELDS = [
+  "workspaceId",
+  "codingTaskId",
+  "verificationRunId",
+  "expectedPlanDigest",
+] as const;
 const VERIFICATION_RUN_ID_PATTERN = /^[A-Za-z0-9._-]{1,128}$/u;
 
 /** 已完成且具有完整交付身份的 CodingTask Attempt。 */
@@ -45,6 +51,7 @@ export function validateAssemblePrReadyArtifactInput(
     typeof input["workspaceId"] !== "string" ||
     typeof input["codingTaskId"] !== "string" ||
     typeof input["verificationRunId"] !== "string" ||
+    typeof input["expectedPlanDigest"] !== "string" ||
     !VERIFICATION_RUN_ID_PATTERN.test(input["verificationRunId"])
   ) {
     return invalidInput("PR-ready Artifact 输入身份无效。");
@@ -53,10 +60,13 @@ export function validateAssemblePrReadyArtifactInput(
   if (workspaceId.status === ResultStatus.Failure) return workspaceId;
   const codingTaskId = parseCodingTaskId(input["codingTaskId"]);
   if (codingTaskId.status === ResultStatus.Failure) return codingTaskId;
+  const expectedPlanDigest = parseContentDigest(input["expectedPlanDigest"]);
+  if (expectedPlanDigest.status === ResultStatus.Failure) return expectedPlanDigest;
   return success({
     workspaceId: workspaceId.value,
     codingTaskId: codingTaskId.value,
     verificationRunId: input["verificationRunId"],
+    expectedPlanDigest: expectedPlanDigest.value,
   });
 }
 
@@ -86,6 +96,7 @@ export function validateCompletedCodingTask(
 export function validatePrReadyEvidence(
   evidence: EvidenceBundle,
   verificationRunId: string,
+  expectedPlanDigest: string,
   aggregate: CodingTaskAggregate,
   attempt: CompletedCodingTaskAttempt,
 ): Result<EvidenceBundle, HarnessError> {
@@ -94,6 +105,7 @@ export function validatePrReadyEvidence(
   }
   if (
     evidence.verificationRunId !== verificationRunId ||
+    evidence.planDigest !== expectedPlanDigest ||
     evidence.repositoryId !== aggregate.repositoryId ||
     evidence.worktreeId !== aggregate.worktreeBinding.worktreeId ||
     evidence.baseRevision !== aggregate.baseRevision ||

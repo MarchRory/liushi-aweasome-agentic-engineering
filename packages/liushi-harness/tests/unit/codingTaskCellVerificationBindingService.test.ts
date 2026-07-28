@@ -15,6 +15,7 @@ import {
   VerificationRequirement,
   parseCodingTaskId,
   parseContentDigest,
+  parseApprovalId,
   parseRepositoryId,
   parseTaskId,
   parseWorkspaceId,
@@ -156,6 +157,13 @@ function bindingInput(): CodingTaskCellVerificationBindingInput {
       worktreeId: "worktree-1",
       expectedBranchName: "feature/cell",
       baseRevision: "base-revision-1",
+      sourceRefs: {
+        projectProfileBundleDigest: unwrap(parseContentDigest(`sha256:${"a".repeat(64)}`)),
+        projectProfileDigest: unwrap(parseContentDigest(`sha256:${"b".repeat(64)}`)),
+        proposalArtifactDigest: unwrap(parseContentDigest(`sha256:${"c".repeat(64)}`)),
+        profileApprovalId: unwrap(parseApprovalId("01ARZ3NDEKTSV4RRFFQ69G5FAV")),
+        applicableRuleBundleDigest: unwrap(parseContentDigest(`sha256:${"d".repeat(64)}`)),
+      },
       checks: [
         {
           checkId: "check-1",

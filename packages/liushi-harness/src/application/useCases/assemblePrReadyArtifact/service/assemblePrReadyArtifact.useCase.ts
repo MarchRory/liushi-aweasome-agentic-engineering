@@ -77,6 +77,7 @@ export class AssemblePrReadyArtifactUseCase {
     const evidence = validatePrReadyEvidence(
       validatedEvidence.value,
       validatedInput.value.verificationRunId,
+      validatedInput.value.expectedPlanDigest,
       aggregate,
       attempt.value,
     );

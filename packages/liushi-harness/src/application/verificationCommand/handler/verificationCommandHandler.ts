@@ -22,6 +22,7 @@ import {
   ResultStatus,
   failure,
   success,
+  type ContentDigest,
   type Result,
 } from "#common/index.js";
 import {
@@ -49,6 +50,7 @@ import type { VerificationActionExecutor } from "../executor/index.js";
 import {
   parseRunVerificationPayload,
   validateVerificationAggregate,
+  validateVerificationEvidenceBinding,
   validateVerificationRuntime,
   type ValidatedRunVerificationPayload,
 } from "../validation/index.js";
@@ -100,6 +102,8 @@ export class VerificationCommandHandler {
     }
     const executable = validateVerificationAggregate(aggregate, envelope.value);
     if (executable.status === ResultStatus.Failure) return executable;
+    const planDigest = this.digest.calculate(envelope.value.plan);
+    if (planDigest.status === ResultStatus.Failure) return planDigest;
     const authorized = await this.authorizationResolver.resolve({
       sourceTaskId: aggregate.sourceTaskId,
       workspaceId: aggregate.workspaceId,
@@ -115,7 +119,13 @@ export class VerificationCommandHandler {
       holderId: aggregate.codingTaskId,
     });
     if (lock.status === ResultStatus.Failure) return lock;
-    const result = await this.runLocked(command, envelope.value, runtime.value, aggregate);
+    const result = await this.runLocked(
+      command,
+      envelope.value,
+      runtime.value,
+      aggregate,
+      planDigest.value,
+    );
     const released = await lock.value.release();
     return released.status === ResultStatus.Failure ? released : result;
   }
@@ -125,6 +135,7 @@ export class VerificationCommandHandler {
     payload: ValidatedRunVerificationPayload,
     runtime: VerificationCommandRuntimeContext,
     aggregate: CodingTaskAggregate,
+    planDigest: ContentDigest,
   ): Promise<Result<CommandHandlerSuccess, HarnessError>> {
     const guarded = await this.unresolvedProvisionGuard.check(aggregate);
     if (guarded.status === ResultStatus.Failure) return guarded;
@@ -165,7 +176,9 @@ export class VerificationCommandHandler {
       verificationRunId: payload.verificationRunId,
     });
     if (bundle.status === ResultStatus.Failure) return bundle;
-    return this.finishCodingTask(command, payload, aggregate, bundle.value);
+    const validatedBundle = validateVerificationEvidenceBinding(bundle.value, payload, planDigest);
+    if (validatedBundle.status === ResultStatus.Failure) return validatedBundle;
+    return this.finishCodingTask(command, payload, aggregate, validatedBundle.value);
   }
 
   private finishCodingTask(

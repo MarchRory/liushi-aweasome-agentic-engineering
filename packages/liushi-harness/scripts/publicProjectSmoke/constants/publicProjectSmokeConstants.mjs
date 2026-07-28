@@ -13,6 +13,7 @@ export const WORKTREE_ID = "liushi-public-project-smoke-worktree";
 export const WORKTREE_BRANCH = "liushi/public-project-smoke";
 export const VERIFICATION_RUN_ID = "liushi-public-project-smoke-verification";
 export const VERIFICATION_PLAN_ID = "liushi-public-project-smoke-plan";
+export const VERIFICATION_PLAN_SCHEMA_VERSION = 2;
 export const TEMP_DIRECTORY_PREFIX = "liushi-public-project-smoke-";
 export const MANIFEST_SCHEMA_VERSION = "coding-task.cell.run.v2";
 export const SUBMITTED_AT = "2026-07-14T00:00:00.000Z";

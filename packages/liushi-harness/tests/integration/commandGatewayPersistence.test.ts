@@ -14,7 +14,15 @@ import {
   type CommandHandler,
   type CommandInvocationProvenance,
 } from "../../src/application/index.js";
-import { ActorKind, ResultStatus, success, type ContentDigest } from "../../src/common/index.js";
+import {
+  ActorKind,
+  HarnessError,
+  HarnessErrorCode,
+  ResultStatus,
+  failure,
+  success,
+  type ContentDigest,
+} from "../../src/common/index.js";
 import { createHarnessApplication } from "../../src/bootstrap/index.js";
 import {
   ExclusiveFileLockManager,
@@ -61,6 +69,47 @@ describe("File Command Gateway", () => {
         errorCode: CommandErrorCode.IdempotencyConflict,
       },
     });
+    expect(calls).toBe(1);
+  });
+
+  it.each([
+    {
+      name: "Rejected",
+      error: new HarnessError(HarnessErrorCode.OperationForbidden, "测试拒绝。"),
+      expectedStatus: CommandStatus.Rejected,
+      expectedCode: CommandErrorCode.AuthorizationDenied,
+    },
+    {
+      name: "OutcomeUnknown",
+      error: new HarnessError(HarnessErrorCode.IoFailure, "测试结果未知。"),
+      expectedStatus: CommandStatus.OutcomeUnknown,
+      expectedCode: CommandErrorCode.OutcomeUnknown,
+    },
+  ])("不同 Command ID 重放时保留首次 $name Receipt", async (fixture) => {
+    const storeRoot = await runtimeStores.create("liushi-command-terminal-replay-");
+    let calls = 0;
+    const handler: CommandHandler = {
+      execute: () => {
+        calls += 1;
+        return Promise.resolve(failure(fixture.error));
+      },
+    };
+    const first = await createHarnessApplication({ storeRoot }).applicationCommandGateway.execute(
+      command("command-terminal-1", digest("a")),
+      handler,
+    );
+    const replay = await createHarnessApplication({ storeRoot }).applicationCommandGateway.execute(
+      command("command-terminal-2", digest("a")),
+      handler,
+    );
+
+    expect(first).toMatchObject({
+      value: { status: fixture.expectedStatus, errorCode: fixture.expectedCode },
+    });
+    expect(replay).toMatchObject({
+      value: { status: fixture.expectedStatus, errorCode: fixture.expectedCode },
+    });
+    expect(replay).not.toMatchObject({ value: { status: CommandStatus.Duplicate } });
     expect(calls).toBe(1);
   });
 

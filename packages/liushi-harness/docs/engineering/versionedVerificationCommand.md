@@ -12,6 +12,8 @@
 
 `Passed` 完成当前验证阶段；`Failed` 按已确认的失败分类路由；`Blocked` 固定归类为环境失败。脏工作区、分支漂移、版本漂移以及检查命令修改工作区均 fail closed。
 
+Session golden path 已通过 `completeCodingTaskSessionDelivery` 串联 G8 Profile、Applicable Rule、确定性影响面选择、版本化 Command、强一致 Evidence 和 PR-ready 装配。VerificationPlan v2 将 Profile Bundle、Repository Profile、Proposal、G8 Approval 与 Rule Bundle 来源纳入 Plan Digest；PR-ready 装配必须接收该预期 Plan Digest，不能只信任 Evidence 自报。
+
 ## 尚未覆盖
 
-当前切片仍不包含影响面选择、Flaky/Retry/Waiver、Independent Verifier、多仓验证聚合和 Unknown Receipt 的 Human 恢复命令，因此不能单独形成完整 Review-ready。外层 Command Receipt 或原子提交结果为 Unknown 时不得自动重跑。
+当前仍不包含 Flaky/受限重试策略、Waiver 接纳、Independent Verifier、多仓验证聚合和 Unknown Receipt 的 Human 恢复命令。外层 Command Receipt 或原子提交结果为 Unknown 时不得自动重跑；真实 Codex Pilot 完成前不声明生产闭环。

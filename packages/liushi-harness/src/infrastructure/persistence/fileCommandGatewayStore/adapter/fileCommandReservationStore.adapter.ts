@@ -1,9 +1,7 @@
 import {
-  COMMAND_RECEIPT_SCHEMA_VERSION,
   CommandErrorCode,
   CommandReservationDisposition,
   CommandStatus,
-  createCommandReceipt,
   type CommandEnvelope,
   type CommandInvocationProvenance,
   type CommandReceipt,
@@ -28,16 +26,10 @@ import type {
 } from "../contracts/index.js";
 import { readCommandReservation, writeCommandReservation } from "../io/index.js";
 import { resolveCommandReservationPaths } from "../path/index.js";
-
-/** 构造非 Committed Receipt 时允许提供的可选字段。 */
-interface ResolvedReceiptFields {
-  /** 稳定错误分类。 */
-  readonly errorCode?: CommandErrorCode;
-  /** 非敏感错误说明。 */
-  readonly errorMessage?: string;
-  /** Duplicate 对应的首次 Command ID。 */
-  readonly duplicateOfCommandId?: string;
-}
+import {
+  createResolvedCommandReservation,
+  resolvePriorCommandReceipt,
+} from "../resolution/index.js";
 
 /** 使用原子 Reservation 文件实现跨进程 Command 幂等。 */
 export class FileCommandReservationStore implements CommandReservationStore {
@@ -176,7 +168,7 @@ function resolveExisting(
 ): CommandReservation {
   assertScope(existing, command);
   if (existing.requestDigest !== command.requestDigest) {
-    return resolvedReceipt(command, CommandStatus.Conflict, {
+    return createResolvedCommandReservation(command, CommandStatus.Conflict, {
       errorCode: CommandErrorCode.IdempotencyConflict,
       errorMessage: "同一幂等作用域已绑定不同 Request Digest。",
     });
@@ -184,7 +176,7 @@ function resolveExisting(
   if (
     !isSameCommandInvocationProvenance(existing.invocationProvenance, command.invocationProvenance)
   ) {
-    return resolvedReceipt(command, CommandStatus.Conflict, {
+    return createResolvedCommandReservation(command, CommandStatus.Conflict, {
       errorCode: CommandErrorCode.IdempotencyConflict,
       errorMessage: "同一幂等作用域已绑定不同 Invocation Provenance。",
     });
@@ -198,25 +190,7 @@ function resolveExisting(
   if (existing.commandId === command.commandId) {
     return { disposition: CommandReservationDisposition.Resolved, receipt: existing.receipt };
   }
-  return resolvedReceipt(command, CommandStatus.Duplicate, {
-    duplicateOfCommandId: existing.commandId,
-  });
-}
-
-function resolvedReceipt(
-  command: CommandEnvelope,
-  status: CommandStatus,
-  optional: ResolvedReceiptFields,
-): CommandReservation {
-  const receipt = createCommandReceipt({
-    schemaVersion: COMMAND_RECEIPT_SCHEMA_VERSION,
-    commandId: command.commandId,
-    requestDigest: command.requestDigest,
-    status,
-    ...optional,
-  });
-  if (receipt.status === ResultStatus.Failure) throw receipt.error;
-  return { disposition: CommandReservationDisposition.Resolved, receipt: receipt.value };
+  return resolvePriorCommandReceipt(command, existing.commandId, existing.receipt);
 }
 
 function assertScope(existing: PersistedCommandReservation, command: CommandEnvelope): void {

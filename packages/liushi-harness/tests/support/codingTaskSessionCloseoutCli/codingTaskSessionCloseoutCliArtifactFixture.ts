@@ -22,6 +22,7 @@ import {
 /** 通过生产 Artifact/Approval API 创建严格绑定的执行授权。 */
 export async function createCloseoutCliApprovedAuthorization(
   application: ReturnType<typeof createHarnessApplication>,
+  beforePlanning?: () => Promise<void>,
 ): Promise<CodingTaskExecutionAuthorization> {
   const task = await application.createTask.execute({
     workspaceId: CLOSEOUT_CLI_WORKSPACE_ID,
@@ -29,6 +30,7 @@ export async function createCloseoutCliApprovedAuthorization(
     actor: { kind: ActorKind.Human, actorId: "human" },
   });
   if (task.status !== ResultStatus.Success) throw task.error;
+  await beforePlanning?.();
   const requirement = await application.proposeArtifact.execute({
     workspaceId: CLOSEOUT_CLI_WORKSPACE_ID,
     taskId: CLOSEOUT_CLI_SOURCE_TASK_ID,

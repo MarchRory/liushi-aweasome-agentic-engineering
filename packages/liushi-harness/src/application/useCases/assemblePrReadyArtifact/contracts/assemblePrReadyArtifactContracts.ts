@@ -1,4 +1,5 @@
 import type { EvidenceBundleLocator } from "#application/ports/index.js";
+import type { ContentDigest } from "#common/index.js";
 
 /** 组装 PR-ready Artifact 所允许的唯一调用输入。 */
 export interface AssemblePrReadyArtifactInput {
@@ -8,4 +9,6 @@ export interface AssemblePrReadyArtifactInput {
   readonly codingTaskId: EvidenceBundleLocator["codingTaskId"];
   /** EvidenceBundle 的稳定 Verification Run 标识。 */
   readonly verificationRunId: EvidenceBundleLocator["verificationRunId"];
+  /** 本次权威选择产生的 Verification Plan 摘要。 */
+  readonly expectedPlanDigest: ContentDigest;
 }

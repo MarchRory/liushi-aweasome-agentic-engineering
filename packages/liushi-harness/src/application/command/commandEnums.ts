@@ -6,7 +6,7 @@ export enum CommandStatus {
   Rejected = "rejected",
   /** Command 因期望版本与当前版本不一致而产生冲突。 */
   Conflict = "conflict",
-  /** Command 已被同一个幂等键识别为重复请求。 */
+  /** Command 与同幂等键下已提交成功的首次请求重复。 */
   Duplicate = "duplicate",
   /** 无法确定 Event 或外部副作用是否已经完成。 */
   OutcomeUnknown = "outcome_unknown",
@@ -48,7 +48,7 @@ export enum CommandErrorCode {
   PreconditionNotMet = "precondition_not_met",
   /** Command 未获得执行所需的授权。 */
   AuthorizationDenied = "authorization_denied",
-  /** Command 鍦ㄦ墽琛屽墠鍥犺祫婧愭垨 Lock 鐑欏崰鏈墽琛岋紝鍙樉寮忛噸璇曘€?*/
+  /** Command 在执行前因资源或 Lock 被占用而未执行，可显式重试。 */
   ResourceUnavailable = "resource_unavailable",
   /** Aggregate 当前版本与 Command 的期望版本不一致。 */
   VersionConflict = "version_conflict",

@@ -37,6 +37,7 @@ import {
   type ProjectVerificationCheck,
 } from "../../../src/domain/verification/index.js";
 import { parseRepositoryId, parseWorkspaceId } from "../../../src/domain/workspace/index.js";
+import type { WorkspaceId } from "../../../src/domain/workspace/index.js";
 import { Rfc8785Sha256DigestAdapter } from "../../../src/infrastructure/index.js";
 import { createRule, DIGEST } from "../rule/index.js";
 
@@ -55,11 +56,12 @@ export const compilerProvenance = {
 /** 创建带稳定摘要的多仓发现报告。 */
 export function createCompilerReport(
   candidates: readonly ProjectProfileCandidate[],
+  workspaceId: WorkspaceId = compilerWorkspaceId,
 ): ProjectDiscoveryReport {
   const report: ProjectDiscoveryReport = {
     schemaVersion: PROJECT_DISCOVERY_REPORT_SCHEMA_VERSION,
     scannerVersion: PROJECT_SCANNER_VERSION,
-    workspaceId: compilerWorkspaceId,
+    workspaceId,
     workspaceGraphRevision: "graph-rev-1",
     status: ProjectDiscoveryStatus.Complete,
     profilePromotionStatus: ProjectProfilePromotionStatus.HumanReviewRequired,
@@ -71,16 +73,27 @@ export function createCompilerReport(
   return withCompilerDigest(report, createProjectDiscoveryReportDigestInput(report));
 }
 
+/** 单仓候选夹具允许覆盖真实 Pilot 的 Workspace 与 Revision。 */
+export interface CompilerCandidateOptions {
+  /** 候选所属 Workspace。 */
+  readonly workspaceId?: WorkspaceId;
+  /** 候选绑定的真实 Repository Revision。 */
+  readonly repositoryRevision?: string;
+}
+
 /** 创建单仓候选及其 repository-scoped Rule。 */
 export function createCompilerCandidate(
   repositoryId: typeof compilerRepoA,
+  options: CompilerCandidateOptions = {},
 ): ProjectProfileCandidate {
-  const rule = createCompilerRule(repositoryId);
+  const workspaceId = options.workspaceId ?? compilerWorkspaceId;
+  const repositoryRevision = options.repositoryRevision ?? `repo-rev-${repositoryId}`;
+  const rule = createCompilerRule(repositoryId, workspaceId, repositoryRevision);
   const mechanism = createCompilerMechanism(repositoryId);
   const candidate: ProjectProfileCandidate = {
     schemaVersion: PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION,
     repositoryId,
-    repositoryRevision: `repo-rev-${repositoryId}`,
+    repositoryRevision,
     roleHint: RepositoryRole.Application,
     status: ProjectDiscoveryStatus.Complete,
     inventory: { fileCount: 1, directoryCount: 1, skippedLinkCount: 0, ignoredDirectoryCount: 0 },
@@ -102,6 +115,7 @@ export function createCompilerCandidate(
 export function createCompilerProposal(
   report: ProjectDiscoveryReport,
   order: readonly ProjectProfileCandidate[] = report.profileCandidates,
+  verificationChecks: readonly ProjectVerificationCheck[] = createCompilerVerificationChecks(),
 ): ProjectProfileProposalPayload {
   return {
     schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
@@ -116,7 +130,7 @@ export function createCompilerProposal(
       rejectedRuleIds: [],
       acceptedMechanismCandidateIds: candidate.mechanismCandidates.map((item) => item.candidateId),
       rejectedMechanismCandidateIds: [],
-      verificationChecks: createCompilerVerificationChecks(),
+      verificationChecks,
     })),
   };
 }
@@ -152,19 +166,23 @@ export function withCompilerDigest<T extends { digest: ContentDigest }>(
   return { ...value, digest: digest.value };
 }
 
-function createCompilerRule(repositoryId: typeof compilerRepoA): RuleDefinition {
+function createCompilerRule(
+  repositoryId: typeof compilerRepoA,
+  workspaceId: WorkspaceId,
+  repositoryRevision: string,
+): RuleDefinition {
   const rule = createRule({
     ruleId: `project.${repositoryId}.typescript.strict`,
     familyKey: "typescript.strict",
     status: RuleStatus.Candidate,
     schemaVersion: RULE_SCHEMA_VERSION,
-    scope: { level: RuleScopeLevel.Repository, workspaceId: compilerWorkspaceId, repositoryId },
+    scope: { level: RuleScopeLevel.Repository, workspaceId, repositoryId },
     selector: { repositoryIds: [repositoryId] },
     sourceRefs: [
       {
         kind: RuleSourceKind.ProjectFile,
         sourceId: "tsconfig.json",
-        revision: `repo-rev-${repositoryId}`,
+        revision: repositoryRevision,
       },
     ],
   });

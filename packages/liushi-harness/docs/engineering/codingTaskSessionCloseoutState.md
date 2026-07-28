@@ -21,7 +21,7 @@ Closeout 必须在 Git 副作用前留下可恢复的提交前事实，并在 Gi
 - CLI `coding-task session closeout` 读取完整 Closeout Command Envelope，并要求 Workspace、Repository、绝对 Root 与 Agent Actor 的显式运行时绑定。CLI 不生成 ID、时间或摘要；`CheckpointBound`、`Blocked` 与 `OutcomeUnknown` 分别映射为成功、冲突和专用未知结果。
 - 真实 Git E2E 通过生产 API 建立 Task、Human Gate、Activation、Binding、Admission、Journal 和 Trace，在真实受管 Worktree 中产生 Write Set 内变更，再通过生产 CLI 创建唯一 ChangeSet-bound Checkpoint；新 Application 重放同一 Command 后，HEAD、Commit 数量和关键持久化证据原始字节均不变化。
 
-本切片之后已完成 Human-gated Closeout Recovery 和独立 Delivery Submission。尚未实现自动 Verification/Evidence/PRReady 串联、真实 Codex Pilot 和多仓交付编排。
+本切片之后已完成 Human-gated Closeout Recovery、Delivery Submission 和权威 Verification/Evidence/PR-ready Completion。尚未实现真实 Codex Pilot 和多仓交付编排。
 
 Coverage Proof 的严格身份、Journal v2 provenance、Trace observation digest 精确集合匹配和 fail-closed 规则不改变现有 Human Gates、多仓写入、Wiki 写入或知识候选晋升边界。
 

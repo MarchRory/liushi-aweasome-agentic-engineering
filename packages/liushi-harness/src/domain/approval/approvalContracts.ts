@@ -7,8 +7,8 @@ import type { ArtifactDigest, ArtifactId } from "#domain/artifact/index.js";
 import type { GateId, RiskLevel } from "#domain/policy/index.js";
 import type { TaskId, TaskPhase } from "#domain/task/index.js";
 
-import type { ApprovalId, DecisionRequestId } from "./approvalId.js";
 import type { ApprovalDecision } from "./approvalEnums.js";
+import type { ApprovalId, DecisionRequestId } from "./identifiers/index.js";
 
 /** Human 决策前由 Core 创建的请求。 */
 export interface DecisionRequest {

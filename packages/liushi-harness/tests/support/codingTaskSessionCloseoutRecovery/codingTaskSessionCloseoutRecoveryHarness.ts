@@ -132,6 +132,7 @@ export function createCodingTaskSessionCloseoutRecoveryHarness(
     },
     managedWorktreePath: {
       resolveManagedWorktreeRoot: () => success("closeout"),
+      hasSamePathIdentity: (left: string, right: string) => left === right,
     },
     snapshotInspector: {
       execute: () => {

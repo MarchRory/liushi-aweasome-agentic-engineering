@@ -53,6 +53,7 @@ export class SelectVerificationPlanUseCase {
       expectedBranchName: input.codingTask.worktreeBinding.branchName,
       baseRevision: input.codingTask.baseRevision,
       targetRevision: context.value.attempt.targetRevision,
+      sourceRefs,
       checks: selection.checks
         .filter((check) => check.status === VerificationCheckSelectionStatus.Selected)
         .map((check) => toVerificationCheck(check.check)),

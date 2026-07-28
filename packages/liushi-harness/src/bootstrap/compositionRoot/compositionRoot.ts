@@ -1,5 +1,6 @@
 import {
   ApplicationCommandGateway,
+  CodingTaskDeliveryCompletionService,
   CompileProjectProfileUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
@@ -206,6 +207,21 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       ? {}
       : { runtimeBinding: options.codingTaskCellRuntimeBinding }),
   });
+  const compileProjectProfile = new CompileProjectProfileUseCase(taskRepository, digest);
+  const resolveRules = new ResolveRulesUseCase(digest);
+  const selectVerificationPlan = new SelectVerificationPlanUseCase(digest);
+  const { verificationCompletion, ...publicCodingTaskCellApplication } = codingTaskCellApplication;
+  const completeCodingTaskSessionDelivery = new CodingTaskDeliveryCompletionService(
+    codingTaskExecutionApplication.deliveryApplication.submitCodingTaskSessionDelivery,
+    codingTaskRepository,
+    compileProjectProfile,
+    resolveRules,
+    selectVerificationPlan,
+    repositoryRootResolver,
+    managedWorktreePath,
+    verificationCompletion,
+    digest,
+  );
   const codingTaskSessionApplication = createCodingTaskSessionApplication({
     codingTaskCommands: codingTaskCellApplication.codingTaskCommands,
     worktreeProvisionCommands: worktreeApplication.worktreeProvisionCommands,
@@ -224,7 +240,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     evidenceBundleStore,
     repositoryRootResolver,
     checkRuntimeHealth: createRuntimeHealthUseCase(options.storeRoot),
-    compileProjectProfile: new CompileProjectProfileUseCase(taskRepository, digest),
+    compileProjectProfile,
     createTask: new CreateTaskUseCase(taskRepository, clock, taskIdGenerator),
     getTaskStatus: new GetTaskStatusUseCase(taskRepository),
     getTaskTimeline: new GetTaskTimelineUseCase(taskRepository),
@@ -254,8 +270,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     recordActionObservation: new RecordActionObservationUseCase(actionJournalRepository),
     recordActionResolution: new RecordActionResolutionUseCase(actionJournalRepository),
     recordTraceObservation: new RecordTraceObservationUseCase(traceObservationStore),
-    resolveRules: new ResolveRulesUseCase(digest),
-    selectVerificationPlan: new SelectVerificationPlanUseCase(digest),
+    resolveRules,
+    selectVerificationPlan,
     scanProject: new ScanProjectUseCase(projectFileSystem, projectConfigParser, digest),
     workflowCommands: new WorkflowCommandService(
       applicationCommandGateway,
@@ -266,11 +282,12 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     changeSetCheckpoints: changeSetApplication.changeSetCheckpoints,
     ...closeoutApplication,
     ...codingTaskExecutionApplication.deliveryApplication,
+    completeCodingTaskSessionDelivery,
     runVerification: verificationRunner,
     runAndPersistVerification,
     acquireRepositoryLock: new AcquireRepositoryLockUseCase(repositoryLock),
     journaledActionRunner,
-    ...codingTaskCellApplication,
+    ...publicCodingTaskCellApplication,
     ...codingTaskSessionApplication,
     ...worktreeApplication,
   };

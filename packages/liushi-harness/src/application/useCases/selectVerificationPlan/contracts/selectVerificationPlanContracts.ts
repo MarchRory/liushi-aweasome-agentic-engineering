@@ -1,5 +1,3 @@
-import type { ContentDigest } from "#common/index.js";
-import type { ApprovalId } from "#domain/approval/index.js";
 import type { CodingTaskAggregate } from "#domain/codingTask/index.js";
 import type { ProjectProfileBundle } from "#domain/projectProfile/index.js";
 import type { ApplicableRuleBundle } from "#domain/rule/index.js";
@@ -7,6 +5,7 @@ import type {
   VerificationImpactSelection,
   VerificationImpactSelectionStatus,
   VerificationPlan,
+  VerificationPlanSourceRefs,
 } from "#domain/verification/index.js";
 
 /** 生成 Verification Plan 所需的完整权威输入。 */
@@ -23,19 +22,8 @@ export interface SelectVerificationPlanInput {
   planId: string;
 }
 
-/** Verification Plan 选择所绑定的已持久化来源。 */
-export interface VerificationPlanSelectionSourceRefs {
-  /** 多仓 Project Profile Bundle 摘要。 */
-  projectProfileBundleDigest: ContentDigest;
-  /** 当前仓库 Project Profile 摘要。 */
-  projectProfileDigest: ContentDigest;
-  /** G8 批准的 Project Profile Proposal Artifact 摘要。 */
-  proposalArtifactDigest: ContentDigest;
-  /** G8 批准本次 Profile 编译的 Approval ID。 */
-  profileApprovalId: ApprovalId;
-  /** 当前 Applicable Rule Bundle 摘要。 */
-  applicableRuleBundleDigest: ContentDigest;
-}
+/** 兼容既有 Application 命名的 Verification Plan 来源别名。 */
+export type VerificationPlanSelectionSourceRefs = VerificationPlanSourceRefs;
 
 /** Verification Plan 选择结果的公共字段。 */
 interface VerificationPlanSelectionBase {

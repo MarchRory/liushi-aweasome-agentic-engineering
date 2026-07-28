@@ -14,6 +14,7 @@ import {
   CodingTaskAttemptOutcome,
   CodingTaskPhase,
   CodingTaskRunState,
+  CodingTaskVerificationOutcome,
   type CodingTaskAttempt,
 } from "#domain/codingTask/index.js";
 import {
@@ -36,7 +37,7 @@ import type { SelectVerificationPlanInput } from "../contracts/index.js";
 export interface ValidatedVerificationPlanSelectionContext {
   /** 当前仓库经 G8 确认的 Profile。 */
   profile: ProjectProfile;
-  /** 当前处于 Verification 阶段的最新实现尝试。 */
+  /** 当前待验证或为幂等重放保留的最新实现尝试。 */
   attempt: CodingTaskAttempt & { targetRevision: string; changedPaths: readonly string[] };
 }
 
@@ -191,9 +192,21 @@ function validateAttempt(
   input: SelectVerificationPlanInput,
 ): Result<ValidatedVerificationPlanSelectionContext["attempt"], HarnessError> {
   const attempt = input.codingTask.attempts.at(-1);
+  const isPendingVerification =
+    input.codingTask.phase === CodingTaskPhase.Verification &&
+    input.codingTask.runState === CodingTaskRunState.Active &&
+    attempt?.verificationOutcome === undefined;
+  const isPassedReplay =
+    input.codingTask.phase === CodingTaskPhase.Verification &&
+    input.codingTask.runState === CodingTaskRunState.Completed &&
+    attempt?.verificationOutcome === CodingTaskVerificationOutcome.Passed;
+  const isFailedReplay =
+    input.codingTask.phase === CodingTaskPhase.Implementation &&
+    (input.codingTask.runState === CodingTaskRunState.Active ||
+      input.codingTask.runState === CodingTaskRunState.WaitingHuman) &&
+    attempt?.verificationOutcome === CodingTaskVerificationOutcome.Failed;
   if (
-    input.codingTask.phase !== CodingTaskPhase.Verification ||
-    input.codingTask.runState !== CodingTaskRunState.Active ||
+    (!isPendingVerification && !isPassedReplay && !isFailedReplay) ||
     !Number.isInteger(input.attemptNumber) ||
     input.attemptNumber <= 0 ||
     attempt?.number !== input.attemptNumber ||

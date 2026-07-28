@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root、CLI、确定性故障注入与真实 Git 恢复 E2E 已实现。下游 Delivery 已消费 Effective Resolver；自动 Verification/Evidence/PRReady 与真实 Codex Pilot 尚未完成。**
+**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root、CLI、确定性故障注入与真实 Git 恢复 E2E 已实现。下游 Delivery Completion 已消费 Effective Resolver 并串联权威 Verification/Evidence/PR-ready；真实 Codex Pilot 尚未完成。**
 
 ## 1. 决策
 

@@ -6,12 +6,13 @@
 
 ## 权威输入
 
-公开用例只接受 `workspaceId`、`codingTaskId` 和 `verificationRunId` 三个定位字段。装配器内部必须：
+公开用例只接受 `workspaceId`、`codingTaskId`、`verificationRunId` 和上游权威 Plan 计算出的 `expectedPlanDigest` 四个定位字段。装配器内部必须：
 
 1. 从 `CodingTaskRepository` 重放已完成 CodingTask。
 2. 从 `EvidenceBundleStore` 强一致读取不可变 EvidenceBundle。
 3. 使用 `CodingTaskExecutionAuthorizationResolver` 重算当前 Task-backed Human Gate 和 Write Set。
 4. 从来源 `TaskRepository` 读取精确 PlanRisk；涉及历史业务逻辑时同时校验 Business Logic Artifact。
+5. 同时比较 Evidence 中的 Plan Digest 与 `expectedPlanDigest`，拒绝相同 Run ID 下的 Plan 漂移。
 
 调用方提供完整 Evidence、Head Revision、Changed Paths、风险或回滚方案会被严格输入校验拒绝。
 
@@ -28,9 +29,9 @@ Artifact 固定绑定：
 
 Artifact Digest 对不含自身 ID 和 Digest 的完整正文计算，Artifact ID 再由该 Digest 确定性派生。相同权威状态在新 Application 实例中必须生成完全相同的 Artifact。
 
-## Cell 完成条件
+## 完成条件
 
-`cell run` 只有同时满足以下条件才返回 `review_ready`：
+Session golden path 的 `completeCodingTaskSessionDelivery` 只有同时满足以下条件才返回 `review_ready`：
 
 1. 所有版本化命令 Receipt 为 `committed` 或 `duplicate`。
 2. 权威 EvidenceBundle 状态为 `passed`。
@@ -39,6 +40,8 @@ Artifact Digest 对不含自身 ID 和 Digest 的完整正文计算，Artifact I
 5. PRReadyArtifact 成功装配。
 
 任一条件失败都会关闭式停止。Human 仍需审查 Artifact、代码差异和 Evidence 后决定是否创建 PR。
+
+`cell run` 保留为受信宿主预编译 Manifest 的兼容入口；它不是不受信 Agent 的 Plan 选择入口，也不是新的生产 golden path。直接调用 `verificationCommands` 或 `assemblePrReadyArtifact` 同样属于受信宿主的低层组合能力。
 
 ## 当前验证边界
 

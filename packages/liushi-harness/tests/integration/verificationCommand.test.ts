@@ -15,6 +15,7 @@ import {
   FailureTaxonomy,
   ResultStatus,
   VERIFICATION_RUN_COMMAND_TYPE,
+  VERIFICATION_PLAN_SCHEMA_VERSION,
   VerificationExecutionMode,
   VerificationKind,
   VerificationRequirement,
@@ -385,13 +386,14 @@ function verificationCommand(
     attemptNumber: 1,
     worktreeRootDigest: unwrap(digest.calculate({ worktreeRoot: setup.worktreeRoot })),
     plan: {
-      schemaVersion: 1,
+      schemaVersion: VERIFICATION_PLAN_SCHEMA_VERSION,
       planId: "verification-plan-1",
       repositoryId: "repo-1",
       worktreeId: "worktree-1",
       expectedBranchName: "feature/verification-command",
       baseRevision: setup.baseRevision,
       targetRevision,
+      sourceRefs: verificationPlanSourceRefs(),
       checks: [
         {
           checkId: "command",
@@ -424,6 +426,16 @@ function verificationCommand(
     correlationId: "verification-command-correlation",
     submittedAt,
     payload,
+  };
+}
+
+function verificationPlanSourceRefs() {
+  return {
+    projectProfileBundleDigest: `sha256:${"1".repeat(64)}`,
+    projectProfileDigest: `sha256:${"2".repeat(64)}`,
+    proposalArtifactDigest: `sha256:${"3".repeat(64)}`,
+    profileApprovalId: "01ARZ3NDEKTSV4RRFFQ69G5HBP",
+    applicableRuleBundleDigest: `sha256:${"4".repeat(64)}`,
   };
 }
 

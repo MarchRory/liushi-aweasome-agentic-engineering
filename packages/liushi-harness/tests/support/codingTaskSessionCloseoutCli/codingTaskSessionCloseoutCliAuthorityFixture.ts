@@ -5,6 +5,7 @@ import {
   CodingTaskSessionActivationStatus,
   ResultStatus,
   createHarnessApplication,
+  type HarnessApplicationOptions,
 } from "../../../src/index.js";
 import { StaticRepositoryRootResolverAdapter } from "../../../src/infrastructure/index.js";
 
@@ -27,19 +28,33 @@ import {
   createCloseoutCliTemporaryRoot,
   runCloseoutCliGit,
 } from "./codingTaskSessionCloseoutCliGitFixture.js";
-import type { CodingTaskSessionCloseoutCliSetup } from "./codingTaskSessionCloseoutCliContracts.js";
+import type {
+  CodingTaskSessionCloseoutCliSetup,
+  CodingTaskSessionCloseoutCliSetupOptions,
+} from "./codingTaskSessionCloseoutCliContracts.js";
 import { FixedClock } from "../runtime/index.js";
 
 /** 创建真实 Git、审批状态、Session Activation、Hook Evidence 与 Closeout Command。 */
 export async function createCodingTaskSessionCloseoutCliSetup(
   roots: string[],
+  options: CodingTaskSessionCloseoutCliSetupOptions = {},
 ): Promise<CodingTaskSessionCloseoutCliSetup> {
   const storeRoot = await createCloseoutCliTemporaryRoot(roots, "liushi-closeout-store-");
   const repositoryRoot = await createCloseoutCliTemporaryRoot(roots, "liushi-closeout-repo-");
   await initializeRepository(repositoryRoot);
   const baseRevision = await runCloseoutCliGit(repositoryRoot, ["rev-parse", "HEAD"]);
   const application = createCodingTaskSessionCloseoutCliApplication(storeRoot, repositoryRoot);
-  const executionAuthorization = await createCloseoutCliApprovedAuthorization(application);
+  const executionAuthorization = await createCloseoutCliApprovedAuthorization(
+    application,
+    async () =>
+      options.beforePlanning?.({
+        application,
+        baseRevision,
+        workspaceId: CLOSEOUT_CLI_WORKSPACE_ID,
+        repositoryId: CLOSEOUT_CLI_REPOSITORY_ID,
+        sourceTaskId: CLOSEOUT_CLI_SOURCE_TASK_ID,
+      }),
+  );
   const worktreeRoot = join(repositoryRoot, "worktrees", "session");
   const manifest = createCloseoutCliSessionManifest({
     repositoryRoot,
@@ -90,6 +105,7 @@ async function initializeRepository(repositoryRoot: string): Promise<void> {
 export function createCodingTaskSessionCloseoutCliApplication(
   storeRoot: string,
   repositoryRoot: string,
+  options: Pick<HarnessApplicationOptions, "verificationExecutionMode"> = {},
 ): ReturnType<typeof createHarnessApplication> {
   return createHarnessApplication({
     storeRoot,
@@ -108,6 +124,7 @@ export function createCodingTaskSessionCloseoutCliApplication(
       repositoryRoot,
       agentActorId: CLOSEOUT_CLI_AGENT_ACTOR_ID,
     },
+    ...options,
   });
 }
 

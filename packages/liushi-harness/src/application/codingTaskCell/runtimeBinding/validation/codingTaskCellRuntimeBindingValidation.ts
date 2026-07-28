@@ -72,14 +72,24 @@ export function validateCodingTaskCellRuntimeBinding(
   if (expectedWorktreeRoot.status === ResultStatus.Failure) {
     return failure(withCreateStage(expectedWorktreeRoot.error));
   }
-  if (manifest.provision.runtime.repositoryRoot !== binding.repositoryRoot) {
+  if (
+    !runtimePath.hasSamePathIdentity(
+      manifest.provision.runtime.repositoryRoot,
+      binding.repositoryRoot,
+    )
+  ) {
     return mismatch(
       CodingTaskCellRuntimeBindingField.RepositoryRoot,
       CodingTaskCellStage.Provision,
     );
   }
   for (const [implementationIndex, implementation] of manifest.implementations.entries()) {
-    if (implementation.runtime.repositoryRoot !== binding.repositoryRoot) {
+    if (
+      !runtimePath.hasSamePathIdentity(
+        implementation.runtime.repositoryRoot,
+        binding.repositoryRoot,
+      )
+    ) {
       return mismatch(
         CodingTaskCellRuntimeBindingField.RepositoryRoot,
         CodingTaskCellStage.Implementation,
@@ -87,13 +97,23 @@ export function validateCodingTaskCellRuntimeBinding(
       );
     }
   }
-  if (manifest.submission.runtime.repositoryRoot !== binding.repositoryRoot) {
+  if (
+    !runtimePath.hasSamePathIdentity(
+      manifest.submission.runtime.repositoryRoot,
+      binding.repositoryRoot,
+    )
+  ) {
     return mismatch(
       CodingTaskCellRuntimeBindingField.RepositoryRoot,
       CodingTaskCellStage.Submission,
     );
   }
-  if (manifest.verification.runtime.worktreeRoot !== expectedWorktreeRoot.value) {
+  if (
+    !runtimePath.hasSamePathIdentity(
+      manifest.verification.runtime.worktreeRoot,
+      expectedWorktreeRoot.value,
+    )
+  ) {
     return mismatch(
       CodingTaskCellRuntimeBindingField.WorktreeRoot,
       CodingTaskCellStage.Verification,

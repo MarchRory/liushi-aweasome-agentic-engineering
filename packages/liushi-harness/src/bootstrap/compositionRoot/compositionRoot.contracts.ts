@@ -27,6 +27,7 @@ import type {
   CodingTaskSessionCloseoutManager,
   CodingTaskSessionCloseoutRecoveryCommandService,
   CodingTaskSessionDeliverySubmissionService,
+  CodingTaskDeliveryCompletionService,
   CodingTaskSessionEffectiveCloseoutResolver,
   AssessCodingTaskSessionCloseoutRecoveryUseCase,
   RunVerificationUseCase,
@@ -136,11 +137,11 @@ export interface HarnessApplication {
   workflowCommands: WorkflowCommandService;
   /** CodingTask 的版本化写入入口。 */
   codingTaskCommands: CodingTaskCommandService;
-  /** 串行执行编码阶段的单一 CodingTask Cell。 */
+  /** 运行受信宿主预编译的兼容 Cell；不受信 Agent 应使用 Session Delivery Completion。 */
   runCodingTaskCell: CodingTaskCellService;
   /** 激活真实外部 Agent 的 CodingTask Session。 */
   activateCodingTaskSession: ActivateCodingTaskSessionService;
-  /** 从权威状态组装 PR-ready Repository Delivery Artifact。 */
+  /** 供受信宿主从权威状态组装 PR-ready Artifact 的低层能力。 */
   assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase;
   /** 只读检查 CodingTask 工作树、基线和 Write Set。 */
   inspectWorktree: InspectWorktreeUseCase;
@@ -158,11 +159,13 @@ export interface HarnessApplication {
   resolveCodingTaskSessionEffectiveCloseout: CodingTaskSessionEffectiveCloseoutResolver;
   /** 将 Effective Closeout 接纳为 CodingTask ImplementationSubmitted Event。 */
   submitCodingTaskSessionDelivery: CodingTaskSessionDeliverySubmissionService;
+  /** 从 Session Delivery 连续执行权威验证并装配 PR-ready Artifact。 */
+  completeCodingTaskSessionDelivery: CodingTaskDeliveryCompletionService;
   /** 执行验证计划并生成不携带原始输出的 EvidenceBundle。 */
   runVerification: RunVerificationUseCase;
   /** 执行 Verification 并强一致提交 EvidenceBundle。 */
   runAndPersistVerification: RunAndPersistVerificationUseCase;
-  /** 运行并接纳 CodingTask Verification 的版本化入口。 */
+  /** 供受信宿主运行已物化 Verification Plan 的低层版本化入口。 */
   verificationCommands: VerificationCommandService;
   /** 在 Write Set、仓库锁和 Journal 边界内应用文件变更。 */
   implementationCommands: ImplementationCommandService;

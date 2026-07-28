@@ -1,12 +1,14 @@
-# CodingTask Session Delivery Submission
+# CodingTask Session Delivery 与 Completion
 
-**状态：Application Command、锁内 Handler、Composition Root、Original/Recovery 真实 Git E2E 已实现；尚未提供独立 CLI，也未串联自动 Verification、Evidence、PRReady 或真实 Codex Pilot。**
+**状态：Delivery Submission、权威 Plan 选择、Verification、Evidence、PR-ready 串联和真实 Git E2E 已实现；尚未提供独立 Completion CLI 或真实 Codex Pilot。**
 
 ## 1. 目标
 
 Session Closeout 已经创建并绑定唯一 Git Checkpoint，但 `CodingTask` 仍停留在活动的 Implementation Attempt。Delivery Submission 负责把 Effective Closeout 接纳为唯一 `ImplementationSubmitted` Event，使 CodingTask 进入 Verification。
 
 该入口不创建第二个 Git Commit，也不创建新的 Action Journal。继续调用既有 `ImplementationSubmissionService` 会重复负责 Git 副作用和 Action Journal，无法表达“Closeout 已经完成提交”的事实，因此本切片只复用其下游 Domain Event 语义和内部能力。
+
+`completeCodingTaskSessionDelivery` 在 Submission 成功后继续从权威 Store 重建 Profile、Rule、Plan 和 Verification Command，最终只在 Passed Evidence 与当前 Human Gate 同时成立时装配 `PRReadyArtifact`。它不增加新的流程 Store，也不接管 PR 创建、推送或合并。
 
 ## 2. 命令契约
 
@@ -53,15 +55,40 @@ Delivery 不新增绕过审批的权限：
 4. 缺少历史业务逻辑确认、风险审批或其他必需 Gate 时，授权解析失败，Event 不会提交。
 5. Delivery Actor 不能伪装成 Human；Human Approval 只能来自权威 Task/Approval 事实。
 
-## 5. 幂等与恢复
+## 5. Completion 权威链
+
+```mermaid
+flowchart TD
+  A["提交或重放 Delivery Command"] --> B["重读 CodingTask Aggregate"]
+  B --> C["从精确 G8 Proposal/Approval 重新编译 ProjectProfile"]
+  C --> D["解析当前 Task 的 ApplicableRuleBundle"]
+  D --> E["从 Profile、Rule、Attempt 选择 VerificationPlan"]
+  E --> F{"Selection Ready"}
+  F -- "否" --> G["Blocked，等待 Human/配置修复"]
+  F -- "是" --> H["通过平台路径端口复验受管 Worktree"]
+  H --> I["物化版本化 Verification Command"]
+  I --> J["执行并强一致持久化 EvidenceBundle"]
+  J --> K{"Evidence Passed"}
+  K -- "否" --> L["返回 Failed/Blocked/Waived，不生成 PR-ready"]
+  K -- "是" --> M["重算 Human Gate 并装配 PRReadyArtifact"]
+```
+
+调用方只提供 Profile Artifact 定位、Rule Resolution Context 和 Verification 调用元数据，不能提供最终 Plan、Attempt Number、Target Revision、Expected Version 或 Repository Root。Plan 固定包含 Profile Bundle、Repository Profile、Proposal Artifact、G8 Approval 和 Applicable Rule Bundle 的来源摘要；Evidence 再绑定完整 Plan Digest。
+
+Project Profile 是 Workspace/Repository 级受管资产，允许复用另一个已完成 Task 中的 G8 Proposal。复用仍必须满足同 Workspace、当前 Repository/Base Revision、Proposal/Approval 精确绑定和完整 Profile/Rule Digest 校验；Rule Bundle 的 Task ID 必须等于当前 CodingTask 的来源 Task。
+
+## 6. 幂等与恢复
 
 - 相同外部 Command 由 Application Command Gateway 返回已持久化 Receipt，不重复进入 Handler。
+- 不同 Command ID 复用同一幂等键时，只有首次结果为 `committed` 才返回 `duplicate`；首次 `rejected`、`conflict` 或 `outcome_unknown` 会保持原状态，不能借重复请求继续后续阶段。
 - 不同 Command 在 CodingTask 已包含完全相同的 Attempt、Target Revision 和 Changed Paths 时，只返回当前版本，不追加第二条 Event。
 - Event append 返回失败后，Handler 会重新读取 CodingTask；只有权威 Aggregate 已经包含同一个 Checkpoint 时才接纳为成功。
 - Checkpoint、Source、Version、Actor、因果链、Snapshot、Coverage 或 Repository 身份任一漂移都关闭式拒绝。
 - Repository Lock 释放结果未知时返回 I/O 不确定结果，不能把锁内成功猜测为稳定完成。
+- Verification 明确失败后 Aggregate 会按失败分类回到 Implementation 或 WaitingHuman；同一完成输入仍可重建原 Plan、复用原 Receipt 并读取原 Evidence。
+- `outcome_unknown` 在 Delivery 或 Verification 任一阶段都立即停止，不自动重跑，也不新增隐藏恢复协议。
 
-## 6. 复用边界
+## 7. 复用边界
 
 - 复用 `ApplicationCommandGateway` 的持久化 Reservation 与 Receipt。
 - 复用 `CodingTaskSessionEffectiveCloseoutResolver` 的 Original/Recovery 投影。
@@ -69,10 +96,13 @@ Delivery 不新增绕过审批的权限：
 - 复用通用 `hasSameChangeSetCheckpoint` 全字段比较器。
 - 复用 `CodingTaskCommandHandler` 的内部 capability，只追加领域 Event。
 - 复用当前 Authorization Resolver、Repository Root Resolver、Repository Lock 和 ChangeSet Checkpoint Inspector。
+- 复用 `CompileProjectProfileUseCase`、`ResolveRulesUseCase` 和 `SelectVerificationPlanUseCase`，不接受调用方自报最终 Plan。
+- 复用版本化 Verification Command、Evidence Store 和 PR-ready 装配器；兼容 Cell 与 Session Completion 共用同一窄尾链。
+- 复用 `ManagedWorktreePathPort` 隔离 Windows/POSIX 路径身份语义，Application 不包含平台分支。
 
 没有引入新的 Agent 框架、Workflow Runtime、数据库或 Git 库。
 
-## 7. 验证证据
+## 8. 验证证据
 
 当前测试覆盖：
 
@@ -82,16 +112,15 @@ Delivery 不新增绕过审批的权限：
 - `OutcomeUnknown -> Human BindExisting -> Recovery` 交付沿用同一 Git Commit。
 - 新 Composition Root 使用不同 Command 进入 Handler 级幂等路径，仍不产生第二条 Event。
 - CodingTask 最终进入 Verification，Attempt 绑定真实 Target Revision 和 Changed Paths。
+- Passed 路径真实运行本地 `node --version`，持久化 Evidence，装配 PR-ready，并在重启后保持 Event/Evidence 字节不变。
+- Failed 路径真实运行确定性失败命令，Aggregate 回到 Implementation；重启后精确重放同一 Failed Evidence，不重复 Commit 或 Event。
+- Profile 必须在业务 Planning Artifact 之前完成 G8；测试不会放宽 Artifact 顺序或 `WorkspaceBusy`。
+- Plan Source Refs 漂移、Evidence Plan Digest 漂移、Runtime Root 不匹配和未知 Receipt 均关闭式停止。
 
 这些是确定性本地真实 Git 证据，不等于真实 Codex/企业 Pilot。
 
-## 8. 下一步
+## 9. 下一步
 
-下一切片消费已经进入 Verification 的 CodingTask，串联：
-
-1. 权威 Verification Plan 选择与 Revision Binding。
-2. Verification Command、EvidenceBundle 和失败恢复。
-3. Required Check 完整后装配 PRReadyArtifact。
-4. 上述闭合后再运行真实 Codex 项目 Pilot。
+下一步固定为使用真实 Codex Session 在公开或脱敏项目运行同一 golden path，采集 Human Touch Time、自动化步骤占比、Gate 命中和返工证据。Pilot 失败时修复当前主线，不切入 Studio、Release Host、Memory/Skill 或 Claude/CatPaw 扩张。
 
 独立 Delivery CLI、Workflow 自动驱动、多仓交付和 Studio 可视化不在本切片范围内。

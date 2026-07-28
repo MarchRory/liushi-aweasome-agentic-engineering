@@ -16,6 +16,7 @@ import {
   CodingTaskAttemptOutcome,
   CodingTaskPhase,
   CodingTaskRunState,
+  CodingTaskVerificationOutcome,
   parseCodingTaskId,
   type CodingTaskAggregate,
 } from "../../src/domain/codingTask/index.js";
@@ -31,6 +32,7 @@ import {
   VerificationImpactDiagnosticCode,
   VerificationImpactSelectionStatus,
 } from "../../src/domain/verification/index.js";
+import { FailureTaxonomy } from "../../src/domain/workflow/index.js";
 import { Rfc8785Sha256DigestAdapter } from "../../src/infrastructure/index.js";
 import {
   compilerProvenance,
@@ -134,6 +136,46 @@ describe("SelectVerificationPlanUseCase", () => {
     });
 
     expect(result.status).toBe(ResultStatus.Failure);
+  });
+
+  it("已通过 Verification 的完成态可确定性重建同一 Plan", () => {
+    const input = createInput();
+    const original = new SelectVerificationPlanUseCase(digest).execute(input);
+    const completed = new SelectVerificationPlanUseCase(digest).execute({
+      ...input,
+      codingTask: {
+        ...input.codingTask,
+        runState: CodingTaskRunState.Completed,
+        attempts: input.codingTask.attempts.map((attempt) => ({
+          ...attempt,
+          verificationOutcome: CodingTaskVerificationOutcome.Passed,
+        })),
+      },
+    });
+
+    expect(original.status).toBe(ResultStatus.Success);
+    expect(completed).toEqual(original);
+  });
+
+  it("Verification 失败后的实现态可确定性重建同一 Plan", () => {
+    const input = createInput();
+    const original = new SelectVerificationPlanUseCase(digest).execute(input);
+    const failed = new SelectVerificationPlanUseCase(digest).execute({
+      ...input,
+      codingTask: {
+        ...input.codingTask,
+        phase: CodingTaskPhase.Implementation,
+        runState: CodingTaskRunState.Active,
+        attempts: input.codingTask.attempts.map((attempt) => ({
+          ...attempt,
+          verificationOutcome: CodingTaskVerificationOutcome.Failed,
+          verificationFailureTaxonomy: FailureTaxonomy.ImplementationDefect,
+        })),
+      },
+    });
+
+    expect(original.status).toBe(ResultStatus.Success);
+    expect(failed).toEqual(original);
   });
 });
 

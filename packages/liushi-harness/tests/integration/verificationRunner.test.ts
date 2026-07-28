@@ -11,6 +11,8 @@ import {
   EvidenceBundleWriteDisposition,
   VerificationExecutionMode,
   createHarnessApplication,
+  parseApprovalId,
+  parseContentDigest,
   parseCodingTaskId,
   parseWorkspaceId,
 } from "../../src/index.js";
@@ -56,13 +58,20 @@ function createPlan(
   ],
 ): VerificationPlan {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     planId: "plan-1",
     repositoryId,
     worktreeId: "worktree-1",
     expectedBranchName: "main",
     baseRevision: "base-revision",
     targetRevision: "target-revision",
+    sourceRefs: {
+      projectProfileBundleDigest: unwrapResult(parseContentDigest(`sha256:${"a".repeat(64)}`)),
+      projectProfileDigest: unwrapResult(parseContentDigest(`sha256:${"b".repeat(64)}`)),
+      proposalArtifactDigest: unwrapResult(parseContentDigest(`sha256:${"c".repeat(64)}`)),
+      profileApprovalId: unwrapResult(parseApprovalId("01ARZ3NDEKTSV4RRFFQ69G5FAV")),
+      applicableRuleBundleDigest: unwrapResult(parseContentDigest(`sha256:${"d".repeat(64)}`)),
+    },
     checks,
   };
 }

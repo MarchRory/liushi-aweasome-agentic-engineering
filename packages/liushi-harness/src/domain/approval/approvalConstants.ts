@@ -1,6 +1,3 @@
-/** Decision Request 与 Approval ID 使用的 uppercase ULID 格式。 */
-export const APPROVAL_ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/;
-
 /** Decision Request 恢复检查点允许的最大字符数。 */
 export const MAX_RESUME_CHECKPOINT_LENGTH = 120;
 

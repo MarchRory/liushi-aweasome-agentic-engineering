@@ -1,8 +1,31 @@
 import type {
   CodingTaskExecutionAuthorization,
+  HarnessApplication,
   createHarnessApplication,
 } from "../../../src/index.js";
 import type { CliCommand, CliResponseStatus } from "../../../src/presentation/index.js";
+
+/** 在业务 Planning Artifact 写入前可执行的 E2E 准备上下文。 */
+export interface CodingTaskSessionCloseoutCliBeforePlanningContext {
+  /** 通过生产 Composition Root 创建的 Application。 */
+  readonly application: HarnessApplication;
+  /** 真实 Git Repository 的基础 Revision。 */
+  readonly baseRevision: string;
+  /** 当前业务 Workspace 标识。 */
+  readonly workspaceId: string;
+  /** 当前目标 Repository 标识。 */
+  readonly repositoryId: string;
+  /** 当前源 Task 标识。 */
+  readonly sourceTaskId: string;
+}
+
+/** Closeout E2E 准备阶段的可选扩展。 */
+export interface CodingTaskSessionCloseoutCliSetupOptions {
+  /** 在 Requirement/PlanRisk 之前准备项目级受管 Artifact。 */
+  readonly beforePlanning?: (
+    context: CodingTaskSessionCloseoutCliBeforePlanningContext,
+  ) => Promise<void>;
+}
 
 /** Closeout CLI 真实 Git E2E 的完整运行夹具。 */
 export interface CodingTaskSessionCloseoutCliSetup {

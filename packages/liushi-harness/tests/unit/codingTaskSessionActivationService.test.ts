@@ -469,6 +469,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
       readonly repositoryRoot: string;
       readonly worktreeRelativePath: string;
     }) => success(`${repositoryRoot}/${worktreeRelativePath}`),
+    hasSamePathIdentity: (left: string, right: string) => left === right,
   };
   const defaultActivationLease = {
     acquire: () =>

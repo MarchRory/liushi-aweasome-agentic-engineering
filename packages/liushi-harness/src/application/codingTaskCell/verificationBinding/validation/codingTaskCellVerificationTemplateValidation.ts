@@ -22,6 +22,7 @@ const planTemplateSchema = z
     worktreeId: z.unknown(),
     expectedBranchName: z.unknown(),
     baseRevision: z.unknown(),
+    sourceRefs: z.unknown(),
     checks: z.unknown(),
   })
   .strict();
@@ -62,6 +63,7 @@ export function parseCodingTaskCellVerificationTemplate(
       worktreeId: complete.value.plan.worktreeId,
       expectedBranchName: complete.value.plan.expectedBranchName,
       baseRevision: complete.value.plan.baseRevision,
+      sourceRefs: complete.value.plan.sourceRefs,
       checks: complete.value.plan.checks,
     },
   };

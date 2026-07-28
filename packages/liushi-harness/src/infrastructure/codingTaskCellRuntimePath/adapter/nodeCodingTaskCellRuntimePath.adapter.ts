@@ -5,6 +5,7 @@ import type {
   ResolveCodingTaskCellWorktreeRootInput,
 } from "#application/codingTaskCell/index.js";
 import { HarnessError, HarnessErrorCode, failure, success, type Result } from "#common/index.js";
+import { samePathIdentity } from "#infrastructure/system/index.js";
 
 /** 使用当前 Node 宿主语义推导受管 Worktree 的规范绝对路径。 */
 export class NodeCodingTaskCellRuntimePathAdapter implements CodingTaskCellRuntimePathPort {
@@ -19,6 +20,11 @@ export class NodeCodingTaskCellRuntimePathAdapter implements CodingTaskCellRunti
       return failure(invalidPath("worktreeRelativePath"));
     }
     return success(resolve(input.repositoryRoot, ...input.worktreeRelativePath.split("/")));
+  }
+
+  /** 使用集中平台兼容层比较大小写、分隔符和尾随分隔符。 */
+  public hasSamePathIdentity(left: string, right: string): boolean {
+    return samePathIdentity(left, right);
   }
 }
 

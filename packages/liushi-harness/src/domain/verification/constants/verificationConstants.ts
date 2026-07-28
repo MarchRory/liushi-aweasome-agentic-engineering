@@ -1,5 +1,5 @@
 /** VerificationPlan 的 Schema 版本。 */
-export const VERIFICATION_PLAN_SCHEMA_VERSION = 1 as const;
+export const VERIFICATION_PLAN_SCHEMA_VERSION = 2 as const;
 
 /** EvidenceBundle 的 Schema 版本。 */
 export const EVIDENCE_BUNDLE_SCHEMA_VERSION = 1 as const;

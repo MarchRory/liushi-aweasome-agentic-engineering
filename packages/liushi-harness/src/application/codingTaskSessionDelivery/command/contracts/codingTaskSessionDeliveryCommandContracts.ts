@@ -1,6 +1,7 @@
 import type { CodingTaskSessionEffectiveCloseoutSource } from "#application/codingTaskSessionCloseoutRecovery/index.js";
 import type { CommandEnvelope } from "#application/command/index.js";
 import type { ContentDigest } from "#common/index.js";
+import type { CodingTaskId } from "#domain/codingTask/index.js";
 import type { CodingTaskSessionId } from "#domain/codingTaskSession/index.js";
 import type { WorkspaceId } from "#domain/workspace/index.js";
 
@@ -17,5 +18,10 @@ export interface CodingTaskSessionDeliverySubmissionCommandPayload {
 }
 
 /** 严格解析后的 Session Delivery Submission Command。 */
-export type CodingTaskSessionDeliverySubmissionCommand =
-  CommandEnvelope<CodingTaskSessionDeliverySubmissionCommandPayload>;
+export type CodingTaskSessionDeliverySubmissionCommand = Omit<
+  CommandEnvelope<CodingTaskSessionDeliverySubmissionCommandPayload>,
+  "aggregateId"
+> & {
+  /** 已解析并品牌化的 CodingTask 标识。 */
+  readonly aggregateId: CodingTaskId;
+};

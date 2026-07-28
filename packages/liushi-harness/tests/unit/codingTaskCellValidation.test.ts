@@ -226,6 +226,7 @@ function verificationPayload() {
       worktreeId: "worktree-1",
       expectedBranchName: "feature/cell",
       baseRevision: "base-revision-1",
+      sourceRefs: verificationPlanSourceRefs(),
       checks: [
         {
           checkId: "check-1",
@@ -243,6 +244,16 @@ function verificationPayload() {
       ],
     },
     failedVerificationTaxonomy: FailureTaxonomy.ImplementationDefect,
+  };
+}
+
+function verificationPlanSourceRefs() {
+  return {
+    projectProfileBundleDigest: `sha256:${"1".repeat(64)}`,
+    projectProfileDigest: `sha256:${"2".repeat(64)}`,
+    proposalArtifactDigest: `sha256:${"3".repeat(64)}`,
+    profileApprovalId: "01ARZ3NDEKTSV4RRFFQ69G5HBP",
+    applicableRuleBundleDigest: `sha256:${"4".repeat(64)}`,
   };
 }
 

@@ -1,15 +1,7 @@
 import { HarnessError, HarnessErrorCode, failure, success, type Result } from "#common/index.js";
 
-import { APPROVAL_ULID_PATTERN } from "./approvalConstants.js";
-
-declare const decisionRequestIdBrand: unique symbol;
-declare const approvalIdBrand: unique symbol;
-
-/** 经 ULID 格式校验的 Decision Request ID。 */
-export type DecisionRequestId = string & { readonly [decisionRequestIdBrand]: true };
-
-/** 经 ULID 格式校验的 Approval ID。 */
-export type ApprovalId = string & { readonly [approvalIdBrand]: true };
+import { APPROVAL_ULID_PATTERN } from "../constants/index.js";
+import type { ApprovalId, DecisionRequestId } from "../contracts/index.js";
 
 /** 将外部字符串校验并转换为 Decision Request ID。 */
 export function parseDecisionRequestId(value: string): Result<DecisionRequestId, HarnessError> {

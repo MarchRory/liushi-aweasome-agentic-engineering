@@ -12,4 +12,6 @@ export interface ResolveManagedWorktreeRootInput {
 export interface ManagedWorktreePathPort {
   /** 校验 Repository Root 并推导唯一受管 Worktree Root。 */
   resolveManagedWorktreeRoot(input: ResolveManagedWorktreeRootInput): Result<string, HarnessError>;
+  /** 按当前宿主平台规则判断两个绝对路径是否具有相同身份。 */
+  hasSamePathIdentity(left: string, right: string): boolean;
 }

@@ -27,6 +27,7 @@ import {
   ResultStatus,
   RiskLevel,
   VERIFICATION_RUN_COMMAND_TYPE,
+  VERIFICATION_PLAN_SCHEMA_VERSION,
   VerificationExecutionMode,
   VerificationKind,
   VerificationRequirement,
@@ -473,12 +474,13 @@ function createVerificationPayload(
     attemptNumber: 1,
     worktreeRootDigest: calculateDigest({ worktreeRoot: input.worktreeRoot }),
     plan: {
-      schemaVersion: 1,
+      schemaVersion: VERIFICATION_PLAN_SCHEMA_VERSION,
       planId: "coding-task-cell-plan",
       repositoryId: "repo-1",
       worktreeId: binding.worktreeId,
       expectedBranchName: binding.branchName,
       baseRevision: input.baseRevision,
+      sourceRefs: verificationPlanSourceRefs(),
       checks: [
         {
           checkId: "external-counter",
@@ -496,6 +498,16 @@ function createVerificationPayload(
       ],
     },
     failedVerificationTaxonomy: FailureTaxonomy.ImplementationDefect,
+  };
+}
+
+function verificationPlanSourceRefs() {
+  return {
+    projectProfileBundleDigest: `sha256:${"1".repeat(64)}`,
+    projectProfileDigest: `sha256:${"2".repeat(64)}`,
+    proposalArtifactDigest: `sha256:${"3".repeat(64)}`,
+    profileApprovalId: "01ARZ3NDEKTSV4RRFFQ69G5HBP",
+    applicableRuleBundleDigest: `sha256:${"4".repeat(64)}`,
   };
 }
 
