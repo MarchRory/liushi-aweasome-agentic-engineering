@@ -12,6 +12,9 @@ export const MAX_ARTIFACT_TEXT_LENGTH = 1_000;
 /** Artifact Proposal 路径或资源定位字段的最大字符数。 */
 export const MAX_ARTIFACT_PATH_LENGTH = 500;
 
+/** Artifact Proposal 幂等键允许的最大字符数。 */
+export const MAX_ARTIFACT_PROPOSAL_IDEMPOTENCY_KEY_LENGTH = 256;
+
 /** 单个 Artifact 列表字段允许的最大条目数。 */
 export const MAX_ARTIFACT_LIST_ITEMS = 100;
 

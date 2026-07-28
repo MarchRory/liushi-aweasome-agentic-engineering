@@ -33,6 +33,7 @@ export function createArtifact(
   actor: ActorRef,
   createdAt: string,
   previousRevision: SupportedArtifact | undefined,
+  proposalIdempotencyKey: string | undefined,
   artifactIdGenerator: IdGenerator,
   digestPort: ArtifactDigestPort,
 ): Result<SupportedArtifact, HarnessError> {
@@ -62,6 +63,7 @@ export function createArtifact(
     status: ArtifactStatus.Proposed,
     createdAt,
     createdBy: actor,
+    ...(proposalIdempotencyKey === undefined ? {} : { proposalIdempotencyKey }),
   } as const;
 
   switch (proposal.artifactType) {

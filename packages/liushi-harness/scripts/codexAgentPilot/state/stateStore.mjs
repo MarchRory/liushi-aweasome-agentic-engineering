@@ -1,6 +1,7 @@
-import { mkdir, open, readdir, readFile } from "node:fs/promises";
+import { mkdir, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { createOnlyImmutableFile } from "../../common/fileSystem/index.mjs";
 import {
   STATE_DIRECTORY,
   STATE_FILE_PREFIX,
@@ -17,10 +18,16 @@ export async function createStateStore(controlRoot) {
   return { stateRoot };
 }
 
-export async function appendState(stateRoot, state) {
+export async function appendState(stateRoot, state, options = {}) {
   const current = await readStateChain(stateRoot, { allowMissing: true });
   const revision = current.length + 1;
   const previousStateDigest = current.at(-1)?.stateDigest ?? null;
+  if (
+    options.expectedPreviousStateDigest !== undefined &&
+    previousStateDigest !== options.expectedPreviousStateDigest
+  ) {
+    throw new Error("状态链已推进，拒绝基于过期状态追加 revision。");
+  }
   const body = {
     schemaVersion: STATE_SCHEMA_VERSION,
     revision,
@@ -34,8 +41,16 @@ export async function appendState(stateRoot, state) {
     stateRoot,
     `${STATE_FILE_PREFIX}${String(revision).padStart(STATE_REVISION_WIDTH, "0")}${STATE_FILE_SUFFIX}`,
   );
-  await writeCreateOnly(file, `${JSON.stringify(value, null, 2)}\n`);
+  await createOnlyImmutableFile(file, `${JSON.stringify(value, null, 2)}\n`);
   return { file, state: value };
+}
+
+export async function appendDerivedState(stateRoot, state, options = {}) {
+  const { stateDigest, previousStateDigest, revision, ...nextState } = state;
+  void stateDigest;
+  void previousStateDigest;
+  void revision;
+  return appendState(stateRoot, nextState, options);
 }
 
 export async function readStateChain(stateRoot, options = {}) {
@@ -102,22 +117,51 @@ function stripDigest(state) {
   return body;
 }
 
-async function writeCreateOnly(file, content) {
-  const handle = await open(file, "wx");
-  try {
-    await handle.writeFile(content, "utf8");
-  } finally {
-    await handle.close();
-  }
+export async function writeControlJson(file, value) {
+  await createOnlyImmutableFile(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-export async function writeControlJson(file, value) {
-  await writeCreateOnly(file, `${JSON.stringify(value, null, 2)}\n`);
+export async function writeControlJsonIdempotent(file, value) {
+  try {
+    await writeControlJson(file, value);
+    return { created: true };
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+  }
+  const existing = await readControlJson(file);
+  if (calculateDigest(existing) !== calculateDigest(value)) {
+    throw new Error("已存在的 Control JSON 与当前确定性结果不一致。");
+  }
+  return { created: false };
+}
+
+export async function createOrReadControlJson(file, value) {
+  try {
+    await writeControlJson(file, value);
+    return { created: true, value };
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+  }
+  return { created: false, value: await readControlJson(file) };
 }
 
 export async function writeControlText(file, value) {
   if (typeof value !== "string") throw new Error("Control 文本必须是字符串。");
-  await writeCreateOnly(file, value);
+  await createOnlyImmutableFile(file, value);
+}
+
+export async function writeControlTextIdempotent(file, value) {
+  try {
+    await writeControlText(file, value);
+    return { created: true };
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+  }
+  await rejectLink(file, "Control 文本");
+  if ((await readFile(file, "utf8")) !== value) {
+    throw new Error("已存在的 Control 文本与当前确定性结果不一致。");
+  }
+  return { created: false };
 }
 
 export async function readControlJson(file) {

@@ -4,13 +4,18 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { parsePilotCli, pilotCliCommands } from "./cli/index.mjs";
-import { approveCodexAgentPilot, prepareCodexAgentPilot } from "./service/index.mjs";
+import {
+  approveCodexAgentPilot,
+  prepareCodexAgentPilot,
+  previewCodexAgentPilotHost,
+} from "./service/index.mjs";
 
 export * from "./activation/index.mjs";
 export * from "./cli/index.mjs";
 export * from "./constants/index.mjs";
 export * from "./digest/index.mjs";
 export * from "./harnessClient/index.mjs";
+export * from "./host/index.mjs";
 export * from "./project/index.mjs";
 export * from "./service/index.mjs";
 export * from "./state/index.mjs";
@@ -22,7 +27,9 @@ export async function runCodexAgentPilot(argv, dependencies = {}) {
   const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
   if (input.command === pilotCliCommands.prepare)
     return prepareCodexAgentPilot({ ...input, packageRoot }, dependencies);
-  return approveCodexAgentPilot(input, dependencies);
+  if (input.command === pilotCliCommands.approve)
+    return approveCodexAgentPilot(input, dependencies);
+  return previewCodexAgentPilotHost(input, dependencies);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

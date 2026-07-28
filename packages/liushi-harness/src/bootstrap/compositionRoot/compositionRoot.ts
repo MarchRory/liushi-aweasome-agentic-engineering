@@ -258,6 +258,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       clock,
       artifactIdGenerator,
       decisionRequestIdGenerator,
+      delay,
     ),
     recordApproval: new RecordApprovalUseCase(
       taskRepository,

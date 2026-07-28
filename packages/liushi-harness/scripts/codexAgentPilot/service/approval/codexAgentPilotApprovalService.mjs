@@ -14,14 +14,13 @@ import {
   REPOSITORY_ID,
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
-import { createPilotHarnessClient, resolvePilotCliEntrypoint } from "../../harnessClient/index.mjs";
-import { verifyPilotPaths } from "../../project/index.mjs";
 import {
-  appendState,
-  readControlJson,
-  readStateChain,
-  writeControlJson,
-} from "../../state/index.mjs";
+  createPilotHarnessClient,
+  createPilotProposalIdempotencyKey,
+  resolvePilotCliEntrypoint,
+} from "../../harnessClient/index.mjs";
+import { verifyPilotPaths } from "../../project/index.mjs";
+import { readControlJson, readStateChain, writeControlJsonIdempotent } from "../../state/index.mjs";
 import { requireExistingDirectory } from "../../validation/index.mjs";
 import { createPlanRiskProposal, createRequirementProposal } from "../../workflow/index.mjs";
 import {
@@ -36,6 +35,7 @@ import {
   validatePendingProposal,
   validateRecordedApproval,
 } from "../shared/index.mjs";
+import { resolveCompletedApprovalReplay } from "./replay/index.mjs";
 
 export async function approveCodexAgentPilot(input, overrides = {}) {
   const dependencies = createPilotDependencies(overrides);
@@ -44,7 +44,11 @@ export async function approveCodexAgentPilot(input, overrides = {}) {
   const paths = createPilotPaths(root);
   const states = await readStateChain(paths.stateRoot);
   const current = states.at(-1);
-  if (current.stateDigest !== input.stateDigest) throw new Error("stateDigest 不匹配。");
+  if (current.stateDigest !== input.stateDigest) {
+    const replay = resolveCompletedApprovalReplay(states, input);
+    if (replay !== undefined) return replay;
+    throw new Error("stateDigest 不匹配。");
+  }
   if (current.actor?.humanActorId !== input.actorId) throw new Error("Human actor 不匹配。");
   if (current.status === STATE_STATUS.WaitingHostApproval) {
     throw new Error("waiting_host_approval 已停止；禁止再次 approve 或启动进程。");
@@ -89,6 +93,15 @@ export async function approveCodexAgentPilot(input, overrides = {}) {
     approvals: [...current.approvals, approval],
     gateEvaluations: [...current.gateEvaluations, gateEvaluation],
     pendingDecisionRequest: null,
+    transition: {
+      kind: "approval",
+      sourceStateDigest: current.stateDigest,
+      gate: current.gate,
+      actorId: input.actorId,
+      decisionRequestId: request.decisionRequestId,
+      decisionRequestDigest: request.digest,
+      idempotencyKey: approvalIdempotencyKey,
+    },
   };
   const nextState = await progressApprovedGate({
     current,
@@ -99,7 +112,17 @@ export async function approveCodexAgentPilot(input, overrides = {}) {
     paths,
     actorId: input.actorId,
   });
-  return appendNextState(paths.stateRoot, nextState);
+  try {
+    return (
+      await dependencies.appendDerivedState(paths.stateRoot, nextState, {
+        expectedPreviousStateDigest: current.stateDigest,
+      })
+    ).state;
+  } catch (error) {
+    const replay = resolveCompletedApprovalReplay(await readStateChain(paths.stateRoot), input);
+    if (replay !== undefined) return replay;
+    throw error;
+  }
 }
 
 async function progressApprovedGate(input) {
@@ -121,11 +144,12 @@ async function progressG8(input) {
     input.paths.runtimeRoot,
   );
   const requirementFile = join(input.paths.controlRoot, REQUIREMENT_PROPOSAL_NAME);
-  await writeControlJson(requirementFile, createRequirementProposal());
+  await writeControlJsonIdempotent(requirementFile, createRequirementProposal());
   const proposed = await input.consumer.proposeArtifact(
     input.current.task.taskId,
     requirementFile,
     input.actorId,
+    createPilotProposalIdempotencyKey(input.current.task.taskId, GATES.G1),
     input.paths.runtimeRoot,
   );
   const requirementRequest = requirePilotRecord(
@@ -162,11 +186,15 @@ async function progressG8(input) {
 async function progressG1(input) {
   const profile = requirePilotRecord(input.current.profile?.bundle, "ProjectProfile Bundle");
   const planFile = join(input.paths.controlRoot, PLAN_RISK_PROPOSAL_NAME);
-  await writeControlJson(planFile, createPlanRiskProposal({ profileDigest: profile.digest }));
+  await writeControlJsonIdempotent(
+    planFile,
+    createPlanRiskProposal({ profileDigest: profile.digest }),
+  );
   const proposed = await input.consumer.proposeArtifact(
     input.current.task.taskId,
     planFile,
     input.actorId,
+    createPilotProposalIdempotencyKey(input.current.task.taskId, GATES.G4),
     input.paths.runtimeRoot,
   );
   const planRequest = requirePilotRecord(proposed.data?.decisionRequest, "G4 DecisionRequest");
@@ -248,12 +276,4 @@ async function progressG4(input) {
       modelLaunches: 0,
     },
   };
-}
-
-async function appendNextState(stateRoot, state) {
-  const { stateDigest, previousStateDigest, revision, ...nextState } = state;
-  void stateDigest;
-  void previousStateDigest;
-  void revision;
-  return (await appendState(stateRoot, nextState)).state;
 }

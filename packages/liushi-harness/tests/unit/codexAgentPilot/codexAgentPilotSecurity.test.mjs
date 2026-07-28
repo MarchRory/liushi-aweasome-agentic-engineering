@@ -15,7 +15,11 @@ import {
   prepareCodexAgentPilot,
 } from "../../../scripts/codexAgentPilot/service/index.mjs";
 import { validateRecordedApproval } from "../../../scripts/codexAgentPilot/service/shared/index.mjs";
-import { readStateChain } from "../../../scripts/codexAgentPilot/state/index.mjs";
+import {
+  appendDerivedState,
+  readStateChain,
+  writeControlJsonIdempotent,
+} from "../../../scripts/codexAgentPilot/state/index.mjs";
 import { createProjectProfileProposal } from "../../../scripts/codexAgentPilot/workflow/index.mjs";
 import {
   cleanupCodexAgentPilotFixture,
@@ -178,6 +182,44 @@ describe("Codex Agent Pilot security bindings", () => {
     await expect(
       prepareCodexAgentPilot(fixture.input, fixture.dependencies(malformedEnvelope)),
     ).rejects.toThrow("绑定不一致");
+  });
+
+  it("状态链已推进后拒绝基于旧摘要追加 revision", async () => {
+    fixture = await createCodexAgentPilotFixture();
+    const harness = createHappyPathPilotEnvelope(fixture);
+    const prepared = await prepareCodexAgentPilot(
+      fixture.input,
+      fixture.dependencies(harness.runEnvelope),
+    );
+    const current = (await readStateChain(prepared.paths.stateRoot)).at(-1);
+    await appendDerivedState(
+      prepared.paths.stateRoot,
+      { ...current, externalTransition: true },
+      { expectedPreviousStateDigest: current.stateDigest },
+    );
+
+    await expect(
+      appendDerivedState(
+        prepared.paths.stateRoot,
+        { ...current, staleTransition: true },
+        { expectedPreviousStateDigest: current.stateDigest },
+      ),
+    ).rejects.toThrow("过期状态");
+  });
+
+  it("确定性 Control JSON 可幂等恢复，但拒绝同路径内容漂移", async () => {
+    fixture = await createCodexAgentPilotFixture();
+    const file = join(fixture.outerRoot, "idempotent.json");
+
+    await expect(writeControlJsonIdempotent(file, { value: 1 })).resolves.toEqual({
+      created: true,
+    });
+    await expect(writeControlJsonIdempotent(file, { value: 1 })).resolves.toEqual({
+      created: false,
+    });
+    await expect(writeControlJsonIdempotent(file, { value: 2 })).rejects.toThrow(
+      "确定性结果不一致",
+    );
   });
 });
 

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -145,25 +145,48 @@ export function createPilotApprovalEnvelope(gate, approvalNumber, args, override
 /** 创建可推进 G8、G1、G4 的标准 Harness CLI Stub。 */
 export function createHappyPathPilotEnvelope(fixture) {
   const counters = { proposal: 0, approval: 0, profile: 0, activation: 0 };
+  const proposalByIdempotencyKey = new Map();
+  const approvalByIdempotencyKey = new Map();
+  const activationByManifest = new Map();
   const runEnvelope = async (_consumerRoot, args) => {
     if (args[0] === "task")
       return { status: "success", data: { taskId: "01ARZ3NDEKTSV4RRFFQ69G5FCX" } };
     if (args[0] === "project") return { status: "success", data: fixture.report };
     if (args[0] === "artifact") {
+      const idempotencyKey = option(args, "--idempotency-key");
+      const existing = proposalByIdempotencyKey.get(idempotencyKey);
+      if (existing !== undefined) return existing;
       counters.proposal += 1;
-      return createPilotProposalEnvelope(gateAt(counters.proposal));
+      const envelope = createPilotProposalEnvelope(gateAt(counters.proposal));
+      proposalByIdempotencyKey.set(idempotencyKey, envelope);
+      return envelope;
     }
     if (args[0] === "approval") {
+      const idempotencyKey = option(args, "--idempotency-key");
+      const existing = approvalByIdempotencyKey.get(idempotencyKey);
+      if (existing !== undefined) return existing;
       counters.approval += 1;
-      return createPilotApprovalEnvelope(gateAt(counters.approval), counters.approval, args);
+      const envelope = createPilotApprovalEnvelope(
+        gateAt(counters.approval),
+        counters.approval,
+        args,
+      );
+      approvalByIdempotencyKey.set(idempotencyKey, envelope);
+      return envelope;
     }
     if (args[0] === "profile") {
       counters.profile += 1;
       return { status: "success", data: { digest: calculateDigest("profile"), profiles: [] } };
     }
     if (args[0] === "coding-task") {
+      const manifestFile = option(args, "--file");
+      const manifestDigest = calculateDigest(JSON.parse(await readFile(manifestFile, "utf8")));
+      const existing = activationByManifest.get(manifestDigest);
+      if (existing !== undefined) return existing;
       counters.activation += 1;
-      return { status: "success", data: { status: "waiting_agent" } };
+      const envelope = { status: "success", data: { status: "waiting_agent" } };
+      activationByManifest.set(manifestDigest, envelope);
+      return envelope;
     }
     throw new Error(`unexpected command ${args.join(" ")}`);
   };

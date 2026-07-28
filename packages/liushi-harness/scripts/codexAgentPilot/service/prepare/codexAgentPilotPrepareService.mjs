@@ -19,7 +19,10 @@ import {
   WRITE_SET,
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
-import { createPilotHarnessClient } from "../../harnessClient/index.mjs";
+import {
+  createPilotHarnessClient,
+  createPilotProposalIdempotencyKey,
+} from "../../harnessClient/index.mjs";
 import { preparePublicProject } from "../../project/index.mjs";
 import { appendState, createStateStore, writeControlJson } from "../../state/index.mjs";
 import {
@@ -85,6 +88,7 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
       taskId,
       proposalFile,
       input.actorId,
+      createPilotProposalIdempotencyKey(taskId, GATES.G8),
       paths.runtimeRoot,
     );
     const artifact = requirePilotRecord(proposed.data?.artifact, "ProjectProfile Artifact");

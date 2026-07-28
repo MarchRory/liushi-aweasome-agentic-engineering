@@ -4,7 +4,7 @@ import type { SupportedArtifact } from "#domain/artifact/index.js";
 import type { GateEvaluation } from "#domain/gate/index.js";
 import type { TaskState } from "#domain/task/index.js";
 
-/** Artifact Proposal 成功提交后的结果。 */
+/** Artifact Proposal 新提交或幂等复用后的结果。 */
 export interface ProposeArtifactOutput {
   /** 已提交且 Digest 不可变的 Artifact。 */
   artifact: SupportedArtifact;
@@ -14,6 +14,6 @@ export interface ProposeArtifactOutput {
   decisionRequest?: DecisionRequest;
   /** Event Replay 后的 Task State。 */
   task: TaskState;
-  /** Event commit 之后的持久化健康信息。 */
-  persistence: TaskPersistenceOutcome;
+  /** 仅在提交新 Event 时存在的持久化健康信息。 */
+  persistence?: TaskPersistenceOutcome;
 }

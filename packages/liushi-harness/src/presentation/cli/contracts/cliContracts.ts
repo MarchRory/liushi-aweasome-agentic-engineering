@@ -80,6 +80,8 @@ export interface ArtifactProposeCliCommand extends BaseCliCommand {
   filePath: string;
   /** 提交 Artifact 的本地 Human ID。 */
   actorId: string;
+  /** Artifact Proposal 的可选稳定幂等键。 */
+  idempotencyKey?: string;
 }
 
 /** Approval Decide 命令。 */

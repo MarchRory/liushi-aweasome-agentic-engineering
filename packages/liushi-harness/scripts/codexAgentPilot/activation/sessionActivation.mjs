@@ -22,36 +22,27 @@ import {
   CANDIDATE_CONFIG_NAME,
   REQUIRED_HUMAN_ACTIONS,
   FORBIDDEN_ACTIONS,
+  CODEX_HOOK_TIMEOUT_SECONDS,
 } from "../constants/index.mjs";
 import { calculateDigest, calculateTextDigest } from "../digest/index.mjs";
-import { writeControlJson, writeControlText } from "../state/index.mjs";
+import {
+  createOrReadControlJson,
+  writeControlJsonIdempotent,
+  writeControlTextIdempotent,
+} from "../state/index.mjs";
+import { createSessionActivationPayloads } from "./manifest/index.mjs";
+import { validateSessionActivationManifest } from "./validation/index.mjs";
 
 export function createSessionActivationManifest(input) {
   const codingTaskId = ulid();
   const sessionId = ulid();
   const correlationId = ulid();
   const actionId = ulid();
-  const createPayload = {
-    workspaceId: input.workspaceId,
-    sourceTaskId: input.taskId,
-    repositoryId: REPOSITORY_ID,
-    baseRevision: REPOSITORY_REVISION,
-    worktreeBinding: {
-      worktreeId: `codex-agent-pilot-${codingTaskId}`,
-      relativePath: WORKTREE_RELATIVE_PATH,
-      branchName: "codex/agent-pilot",
-      managed: true,
-    },
-    writeSet: [...WRITE_SET],
-    inputBindingSet: { bindings: [] },
-    executionAuthorization: input.executionAuthorization,
-  };
-  const provisionPayload = {
-    workspaceId: input.workspaceId,
+  const { createPayload, provisionPayload, startPayload } = createSessionActivationPayloads({
+    ...input,
+    codingTaskId,
     actionId,
-    repositoryRootDigest: calculateDigest({ repositoryRoot: input.repositoryRoot }),
-  };
-  const startPayload = { workspaceId: input.workspaceId, attemptNumber: 1 };
+  });
   const createCommand = createEnvelope({
     commandId: ulid(),
     commandType: COMMAND_TYPES.Create,
@@ -89,9 +80,18 @@ export function createSessionActivationManifest(input) {
 }
 
 export async function createActivationArtifacts(input) {
-  const manifest = input.manifest ?? createSessionActivationManifest(input);
-  if (input.skipManifestWrite !== true) {
-    await writeControlJson(input.manifestFile, manifest);
+  let manifest = input.manifest;
+  const shouldPersistProvidedManifest = manifest !== undefined && input.skipManifestWrite !== true;
+  if (manifest === undefined) {
+    const candidate = createSessionActivationManifest(input);
+    manifest =
+      input.skipManifestWrite === true
+        ? candidate
+        : (await createOrReadControlJson(input.manifestFile, candidate)).value;
+  }
+  validateSessionActivationManifest(manifest, input);
+  if (shouldPersistProvidedManifest) {
+    await writeControlJsonIdempotent(input.manifestFile, manifest);
   }
   await access(input.cliEntrypoint);
   const worktreeRoot = join(input.repositoryRoot, WORKTREE_RELATIVE_PATH);
@@ -103,11 +103,11 @@ export async function createActivationArtifacts(input) {
     storeRoot: input.runtimeRoot,
   });
   const candidateConfigFile = join(input.controlRoot, CANDIDATE_CONFIG_NAME);
-  await writeControlJson(candidateConfigFile, candidateConfig);
+  await writeControlJsonIdempotent(candidateConfigFile, candidateConfig);
   const candidateConfigDigest = calculateDigest(candidateConfig);
   const prompt = createAgentPrompt({ worktreeRoot, model: input.model, taskId: input.taskId });
   const promptFile = join(input.controlRoot, AGENT_PROMPT_NAME);
-  await writeControlText(promptFile, prompt);
+  await writeControlTextIdempotent(promptFile, prompt);
   const promptDigest = calculateTextDigest(prompt);
   const hostPacket = {
     schemaVersion: PILOT_SCHEMA_VERSION,
@@ -169,7 +169,7 @@ export async function createActivationArtifacts(input) {
   };
   const activationDigest = calculateDigest(hostPacket);
   const hostPacketFile = join(input.controlRoot, HOST_PACKET_NAME);
-  await writeControlJson(hostPacketFile, { ...hostPacket, activationDigest });
+  await writeControlJsonIdempotent(hostPacketFile, { ...hostPacket, activationDigest });
   return {
     manifest,
     manifestFile: input.manifestFile,
@@ -209,24 +209,25 @@ function createCandidateConfig(input) {
     cliEntrypoint: input.cliEntrypoint,
     storeRoot: input.storeRoot,
   });
-  const createHandler = () => ({
+  const createHandler = (statusMessage) => ({
     type: "command",
     command: command.command,
     commandWindows: command.commandWindows,
-    statusMessage: "liushi Codex Agent Pilot",
+    timeout: CODEX_HOOK_TIMEOUT_SECONDS,
+    statusMessage,
   });
   return {
     hooks: {
       PreToolUse: [
         {
           matcher: "^apply_patch$",
-          hooks: [createHandler()],
+          hooks: [createHandler("liushi Pilot 写入前策略检查")],
         },
       ],
       PostToolUse: [
         {
           matcher: "^apply_patch$",
-          hooks: [createHandler()],
+          hooks: [createHandler("liushi Pilot 写入后证据记录")],
         },
       ],
     },

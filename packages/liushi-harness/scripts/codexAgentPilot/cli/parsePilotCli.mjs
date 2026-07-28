@@ -1,4 +1,8 @@
-const COMMANDS = Object.freeze({ prepare: "prepare", approve: "approve" });
+const COMMANDS = Object.freeze({
+  prepare: "prepare",
+  approve: "approve",
+  previewHost: "preview-host",
+});
 const OPTION_NAMES = Object.freeze({
   root: "--root",
   actorId: "--actor-id",
@@ -9,10 +13,12 @@ const OPTION_NAMES = Object.freeze({
 });
 
 export function parsePilotCli(argv) {
-  if (!Array.isArray(argv) || argv.length === 0) throw new Error("必须指定 prepare 或 approve。");
+  if (!Array.isArray(argv) || argv.length === 0) {
+    throw new Error("必须指定 prepare、approve 或 preview-host。");
+  }
   const command = argv[0];
-  if (command !== COMMANDS.prepare && command !== COMMANDS.approve) {
-    throw new Error("只支持 prepare 或 approve。");
+  if (!Object.values(COMMANDS).includes(command)) {
+    throw new Error("只支持 prepare、approve 或 preview-host。");
   }
   const values = new Map();
   for (let index = 1; index < argv.length; index += 1) {

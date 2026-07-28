@@ -10,4 +10,6 @@ export interface ProposeArtifactInput {
   proposal: unknown;
   /** 提交 Proposal 的 Human 或 Agent Actor。 */
   actor: ActorRef;
+  /** 调用方提供的稳定幂等键；缺省时保持旧版一次性提交语义。 */
+  idempotencyKey?: string;
 }

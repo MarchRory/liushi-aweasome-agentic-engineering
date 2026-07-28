@@ -38,6 +38,7 @@ export const WORKTREE_RELATIVE_PATH = "worktrees/codex-agent-pilot";
 export const CANDIDATE_CONFIG_NAME = "candidateHooks.json";
 export const AGENT_PROMPT_NAME = "agentPrompt.txt";
 export const HOST_PACKET_NAME = "hostActivationPacket.json";
+export const HOST_APPROVAL_PACKET_PREFIX = "hostApprovalPacket-";
 export const SESSION_MANIFEST_NAME = "sessionActivation.json";
 export const SCAN_MANIFEST_NAME = "scanManifest.json";
 export const SCAN_REPORT_NAME = "scanReport.json";
@@ -47,6 +48,35 @@ export const PLAN_RISK_PROPOSAL_NAME = "planRisk.json";
 export const REASONING_EFFORT = "medium";
 export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "2.0.0";
 export const PILOT_VERIFICATION_KIND = "custom";
+export const HOST_APPROVAL_SCHEMA_VERSION = "liushi.codex-agent-pilot.host-approval.v1";
+export const CODEX_HOOK_FEATURE_OVERRIDE = "features.hooks=true";
+export const CODEX_HOOK_TIMEOUT_SECONDS = 30;
+export const CODEX_APP_SERVER_TIMEOUT_MS = 30_000;
+export const CODEX_APP_SERVER_OUTPUT_LIMIT = 1024 * 1024;
+export const HOST_PREFLIGHT_PROCESS_COUNT = 2;
+export const CODEX_APP_SERVER_REQUEST_IDS = Object.freeze({
+  Initialize: 1,
+  HooksList: 2,
+});
+export const CODEX_HOOK_EVENTS = Object.freeze({
+  PreToolUse: "PreToolUse",
+  PostToolUse: "PostToolUse",
+});
+export const CODEX_HOOK_EVENT_METADATA = Object.freeze({
+  PreToolUse: Object.freeze({
+    eventName: "preToolUse",
+    keySuffix: "pre_tool_use:0:0",
+  }),
+  PostToolUse: Object.freeze({
+    eventName: "postToolUse",
+    keySuffix: "post_tool_use:0:0",
+  }),
+});
+export const CODEX_HOOK_SOURCE = "sessionFlags";
+export const CODEX_HOOK_TRUST_STATUS = Object.freeze({
+  Untrusted: "untrusted",
+  Trusted: "trusted",
+});
 
 export const REQUIRED_HUMAN_ACTIONS = Object.freeze([
   "仅在外部明确批准精确 stateDigest 后运行对应 approve",

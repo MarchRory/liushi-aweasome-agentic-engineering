@@ -28,6 +28,8 @@ export interface ArtifactEnvelope<TType extends ArtifactType, TPayload> {
   createdAt: string;
   /** 鍒涘缓璇?Artifact Revision 鐨?Human銆丄gent 鎴?System Actor銆?*/
   createdBy: ActorRef;
+  /** 创建该 Artifact Proposal 时由调用方提供的稳定幂等键。 */
+  proposalIdempotencyKey?: string;
   /** Artifact 瑙勮寖鍖栧唴瀹圭殑 SHA-256 Digest銆?*/
   digest: ArtifactDigest;
   /** Artifact 鎵胯浇鐨勪弗鏍?Payload銆?*/

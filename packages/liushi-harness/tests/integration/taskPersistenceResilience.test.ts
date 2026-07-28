@@ -6,6 +6,7 @@ import {
   ActorKind,
   ArtifactStatus,
   ArtifactType,
+  HarnessError,
   HarnessErrorCode,
   LockReleaseStatus,
   ParentDirectorySyncStatus,
@@ -15,10 +16,13 @@ import {
   SnapshotPersistenceStatus,
   createHarnessApplication,
   createInitialTaskState,
+  failure,
   parseTaskId,
   parseWorkspaceId,
   type IdGenerator,
+  type Delay,
   type PersistedTaskSnapshot,
+  type TaskRepository,
   type TaskState,
 } from "../../src/index.js";
 import {
@@ -44,7 +48,9 @@ const TASK_ID_B = "01ARZ3NDEKTSV4RRFFQ69G5FAX";
 const EVENT_ID_A = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
 const EVENT_ID_B = "01ARZ3NDEKTSV4RRFFQ69G5FAY";
 const ARTIFACT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB0";
+const ARTIFACT_ID_RETRY = "01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const DECISION_REQUEST_ID = "01ARZ3NDEKTSV4RRFFQ69G5FC0";
+const DECISION_REQUEST_ID_RETRY = "01ARZ3NDEKTSV4RRFFQ69G5FC1";
 const WORKSPACE_ID_A = "workspace-a";
 const WORKSPACE_ID_B = "workspace-b";
 const CREATED_AT = "2026-07-11T00:00:00.000Z";
@@ -97,6 +103,7 @@ describe("Task persistence resilience", () => {
       new FixedClock(CREATED_AT),
       new FixedSequenceIdGenerator([ARTIFACT_ID]),
       new FixedSequenceIdGenerator([DECISION_REQUEST_ID]),
+      { wait: () => Promise.resolve() },
     );
 
     const proposed = await proposeArtifact.execute({
@@ -124,6 +131,75 @@ describe("Task persistence resilience", () => {
       expect(replayed.value.aggregate.artifacts).toHaveLength(1);
       expect(replayed.value.aggregate.pendingDecision?.decisionRequestId).toBe(DECISION_REQUEST_ID);
     }
+  });
+
+  it("Artifact Proposal 在 load 锁冲突后按稳定幂等键确定性重试", async () => {
+    const storeRoot = await runtimeStores.create("liushi-proposal-load-retry-");
+    const delegate = createRepository(storeRoot, {
+      eventIdGenerator: new FixedSequenceIdGenerator([EVENT_ID_A, EVENT_ID_B]),
+    });
+    await delegate.create(makeTask(TASK_ID_A, WORKSPACE_ID_A));
+    const repository = new ConflictInjectingTaskRepository(
+      delegate,
+      1,
+      0,
+      HarnessErrorCode.LockUnavailable,
+    );
+    const useCase = createProposalUseCase(repository);
+
+    const result = await useCase.execute(proposalInput());
+
+    expect(result.status).toBe(ResultStatus.Success);
+    expect(repository.loadCalls).toBe(2);
+    expect(repository.appendCalls).toBe(1);
+  });
+
+  it("Artifact Proposal 在 append 版本冲突后重新加载并提交", async () => {
+    const storeRoot = await runtimeStores.create("liushi-proposal-append-retry-");
+    const delegate = createRepository(storeRoot, {
+      eventIdGenerator: new FixedSequenceIdGenerator([EVENT_ID_A, EVENT_ID_B]),
+    });
+    await delegate.create(makeTask(TASK_ID_A, WORKSPACE_ID_A));
+    const repository = new ConflictInjectingTaskRepository(
+      delegate,
+      0,
+      1,
+      HarnessErrorCode.VersionConflict,
+    );
+    const delay = new CountingDelay();
+    const useCase = createProposalUseCase(repository, delay);
+
+    const result = await useCase.execute(proposalInput());
+
+    expect(result.status).toBe(ResultStatus.Success);
+    expect(repository.loadCalls).toBe(2);
+    expect(repository.appendCalls).toBe(2);
+    expect(delay.waits).toEqual([25]);
+  });
+
+  it("Artifact Proposal 冲突重试耗尽后返回原始冲突", async () => {
+    const storeRoot = await runtimeStores.create("liushi-proposal-retry-exhausted-");
+    const delegate = createRepository(storeRoot);
+    await delegate.create(makeTask(TASK_ID_A, WORKSPACE_ID_A));
+    const repository = new ConflictInjectingTaskRepository(
+      delegate,
+      81,
+      0,
+      HarnessErrorCode.LockUnavailable,
+    );
+    const delay = new CountingDelay();
+    const useCase = createProposalUseCase(repository, delay);
+
+    const result = await useCase.execute(proposalInput());
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.code).toBe(HarnessErrorCode.LockUnavailable);
+    }
+    expect(repository.loadCalls).toBe(81);
+    expect(repository.appendCalls).toBe(0);
+    expect(delay.waits).toHaveLength(80);
+    expect(delay.waits.every((milliseconds) => milliseconds === 25)).toBe(true);
   });
 
   it.each([
@@ -317,6 +393,72 @@ function requirementProposal(): object {
       unknowns: [],
       humanAnswers: [],
     },
+  };
+}
+
+function proposalInput() {
+  return {
+    workspaceId: WORKSPACE_ID_A,
+    taskId: TASK_ID_A,
+    actor: ACTOR,
+    proposal: requirementProposal(),
+    idempotencyKey: "proposal-retry-contract",
+  };
+}
+
+function createProposalUseCase(repository: TaskRepository, delay?: Delay): ProposeArtifactUseCase {
+  const digest = new Rfc8785Sha256DigestAdapter();
+  const clock = new FixedClock(CREATED_AT);
+  const artifactIds = new FixedSequenceIdGenerator([ARTIFACT_ID, ARTIFACT_ID_RETRY]);
+  const requestIds = new FixedSequenceIdGenerator([DECISION_REQUEST_ID, DECISION_REQUEST_ID_RETRY]);
+  return delay === undefined
+    ? new ProposeArtifactUseCase(repository, digest, clock, artifactIds, requestIds)
+    : new ProposeArtifactUseCase(repository, digest, clock, artifactIds, requestIds, delay);
+}
+
+class CountingDelay implements Delay {
+  public readonly waits: number[] = [];
+
+  public wait(milliseconds: number): Promise<void> {
+    this.waits.push(milliseconds);
+    return Promise.resolve();
+  }
+}
+
+class ConflictInjectingTaskRepository implements TaskRepository {
+  public loadCalls = 0;
+  public appendCalls = 0;
+
+  public constructor(
+    private readonly delegate: TaskRepository,
+    private loadFailuresRemaining: number,
+    private appendFailuresRemaining: number,
+    private readonly errorCode: HarnessErrorCode,
+  ) {}
+
+  public create: TaskRepository["create"] = (task) => this.delegate.create(task);
+  public get: TaskRepository["get"] = (locator) => this.delegate.get(locator);
+
+  public load: TaskRepository["load"] = (locator) => {
+    this.loadCalls += 1;
+    if (this.loadFailuresRemaining > 0) {
+      this.loadFailuresRemaining -= 1;
+      return Promise.resolve(
+        failure(new HarnessError(this.errorCode, "注入 Proposal load 冲突。")),
+      );
+    }
+    return this.delegate.load(locator);
+  };
+
+  public append: TaskRepository["append"] = (input) => {
+    this.appendCalls += 1;
+    if (this.appendFailuresRemaining > 0) {
+      this.appendFailuresRemaining -= 1;
+      return Promise.resolve(
+        failure(new HarnessError(this.errorCode, "注入 Proposal append 冲突。")),
+      );
+    }
+    return this.delegate.append(input);
   };
 }
 

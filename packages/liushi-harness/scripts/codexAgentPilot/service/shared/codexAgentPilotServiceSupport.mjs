@@ -13,9 +13,12 @@ import {
   REPOSITORY_REVISION,
   RUNTIME_DIRECTORY,
   WRITE_SET,
+  STATE_STATUS,
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
+import { listCodexSessionHooks } from "../../host/index.mjs";
 import { readInstalledManifest } from "../../project/index.mjs";
+import { appendDerivedState } from "../../state/index.mjs";
 import { rejectLink } from "../../validation/index.mjs";
 
 const defaultDependencies = Object.freeze({
@@ -24,6 +27,8 @@ const defaultDependencies = Object.freeze({
   calculateFileDigest,
   runGit,
   readCodexVersion,
+  inspectCodexHooks: listCodexSessionHooks,
+  appendDerivedState,
   now: () => new Date().toISOString(),
 });
 
@@ -160,6 +165,30 @@ export function validateCurrentPilotState(state, paths) {
     request: state.proposal.request,
     expectedGate: state.gate,
   });
+}
+
+export function validateWaitingHostPilotState(state, paths) {
+  if (
+    state.status !== STATE_STATUS.WaitingHostApproval ||
+    state.gate !== null ||
+    state.pendingDecisionRequest !== null ||
+    state.paths?.root !== paths.root ||
+    state.fixedProject?.repositoryId !== REPOSITORY_ID ||
+    state.fixedProject?.revision !== REPOSITORY_REVISION ||
+    JSON.stringify(state.fixedProject.writeSet) !== JSON.stringify(WRITE_SET) ||
+    state.fixedProject.historicalLogicChange !== false ||
+    !["waiting_agent", "waiting_for_agent"].includes(state.activation?.result?.status) ||
+    state.effects?.activationExecuted !== true ||
+    state.effects?.hookWrites !== 0 ||
+    state.effects?.modelLaunches !== 0 ||
+    state.hostPreview !== undefined
+  ) {
+    throw new Error("当前状态不是可预检的 waiting_host_approval。");
+  }
+}
+
+export function capturePilotWorktreeIdentity(worktreeRoot, runGitCommand) {
+  return captureRepositoryIdentity(worktreeRoot, runGitCommand);
 }
 
 export function validateRecordedApproval(input) {

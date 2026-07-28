@@ -30,6 +30,17 @@ describe("Codex Agent Pilot CLI", () => {
         "human",
       ]).command,
     ).toBe("approve");
+    expect(
+      parsePilotCli([
+        "preview-host",
+        "--root",
+        "C:\\pilot",
+        "--state-digest",
+        "sha256:b",
+        "--actor-id",
+        "human",
+      ]).command,
+    ).toBe("preview-host");
     expect(() =>
       parsePilotCli([
         "approve",

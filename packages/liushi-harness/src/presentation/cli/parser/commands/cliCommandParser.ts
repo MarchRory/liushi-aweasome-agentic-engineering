@@ -106,8 +106,10 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
         CliOptionName.Task,
         CliOptionName.File,
         CliOptionName.ActorId,
+        CliOptionName.IdempotencyKey,
       ]),
     );
+    const idempotencyKey = collected.values.get(CliOptionName.IdempotencyKey);
     return {
       command: CliCommand.ArtifactPropose,
       outputFormat,
@@ -116,6 +118,7 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
       taskId: requireValue(collected, CliOptionName.Task),
       filePath: requireValue(collected, CliOptionName.File),
       actorId: collected.values.get(CliOptionName.ActorId) ?? DEFAULT_CLI_ACTOR_ID,
+      ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
     };
   }
   if (isExactCommand(collected.positionals, ["approval", "decide"])) {

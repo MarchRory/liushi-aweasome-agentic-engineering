@@ -12,7 +12,10 @@ import {
 import { parseTaskId } from "#domain/task/index.js";
 import { parseWorkspaceId } from "#domain/workspace/index.js";
 
-import { ARTIFACT_ID_PATTERN } from "../constants/index.js";
+import {
+  ARTIFACT_ID_PATTERN,
+  MAX_ARTIFACT_PROPOSAL_IDEMPOTENCY_KEY_LENGTH,
+} from "../constants/index.js";
 import type {
   ArtifactEnvelope,
   BusinessLogicChangeContractArtifact,
@@ -73,6 +76,18 @@ const envelopeFields = {
   status: z.enum(ArtifactStatus),
   createdAt: z.string().datetime(),
   createdBy: actorRefSchema,
+  proposalIdempotencyKey: z
+    .string()
+    .min(1)
+    .max(MAX_ARTIFACT_PROPOSAL_IDEMPOTENCY_KEY_LENGTH)
+    .refine(
+      (value) =>
+        value === value.trim() &&
+        [...value].every(
+          (character) => character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
+        ),
+    )
+    .optional(),
   digest: artifactDigestSchema,
 };
 
@@ -205,6 +220,9 @@ function mapArtifactCommon(
     status: artifact.status,
     createdAt: artifact.createdAt,
     createdBy: artifact.createdBy,
+    ...(artifact.proposalIdempotencyKey === undefined
+      ? {}
+      : { proposalIdempotencyKey: artifact.proposalIdempotencyKey }),
     digest: artifact.digest,
   };
 }

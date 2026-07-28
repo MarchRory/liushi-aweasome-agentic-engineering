@@ -71,6 +71,7 @@ export async function executeArtifactPropose(
     taskId: command.taskId,
     proposal: document.value,
     actor: { kind: ActorKind.Human, actorId: command.actorId },
+    ...(command.idempotencyKey === undefined ? {} : { idempotencyKey: command.idempotencyKey }),
   });
   if (result.status === ResultStatus.Failure) {
     writeFailure(dependencies, command.outputFormat, command.command, result.error);

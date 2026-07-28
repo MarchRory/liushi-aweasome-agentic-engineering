@@ -26,7 +26,7 @@ export function createPilotHarnessClient(input) {
       ]),
     scanProject: (manifestFile) =>
       run(input.consumerRoot, ["project", "scan", "--file", manifestFile, "--json"]),
-    proposeArtifact: (taskId, file, actorId, storeRoot) =>
+    proposeArtifact: (taskId, file, actorId, idempotencyKey, storeRoot) =>
       run(input.consumerRoot, [
         "artifact",
         "propose",
@@ -38,6 +38,8 @@ export function createPilotHarnessClient(input) {
         file,
         "--actor-id",
         actorId,
+        "--idempotency-key",
+        idempotencyKey,
         "--store",
         storeRoot,
         "--json",

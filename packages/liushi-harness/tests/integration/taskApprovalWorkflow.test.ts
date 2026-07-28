@@ -54,6 +54,76 @@ const CONCURRENT_APPROVAL_ID_B = "01ARZ3NDEKTSV4RRFFQ69G5FF1";
 const runtimeStores = new TemporaryRuntimeStore();
 
 describe("ProjectProfile promotion persistence", () => {
+  it("相同 Proposal 幂等键只提交一个 Event，并拒绝绑定不同内容", async () => {
+    const storeRoot = await runtimeStores.create("liushi-profile-idempotency-");
+    const app = makeApp(storeRoot);
+    await createTask(app);
+    const input = {
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+      actor: ACTOR,
+      proposal: projectProfileProposal(),
+      idempotencyKey: "profile-proposal-g8",
+    };
+
+    const first = await app.proposeArtifact.execute(input);
+    const replayed = await app.proposeArtifact.execute(input);
+    expect(first.status).toBe(ResultStatus.Success);
+    expect(replayed.status).toBe(ResultStatus.Success);
+    if (first.status !== ResultStatus.Success || replayed.status !== ResultStatus.Success) {
+      throw new Error("Artifact Proposal 幂等重放必须成功。");
+    }
+    expect(replayed.value.artifact).toEqual(first.value.artifact);
+    expect(replayed.value.decisionRequest).toEqual(first.value.decisionRequest);
+    expect(replayed.value.persistence).toBeUndefined();
+    expect(first.value.artifact.proposalIdempotencyKey).toBe("profile-proposal-g8");
+    expect(await readEvents(storeRoot)).toHaveLength(2);
+
+    const changedProposal = projectProfileProposal();
+    changedProposal.payload.workspaceGraphRevision = "different-graph";
+    const conflict = await app.proposeArtifact.execute({
+      ...input,
+      proposal: changedProposal,
+    });
+    expect(conflict.status).toBe(ResultStatus.Failure);
+    if (conflict.status === ResultStatus.Failure) {
+      expect(conflict.error.code).toBe(HarnessErrorCode.ActionConflict);
+    }
+    expect(await readEvents(storeRoot)).toHaveLength(2);
+  });
+
+  it("并发提交同一 Proposal 幂等键时复用唯一 Artifact", async () => {
+    const storeRoot = await runtimeStores.create("liushi-profile-idempotency-concurrent-");
+    const app = makeApp(storeRoot);
+    await createTask(app);
+    const input = {
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+      actor: ACTOR,
+      proposal: projectProfileProposal(),
+      idempotencyKey: "profile-proposal-concurrent",
+    };
+
+    const [left, right] = await Promise.all([
+      app.proposeArtifact.execute(input),
+      app.proposeArtifact.execute(input),
+    ]);
+    expect(
+      left.status,
+      left.status === ResultStatus.Failure ? JSON.stringify(left.error) : undefined,
+    ).toBe(ResultStatus.Success);
+    expect(
+      right.status,
+      right.status === ResultStatus.Failure ? JSON.stringify(right.error) : undefined,
+    ).toBe(ResultStatus.Success);
+    if (left.status !== ResultStatus.Success || right.status !== ResultStatus.Success) {
+      throw new Error("并发 Artifact Proposal 必须收敛到同一结果。");
+    }
+    expect(right.value.artifact).toEqual(left.value.artifact);
+    expect(right.value.decisionRequest).toEqual(left.value.decisionRequest);
+    expect(await readEvents(storeRoot)).toHaveLength(2);
+  });
+
   it("ProjectProfile propose -> G8 decision -> approval -> Requirement proposal supports persistence replay", async () => {
     const storeRoot = await runtimeStores.create("liushi-profile-promotion-");
     const app = makeApp(storeRoot);

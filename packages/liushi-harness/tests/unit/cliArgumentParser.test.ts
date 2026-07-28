@@ -267,6 +267,34 @@ describe("CLI argument parser", () => {
     );
   });
 
+  it("Artifact Proposal 解析可选稳定幂等键", () => {
+    expect(
+      parseCliArguments([
+        "artifact",
+        "propose",
+        "--workspace",
+        "workspace-profile",
+        "--task",
+        TASK_ID,
+        "--file",
+        "proposal.json",
+        "--idempotency-key",
+        "proposal-g8",
+      ]),
+    ).toEqual({
+      status: ResultStatus.Success,
+      value: {
+        command: CliCommand.ArtifactPropose,
+        outputFormat: CliOutputFormat.Human,
+        workspaceId: "workspace-profile",
+        taskId: TASK_ID,
+        filePath: "proposal.json",
+        actorId: "local-human",
+        idempotencyKey: "proposal-g8",
+      },
+    });
+  });
+
   it("严格解析 profile compile 的独立 artifact 与 report 选项", () => {
     const result = parseCliArguments([
       "profile",
