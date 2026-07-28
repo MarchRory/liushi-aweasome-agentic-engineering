@@ -128,6 +128,7 @@ export function coverageManifest(): CodingTaskSessionActionCoverageManifest {
     worktreeId: "closeout-worktree",
     worktreeRootDigest: digestOf({ worktreeRoot: "closeout" }),
     executorSessionIdDigest: digestOf({ executorSession: "closeout" }),
+    agentProcessEvidenceDigest: digestOf({ agentProcessEvidence: "closeout" }),
     actions: actionIds.map((actionId) => ({
       actionId,
       targets:

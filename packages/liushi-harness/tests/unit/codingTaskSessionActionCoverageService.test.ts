@@ -9,7 +9,10 @@ import {
   SessionActionTraceDisposition,
   SessionActionTraceDropReason,
   CodingTaskSessionActionCoverageService,
+  AgentSessionProcessOutcome,
+  AgentSessionProcessEvidenceCreateDisposition,
   failure,
+  success,
   type ActionJournalState,
   type SessionActionIntentRecord,
   type SessionActionObservationRecord,
@@ -18,6 +21,52 @@ import {
 import { createCoverageFixture } from "../support/codingTaskSessionActionCoverage/index.js";
 
 describe("CodingTask Session Action/Trace Coverage Proof Service", () => {
+  it.each(["缺失进程证据", "非 completed 进程证据", "进程证据身份漂移"])(
+    "拒绝 %s",
+    async (kind) => {
+      const fixture = createCoverageFixture();
+      const evidence =
+        kind === "非 completed 进程证据"
+          ? {
+              ...fixture.processEvidence,
+              outcome: AgentSessionProcessOutcome.Failed,
+              exitCode: 1,
+              signal: null,
+              timedOut: false,
+            }
+          : kind === "进程证据身份漂移"
+            ? { ...fixture.processEvidence, worktreeId: "drifted-worktree" }
+            : fixture.processEvidence;
+      const service = new CodingTaskSessionActionCoverageService({
+        ...fixture.dependencies,
+        agentSessionProcessEvidenceStore: {
+          create: (value) =>
+            Promise.resolve(
+              success({
+                disposition: AgentSessionProcessEvidenceCreateDisposition.Created,
+                evidence: value,
+              }),
+            ),
+          load: () =>
+            Promise.resolve(
+              kind === "缺失进程证据"
+                ? failure(
+                    new HarnessError(
+                      HarnessErrorCode.PreconditionNotMet,
+                      "missing process evidence",
+                    ),
+                  )
+                : success(evidence),
+            ),
+        },
+      });
+
+      const result = await service.execute(fixture.input);
+
+      expectFailure(result, HarnessErrorCode.PreconditionNotMet);
+      expect(fixture.calls.journal).toEqual([]);
+    },
+  );
   it("黄金路径包含 Committed、Recovered，并规范化 Action/Trace 摘要排序", async () => {
     const fixture = createCoverageFixture({ multiTrace: true });
     const result = await new CodingTaskSessionActionCoverageService(fixture.dependencies).execute(

@@ -15,6 +15,7 @@ export type * from "./codingTaskRepository/index.js";
 export * from "./codingTaskSessionActivationRepository/index.js";
 export type * from "./codingTaskSessionActivationLease/index.js";
 export * from "./codingTaskSessionAdmissionStateStore/index.js";
+export * from "./agentSessionProcessEvidenceStore/index.js";
 export * from "./codingTaskSessionCloseoutStateStore/index.js";
 export * from "./codingTaskSessionCloseoutRecoveryStateStore/index.js";
 export type * from "./codingTaskSessionAdmissionLease/index.js";

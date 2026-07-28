@@ -1,6 +1,7 @@
 export * from "./codingTaskCellApplicationFactory.js";
 export * from "./codingTaskExecutionApplicationFactory.js";
 export * from "./codingTaskSessionApplicationFactory.js";
+export * from "./agentSessionProcessEvidenceApplicationFactory.js";
 export * from "./codingTaskSessionHookRuntimeFactory.js";
 export * from "./codingTaskSessionPersistenceFactory.js";
 export * from "./codingTaskSessionCloseoutApplicationFactory.js";

@@ -16,6 +16,7 @@ export * from "./codingTask/index.js";
 export * from "./codingTaskCell/index.js";
 export * from "./codingTaskSession/index.js";
 export * from "./codingTaskSessionActionCoverage/index.js";
+export * from "./agentSessionProcessEvidence/index.js";
 export * from "./changeSetCheckpoint/index.js";
 export * from "./codingTaskSessionCloseoutState/constants/index.js";
 export type * from "./codingTaskSessionCloseoutState/contracts/index.js";

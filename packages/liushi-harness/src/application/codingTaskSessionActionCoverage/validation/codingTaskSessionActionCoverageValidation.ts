@@ -100,6 +100,7 @@ const manifestSchema = z
     worktreeId: nonBlank,
     worktreeRootDigest: digestSchema,
     executorSessionIdDigest: digestSchema,
+    agentProcessEvidenceDigest: digestSchema,
     actions: z.array(actionSchema).min(1),
     manifestDigest: digestSchema,
   })

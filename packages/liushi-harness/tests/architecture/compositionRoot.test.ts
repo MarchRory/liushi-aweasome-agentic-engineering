@@ -43,6 +43,7 @@ describe("composition root", () => {
       "ExclusiveFileLockManager",
       "FileActionExecutionLockAdapter",
       "FileActionJournalRepository",
+      "FileAgentSessionProcessEvidenceStore",
       "FileCodingTaskRepository",
       "FileCodingTaskSessionActivationLease",
       "FileCodingTaskSessionActivationRepository",

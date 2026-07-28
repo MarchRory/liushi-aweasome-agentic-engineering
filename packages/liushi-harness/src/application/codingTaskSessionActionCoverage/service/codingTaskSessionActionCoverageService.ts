@@ -1,5 +1,6 @@
 import type { CodingTaskSessionActivationLocator } from "#application/ports/codingTaskSessionActivationRepository/index.js";
-import { ResultStatus } from "#common/index.js";
+import { HarnessError, HarnessErrorCode, ResultStatus, failure } from "#common/index.js";
+import { isCompletedAgentSessionProcessEvidence } from "#domain/agentSessionProcessEvidence/index.js";
 
 import { CODING_TASK_SESSION_ACTION_COVERAGE_MANIFEST_SCHEMA_VERSION } from "../constants/index.js";
 import type {
@@ -51,6 +52,39 @@ export class CodingTaskSessionActionCoverageService {
       validatedInput.value,
     );
     if (actionIds.status === ResultStatus.Failure) return actionIds;
+    const executorSessionIdDigest = admission.value.claimedExecutorSessionIdDigest;
+    if (executorSessionIdDigest === null) {
+      return failure(
+        new HarnessError(
+          HarnessErrorCode.PreconditionNotMet,
+          "Admission 缺少执行器 Session 摘要。",
+        ),
+      );
+    }
+    const processEvidence = await this.dependencies.agentSessionProcessEvidenceStore.load(
+      validatedInput.value,
+    );
+    if (processEvidence.status === ResultStatus.Failure) return processEvidence;
+    if (
+      !isCompletedAgentSessionProcessEvidence(processEvidence.value) ||
+      processEvidence.value.workspaceId !== activation.value.workspaceId ||
+      processEvidence.value.sessionId !== activation.value.sessionId ||
+      processEvidence.value.codingTaskId !== activation.value.codingTaskId ||
+      processEvidence.value.sourceTaskId !== activation.value.sourceTaskId ||
+      processEvidence.value.attemptNumber !== activation.value.attemptNumber ||
+      processEvidence.value.worktreeId !== activation.value.worktreeId ||
+      processEvidence.value.worktreeRootDigest !== activation.value.worktreeRootDigest ||
+      processEvidence.value.activationBindingDigest !== activation.value.bindingDigest ||
+      processEvidence.value.sessionBindingDigest !== admission.value.sessionBindingDigest ||
+      processEvidence.value.executorSessionIdDigest !== executorSessionIdDigest
+    ) {
+      return failure(
+        new HarnessError(
+          HarnessErrorCode.PreconditionNotMet,
+          "Agent 进程证据未完成或与权威 Session 身份不匹配。",
+        ),
+      );
+    }
 
     const actions: CodingTaskSessionActionCoverageManifestAction[] = [];
     for (const actionId of actionIds.value) {
@@ -107,7 +141,8 @@ export class CodingTaskSessionActionCoverageService {
       sessionBindingDigest: admission.value.sessionBindingDigest,
       worktreeId: activation.value.worktreeId,
       worktreeRootDigest: activation.value.worktreeRootDigest,
-      executorSessionIdDigest: admission.value.claimedExecutorSessionIdDigest!,
+      executorSessionIdDigest,
+      agentProcessEvidenceDigest: processEvidence.value.evidenceDigest,
       actions,
     } satisfies Omit<CodingTaskSessionActionCoverageManifest, "manifestDigest">;
     const manifestDigest = calculateCodingTaskSessionActionCoverageManifestDigest(

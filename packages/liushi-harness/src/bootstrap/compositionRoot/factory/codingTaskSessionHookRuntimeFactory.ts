@@ -2,6 +2,7 @@ import {
   ActionHookAuthorizationPolicy,
   CodingTaskSessionAdmissionCoordinator,
   InitializeCodingTaskSessionAdmissionService,
+  type RecordAgentSessionProcessEvidenceService,
   type ApplicationCommandGateway,
 } from "#application/index.js";
 import type {
@@ -25,6 +26,7 @@ import {
   createHookApplication,
   type HookApplicationFactoryOutput,
 } from "./hookApplicationFactory.js";
+import { createAgentSessionProcessEvidenceApplication } from "./agentSessionProcessEvidenceApplicationFactory.js";
 
 /** Session Hook 运行时装配所需的基础设施与权威存储。 */
 export interface CodingTaskSessionHookRuntimeFactoryInput {
@@ -58,6 +60,8 @@ export interface CodingTaskSessionHookRuntimeFactoryOutput {
   readonly bindingStore: HookBindingStore;
   /** 供 Closeout Application 复用的同一 Admission Coordinator。 */
   readonly admissionCoordinator: CodingTaskSessionAdmissionCoordinator;
+  /** 由受信宿主在 Agent 退出后调用的进程证据 Recorder。 */
+  readonly recordAgentSessionProcessEvidence: RecordAgentSessionProcessEvidenceService;
 }
 
 /** 构造共享 Binding、授权策略、Admission Coordinator 与 Hook Application。 */
@@ -95,11 +99,19 @@ export function createCodingTaskSessionHookRuntime(
     clock: input.clock,
     commandRunner: input.commandRunner,
   });
+  const recordAgentSessionProcessEvidence = createAgentSessionProcessEvidenceApplication({
+    storeRoot: input.storeRoot,
+    storeDependencies: input.storeDependencies,
+    activationRepository: persistence.activationRepository,
+    admissionStateStore: persistence.admissionStateStore,
+    digest: input.storeDependencies.digest,
+  });
   return {
     persistence,
     admissionInitializer,
     hookApplication,
     bindingStore: hookBindingStore,
     admissionCoordinator,
+    recordAgentSessionProcessEvidence,
   };
 }

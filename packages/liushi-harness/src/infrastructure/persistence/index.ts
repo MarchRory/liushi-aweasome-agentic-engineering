@@ -4,6 +4,7 @@ export * from "./fileCommandGatewayStore/index.js";
 export * from "./fileHookBindingStore/index.js";
 export * from "./fileCodingTaskStore/index.js";
 export * from "./fileCodingTaskSessionActivationRepository/index.js";
+export * from "./fileAgentSessionProcessEvidenceStore/index.js";
 export * from "./fileCodingTaskSessionActivationLease/index.js";
 export * from "./fileCodingTaskSessionAdmission/index.js";
 export * from "./fileCodingTaskSessionCloseoutStore/index.js";

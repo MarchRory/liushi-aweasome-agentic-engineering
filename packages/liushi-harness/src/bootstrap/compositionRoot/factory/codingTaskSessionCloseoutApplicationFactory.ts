@@ -32,6 +32,7 @@ import type { Clock } from "#common/index.js";
 import {
   FileCodingTaskSessionCloseoutStore,
   FileCodingTaskSessionCloseoutRecoveryStore,
+  FileAgentSessionProcessEvidenceStore,
   type FileCodingTaskSessionActivationRepositoryDependencies,
 } from "#infrastructure/index.js";
 
@@ -102,6 +103,10 @@ export function createCodingTaskSessionCloseoutApplication(
   const coverageBuilder = new CodingTaskSessionActionCoverageService({
     activationRepository: input.activationRepository,
     admissionStateStore: input.admissionStateStore,
+    agentSessionProcessEvidenceStore: new FileAgentSessionProcessEvidenceStore(
+      input.storeRoot,
+      input.storeDependencies,
+    ),
     actionJournalRepository: input.actionJournalRepository,
     traceObservationStore: input.traceObservationStore,
     contentDigest: input.digest,

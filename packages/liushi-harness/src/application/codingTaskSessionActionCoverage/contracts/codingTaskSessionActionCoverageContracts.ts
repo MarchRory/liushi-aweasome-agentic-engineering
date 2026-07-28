@@ -9,6 +9,7 @@ import type {
   ActionJournalRepository,
   CodingTaskSessionActivationRepository,
   CodingTaskSessionAdmissionStateStore,
+  AgentSessionProcessEvidenceStore,
   ContentDigestPort,
   TraceObservationStore,
 } from "#application/ports/index.js";
@@ -61,6 +62,8 @@ export interface CodingTaskSessionActionCoverageManifestDigestInput {
   readonly worktreeRootDigest: ContentDigest;
   /** Executor Session 摘要。 */
   readonly executorSessionIdDigest: ContentDigest;
+  /** 已严格复验且完成的 Agent 进程证据摘要。 */
+  readonly agentProcessEvidenceDigest: ContentDigest;
   /** 按 Action ID 排序的摘要条目。 */
   readonly actions: readonly CodingTaskSessionActionCoverageManifestAction[];
 }
@@ -85,6 +88,8 @@ export interface CodingTaskSessionActionCoverageServiceDependencies {
   readonly activationRepository: CodingTaskSessionActivationRepository;
   /** 读取 Session Admission State。 */
   readonly admissionStateStore: CodingTaskSessionAdmissionStateStore;
+  /** 读取受信宿主 create-only 进程闭合证据。 */
+  readonly agentSessionProcessEvidenceStore: AgentSessionProcessEvidenceStore;
   /** 重放单个 Action Journal。 */
   readonly actionJournalRepository: ActionJournalRepository;
   /** 查询持久化 Trace Observation。 */

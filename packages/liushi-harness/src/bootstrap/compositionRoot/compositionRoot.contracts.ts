@@ -55,6 +55,7 @@ import type {
   WorktreeProvisionCommandService,
   AssessWorktreeProvisionRecoveryUseCase,
   WorktreeProvisionRecoveryCommandService,
+  RecordAgentSessionProcessEvidenceService,
 } from "#application/index.js";
 import type {
   CodingTaskExecutionAuthorizationResolver,
@@ -141,6 +142,8 @@ export interface HarnessApplication {
   runCodingTaskCell: CodingTaskCellService;
   /** 激活真实外部 Agent 的 CodingTask Session。 */
   activateCodingTaskSession: ActivateCodingTaskSessionService;
+  /** 由受信宿主在真实 Agent 进程结束后记录不可变进程证据。 */
+  recordAgentSessionProcessEvidence: RecordAgentSessionProcessEvidenceService;
   /** 供受信宿主从权威状态组装 PR-ready Artifact 的低层能力。 */
   assemblePrReadyArtifact: AssemblePrReadyArtifactUseCase;
   /** 只读检查 CodingTask 工作树、基线和 Write Set。 */

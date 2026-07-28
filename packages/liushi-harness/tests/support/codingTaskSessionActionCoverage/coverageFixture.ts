@@ -8,6 +8,11 @@ import {
   appendActionResolution,
   createActionJournalState,
   createCodingTaskSessionActivationRecord,
+  createAgentSessionProcessEvidence,
+  AgentSessionProcessEvidenceSchemaVersion,
+  AgentSessionProcessHostSurface,
+  AgentSessionProcessOutcome,
+  AgentSessionProcessEvidenceCreateDisposition,
   CODING_TASK_SESSION_ACTIVATION_SCHEMA_VERSION,
   CodingTaskSessionAdmissionSchemaVersion,
   CodingTaskSessionAdmissionStatus,
@@ -28,8 +33,10 @@ import {
   type CodingTaskSessionActionCoverageInput,
   type CodingTaskSessionActionCoverageServiceDependencies,
   type CodingTaskSessionAdmissionState,
+  type AgentSessionProcessEvidence,
   type ContentDigestPort,
   type TraceObservationStore,
+  type AgentSessionProcessEvidenceStore,
   type TraceQueryResult,
   type TraceSpanObservation,
 } from "../../../src/index.js";
@@ -67,6 +74,8 @@ export interface CoverageFixture {
   readonly input: CodingTaskSessionActionCoverageInput;
   readonly activation: CodingTaskSessionActivationRecord;
   readonly admission: CodingTaskSessionAdmissionState;
+  /** Coverage 必须加载的合成 completed 进程证据。 */
+  readonly processEvidence: AgentSessionProcessEvidence;
   readonly journals: Map<string, ActionJournalState>;
   readonly traces: Map<string, TraceQueryResult>;
   readonly calls: { readonly journal: string[]; readonly trace: string[] };
@@ -133,6 +142,47 @@ export function createCoverageFixture(
   ]);
   const calls: { journal: string[]; trace: string[] } = { journal: [], trace: [] };
   const faults: CoverageFixture["faults"] = {};
+  const processEvidence = unwrap(
+    createAgentSessionProcessEvidence(
+      {
+        schemaVersion: AgentSessionProcessEvidenceSchemaVersion.V1,
+        workspaceId,
+        sessionId,
+        codingTaskId,
+        sourceTaskId,
+        attemptNumber: activation.attemptNumber,
+        worktreeId: activation.worktreeId,
+        worktreeRootDigest: activation.worktreeRootDigest,
+        activationBindingDigest: activation.bindingDigest,
+        sessionBindingDigest,
+        executorSessionIdDigest,
+        executorId: "codex",
+        executorVersion: "1.0.0",
+        executableDigest: digest,
+        hostSurface: AgentSessionProcessHostSurface.Cli,
+        modelId: "gpt-5",
+        reasoningEffort: "high",
+        permissionMode: "workspace-write",
+        promptDigest: digest,
+        hookConfigDigest: digest,
+        startedAt: "2026-07-26T00:00:00.000Z",
+        completedAt: "2026-07-26T00:02:00.000Z",
+        durationMs: 120000,
+        outcome: AgentSessionProcessOutcome.Completed,
+        exitCode: 0,
+        signal: null,
+        timedOut: false,
+      },
+      digestPort,
+    ),
+  );
+  const agentSessionProcessEvidenceStore: AgentSessionProcessEvidenceStore = {
+    create: (evidence) =>
+      Promise.resolve(
+        success({ disposition: AgentSessionProcessEvidenceCreateDisposition.Created, evidence }),
+      ),
+    load: () => Promise.resolve(success(processEvidence)),
+  };
   const activationRepository = {
     load: () =>
       Promise.resolve(
@@ -168,6 +218,7 @@ export function createCoverageFixture(
     input: { workspaceId, sessionId },
     activation,
     admission,
+    processEvidence,
     journals,
     traces,
     calls,
@@ -176,6 +227,7 @@ export function createCoverageFixture(
     dependencies: {
       activationRepository,
       admissionStateStore,
+      agentSessionProcessEvidenceStore,
       actionJournalRepository,
       traceObservationStore,
       contentDigest: digestPort,

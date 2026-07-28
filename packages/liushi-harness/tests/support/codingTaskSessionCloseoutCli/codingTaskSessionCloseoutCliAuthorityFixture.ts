@@ -24,6 +24,7 @@ import {
   createCloseoutCliSessionManifest,
 } from "./codingTaskSessionCloseoutCliSessionFixture.js";
 import { produceCloseoutCliHookEvidence } from "./codingTaskSessionCloseoutCliHookFixture.js";
+import { recordCloseoutCliProcessEvidence } from "./codingTaskSessionCloseoutCliProcessEvidenceFixture.js";
 import {
   createCloseoutCliTemporaryRoot,
   runCloseoutCliGit,
@@ -67,6 +68,7 @@ export async function createCodingTaskSessionCloseoutCliSetup(
     throw new Error(`Session Activation 未进入 WaitingAgent：${activation.value.status}。`);
   }
   await produceCloseoutCliHookEvidence(application, storeRoot, worktreeRoot);
+  await recordCloseoutCliProcessEvidence(application);
   const closeoutCommand = createCloseoutCliCommand();
   const closeoutCommandFile = join(storeRoot, "closeout-command.json");
   const closeoutStateFile = resolveCloseoutStateFile(storeRoot);
@@ -137,6 +139,7 @@ function evidenceFiles(storeRoot: string, closeoutStateFile: string): readonly s
     join(storeRoot, "hookBindings", "bindings.json"),
     join(session, "activation.json"),
     join(session, "admission.json"),
+    join(workspace, "agent-session-process-evidence", CLOSEOUT_CLI_SESSION_ID, "evidence.json"),
     closeoutStateFile,
     join(sourceTask, "events.jsonl"),
     join(sourceTask, "actions.jsonl"),

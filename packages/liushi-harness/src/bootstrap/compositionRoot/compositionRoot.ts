@@ -289,6 +289,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     journaledActionRunner,
     ...publicCodingTaskCellApplication,
     ...codingTaskSessionApplication,
+    recordAgentSessionProcessEvidence:
+      codingTaskSessionHookRuntime.recordAgentSessionProcessEvidence,
     ...worktreeApplication,
   };
 }

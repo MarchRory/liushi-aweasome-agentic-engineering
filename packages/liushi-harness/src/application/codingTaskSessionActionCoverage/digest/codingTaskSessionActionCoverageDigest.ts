@@ -23,6 +23,7 @@ export function createCodingTaskSessionActionCoverageManifestDigestInput(
     worktreeId: manifest.worktreeId,
     worktreeRootDigest: manifest.worktreeRootDigest,
     executorSessionIdDigest: manifest.executorSessionIdDigest,
+    agentProcessEvidenceDigest: manifest.agentProcessEvidenceDigest,
     actions: manifest.actions.map((action) => ({
       actionId: action.actionId,
       targets: [...action.targets],

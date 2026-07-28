@@ -19,6 +19,7 @@ export * from "./workspace/index.js";
 export * from "./workflow/index.js";
 export * from "./codingTask/index.js";
 export * from "./codingTaskSession/index.js";
+export * from "./agentSessionProcessEvidence/index.js";
 export * from "./codingTaskSessionChangeSet/index.js";
 export * from "./repositoryDelivery/index.js";
 export * from "./verification/index.js";
