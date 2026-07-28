@@ -1,6 +1,8 @@
 import {
   ARTIFACT_TYPES,
   PACKAGE_MANAGER,
+  PILOT_VERIFICATION_KIND,
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
   REPOSITORY_ID,
   REPOSITORY_REVISION,
   WRITE_SET,
@@ -19,7 +21,7 @@ export function createProjectProfileProposal(report) {
     artifactType: ARTIFACT_TYPES.ProjectProfile,
     status: "proposed",
     payload: {
-      schemaVersion: "1.0.0",
+      schemaVersion: PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
       discoveryReportDigest: report.digest,
       workspaceGraphRevision: report.workspaceGraphRevision,
       repositorySelections: [
@@ -37,7 +39,7 @@ export function createProjectProfileProposal(report) {
           verificationChecks: [
             {
               checkId: "public-project.test",
-              kind: "test",
+              kind: PILOT_VERIFICATION_KIND,
               requirement: "required",
               command: {
                 executable: command.executable,

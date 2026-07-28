@@ -3,6 +3,12 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import {
+  PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION as CORE_PROFILE_PROPOSAL_SCHEMA_VERSION,
+  ResultStatus,
+  parseArtifactProposal,
+} from "../../../src/index.js";
+import { PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION } from "../../../scripts/codexAgentPilot/constants/index.mjs";
 import { calculateDigest } from "../../../scripts/codexAgentPilot/digest/index.mjs";
 import {
   approveCodexAgentPilot,
@@ -10,6 +16,7 @@ import {
 } from "../../../scripts/codexAgentPilot/service/index.mjs";
 import { validateRecordedApproval } from "../../../scripts/codexAgentPilot/service/shared/index.mjs";
 import { readStateChain } from "../../../scripts/codexAgentPilot/state/index.mjs";
+import { createProjectProfileProposal } from "../../../scripts/codexAgentPilot/workflow/index.mjs";
 import {
   cleanupCodexAgentPilotFixture,
   createCodexAgentPilotFixture,
@@ -25,6 +32,14 @@ afterEach(async () => {
 });
 
 describe("Codex Agent Pilot security bindings", () => {
+  it("ProjectProfile Proposal 与核心 Schema 常量和真实解析器保持一致", async () => {
+    fixture = await createCodexAgentPilotFixture();
+    const proposal = createProjectProfileProposal(fixture.report);
+
+    expect(PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION).toBe(CORE_PROFILE_PROPOSAL_SCHEMA_VERSION);
+    expect(parseArtifactProposal(proposal)).toMatchObject({ status: ResultStatus.Success });
+  });
+
   it("拒绝非固定 SOTA 顶层模型，且不创建 Pilot Root", async () => {
     fixture = await createCodexAgentPilotFixture({ model: "gpt-5.6" });
 

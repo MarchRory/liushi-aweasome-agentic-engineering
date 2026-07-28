@@ -45,6 +45,8 @@ export const PROFILE_PROPOSAL_NAME = "projectProfileProposal.json";
 export const REQUIREMENT_PROPOSAL_NAME = "requirementContract.json";
 export const PLAN_RISK_PROPOSAL_NAME = "planRisk.json";
 export const REASONING_EFFORT = "medium";
+export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "2.0.0";
+export const PILOT_VERIFICATION_KIND = "custom";
 
 export const REQUIRED_HUMAN_ACTIONS = Object.freeze([
   "仅在外部明确批准精确 stateDigest 后运行对应 approve",
