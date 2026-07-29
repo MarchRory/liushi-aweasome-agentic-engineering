@@ -22,7 +22,9 @@ export const GATES = Object.freeze({ G8: "G8", G1: "G1", G4: "G4" });
 export const STATE_STATUS = Object.freeze({
   WaitingApproval: "waiting_human_approval",
   WaitingHostApproval: "waiting_host_approval",
+  HostApproved: "host_approved",
 });
+export const HOST_APPROVAL_DECISION = Object.freeze({ Approved: "approved" });
 export const ARTIFACT_TYPES = Object.freeze({
   ProjectProfile: "project_profile_proposal",
   Requirement: "requirement_contract",
@@ -49,6 +51,8 @@ export const REASONING_EFFORT = "medium";
 export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "2.0.0";
 export const PILOT_VERIFICATION_KIND = "custom";
 export const HOST_APPROVAL_SCHEMA_VERSION = "liushi.codex-agent-pilot.host-approval.v1";
+export const HOST_APPROVAL_RECORD_SCHEMA_VERSION =
+  "liushi.codex-agent-pilot.host-approval-record.v1";
 export const CODEX_HOOK_FEATURE_OVERRIDE = "features.hooks=true";
 export const CODEX_RESTRICTED_RUNTIME_OVERRIDES = Object.freeze([
   "features.shell_tool=false",

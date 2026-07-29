@@ -27,10 +27,10 @@ import {
 } from "../../state/index.mjs";
 import { requireExistingDirectory } from "../../validation/index.mjs";
 import {
-  capturePilotIdentitiesFromState,
   capturePilotWorktreeIdentity,
   createPilotDependencies,
   createPilotPaths,
+  validateStablePilotIdentities,
   validatePilotActor,
   validateWaitingHostPilotState,
 } from "../shared/index.mjs";
@@ -48,7 +48,7 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
   if (current.actor?.humanActorId !== input.actorId) throw new Error("Human actor 不匹配。");
   validateWaitingHostPilotState(current, paths);
   await verifyPilotPaths(paths);
-  await validateStableIdentities(current, dependencies);
+  await validateStablePilotIdentities(current, dependencies);
   const artifacts = await readValidatedHostActivation(current, paths);
   const worktreeIdentity = capturePilotWorktreeIdentity(
     artifacts.worktreeRoot,
@@ -107,7 +107,7 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
     if (!preserveTemporaryHome) await removeTemporaryCodexHome(temporaryRoot);
   }
 
-  await validateStableIdentities(current, dependencies);
+  await validateStablePilotIdentities(current, dependencies);
   const finalArtifacts = await readValidatedHostActivation(current, paths);
   const finalWorktreeIdentity = capturePilotWorktreeIdentity(
     finalArtifacts.worktreeRoot,
@@ -172,13 +172,6 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
     hostApprovalPacketDigest: packet.packetDigest,
     pendingHostApproval: appended.state.pendingHostApproval,
   };
-}
-
-async function validateStableIdentities(state, dependencies) {
-  const identity = await capturePilotIdentitiesFromState(state, dependencies);
-  if (calculateDigest(identity) !== calculateDigest(state.identities)) {
-    throw new Error("Host 预检前后 Pilot identity 发生漂移。");
-  }
 }
 
 async function removeTemporaryCodexHome(root) {

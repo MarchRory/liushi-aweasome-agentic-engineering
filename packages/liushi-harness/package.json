@@ -70,7 +70,7 @@
   },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
-    "lint": "eslint src tests --no-error-on-unmatched-pattern",
+    "lint": "eslint src tests scripts --no-error-on-unmatched-pattern",
     "test": "vitest run --maxWorkers=1",
     "test:architecture": "vitest run tests/architecture --maxWorkers=1",
     "test:contract": "vitest run tests/contract",
@@ -82,6 +82,7 @@
     "pilot:codex-agent:prepare": "node scripts/codexAgentPilot/index.mjs prepare",
     "pilot:codex-agent:approve": "node scripts/codexAgentPilot/index.mjs approve",
     "pilot:codex-agent:preview-host": "node scripts/codexAgentPilot/index.mjs preview-host",
+    "pilot:codex-agent:approve-host": "node scripts/codexAgentPilot/index.mjs approve-host",
     "typecheck": "tsc --noEmit",
     "typecheck:ts6": "tsc6 --noEmit"
   },

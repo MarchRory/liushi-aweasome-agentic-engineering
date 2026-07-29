@@ -2,6 +2,7 @@ const COMMANDS = Object.freeze({
   prepare: "prepare",
   approve: "approve",
   previewHost: "preview-host",
+  approveHost: "approve-host",
 });
 const OPTION_NAMES = Object.freeze({
   root: "--root",
@@ -10,15 +11,16 @@ const OPTION_NAMES = Object.freeze({
   codexHome: "--codex-home",
   model: "--model",
   stateDigest: "--state-digest",
+  packetDigest: "--packet-digest",
 });
 
 export function parsePilotCli(argv) {
   if (!Array.isArray(argv) || argv.length === 0) {
-    throw new Error("必须指定 prepare、approve 或 preview-host。");
+    throw new Error("必须指定 prepare、approve、preview-host 或 approve-host。");
   }
   const command = argv[0];
   if (!Object.values(COMMANDS).includes(command)) {
-    throw new Error("只支持 prepare、approve 或 preview-host。");
+    throw new Error("只支持 prepare、approve、preview-host 或 approve-host。");
   }
   const values = new Map();
   for (let index = 1; index < argv.length; index += 1) {
@@ -32,16 +34,7 @@ export function parsePilotCli(argv) {
     values.set(option, value);
     index += 1;
   }
-  const required =
-    command === COMMANDS.prepare
-      ? [
-          OPTION_NAMES.root,
-          OPTION_NAMES.actorId,
-          OPTION_NAMES.codex,
-          OPTION_NAMES.codexHome,
-          OPTION_NAMES.model,
-        ]
-      : [OPTION_NAMES.root, OPTION_NAMES.stateDigest, OPTION_NAMES.actorId];
+  const required = requiredOptions(command);
   for (const option of required)
     if (!values.has(option)) throw new Error(`缺少必需选项 ${option}。`);
   const allowed = new Set(required);
@@ -57,8 +50,28 @@ export function parsePilotCli(argv) {
           codexHome: values.get(OPTION_NAMES.codexHome),
           model: values.get(OPTION_NAMES.model),
         }
-      : { stateDigest: values.get(OPTION_NAMES.stateDigest) }),
+      : {
+          stateDigest: values.get(OPTION_NAMES.stateDigest),
+          ...(command === COMMANDS.approveHost
+            ? { packetDigest: values.get(OPTION_NAMES.packetDigest) }
+            : {}),
+        }),
   };
 }
 
 export const pilotCliCommands = COMMANDS;
+
+function requiredOptions(command) {
+  if (command === COMMANDS.prepare) {
+    return [
+      OPTION_NAMES.root,
+      OPTION_NAMES.actorId,
+      OPTION_NAMES.codex,
+      OPTION_NAMES.codexHome,
+      OPTION_NAMES.model,
+    ];
+  }
+  const options = [OPTION_NAMES.root, OPTION_NAMES.stateDigest, OPTION_NAMES.actorId];
+  if (command === COMMANDS.approveHost) options.push(OPTION_NAMES.packetDigest);
+  return options;
+}

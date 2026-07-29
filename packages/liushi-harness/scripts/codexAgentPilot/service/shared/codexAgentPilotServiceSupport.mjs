@@ -8,6 +8,7 @@ import {
   CONSUMER_DIRECTORY,
   CONTROL_DIRECTORY,
   GATES,
+  HOST_PREFLIGHT_PROCESS_COUNT,
   REPOSITORY_DIRECTORY,
   REPOSITORY_ID,
   REPOSITORY_REVISION,
@@ -137,6 +138,13 @@ export async function capturePilotIdentitiesFromState(state, dependencies) {
   };
 }
 
+export async function validateStablePilotIdentities(state, dependencies) {
+  const identity = await capturePilotIdentitiesFromState(state, dependencies);
+  if (calculateDigest(identity) !== calculateDigest(state.identities)) {
+    throw new Error("Pilot identity 发生漂移。");
+  }
+}
+
 export function validateCurrentPilotState(state, paths) {
   if (
     state.paths?.root !== paths.root ||
@@ -184,6 +192,35 @@ export function validateWaitingHostPilotState(state, paths) {
     state.hostPreview !== undefined
   ) {
     throw new Error("当前状态不是可预检的 waiting_host_approval。");
+  }
+}
+
+export function validatePendingHostApprovalPilotState(state, paths) {
+  if (
+    state.status !== STATE_STATUS.WaitingHostApproval ||
+    state.gate !== null ||
+    state.pendingDecisionRequest !== null ||
+    state.paths?.root !== paths.root ||
+    state.fixedProject?.repositoryId !== REPOSITORY_ID ||
+    state.fixedProject?.revision !== REPOSITORY_REVISION ||
+    JSON.stringify(state.fixedProject.writeSet) !== JSON.stringify(WRITE_SET) ||
+    state.fixedProject.historicalLogicChange !== false ||
+    !["waiting_agent", "waiting_for_agent"].includes(state.activation?.result?.status) ||
+    state.effects?.activationExecuted !== true ||
+    state.effects?.hostPreflightProcesses !== HOST_PREFLIGHT_PROCESS_COUNT ||
+    state.effects?.hookWrites !== 0 ||
+    state.effects?.modelLaunches !== 0 ||
+    state.hostPreview?.packetDigest !== state.pendingHostApproval?.packetDigest ||
+    state.hostPreview?.packet?.packetDigest !== state.pendingHostApproval?.packetDigest ||
+    state.pendingHostApproval?.humanActorId !== state.actor?.humanActorId ||
+    state.pendingHostApproval?.approved !== false ||
+    state.transition?.kind !== "host_preview" ||
+    state.transition?.sourceStateDigest !== state.previousStateDigest ||
+    state.transition?.packetDigest !== state.pendingHostApproval.packetDigest ||
+    state.transition?.actorId !== state.actor.humanActorId ||
+    state.hostPreview.packet?.basedOn?.stateDigest !== state.transition.sourceStateDigest
+  ) {
+    throw new Error("当前状态不是可审批的 pending Host Approval。");
   }
 }
 

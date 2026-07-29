@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { parsePilotCli, pilotCliCommands } from "./cli/index.mjs";
 import {
   approveCodexAgentPilot,
+  approveCodexAgentPilotHost,
   prepareCodexAgentPilot,
   previewCodexAgentPilotHost,
 } from "./service/index.mjs";
@@ -29,6 +30,8 @@ export async function runCodexAgentPilot(argv, dependencies = {}) {
     return prepareCodexAgentPilot({ ...input, packageRoot }, dependencies);
   if (input.command === pilotCliCommands.approve)
     return approveCodexAgentPilot(input, dependencies);
+  if (input.command === pilotCliCommands.approveHost)
+    return approveCodexAgentPilotHost(input, dependencies);
   return previewCodexAgentPilotHost(input, dependencies);
 }
 

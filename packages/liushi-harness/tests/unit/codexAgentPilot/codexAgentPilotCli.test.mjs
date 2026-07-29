@@ -41,6 +41,54 @@ describe("Codex Agent Pilot CLI", () => {
         "human",
       ]).command,
     ).toBe("preview-host");
+    expect(
+      parsePilotCli([
+        "approve-host",
+        "--root",
+        "C:\\pilot",
+        "--state-digest",
+        "sha256:b",
+        "--packet-digest",
+        "sha256:packet",
+        "--actor-id",
+        "human",
+      ]),
+    ).toMatchObject({
+      command: "approve-host",
+      stateDigest: "sha256:b",
+      packetDigest: "sha256:packet",
+      actorId: "human",
+    });
+    expect(() =>
+      parsePilotCli([
+        "approve-host",
+        "--root",
+        "C:\\pilot",
+        "--state-digest",
+        "sha256:b",
+        "--actor-id",
+        "human",
+      ]),
+    ).toThrow("--packet-digest");
+    for (const extraArguments of [
+      ["--model", "gpt-5.6-sol"],
+      ["--packet-digest", "sha256:packet", "--packet-digest", "sha256:other"],
+    ]) {
+      expect(() =>
+        parsePilotCli([
+          "approve-host",
+          "--root",
+          "C:\\pilot",
+          "--state-digest",
+          "sha256:b",
+          "--packet-digest",
+          "sha256:packet",
+          "--actor-id",
+          "human",
+          ...extraArguments,
+        ]),
+      ).toThrow();
+    }
     expect(() =>
       parsePilotCli([
         "approve",
