@@ -5,7 +5,7 @@ import {
   AGENT_ACTOR_ID,
   ARTIFACT_TYPES,
   GATES,
-  PLAN_RISK_PROPOSAL_NAME,
+  PLAN_RISK_PROPOSAL_FILE_STEM,
   REQUIREMENT_PROPOSAL_NAME,
   SESSION_MANIFEST_NAME,
   STATE_STATUS,
@@ -184,12 +184,14 @@ async function progressG8(input) {
 }
 
 async function progressG1(input) {
-  const profile = requirePilotRecord(input.current.profile?.bundle, "ProjectProfile Bundle");
-  const planFile = join(input.paths.controlRoot, PLAN_RISK_PROPOSAL_NAME);
-  await writeControlJsonIdempotent(
-    planFile,
-    createPlanRiskProposal({ profileDigest: profile.digest }),
+  requirePilotRecord(input.current.profile?.bundle, "ProjectProfile Bundle");
+  const planProposal = createPlanRiskProposal();
+  const planProposalDigest = calculateDigest(planProposal).replace("sha256:", "");
+  const planFile = join(
+    input.paths.controlRoot,
+    `${PLAN_RISK_PROPOSAL_FILE_STEM}.${planProposalDigest}.json`,
   );
+  await writeControlJsonIdempotent(planFile, planProposal);
   const proposed = await input.consumer.proposeArtifact(
     input.current.task.taskId,
     planFile,

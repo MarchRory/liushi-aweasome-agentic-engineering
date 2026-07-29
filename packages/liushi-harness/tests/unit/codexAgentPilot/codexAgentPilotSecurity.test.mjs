@@ -20,7 +20,11 @@ import {
   readStateChain,
   writeControlJsonIdempotent,
 } from "../../../scripts/codexAgentPilot/state/index.mjs";
-import { createProjectProfileProposal } from "../../../scripts/codexAgentPilot/workflow/index.mjs";
+import {
+  createPlanRiskProposal,
+  createProjectProfileProposal,
+  createRequirementProposal,
+} from "../../../scripts/codexAgentPilot/workflow/index.mjs";
 import {
   cleanupCodexAgentPilotFixture,
   createCodexAgentPilotFixture,
@@ -36,12 +40,34 @@ afterEach(async () => {
 });
 
 describe("Codex Agent Pilot security bindings", () => {
-  it("ProjectProfile Proposal 与核心 Schema 常量和真实解析器保持一致", async () => {
+  it("所有 Pilot Proposal 均与核心 Schema 和真实解析器保持一致", async () => {
     fixture = await createCodexAgentPilotFixture();
-    const proposal = createProjectProfileProposal(fixture.report);
+    const proposals = [
+      createProjectProfileProposal(fixture.report),
+      createRequirementProposal(),
+      createPlanRiskProposal(),
+    ];
+    const planProposal = proposals.at(-1);
 
     expect(PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION).toBe(CORE_PROFILE_PROPOSAL_SCHEMA_VERSION);
-    expect(parseArtifactProposal(proposal)).toMatchObject({ status: ResultStatus.Success });
+    for (const proposal of proposals) {
+      expect(parseArtifactProposal(proposal)).toMatchObject({ status: ResultStatus.Success });
+    }
+    expect(Object.keys(planProposal.payload).sort()).toEqual(
+      [
+        "historicalLogicChange",
+        "readSet",
+        "requiredGates",
+        "riskLevel",
+        "riskOperations",
+        "risks",
+        "rollbackPlan",
+        "steps",
+        "testPlan",
+        "writeSet",
+      ].sort(),
+    );
+    expect(planProposal.payload).not.toHaveProperty("bindings");
   });
 
   it("拒绝非固定 SOTA 顶层模型，且不创建 Pilot Root", async () => {

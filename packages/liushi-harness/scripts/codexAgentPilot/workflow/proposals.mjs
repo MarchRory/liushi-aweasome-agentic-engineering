@@ -85,7 +85,7 @@ export function createRequirementProposal() {
   };
 }
 
-export function createPlanRiskProposal(input) {
+export function createPlanRiskProposal() {
   return {
     artifactType: ARTIFACT_TYPES.PlanRisk,
     status: "proposed",
@@ -110,13 +110,6 @@ export function createPlanRiskProposal(input) {
       ],
       rollbackPlan: ["仅回退本次受控 Worktree 的唯一 checkpoint。"],
       requiredGates: [],
-      bindings: {
-        repositoryId: REPOSITORY_ID,
-        repositoryRevision: REPOSITORY_REVISION,
-        writeSet: [...WRITE_SET],
-        historicalLogicChange: false,
-        ...(input === undefined ? {} : { profileDigest: input.profileDigest }),
-      },
     },
   };
 }

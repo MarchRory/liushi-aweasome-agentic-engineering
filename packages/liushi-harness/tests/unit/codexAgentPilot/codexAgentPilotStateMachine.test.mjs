@@ -1,5 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readFile, readdir, writeFile } from "node:fs/promises";
+import { basename, join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -144,6 +144,73 @@ describe("Codex Agent Pilot state machine", () => {
       profile: 2,
       activation: 0,
     });
+  });
+
+  it("G1 重放保留旧 PlanRisk 孤儿文件并写入内容寻址 Proposal", async () => {
+    fixture = await createCodexAgentPilotFixture();
+    const harness = createHappyPathPilotEnvelope(fixture);
+    const prepared = await prepareCodexAgentPilot(
+      fixture.input,
+      fixture.dependencies(harness.runEnvelope),
+    );
+    const g1 = await approveCodexAgentPilot(
+      {
+        root: fixture.input.root,
+        stateDigest: prepared.stateDigest,
+        actorId: "human-actor",
+      },
+      fixture.dependencies(harness.runEnvelope),
+    );
+    const legacyFile = join(prepared.paths.controlRoot, "planRisk.json");
+    const legacyContent = `${JSON.stringify({ payload: { bindings: { legacy: true } } }, null, 2)}\n`;
+    await writeFile(legacyFile, legacyContent, "utf8");
+    let injectFailure = true;
+    const failBeforePlanRiskCommit = async (consumerRoot, args) => {
+      if (
+        injectFailure &&
+        args[0] === "artifact" &&
+        args.some((arg) => arg.endsWith(":proposal:G4"))
+      ) {
+        injectFailure = false;
+        throw new Error("注入 PlanRisk 提交前失败");
+      }
+      return harness.runEnvelope(consumerRoot, args);
+    };
+
+    await expect(
+      approveCodexAgentPilot(
+        {
+          root: fixture.input.root,
+          stateDigest: g1.stateDigest,
+          actorId: "human-actor",
+        },
+        fixture.dependencies(failBeforePlanRiskCommit),
+      ),
+    ).rejects.toThrow("注入 PlanRisk 提交前失败");
+    expect(await readStateChain(prepared.paths.stateRoot)).toHaveLength(2);
+
+    const recovered = await approveCodexAgentPilot(
+      {
+        root: fixture.input.root,
+        stateDigest: g1.stateDigest,
+        actorId: "human-actor",
+      },
+      fixture.dependencies(harness.runEnvelope),
+    );
+    const controlFiles = await readdir(prepared.paths.controlRoot);
+    const planFiles = controlFiles.filter((file) => /^planRisk\.[0-9a-f]{64}\.json$/u.test(file));
+
+    expect(recovered.pendingDecisionRequest.gate).toBe("G4");
+    expect(basename(recovered.proposal.file)).toBe(planFiles[0]);
+    expect(planFiles).toHaveLength(1);
+    expect(await readFile(legacyFile, "utf8")).toBe(legacyContent);
+    expect(harness.counters).toMatchObject({
+      proposal: 3,
+      approval: 2,
+      profile: 1,
+      activation: 0,
+    });
+    expect(await readStateChain(prepared.paths.stateRoot)).toHaveLength(3);
   });
 
   it("并发批准同一 G8 stateDigest 只提交一个后继状态与一个 Proposal", async () => {
