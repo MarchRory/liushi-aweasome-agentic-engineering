@@ -1,6 +1,7 @@
 export * from "./cellCommands.js";
 export * from "./codingTaskSessionCloseoutRecovery/index.js";
 export * from "./codingTaskSessionCommands.js";
+export * from "./codingTaskSessionComplete/index.js";
 export * from "./executorCompatibilityCommands.js";
 export * from "./doctorCommands.js";
 export * from "./hookCommands.js";

@@ -4,7 +4,7 @@
 
 ## Packages
 
-- [liushi-harness](./packages/liushi-harness/README.md): 面向真实软件项目的可审计 Agent Engineering Harness；生产 CLI 已在固定公开 TypeScript 项目完成预编排 Mutation 正路径验证，Codex Host Hook Smoke 仍待完成。
+- [liushi-harness](./packages/liushi-harness/README.md): 面向真实软件项目的可审计 Agent Engineering Harness；真实 Codex App Server 已在固定公开 TypeScript 项目完成单文件 Session Pilot，独立 CLI 可继续执行 Closeout、Verification 与 PR-ready Completion。
 
 ## Development
 

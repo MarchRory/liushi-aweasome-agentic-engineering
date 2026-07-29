@@ -12,6 +12,7 @@ import type { InitApplyCliCommand, InitDryRunCliCommand } from "./cliInstallatio
 import type {
   CodingTaskSessionActivateCliCommand,
   CodingTaskSessionCloseoutCliCommand,
+  CodingTaskSessionCompleteCliCommand,
   CodingTaskSessionCloseoutRecoveryAssessCliCommand,
   CodingTaskSessionCloseoutRecoverCliCommand,
   CodingTaskSessionEffectiveCloseoutCliCommand,
@@ -212,6 +213,7 @@ export type ParsedCliCommand =
   | CellRunCliCommand
   | CodingTaskSessionActivateCliCommand
   | CodingTaskSessionCloseoutCliCommand
+  | CodingTaskSessionCompleteCliCommand
   | CodingTaskSessionCloseoutRecoveryAssessCliCommand
   | CodingTaskSessionCloseoutRecoverCliCommand
   | CodingTaskSessionEffectiveCloseoutCliCommand

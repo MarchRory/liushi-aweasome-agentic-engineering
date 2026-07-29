@@ -4,7 +4,7 @@
 
 **状态：技术边界已确认，按可逆切片实施。** 当前 `cell run` 继续承担预编排 Mutation 的一次性确定性闭环；外部 Agent Session 使用独立协议，不改变 `coding-task.cell.run.v2` 的 Schema、执行顺序或公开语义。
 
-S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。S3 已实现提交前权威 ChangeSet 与 Git Checkpoint 双向绑定、Closeout Process Manager、CLI `coding-task session closeout` 和真实 Git E2E：从受管 Worktree 读取实际变化，分别计算可跨 Checkpoint 复验的 ChangeSet Digest 与绑定现场身份的 Snapshot Digest；提交后再从真实 Commit Diff 和目标原始字节独立重建同一 ChangeSet。Human-gated Recovery 已接入生产 Composition Root 与 `assess`、`recover`、`effective` CLI，确定性故障注入和真实 Git E2E 已覆盖 `RetryOnce` 的唯一 Commit 与 `BindExisting` 的零新增 Commit。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。原 Closeout 终态保持不变；真实 Codex Pilot、Verification 和 PRReady 串联仍未开放。
+S1 已交付 Session Activation、不可变 Activation Record/File Repository、`Create -> Provision -> StartAttempt` 后的权威读取、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 Session-bound Action Admission 也已实现：包含 Session Hook Binding v2、Admission State/File Store、非等待 Lease，以及 Activation 自动初始化 Binding/State。S3 已实现提交前权威 ChangeSet 与 Git Checkpoint 双向绑定、Closeout Process Manager、CLI `coding-task session closeout` 和真实 Git E2E：从受管 Worktree 读取实际变化，分别计算可跨 Checkpoint 复验的 ChangeSet Digest 与绑定现场身份的 Snapshot Digest；提交后再从真实 Commit Diff 和目标原始字节独立重建同一 ChangeSet。Human-gated Recovery 已接入生产 Composition Root 与 `assess`、`recover`、`effective` CLI，Delivery Completion 通过 `complete` CLI 串联权威 Verification、Evidence 与 PR-ready。真实 Codex App Server 已在固定公开项目完成单文件 Pilot。`waiting_agent` 仍只是技术检查点，不是独立写入授权；它表示 Session 可等待外部 Agent，但每个动作仍须通过 Admission。
 
 ## 2. 目标
 
@@ -59,7 +59,7 @@ Activation Manifest 使用独立版本 `coding-task.session.activate.v1`，只�
 - Worktree Provision Command 与本次 Runtime Root。
 - StartAttempt Command。
 
-`agentActorId` 不属于 Manifest，必须由启动期 Runtime Binding 注入，并与三个命令信封中的 Agent Actor 精确复验。公开 CLI 的 `--root` 与 `--actor-id` 是操作员提供的启动声明，不构成身份认证或 Repository 授权；S1 CLI 因此只能作为受控操作员入口，不能暴露给不受信 Agent。S2 Composition Root 测试使用显式可信 Runtime Binding；进入真实 Pilot 前，企业包装器或持久化 Registry 仍必须从 Human 已批准配置注入 Repository Root 与 Actor 身份。
+`agentActorId` 不属于 Manifest，必须由启动期 Runtime Binding 注入，并与三个命令信封中的 Agent Actor 精确复验。公开 CLI 的 `--root` 与 `--actor-id` 是操作员提供的启动声明，不构成身份认证或 Repository 授权；S1 CLI 因此只能作为受控操作员入口，不能暴露给不受信 Agent。公开项目 Pilot 使用显式可信 Runtime Binding；企业接入仍必须由包装器或持久化 Registry 从 Human 已批准配置注入 Repository Root 与 Actor 身份。
 
 Manifest 不允许包含 Implementation、Submission 或 Verification。Activation 成功后必须从权威 CodingTask Aggregate 重建 Session Binding，禁止信任调用方重复提交以下字段：
 
@@ -176,9 +176,10 @@ Coverage Proof 现在由 Closeout State v3 消费：`snapshot.changedPaths` 必�
 - 已实现：旧 Closeout v1 与旧 v2 的独立分类；完整自洽旧 v2 保留原始 bytes 并返回显式迁移所需的 `PreconditionNotMet`，unknown field、manifest/binding/locator/stage 漂移返回 `CorruptStore`。
 - 已实现：Repository Lock、Coverage Proof 消费和阶段恢复组成的 Closeout Process Manager，活动状态可幂等推进到 `CheckpointBound`。
 - 已实现：独立 Delivery Submission 将 Effective Closeout 接入 CodingTask。
-- 待实现：Verification、Evidence 和 PRReady 自动编排。
+- 已实现：权威 Profile/Rule/Plan 选择、Verification、Evidence 和 PRReady 自动编排。
 - 已实现：CLI `coding-task session closeout` 与真实 Git 唯一 Checkpoint、跨 Application 重放 E2E。
-- 待实现：`Blocked` / `OutcomeUnknown` 的只读 Assessment 与 Human-gated Reconcile。
+- 已实现：`Blocked` / `OutcomeUnknown` 的只读 Assessment 与 Human-gated Reconcile。
+- 已实现：受信宿主使用的 `coding-task session complete` CLI；只在显式 `local_command` 模式运行项目验证。
 
 双向绑定算法见 [ChangeSet 与 Git Checkpoint 双向绑定](./changeSetCheckpointBinding.md)，阶段持久化见 [Closeout 状态持久化](./codingTaskSessionCloseoutState.md)。
 

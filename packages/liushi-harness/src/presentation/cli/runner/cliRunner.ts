@@ -15,6 +15,7 @@ import {
   executeCodingTaskSessionEffectiveCloseout,
   executeCodingTaskSessionActivate,
   executeCodingTaskSessionCloseout,
+  executeCodingTaskSessionComplete,
   executeDoctor,
   executeExecutorCompatibilityCommand,
   executeHookBind,
@@ -135,6 +136,12 @@ async function executeCommand(
       );
     case CliCommand.CodingTaskSessionCloseout:
       return executeCodingTaskSessionCloseout(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
+    case CliCommand.CodingTaskSessionComplete:
+      return executeCodingTaskSessionComplete(
         command,
         resolveCliApplication(command, dependencies),
         dependencies,

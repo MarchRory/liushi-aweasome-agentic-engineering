@@ -171,7 +171,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const verificationRunner = new RunVerificationUseCase(verificationExecutor, digest, clock);
   // prettier-ignore
   const runAndPersistVerification = new RunAndPersistVerificationUseCase(verificationRunner, evidenceBundleStore);
-  const codingTaskExecutionApplication = createCodingTaskExecutionApplication({
+  const codingTaskExecution = createCodingTaskExecutionApplication({
     storeRoot: options.storeRoot,
     storeDependencies,
     applicationCommandGateway,
@@ -192,11 +192,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   });
   const codingTaskCellApplication = createCodingTaskCellApplication({
     applicationCommandGateway,
-    codingTaskCommandHandler: codingTaskExecutionApplication.codingTaskCommandHandler,
+    codingTaskCommandHandler: codingTaskExecution.codingTaskCommandHandler,
     worktreeProvisionCommands: worktreeApplication.worktreeProvisionCommands,
-    implementationCommandHandler: codingTaskExecutionApplication.implementationCommandHandler,
-    implementationSubmissionHandler: codingTaskExecutionApplication.implementationSubmissionHandler,
-    verificationCommandHandler: codingTaskExecutionApplication.verificationCommandHandler,
+    implementationCommandHandler: codingTaskExecution.implementationCommandHandler,
+    implementationSubmissionHandler: codingTaskExecution.implementationSubmissionHandler,
+    verificationCommandHandler: codingTaskExecution.verificationCommandHandler,
     evidenceBundleStore,
     codingTaskRepository,
     taskRepository,
@@ -211,9 +211,11 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const resolveRules = new ResolveRulesUseCase(digest);
   const selectVerificationPlan = new SelectVerificationPlanUseCase(digest);
   const { verificationCompletion, ...publicCodingTaskCellApplication } = codingTaskCellApplication;
+  const { closeoutStateReader, ...deliveryApplication } = codingTaskExecution.deliveryApplication;
   const completeCodingTaskSessionDelivery = new CodingTaskDeliveryCompletionService(
-    codingTaskExecutionApplication.deliveryApplication.submitCodingTaskSessionDelivery,
+    deliveryApplication.submitCodingTaskSessionDelivery,
     codingTaskRepository,
+    closeoutStateReader,
     compileProjectProfile,
     resolveRules,
     selectVerificationPlan,
@@ -282,7 +284,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     inspectGitChangeSet: changeSetApplication.inspectGitChangeSet,
     changeSetCheckpoints: changeSetApplication.changeSetCheckpoints,
     ...closeoutApplication,
-    ...codingTaskExecutionApplication.deliveryApplication,
+    ...deliveryApplication,
     completeCodingTaskSessionDelivery,
     runVerification: verificationRunner,
     runAndPersistVerification,

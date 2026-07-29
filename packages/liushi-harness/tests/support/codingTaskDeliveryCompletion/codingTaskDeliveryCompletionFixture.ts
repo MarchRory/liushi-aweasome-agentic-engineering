@@ -5,13 +5,17 @@ import {
   CommandErrorCode,
   CommandStatus,
   createCommandReceipt,
+  type CodingTaskSessionEffectiveCloseoutStateReader,
 } from "../../../src/application/index.js";
 import {
   CODING_TASK_VERIFICATION_COMPLETION_REPORT_SCHEMA_VERSION,
   CodingTaskVerificationCompletionStatus,
   type CodingTaskVerificationCompletionInput,
 } from "../../../src/application/codingTaskVerificationCompletion/index.js";
-import type { CodingTaskRepository } from "../../../src/application/ports/index.js";
+import type {
+  CodingTaskRepository,
+  RepositoryRootResolverPort,
+} from "../../../src/application/ports/index.js";
 import {
   ActorKind,
   ResultStatus,
@@ -28,6 +32,7 @@ import {
   createCompilerCandidate,
   createCompilerReport,
 } from "../profileCompile/index.js";
+import { initialState as createCloseoutState } from "../codingTaskSessionCloseout/index.js";
 import {
   createDeliveryAggregate,
   createDeliveryCommand,
@@ -71,7 +76,7 @@ function buildDeliveryCompletionSetup(deliveryStatus: CommandStatus) {
     }),
   );
   const deliverySubmission = vi.fn(() => Promise.resolve(success(deliveryReceipt)));
-  const codingTaskLoad = vi.fn(() =>
+  const codingTaskLoad = vi.fn<CodingTaskRepository["load"]>(() =>
     Promise.resolve(
       success({ aggregate, lastSequence: aggregate.version, lastEventHash: "event-hash" }),
     ),
@@ -80,6 +85,20 @@ function buildDeliveryCompletionSetup(deliveryStatus: CommandStatus) {
     load: codingTaskLoad,
     append: () => Promise.reject(new Error("测试不允许追加 CodingTask Event。")),
   };
+  const closeoutState = createCloseoutState({
+    workspaceId: aggregate.workspaceId,
+    sessionId: deliveryCommand.payload.sessionId,
+    codingTaskId: aggregate.codingTaskId,
+    sourceTaskId: aggregate.sourceTaskId,
+    repositoryId: aggregate.repositoryId,
+    commandId: deliveryCommand.causationId ?? "closeout-command-1",
+    correlationId: deliveryCommand.correlationId,
+    actor: deliveryCommand.actor,
+    createdAt: "2026-07-27T00:00:00.000Z",
+  });
+  const closeoutStateLoad = vi.fn<CodingTaskSessionEffectiveCloseoutStateReader["load"]>(() =>
+    Promise.resolve(success(closeoutState)),
+  );
   const report = createCompilerReport([createCompilerCandidate(compilerRepoA)]);
   const selection = createDeliveryPlanSelection(aggregate);
   const evidenceBundle = createDeliveryEvidenceBundle(selection);
@@ -106,6 +125,11 @@ function buildDeliveryCompletionSetup(deliveryStatus: CommandStatus) {
     resolveManagedWorktreeRoot: vi.fn(() => success(deliveryCompletionWorktreeRoot)),
     hasSamePathIdentity: vi.fn((left: string, right: string) => left === right),
   };
+  const repositoryRootResolver = {
+    resolve: vi.fn<RepositoryRootResolverPort["resolve"]>(() =>
+      Promise.resolve(success({ repositoryRoot: deliveryCompletionRepositoryRoot })),
+    ),
+  };
   const input = {
     deliveryCommand,
     profileCompilation: {
@@ -130,25 +154,25 @@ function buildDeliveryCompletionSetup(deliveryStatus: CommandStatus) {
   const service = new CodingTaskDeliveryCompletionService(
     { execute: deliverySubmission },
     codingTaskRepository,
+    { load: closeoutStateLoad },
     { execute: vi.fn(() => Promise.resolve(success({} as ProjectProfileBundle))) },
     { execute: vi.fn(() => success({} as ApplicableRuleBundle)) },
     { execute: vi.fn(() => success(selection)) },
-    {
-      resolve: vi.fn(() =>
-        Promise.resolve(success({ repositoryRoot: deliveryCompletionRepositoryRoot })),
-      ),
-    },
+    repositoryRootResolver,
     managedWorktreePath,
     { execute: verificationCompletion },
     deliveryCompletionDigest,
   );
   return {
     aggregate,
+    closeoutState,
+    closeoutStateLoad,
     codingTaskLoad,
     codingTaskRepository,
     deliverySubmission,
     input,
     managedWorktreePath,
+    repositoryRootResolver,
     service,
     verificationCompletion,
   };

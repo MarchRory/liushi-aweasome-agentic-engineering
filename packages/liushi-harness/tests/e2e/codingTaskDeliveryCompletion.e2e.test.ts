@@ -1,20 +1,22 @@
-import { readFile, rm } from "node:fs/promises";
+import { access, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  CodingTaskDeliveryCompletionStage,
   CodingTaskDeliveryCompletionStatus,
   CodingTaskSessionCloseoutStatus,
 } from "../../src/application/index.js";
 import { VerificationExecutionMode } from "../../src/bootstrap/compositionRoot/enums/index.js";
-import { ResultStatus } from "../../src/common/index.js";
+import { HarnessErrorCode, ResultStatus } from "../../src/common/index.js";
 import {
   CodingTaskPhase,
   CodingTaskRunState,
   CodingTaskVerificationOutcome,
 } from "../../src/domain/codingTask/index.js";
 import { VerificationStatus } from "../../src/domain/verification/index.js";
+import { resolveCommandReservationPaths } from "../../src/infrastructure/index.js";
 import {
   createCodingTaskSessionCloseoutCliApplication,
   runCloseoutCliGit,
@@ -115,6 +117,47 @@ describe("CodingTask Delivery Completion 真实 Git E2E", () => {
     expect(await countCodingTaskSessionDeliveryEvents(setup)).toBe(1);
     expect(await countCommits(setup)).toBe("1");
   }, 45_000);
+
+  it("公开 Application 用错误 Actor 调用时不创建 Delivery Reservation", async () => {
+    const { setup, profileCompilation } =
+      await createCodingTaskDeliveryCompletionE2eSetup(temporaryRoots);
+    await closeSession(setup);
+    const application = createCompletionApplication(setup);
+    const input = await createCodingTaskDeliveryCompletionInput(
+      setup,
+      application,
+      profileCompilation,
+    );
+    const unauthorizedInput = {
+      ...input,
+      deliveryCommand: {
+        ...input.deliveryCommand,
+        actor: { ...input.deliveryCommand.actor, actorId: "untrusted-agent" },
+      },
+    };
+    const aggregateBefore = await loadCodingTaskSessionDeliveryAggregate(setup);
+    const eventsBefore = await countCodingTaskSessionDeliveryEvents(setup);
+    const commitsBefore = await countCommits(setup);
+    const reservationFile = resolveCommandReservationPaths(
+      setup.storeRoot,
+      input.deliveryCommand,
+    ).recordFile;
+    await expect(pathExists(reservationFile)).resolves.toBe(false);
+
+    const result = await application.completeCodingTaskSessionDelivery.execute(unauthorizedInput);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        code: HarnessErrorCode.OperationForbidden,
+        details: { stage: CodingTaskDeliveryCompletionStage.RuntimeBinding },
+      },
+    });
+    expect(await loadCodingTaskSessionDeliveryAggregate(setup)).toEqual(aggregateBefore);
+    await expect(countCodingTaskSessionDeliveryEvents(setup)).resolves.toBe(eventsBefore);
+    await expect(countCommits(setup)).resolves.toBe(commitsBefore);
+    await expect(pathExists(reservationFile)).resolves.toBe(false);
+  }, 45_000);
 });
 
 /** Delivery Completion E2E 使用的真实 Git 准备结果。 */
@@ -157,4 +200,14 @@ async function countCommits(setup: CompletionSetup): Promise<string> {
     "--count",
     `${setup.baseRevision}..HEAD`,
   ]);
+}
+
+/** 判断目标持久化路径是否存在。 */
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }

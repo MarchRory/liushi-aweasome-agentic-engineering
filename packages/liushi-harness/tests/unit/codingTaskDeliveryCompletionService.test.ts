@@ -7,7 +7,7 @@ import {
   CodingTaskDeliveryCompletionStatus,
   CommandStatus,
 } from "../../src/application/index.js";
-import { ResultStatus } from "../../src/common/index.js";
+import { HarnessError, HarnessErrorCode, ResultStatus, failure } from "../../src/common/index.js";
 import {
   createDeliveryCompletionSetup,
   deliveryCompletionWorktreeRoot,
@@ -54,7 +54,7 @@ describe("CodingTaskDeliveryCompletionService", () => {
     expect(setup.deliverySubmission).not.toHaveBeenCalled();
   });
 
-  it("调用方 Runtime Root 与权威受管 Worktree 不一致时停止", async () => {
+  it("调用方 Runtime Root 与权威受管 Worktree 不一致时在 Delivery 前停止", async () => {
     const setup = createDeliveryCompletionSetup();
     const result = await setup.service.execute({
       ...setup.input,
@@ -70,13 +70,117 @@ describe("CodingTaskDeliveryCompletionService", () => {
         details: { stage: CodingTaskDeliveryCompletionStage.RuntimeBinding },
       },
     });
-    expect(setup.deliverySubmission).toHaveBeenCalledOnce();
+    expect(setup.deliverySubmission).not.toHaveBeenCalled();
+    expect(setup.verificationCompletion).not.toHaveBeenCalled();
+  });
+
+  it("启动期未绑定权威 Repository 时在 Delivery 前停止", async () => {
+    const setup = createDeliveryCompletionSetup();
+    setup.repositoryRootResolver.resolve.mockResolvedValueOnce(
+      failure(
+        new HarnessError(HarnessErrorCode.OperationForbidden, "测试注入未绑定 Repository Root。"),
+      ),
+    );
+
+    const result = await setup.service.execute(setup.input);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        details: { stage: CodingTaskDeliveryCompletionStage.RuntimeBinding },
+      },
+    });
+    expect(setup.deliverySubmission).not.toHaveBeenCalled();
+    expect(setup.verificationCompletion).not.toHaveBeenCalled();
+  });
+
+  it("Delivery Actor 与权威 Session 不一致时在 Delivery 前停止", async () => {
+    const setup = createDeliveryCompletionSetup();
+    const result = await setup.service.execute({
+      ...setup.input,
+      deliveryCommand: {
+        ...setup.input.deliveryCommand,
+        actor: { ...setup.input.deliveryCommand.actor, actorId: "untrusted-agent" },
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        code: HarnessErrorCode.OperationForbidden,
+        details: { stage: CodingTaskDeliveryCompletionStage.RuntimeBinding },
+      },
+    });
+    expect(setup.deliverySubmission).not.toHaveBeenCalled();
+    expect(setup.verificationCompletion).not.toHaveBeenCalled();
+  });
+
+  it("Verification Actor 与权威 Session 不一致时在 Delivery 前停止", async () => {
+    const setup = createDeliveryCompletionSetup();
+    const result = await setup.service.execute({
+      ...setup.input,
+      verification: {
+        ...setup.input.verification,
+        actor: { ...setup.input.verification.actor, actorId: "untrusted-agent" },
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        code: HarnessErrorCode.OperationForbidden,
+        details: { stage: CodingTaskDeliveryCompletionStage.RuntimeBinding },
+      },
+    });
+    expect(setup.deliverySubmission).not.toHaveBeenCalled();
+    expect(setup.verificationCompletion).not.toHaveBeenCalled();
+  });
+
+  it("权威 Aggregate 不可读取时在 Delivery 前停止", async () => {
+    const setup = createDeliveryCompletionSetup();
+    setup.codingTaskLoad.mockResolvedValueOnce(
+      failure(
+        new HarnessError(HarnessErrorCode.CodingTaskNotFound, "测试注入 CodingTask 不存在。"),
+      ),
+    );
+
+    const result = await setup.service.execute(setup.input);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        code: HarnessErrorCode.CodingTaskNotFound,
+        details: { stage: CodingTaskDeliveryCompletionStage.RuntimeBinding },
+      },
+    });
+    expect(setup.deliverySubmission).not.toHaveBeenCalled();
+    expect(setup.verificationCompletion).not.toHaveBeenCalled();
+  });
+
+  it("权威 Closeout State 不可读取时在 Delivery 前停止", async () => {
+    const setup = createDeliveryCompletionSetup();
+    setup.closeoutStateLoad.mockResolvedValueOnce(
+      failure(
+        new HarnessError(HarnessErrorCode.PreconditionNotMet, "测试注入 Closeout State 不存在。"),
+      ),
+    );
+
+    const result = await setup.service.execute(setup.input);
+
+    expect(result).toMatchObject({
+      status: ResultStatus.Failure,
+      error: {
+        code: HarnessErrorCode.PreconditionNotMet,
+        details: { stage: CodingTaskDeliveryCompletionStage.RuntimeBinding },
+      },
+    });
+    expect(setup.deliverySubmission).not.toHaveBeenCalled();
     expect(setup.verificationCompletion).not.toHaveBeenCalled();
   });
 
   it("Runtime Root 是否等价完全委托给平台路径端口", async () => {
     const setup = createDeliveryCompletionSetup();
-    setup.managedWorktreePath.hasSamePathIdentity.mockReturnValueOnce(true);
+    setup.managedWorktreePath.hasSamePathIdentity.mockReturnValue(true);
     const aliasRoot = resolve("worktree-path-alias");
     const result = await setup.service.execute({
       ...setup.input,
@@ -107,7 +211,7 @@ describe("CodingTaskDeliveryCompletionService", () => {
         stoppedStage: CodingTaskDeliveryCompletionStage.Delivery,
       },
     });
-    expect(setup.codingTaskLoad).not.toHaveBeenCalled();
+    expect(setup.codingTaskLoad).toHaveBeenCalledOnce();
     expect(setup.verificationCompletion).not.toHaveBeenCalled();
   });
 });

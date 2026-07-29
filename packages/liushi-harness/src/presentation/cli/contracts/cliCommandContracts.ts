@@ -26,6 +26,8 @@ export enum CliCommand {
   CodingTaskSessionActivate = "coding_task.session.activate",
   /** 关闭外部 Agent CodingTask Session，并停在 CheckpointBound。 */
   CodingTaskSessionCloseout = "coding_task.session.closeout",
+  /** 完成 CodingTask Session Delivery、Verification 与 PR-ready。 */
+  CodingTaskSessionComplete = "coding_task.session.complete",
   /** 评估 CodingTask Session Closeout Recovery。 */
   CodingTaskSessionCloseoutRecoveryAssess = "coding_task.session.closeout.recovery.assess",
   /** 执行 CodingTask Session Closeout Recovery。 */

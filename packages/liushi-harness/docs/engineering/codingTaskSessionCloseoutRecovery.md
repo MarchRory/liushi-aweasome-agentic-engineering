@@ -1,6 +1,6 @@
 # CodingTask Session Closeout Human-gated 恢复
 
-**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root、CLI、确定性故障注入与真实 Git 恢复 E2E 已实现。下游 Delivery Completion 已消费 Effective Resolver 并串联权威 Verification/Evidence/PR-ready；真实 Codex Pilot 尚未完成。**
+**状态：只读 Assessment、Recovery Process State、File Store、Human Command Contract、锁内 Handler/Service、Effective Resolver、Composition Root、CLI、确定性故障注入与真实 Git 恢复 E2E 已实现。下游 Delivery Completion 已消费 Effective Resolver 并串联权威 Verification/Evidence/PR-ready；真实 Codex 公开项目 Pilot 已完成。**
 
 ## 1. 决策
 
@@ -198,7 +198,7 @@ Resolver 本身仍保持只读。后续独立 Delivery Submission 已将其结�
 7. 已完成 Effective Resolver、原成功短路、恢复精确绑定和稳定 unresolved 分类。
 8. 已完成生产 Composition Root、三个 Recovery CLI 入口、稳定退出码、Human 脱敏摘要和恢复 SOP。
 9. 已完成 `RetryOnce` 与 `BindExisting` 的确定性故障注入和真实 Git 恢复 E2E。
-10. 已完成独立 Delivery Submission 与 Original/Recovery 真实 Git E2E；下一步串联 Verification、Evidence 与 PRReady，再开展真实 Codex Pilot。
+10. 已完成独立 Delivery Submission、Verification、Evidence、PRReady、Original/Recovery 真实 Git E2E 与真实 Codex 公开项目 Pilot；下一步是脱敏企业需求 Pilot 和量化。
 
 每个切片必须独立提交，并保持原 Closeout v3、CLI Exit Code 和真实 Git E2E 全部回归通过。
 

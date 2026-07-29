@@ -1,9 +1,11 @@
 import { CODING_TASK_AGGREGATE_TYPE } from "#application/codingTask/index.js";
 import { createCommandEnvelope, type CommandEnvelope } from "#application/command/index.js";
 import type { CodingTaskSessionDeliverySubmissionService } from "#application/codingTaskSessionDelivery/index.js";
+import type { CodingTaskSessionCloseoutState } from "#application/codingTaskSessionCloseoutState/index.js";
 import type { CodingTaskVerificationCompletionService } from "#application/codingTaskVerificationCompletion/index.js";
 import type {
   CodingTaskRepository,
+  CodingTaskSessionCloseoutStateStore,
   ContentDigestPort,
   ManagedWorktreePathPort,
   RepositoryRootResolverPort,
@@ -42,6 +44,7 @@ import {
   stopAfterDelivery,
   withCompletionStage,
 } from "./codingTaskDeliveryCompletionReport.js";
+import { validateCodingTaskDeliveryCompletionPreflight } from "./preflight/index.js";
 
 /** 无额外状态地串联 Session Delivery、权威 Plan、Verification 与 PR-ready。 */
 export class CodingTaskDeliveryCompletionService {
@@ -51,6 +54,10 @@ export class CodingTaskDeliveryCompletionService {
       "execute"
     >,
     private readonly codingTaskRepository: CodingTaskRepository,
+    private readonly closeoutStateReader: Pick<
+      CodingTaskSessionCloseoutStateStore<CodingTaskSessionCloseoutState>,
+      "load"
+    >,
     private readonly compileProjectProfile: Pick<CompileProjectProfileUseCase, "execute">,
     private readonly resolveRules: Pick<ResolveRulesUseCase, "execute">,
     private readonly selectVerificationPlan: Pick<SelectVerificationPlanUseCase, "execute">,
@@ -63,13 +70,29 @@ export class CodingTaskDeliveryCompletionService {
     private readonly digest: ContentDigestPort,
   ) {}
 
-  /** 执行可重放主线；OutcomeUnknown 只停止，不创建新的恢复协议。 */
+  /** 在有效权威运行时绑定下执行可重放主线；OutcomeUnknown 只停止，不创建新的恢复协议。 */
   public async execute(
     input: unknown,
   ): Promise<Result<CodingTaskDeliveryCompletionReport, HarnessError>> {
     const parsed = parseCodingTaskDeliveryCompletionInput(input, this.digest);
     if (parsed.status === ResultStatus.Failure) return parsed;
     const deliveryCommand = parsed.value.deliveryCommand;
+    // 运行时绑定属于启动前置条件，必须在 Delivery Gateway 写入 Reservation 前验证。
+    const preflightAggregate = await this.codingTaskRepository.load({
+      workspaceId: deliveryCommand.payload.workspaceId,
+      codingTaskId: deliveryCommand.aggregateId,
+    });
+    if (preflightAggregate.status === ResultStatus.Failure) {
+      return failure(
+        withStage(preflightAggregate.error, CodingTaskDeliveryCompletionStage.RuntimeBinding),
+      );
+    }
+    const preflight = await this.validatePreflight(
+      preflightAggregate.value.aggregate,
+      parsed.value,
+    );
+    if (preflight.status === ResultStatus.Failure) return preflight;
+
     const delivered = await this.deliverySubmission.execute(deliveryCommand);
     if (delivered.status === ResultStatus.Failure) {
       return failure(withStage(delivered.error, CodingTaskDeliveryCompletionStage.Delivery));
@@ -127,7 +150,7 @@ export class CodingTaskDeliveryCompletionService {
         planSelection: selection.value,
       });
     }
-    const runtime = await this.validateRuntimeBinding(aggregate, parsed.value);
+    const runtime = await this.validatePreflight(aggregate, parsed.value);
     if (runtime.status === ResultStatus.Failure) return runtime;
     const command = this.createVerificationCommand(
       aggregate,
@@ -146,37 +169,15 @@ export class CodingTaskDeliveryCompletionService {
     return success(projectCompletionReport(delivered.value, selection.value, completed.value));
   }
 
-  private async validateRuntimeBinding(
+  private validatePreflight(
     aggregate: CodingTaskAggregate,
     input: CodingTaskDeliveryCompletionInput,
   ): Promise<Result<void, HarnessError>> {
-    if (!aggregate.worktreeBinding.managed) {
-      return failure(runtimeForbidden("CodingTask Delivery 只允许受管 Worktree。"));
-    }
-    const repositoryRoot = await this.repositoryRootResolver.resolve({
-      workspaceId: aggregate.workspaceId,
-      repositoryId: aggregate.repositoryId,
+    return validateCodingTaskDeliveryCompletionPreflight(aggregate, input, {
+      closeoutStateReader: this.closeoutStateReader,
+      repositoryRootResolver: this.repositoryRootResolver,
+      managedWorktreePath: this.managedWorktreePath,
     });
-    if (repositoryRoot.status === ResultStatus.Failure) {
-      return failure(
-        withStage(repositoryRoot.error, CodingTaskDeliveryCompletionStage.RuntimeBinding),
-      );
-    }
-    const expectedRoot = this.managedWorktreePath.resolveManagedWorktreeRoot({
-      repositoryRoot: repositoryRoot.value.repositoryRoot,
-      worktreeRelativePath: aggregate.worktreeBinding.relativePath,
-    });
-    if (expectedRoot.status === ResultStatus.Failure) {
-      return failure(
-        withStage(expectedRoot.error, CodingTaskDeliveryCompletionStage.RuntimeBinding),
-      );
-    }
-    return this.managedWorktreePath.hasSamePathIdentity(
-      expectedRoot.value,
-      input.verification.runtime.worktreeRoot,
-    )
-      ? success(undefined)
-      : failure(runtimeForbidden("Verification Runtime 与权威受管 Worktree 不匹配。"));
   }
 
   private createVerificationCommand(
@@ -238,10 +239,4 @@ function latestAttemptNumber(aggregate: CodingTaskAggregate): Result<number, Har
 
 function withStage(error: HarnessError, stage: CodingTaskDeliveryCompletionStage): HarnessError {
   return new HarnessError(error.code, error.message, { ...error.details, stage }, error.cause);
-}
-
-function runtimeForbidden(message: string): HarnessError {
-  return new HarnessError(HarnessErrorCode.OperationForbidden, message, {
-    stage: CodingTaskDeliveryCompletionStage.RuntimeBinding,
-  });
 }

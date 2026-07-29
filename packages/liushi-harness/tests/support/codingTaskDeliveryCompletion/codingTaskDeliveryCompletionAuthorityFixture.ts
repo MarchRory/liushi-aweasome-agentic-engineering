@@ -263,6 +263,7 @@ export function createDeliveryCommand(
       actor: { kind: ActorKind.Agent, actorId: "agent-1" },
       authorizationContext: {},
       correlationId: "delivery-correlation-1",
+      causationId: "closeout-command-1",
       submittedAt: "2026-07-28T00:00:00.000Z",
       payload,
     }),

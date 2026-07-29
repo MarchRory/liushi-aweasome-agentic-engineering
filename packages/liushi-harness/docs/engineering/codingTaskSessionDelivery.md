@@ -1,6 +1,6 @@
 # CodingTask Session Delivery 与 Completion
 
-**状态：Delivery Submission、权威 Plan 选择、Verification、Evidence、PR-ready 串联和真实 Git E2E 已实现；尚未提供独立 Completion CLI 或真实 Codex Pilot。**
+**状态：Delivery Submission、权威 Plan 选择、Verification、Evidence、PR-ready 串联、独立 Completion CLI 和真实 Git E2E 已实现；真实 Codex 公开项目 Pilot 已通过。**
 
 ## 1. 目标
 
@@ -102,7 +102,19 @@ Project Profile 是 Workspace/Repository 级受管资产，允许复用另一个
 
 没有引入新的 Agent 框架、Workflow Runtime、数据库或 Git 库。
 
-## 8. 验证证据
+## 8. Completion CLI
+
+受信宿主使用以下命令消费完整 Completion 输入：
+
+```powershell
+liushi-harness coding-task session complete --file .\sessionCompletion.json --workspace <workspace-id> --session <session-id> --repository <repository-id> --root <absolute-repository-root> --actor-id <agent-id> --verification-mode local_command --json
+```
+
+CLI 在 Application 副作用前复验 Workspace、Session、Delivery Actor 和 Verification Actor，并通过启动期 Composition Root 绑定唯一 Repository Root。输入缺失字段由现有严格 Application Schema 拒绝；存在但与 CLI 绑定不一致的字段立即返回 `PreconditionNotMet`。
+
+CLI 不生成 ID、时间、摘要、Profile、Rule 或 Verification Plan。`local_command` 必须显式选择；`fail_closed_mock` 不运行项目命令。只有 `review_ready` 返回退出码 `0`，确定性阻断或验证失败返回 `4`，`outcome_unknown` 返回 `8` 且不得自动重试。
+
+## 9. 验证证据
 
 当前测试覆盖：
 
@@ -116,11 +128,12 @@ Project Profile 是 Workspace/Repository 级受管资产，允许复用另一个
 - Failed 路径真实运行确定性失败命令，Aggregate 回到 Implementation；重启后精确重放同一 Failed Evidence，不重复 Commit 或 Event。
 - Profile 必须在业务 Planning Artifact 之前完成 G8；测试不会放宽 Artifact 顺序或 `WorkspaceBusy`。
 - Plan Source Refs 漂移、Evidence Plan Digest 漂移、Runtime Root 不匹配和未知 Receipt 均关闭式停止。
+- 错误 Repository、Root、Delivery Actor 或 Verification Actor 在 Delivery Gateway 前关闭式拒绝；直接调用公开 Application 或经 CLI 调用时，真实 File Store 中的目标 Command Reservation、Aggregate、Event 与 Git Commit 均保持不变。
 
-这些是确定性本地真实 Git 证据，不等于真实 Codex/企业 Pilot。
+除确定性本地真实 Git 证据外，固定公开项目 Pilot 已使用真实 Codex App Server 完成同一 golden path。该结果仍不等于企业项目生产 Pilot，详细边界见 [Codex Agent Pilot 验证记录](./codexAgentPilotValidationRecord.md)。
 
-## 9. 下一步
+## 10. 下一步
 
-下一步固定为使用真实 Codex Session 在公开或脱敏项目运行同一 golden path，采集 Human Touch Time、自动化步骤占比、Gate 命中和返工证据。Pilot 失败时修复当前主线，不切入 Studio、Release Host、Memory/Skill 或 Claude/CatPaw 扩张。
+下一步固定为以脱敏企业需求运行同一 CLI 主线，采集 Human Touch Time、自动化步骤占比、Gate 命中和返工证据，并验证受信 Runtime Binding 的企业注入方式。
 
-独立 Delivery CLI、Workflow 自动驱动、多仓交付和 Studio 可视化不在本切片范围内。
+Workflow 自动驱动、多仓交付和 Studio 可视化不在本切片范围内。

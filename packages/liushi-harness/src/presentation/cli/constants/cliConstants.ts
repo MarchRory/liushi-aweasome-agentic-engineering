@@ -38,6 +38,7 @@ export const CLI_USAGE_LINES: readonly string[] = [
   "liushi-harness cell run --file <manifest.json> --workspace <id> --repository <id> --root <absolute-path> --verification-mode <fail_closed_mock|local_command> [--store <path>] [--json]",
   "liushi-harness coding-task session activate --file <manifest.json> --workspace <id> --repository <id> --root <absolute-path> --actor-id <id> [--store <path>] [--json]",
   "liushi-harness coding-task session closeout --file <command.json> --workspace <id> --repository <id> --root <absolute-path> --actor-id <id> [--store <path>] [--json]",
+  "liushi-harness coding-task session complete --file <completion.json> --workspace <id> --session <id> --repository <id> --root <absolute-path> --actor-id <id> --verification-mode <fail_closed_mock|local_command> [--store <path>] [--json]",
   "liushi-harness coding-task session closeout assess --workspace <id> --session <id> --repository <id> --root <absolute-path> [--store <path>] [--json]",
   "liushi-harness coding-task session closeout recover --file <human-command.json> --workspace <id> --session <id> --repository <id> --root <absolute-path> --actor-id <id> [--store <path>] [--json]",
   "liushi-harness coding-task session closeout effective --workspace <id> --session <id> [--store <path>] [--json]",

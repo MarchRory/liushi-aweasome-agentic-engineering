@@ -70,6 +70,13 @@ export function createProductionCliApplicationFactory(): CliApplicationFactory {
               ...repositoryBinding,
               agentActorId: startupConfig.sessionActorId,
             },
+            ...(startupConfig.verificationMode === undefined
+              ? {}
+              : {
+                  verificationExecutionMode: mapVerificationExecutionMode(
+                    startupConfig.verificationMode,
+                  ),
+                }),
           });
       }
     },

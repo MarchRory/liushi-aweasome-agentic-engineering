@@ -5,6 +5,7 @@ import {
   type ChangeSetCheckpointPort,
   type CodingTaskCommandHandler,
   type CodingTaskSessionEffectiveCloseoutResolverPort,
+  type CodingTaskSessionEffectiveCloseoutStateReader,
   type UnresolvedWorktreeProvisionGuard,
 } from "#application/index.js";
 import type {
@@ -51,6 +52,8 @@ export interface CodingTaskSessionDeliveryApplicationFactoryInput {
 export interface CodingTaskSessionDeliveryApplicationFactoryOutput {
   /** 将 Effective Closeout 接纳为 CodingTask Submission。 */
   readonly submitCodingTaskSessionDelivery: CodingTaskSessionDeliverySubmissionService;
+  /** Completion 在 Gateway 前复验 Session 权威身份的只读 Store。 */
+  readonly closeoutStateReader: CodingTaskSessionEffectiveCloseoutStateReader;
 }
 
 /** 创建只读复验 Git、只写 CodingTask Event 的 Session Delivery Application。 */
@@ -78,5 +81,6 @@ export function createCodingTaskSessionDeliveryApplication(
       input.applicationCommandGateway,
       handler,
     ),
+    closeoutStateReader: closeoutStateStore,
   };
 }

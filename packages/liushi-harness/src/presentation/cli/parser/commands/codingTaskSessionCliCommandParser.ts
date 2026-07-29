@@ -5,10 +5,11 @@ import {
   type CodingTaskSessionCloseoutRecoverCliCommand,
   type CodingTaskSessionEffectiveCloseoutCliCommand,
   type CodingTaskSessionCloseoutCliCommand,
+  type CodingTaskSessionCompleteCliCommand,
   type CliOutputFormat,
 } from "../../contracts/index.js";
 import type { CollectedCliArguments } from "../collection/index.js";
-import { CliOptionName, parseAbsolutePath } from "../options/index.js";
+import { CliOptionName, parseAbsolutePath, parseCliVerificationMode } from "../options/index.js";
 import {
   isExactCliCommand,
   requireCliOptionValue,
@@ -23,6 +24,7 @@ export function parseCodingTaskSessionCliCommand(
 ):
   | CodingTaskSessionActivateCliCommand
   | CodingTaskSessionCloseoutCliCommand
+  | CodingTaskSessionCompleteCliCommand
   | CodingTaskSessionCloseoutRecoveryAssessCliCommand
   | CodingTaskSessionCloseoutRecoverCliCommand
   | CodingTaskSessionEffectiveCloseoutCliCommand
@@ -126,6 +128,38 @@ export function parseCodingTaskSessionCliCommand(
         ),
         actorId: requireCliOptionValue(collected, CliOptionName.ActorId),
       };
+    case CliCommand.CodingTaskSessionComplete:
+      validateAllowedCliOptions(
+        collected,
+        new Set([
+          CliOptionName.Json,
+          CliOptionName.Store,
+          CliOptionName.File,
+          CliOptionName.Workspace,
+          CliOptionName.Session,
+          CliOptionName.Repository,
+          CliOptionName.Root,
+          CliOptionName.ActorId,
+          CliOptionName.VerificationMode,
+        ]),
+      );
+      return {
+        command,
+        outputFormat,
+        ...(storeRoot === undefined ? {} : { storeRoot }),
+        filePath: requireCliOptionValue(collected, CliOptionName.File),
+        workspaceId: requireCliOptionValue(collected, CliOptionName.Workspace),
+        sessionId: requireCliOptionValue(collected, CliOptionName.Session),
+        repositoryId: requireCliOptionValue(collected, CliOptionName.Repository),
+        repositoryRoot: parseAbsolutePath(
+          requireCliOptionValue(collected, CliOptionName.Root),
+          CliOptionName.Root,
+        ),
+        actorId: requireCliOptionValue(collected, CliOptionName.ActorId),
+        verificationMode: parseCliVerificationMode(
+          requireCliOptionValue(collected, CliOptionName.VerificationMode),
+        ),
+      };
   }
 }
 
@@ -137,12 +171,16 @@ function parseCodingTaskSessionCommandName(
   | CliCommand.CodingTaskSessionCloseoutRecoveryAssess
   | CliCommand.CodingTaskSessionCloseoutRecover
   | CliCommand.CodingTaskSessionEffectiveCloseout
+  | CliCommand.CodingTaskSessionComplete
   | undefined {
   if (isExactCliCommand(collected.positionals, ["coding-task", "session", "activate"])) {
     return CliCommand.CodingTaskSessionActivate;
   }
   if (isExactCliCommand(collected.positionals, ["coding-task", "session", "closeout"])) {
     return CliCommand.CodingTaskSessionCloseout;
+  }
+  if (isExactCliCommand(collected.positionals, ["coding-task", "session", "complete"])) {
+    return CliCommand.CodingTaskSessionComplete;
   }
   if (isExactCliCommand(collected.positionals, ["coding-task", "session", "closeout", "assess"])) {
     return CliCommand.CodingTaskSessionCloseoutRecoveryAssess;

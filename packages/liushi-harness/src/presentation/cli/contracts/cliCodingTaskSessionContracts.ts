@@ -1,3 +1,4 @@
+import type { CliVerificationMode } from "../enums/index.js";
 import type { BaseCliCommand, CliCommand } from "./cliCommandContracts.js";
 
 /** 激活外部 Agent CodingTask Session 的 CLI 命令。 */
@@ -30,6 +31,26 @@ export interface CodingTaskSessionCloseoutCliCommand extends BaseCliCommand {
   readonly repositoryRoot: string;
   /** 操作员声明并与 Command Actor 精确复验的审计身份。 */
   readonly actorId: string;
+}
+
+/** 完成外部 Agent CodingTask Session 的 Delivery。 */
+export interface CodingTaskSessionCompleteCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  readonly command: CliCommand.CodingTaskSessionComplete;
+  /** 完整 Delivery Completion JSON 文件。 */
+  readonly filePath: string;
+  /** CLI 声明的 Workspace 绑定。 */
+  readonly workspaceId: string;
+  /** CLI 声明的 Session 绑定。 */
+  readonly sessionId: string;
+  /** CLI 声明的 Repository 绑定。 */
+  readonly repositoryId: string;
+  /** CLI 声明的 Repository 绝对根目录。 */
+  readonly repositoryRoot: string;
+  /** CLI 声明的调用 Actor。 */
+  readonly actorId: string;
+  /** 本次 Completion 使用的 Verification 模式。 */
+  readonly verificationMode: CliVerificationMode;
 }
 
 /** 评估 CodingTask Session Closeout Recovery 的 CLI 命令。 */

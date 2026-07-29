@@ -22,6 +22,7 @@ import {
   writeCodingTaskSessionCloseoutRecoveryAssessmentSummary,
   writeCodingTaskSessionCloseoutRecoverySummary,
   writeCodingTaskSessionCloseoutSummary,
+  writeCodingTaskSessionCompleteSummary,
   writeCodingTaskSessionEffectiveCloseoutSummary,
 } from "./summary/index.js";
 
@@ -111,6 +112,10 @@ export function writeSuccess<T>(
       writeCodingTaskSessionCloseoutSummary(dependencies.writer, data);
       return;
     }
+    if (command === CliCommand.CodingTaskSessionComplete) {
+      writeCodingTaskSessionCompleteSummary(dependencies.writer, data);
+      return;
+    }
     if (command === CliCommand.CodingTaskSessionCloseoutRecoveryAssess) {
       writeCodingTaskSessionCloseoutRecoveryAssessmentSummary(dependencies.writer, data);
       return;
@@ -186,6 +191,10 @@ export function writeBlocked<T>(
   }
   if (command === CliCommand.CodingTaskSessionCloseout) {
     writeCodingTaskSessionCloseoutSummary(dependencies.writer, data);
+    return;
+  }
+  if (command === CliCommand.CodingTaskSessionComplete) {
+    writeCodingTaskSessionCompleteSummary(dependencies.writer, data);
     return;
   }
   if (command === CliCommand.CodingTaskSessionCloseoutRecoveryAssess) {

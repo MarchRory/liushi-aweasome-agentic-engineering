@@ -34,6 +34,17 @@ export function resolveCliApplication(
         },
         sessionActorId: command.actorId,
       });
+    case CliCommand.CodingTaskSessionComplete:
+      return dependencies.applicationFactory.create(storeRoot, {
+        scope: CliApplicationBindingScope.CodingTaskSession,
+        repositoryBinding: {
+          workspaceId: command.workspaceId,
+          repositoryId: command.repositoryId,
+          repositoryRoot: command.repositoryRoot,
+        },
+        sessionActorId: command.actorId,
+        verificationMode: command.verificationMode,
+      });
     case CliCommand.CodingTaskSessionCloseoutRecoveryAssess:
     case CliCommand.CodingTaskSessionCloseoutRecover:
       return dependencies.applicationFactory.create(storeRoot, {

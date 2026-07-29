@@ -267,6 +267,12 @@ describe("CLI argument parser", () => {
     );
   });
 
+  it("Help 包含 Session Completion 生产入口", () => {
+    expect(CLI_USAGE_LINES).toContain(
+      "liushi-harness coding-task session complete --file <completion.json> --workspace <id> --session <id> --repository <id> --root <absolute-path> --actor-id <id> --verification-mode <fail_closed_mock|local_command> [--store <path>] [--json]",
+    );
+  });
+
   it("Artifact Proposal 解析可选稳定幂等键", () => {
     expect(
       parseCliArguments([

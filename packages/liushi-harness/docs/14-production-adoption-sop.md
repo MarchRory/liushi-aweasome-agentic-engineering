@@ -12,7 +12,22 @@
 
 ### 1.1 当前可执行范围
 
-**状态：完整 SOP 设计已完成，确定性 Bootstrap、单仓 CodingTask CLI Cell、Codex Hook 前置子集和 Managed File dry-run 可执行。** 当前可以安装 npm 包、检查 Runtime Store、创建与查询 Task、提交 Artifact、记录 Human Approval、解析 Rule、扫描多仓、通过 G8 编译 ProjectProfile Bundle，并以显式可信单仓绑定运行预编排 Mutation、Local Verification 和 PRReadyArtifact 装配；还可以执行 Codex Capability Probe、生成待审阅 Hook 配置、绑定已批准 PlanRisk，并通过 `init --target codex --dry-run` 生成零 Repository 写入的 G0 InstallPlan。完整 RequirementWorkflow Runtime、Agent 自主编码、G0 Apply、自动安装/写入、失败修复循环、Skills、Connectors、Memory 和 Learning 尚未实现，因此面向真实需求的端到端自动交付仍是目标 SOP，不是当前生产能力声明。
+**状态：完整 SOP 设计已完成，确定性 Bootstrap、G0 Apply、单仓 CodingTask Session、Codex Hook 与 Delivery Completion 主线可执行。** 当前可以安装 npm 包、检查 Runtime Store、创建与查询 Task、提交 Artifact、记录 Human Approval、解析 Rule、扫描多仓、通过 G8 编译 ProjectProfile Bundle，并以显式可信单仓绑定完成 Session Activation、受管 Hook 写入、Closeout、Human-gated Recovery、Local Verification 和 PRReadyArtifact 装配。真实 Codex App Server 已在固定公开项目通过一次单文件 Pilot；企业项目身份注入、真实 PRD、量化和多仓交付仍未验证。完整 RequirementWorkflow Runtime、失败修复循环、Skills、Connectors、Memory 和 Learning 尚未实现，因此当前只能声明受限单仓主线，不声明完整生产闭环。
+
+### 1.2 当前单仓 Session 主线
+
+Human 完成 Requirement、PlanRisk、历史业务逻辑和 G8 Profile 审批后，受信宿主按以下顺序调用：
+
+```powershell
+liushi-harness coding-task session activate --file .\sessionActivation.json --workspace <workspace-id> --repository <repository-id> --root <repository-root> --actor-id <agent-id> --json
+# 受信宿主启动 Codex；每个允许的文件动作经过 Session Hook Admission
+liushi-harness coding-task session closeout --file .\sessionCloseout.json --workspace <workspace-id> --repository <repository-id> --root <repository-root> --actor-id <agent-id> --json
+liushi-harness coding-task session complete --file .\sessionCompletion.json --workspace <workspace-id> --session <session-id> --repository <repository-id> --root <repository-root> --actor-id <agent-id> --verification-mode local_command --json
+```
+
+`activate` 只进入 `waiting_agent`，不授予绕过 Hook 的写权限。`closeout` 只在 Action、Trace、ChangeSet 和 Checkpoint 全部闭合后进入 `checkpoint_bound`。`complete` 从权威 Store 重建 Profile、Rule、Verification Plan、Revision 和 Evidence；只有 `review_ready` 才交给 Human Review。任何 `outcome_unknown` 都停止自动化并进入既有 Assessment/Recovery，不直接重试。
+
+公开 CLI 的 Root 和 Actor 是受信宿主声明，不是身份认证。企业接入必须由 OS 权限隔离的包装器或持久化 Registry 注入，并确保 Coding Agent 不能写 Runtime Store。
 
 ## 2. 责任角色
 

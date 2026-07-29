@@ -6,6 +6,7 @@ import type {
   AssessCodingTaskSessionCloseoutRecoveryUseCase,
   CodingTaskSessionCloseoutRecoveryCommandService,
   CodingTaskSessionEffectiveCloseoutResolver,
+  CodingTaskDeliveryCompletionService,
   CodingTaskCellService,
   CheckRuntimeHealthUseCase,
   CodexHookHandler,
@@ -62,6 +63,8 @@ export interface CliCodingTaskSessionApplicationStartupConfig {
   readonly repositoryBinding: CliRepositoryBinding;
   /** Session 作用域使用的启动期 Agent 审计身份。 */
   readonly sessionActorId: string;
+  /** Completion 显式指定的 Verification 模式；Activation/Closeout 不传。 */
+  readonly verificationMode?: CliVerificationMode;
 }
 
 /** CLI Application 的 discriminated union 启动配置。 */
@@ -88,6 +91,8 @@ export interface CliApplication {
   activateCodingTaskSession: ActivateCodingTaskSessionService;
   /** 可恢复地关闭外部 Agent CodingTask Session。 */
   closeoutCodingTaskSession: CodingTaskSessionCloseoutManager;
+  /** 完成 Session Delivery、Verification 与 PR-ready。 */
+  completeCodingTaskSessionDelivery: CodingTaskDeliveryCompletionService;
   /** 只读评估当前 Closeout Recovery。 */
   assessCodingTaskSessionCloseoutRecovery: AssessCodingTaskSessionCloseoutRecoveryUseCase;
   /** 执行 Human Gate 批准的 Closeout Recovery。 */
