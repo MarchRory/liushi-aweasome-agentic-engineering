@@ -1,4 +1,4 @@
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import process from "node:process";
 import { ulid } from "ulid";
@@ -23,6 +23,8 @@ import {
   REQUIRED_HUMAN_ACTIONS,
   FORBIDDEN_ACTIONS,
   CODEX_HOOK_TIMEOUT_SECONDS,
+  CODEX_ALLOWED_AGENT_TOOLS,
+  CODEX_RESTRICTED_RUNTIME_OVERRIDES,
 } from "../constants/index.mjs";
 import { calculateDigest, calculateTextDigest } from "../digest/index.mjs";
 import {
@@ -31,6 +33,7 @@ import {
   writeControlTextIdempotent,
 } from "../state/index.mjs";
 import { createSessionActivationPayloads } from "./manifest/index.mjs";
+import { createCodexAgentPrompt } from "./prompt/index.mjs";
 import { validateSessionActivationManifest } from "./validation/index.mjs";
 
 export function createSessionActivationManifest(input) {
@@ -98,6 +101,9 @@ export async function createActivationArtifacts(input) {
   if (input.deferHostArtifacts === true) {
     return { manifest, manifestFile: input.manifestFile, worktreeRoot };
   }
+  const targetFile = join(worktreeRoot, WRITE_SET[0]);
+  const targetSource = await readFile(targetFile, "utf8");
+  const targetDigest = calculateTextDigest(targetSource);
   const candidateConfig = createCandidateConfig({
     cliEntrypoint: input.cliEntrypoint,
     storeRoot: input.runtimeRoot,
@@ -105,7 +111,13 @@ export async function createActivationArtifacts(input) {
   const candidateConfigFile = join(input.controlRoot, CANDIDATE_CONFIG_NAME);
   await writeControlJsonIdempotent(candidateConfigFile, candidateConfig);
   const candidateConfigDigest = calculateDigest(candidateConfig);
-  const prompt = createAgentPrompt({ worktreeRoot, model: input.model, taskId: input.taskId });
+  const prompt = createCodexAgentPrompt({
+    worktreeRoot,
+    model: input.model,
+    taskId: input.taskId,
+    targetSource,
+    targetDigest,
+  });
   const promptFile = join(input.controlRoot, AGENT_PROMPT_NAME);
   await writeControlTextIdempotent(promptFile, prompt);
   const promptDigest = calculateTextDigest(prompt);
@@ -117,6 +129,10 @@ export async function createActivationArtifacts(input) {
       repositoryRevision: REPOSITORY_REVISION,
       packageManager: PACKAGE_MANAGER,
       writeSet: [...WRITE_SET],
+      targetSnapshot: {
+        relativePath: WRITE_SET[0],
+        digest: targetDigest,
+      },
     },
     actor: { agentActorId: AGENT_ACTOR_ID, humanActorId: input.humanActorId },
     model: { id: input.model, reasoningEffort: REASONING_EFFORT },
@@ -126,6 +142,8 @@ export async function createActivationArtifacts(input) {
       ignoreUserConfig: true,
       ignoreRules: true,
       ephemeral: true,
+      allowedTools: [...CODEX_ALLOWED_AGENT_TOOLS],
+      runtimeOverrides: [...CODEX_RESTRICTED_RUNTIME_OVERRIDES],
     },
     paths: {
       controlRoot: input.controlRoot,
@@ -135,6 +153,7 @@ export async function createActivationArtifacts(input) {
       worktreeRoot,
       candidateConfigFile,
       promptFile,
+      targetFile,
     },
     candidateHooks: {
       file: candidateConfigFile,
@@ -142,7 +161,12 @@ export async function createActivationArtifacts(input) {
       writesExecuted: false,
       trustBypassAllowed: false,
     },
-    agentPrompt: { file: promptFile, digest: promptDigest, fixed: true },
+    agentPrompt: {
+      file: promptFile,
+      digest: promptDigest,
+      fixed: true,
+      targetDigest,
+    },
     activation: {
       manifestFile: input.manifestFile,
       sessionId: manifest.sessionId,
@@ -178,6 +202,8 @@ export async function createActivationArtifacts(input) {
     candidateConfigDigest,
     promptFile,
     promptDigest,
+    targetFile,
+    targetDigest,
     hostPacketFile,
     hostPacket: { ...hostPacket, activationDigest },
     worktreeRoot,
@@ -232,8 +258,4 @@ function createCandidateConfig(input) {
       ],
     },
   };
-}
-
-function createAgentPrompt(input) {
-  return `你是固定审计 actor ${AGENT_ACTOR_ID}。在 ${input.worktreeRoot} 中只完成一项任务：仅修改 test/utils.test.ts，增加 module namespace object 回归测试：动态 import ../src/_utils，并断言 isPlainObject(namespace) 为 true。historicalLogicChange=false，Write Set 只有 test/utils.test.ts。不要修改 src/**、其他文件或 Codex Home；不要执行 Closeout、Completion 或任何超出受控 Session 的操作。模型 ${input.model} 仅在后续 Host 明确批准后启动。Task=${input.taskId}\n`;
 }

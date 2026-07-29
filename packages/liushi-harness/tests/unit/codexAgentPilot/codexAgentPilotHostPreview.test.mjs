@@ -80,7 +80,27 @@ describe("Codex Agent Pilot Host preview", () => {
       repositoryRevision: "82632b66f5914e9946edce300e10633a3d5c0cb7",
       writeSet: ["test/utils.test.ts"],
       historicalLogicChange: false,
+      targetSnapshot: {
+        relativePath: "test/utils.test.ts",
+        digest: context.current.activation.targetDigest,
+      },
     });
+    expect(packet.permissions.allowedTools).toEqual(["apply_patch"]);
+    expect(packet.permissions.runtimeOverrides).toEqual([
+      "features.shell_tool=false",
+      "features.unified_exec=false",
+      "features.apps=false",
+      "features.multi_agent=false",
+      "features.remote_plugin=false",
+      "features.skill_mcp_dependency_install=false",
+      'web_search="disabled"',
+    ]);
+    expect(packet.hooks.sessionFlags).toMatchObject({
+      runtimeOverrides: packet.permissions.runtimeOverrides,
+    });
+    expect(await readFile(context.current.activation.promptFile, "utf8")).toContain(
+      `digest=${context.current.activation.targetDigest}`,
+    );
     expect(packet.model).toEqual({ id: "gpt-5.6-sol", reasoningEffort: "medium" });
     expect(packet.hooks.discovered.map((hook) => hook.trustStatus)).toEqual(["trusted", "trusted"]);
     expect(packet.hooks).toMatchObject({
@@ -177,6 +197,56 @@ describe("Codex Agent Pilot Host preview", () => {
       ),
     ).rejects.toThrow("actor");
     expect(inspectCodexHooks).not.toHaveBeenCalled();
+  });
+
+  it("目标文件摘要漂移在 inspectCodexHooks 之前被拒绝", async () => {
+    const context = await createWaitingHostContext();
+    await writeFile(context.current.activation.targetFile, "漂移后的目标内容\n", "utf8");
+    const inspectCodexHooks = vi.fn();
+
+    await expect(
+      previewCodexAgentPilotHost(
+        {
+          root: fixture.input.root,
+          stateDigest: context.current.stateDigest,
+          actorId: "human-actor",
+        },
+        fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+      ),
+    ).rejects.toThrow("摘要");
+    expect(inspectCodexHooks).not.toHaveBeenCalled();
+  });
+
+  it("第一次 Hook 探测期间发生的目标漂移会阻止第二次 app-server 启动", async () => {
+    const context = await createWaitingHostContext();
+    const candidateConfig = JSON.parse(
+      await readFile(context.current.activation.candidateConfigFile, "utf8"),
+    );
+    let probeCount = 0;
+    const inspectCodexHooks = vi.fn(async (input) => {
+      probeCount += 1;
+      const probe = createHookProbe({
+        input,
+        candidateConfig,
+        trustStatus: "untrusted",
+      });
+      if (probeCount === 1) {
+        await writeFile(context.current.activation.targetFile, "探测期间漂移\n", "utf8");
+      }
+      return probe;
+    });
+
+    await expect(
+      previewCodexAgentPilotHost(
+        {
+          root: fixture.input.root,
+          stateDigest: context.current.stateDigest,
+          actorId: "human-actor",
+        },
+        fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+      ),
+    ).rejects.toThrow("目标文件快照摘要发生漂移");
+    expect(inspectCodexHooks).toHaveBeenCalledTimes(1);
   });
 });
 

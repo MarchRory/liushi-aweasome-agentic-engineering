@@ -67,11 +67,23 @@ describe("Codex Agent Pilot state machine", () => {
     expect(final.activation.candidateConfigDigest).toMatch(/^sha256:/u);
     expect(final.activation.promptDigest).toMatch(/^sha256:/u);
     expect(final.activation.activationDigest).toMatch(/^sha256:/u);
+    expect(final.activation.targetDigest).toMatch(/^sha256:/u);
+    expect(final.activation.targetFile).toBe(
+      join(final.activation.worktreeRoot, "test", "utils.test.ts"),
+    );
     expect(final.activation.hostPacket).toMatchObject({
+      project: {
+        targetSnapshot: {
+          relativePath: "test/utils.test.ts",
+          digest: final.activation.targetDigest,
+        },
+      },
       permissions: {
         sandbox: "workspace-write",
         approvalPolicy: "never",
         ignoreUserConfig: true,
+        allowedTools: ["apply_patch"],
+        runtimeOverrides: expect.any(Array),
       },
       host: {
         codexExecutable: { version: "codex-cli 0.145.0" },
@@ -79,6 +91,18 @@ describe("Codex Agent Pilot state machine", () => {
         trustWritten: false,
       },
     });
+    expect(final.activation.hostPacket.agentPrompt.targetDigest).toBe(
+      final.activation.targetDigest,
+    );
+    const prompt = await readFile(final.activation.promptFile, "utf8");
+    const targetSource = await readFile(final.activation.targetFile, "utf8");
+    expect(prompt).toContain(`digest=${final.activation.targetDigest}`);
+    expect(prompt).toContain(`contentJson=${JSON.stringify(targetSource)}`);
+    expect(prompt).toContain("只允许调用一次 apply_patch");
+    expect(prompt).toContain(
+      "禁止调用 shell、Bash、unified_exec、MCP、Apps、Web Search 或子 Agent",
+    );
+    expect(prompt).toContain("禁止运行测试、格式化、Git、Closeout、Completion");
     expect(final.effects).toMatchObject({
       activationExecuted: true,
       hookWrites: 0,

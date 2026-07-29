@@ -1,5 +1,6 @@
 import {
   APPROVAL_POLICY,
+  CODEX_ALLOWED_AGENT_TOOLS,
   CODEX_HOOK_SOURCE,
   FORBIDDEN_ACTIONS,
   HOST_APPROVAL_SCHEMA_VERSION,
@@ -9,10 +10,12 @@ import {
   STATE_STATUS,
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
-import { createCodexAgentArguments } from "../sessionFlags/index.mjs";
+import { createCodexAgentArguments, createCodexRuntimeOverrides } from "../sessionFlags/index.mjs";
 
 export function createCodexHostApprovalPacket(input) {
+  const runtimeOverrides = createCodexRuntimeOverrides();
   const sessionFlags = {
+    runtimeOverrides,
     declarationOverrides: [...input.hookDeclarationOverrides],
     trustOverride: input.hookTrustOverride,
   };
@@ -40,6 +43,10 @@ export function createCodexHostApprovalPacket(input) {
       repositoryRevision: input.state.fixedProject.revision,
       writeSet: [...input.state.fixedProject.writeSet],
       historicalLogicChange: input.state.fixedProject.historicalLogicChange,
+      targetSnapshot: {
+        relativePath: input.state.fixedProject.writeSet[0],
+        digest: input.state.activation.targetDigest,
+      },
       worktree: input.worktreeIdentity,
     },
     codex: {
@@ -57,11 +64,14 @@ export function createCodexHostApprovalPacket(input) {
       sandbox: PERMISSION_MODE,
       approvalPolicy: APPROVAL_POLICY,
       ephemeral: true,
+      allowedTools: [...CODEX_ALLOWED_AGENT_TOOLS],
+      runtimeOverrides,
     },
     prompt: {
       file: input.artifacts.promptFile,
       digest: input.state.activation.promptDigest,
       fixed: true,
+      targetDigest: input.state.activation.targetDigest,
     },
     activation: {
       manifestFile: input.artifacts.manifestFile,

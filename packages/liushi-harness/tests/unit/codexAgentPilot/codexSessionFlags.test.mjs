@@ -5,6 +5,7 @@ import {
   createCodexAppServerArguments,
   createHookDeclarationOverrides,
   createHookTrustOverride,
+  createCodexRuntimeOverrides,
 } from "../../../scripts/codexAgentPilot/host/sessionFlags/index.mjs";
 
 const candidateConfig = {
@@ -41,6 +42,39 @@ const candidateConfig = {
 };
 
 describe("Codex SessionFlags", () => {
+  it("精确固定 apply_patch-only runtime overrides，并注入两类启动参数", () => {
+    const runtimeOverrides = createCodexRuntimeOverrides();
+
+    expect(runtimeOverrides).toEqual([
+      "features.shell_tool=false",
+      "features.unified_exec=false",
+      "features.apps=false",
+      "features.multi_agent=false",
+      "features.remote_plugin=false",
+      "features.skill_mcp_dependency_install=false",
+      'web_search="disabled"',
+    ]);
+    expect(createCodexAppServerArguments([])).toEqual([
+      ...runtimeOverrides.flatMap((override) => ["-c", override]),
+      "--strict-config",
+      "app-server",
+      "--stdio",
+    ]);
+    const agentArguments = createCodexAgentArguments({
+      hookDeclarationOverrides: ["features.hooks=true"],
+      hookTrustOverride: 'hooks.state={"hook"={enabled=true,trusted_hash="sha256:a"}}',
+      worktreeRoot: "/worktree",
+      model: "gpt-5.6-sol",
+      sandbox: "workspace-write",
+      approvalPolicy: "never",
+    });
+    const runtimeArguments = runtimeOverrides.flatMap((override) => ["-c", override]);
+    const strictConfigIndex = agentArguments.indexOf("--strict-config");
+    expect(
+      agentArguments.slice(strictConfigIndex - runtimeArguments.length, strictConfigIndex),
+    ).toEqual(runtimeArguments);
+  });
+
   it("将固定 Hook 声明确定性编码为 TOML CLI override", () => {
     const overrides = createHookDeclarationOverrides(candidateConfig);
 
@@ -56,10 +90,32 @@ describe("Codex SessionFlags", () => {
       overrides[1],
       "-c",
       overrides[2],
+      ...createCodexRuntimeOverrides().flatMap((override) => ["-c", override]),
       "--strict-config",
       "app-server",
       "--stdio",
     ]);
+  });
+
+  it("拒绝调用方覆盖受限 Runtime key 或重复定义 SessionFlag", () => {
+    expect(() => createCodexAppServerArguments(["features.shell_tool=true"])).toThrow(
+      "不得由调用方覆盖",
+    );
+    expect(() =>
+      createCodexAgentArguments({
+        hookDeclarationOverrides: ["features.unified_exec=true"],
+        hookTrustOverride: "hooks.state={}",
+        worktreeRoot: "/worktree",
+        model: "gpt-5.6-sol",
+        sandbox: "workspace-write",
+        approvalPolicy: "never",
+      }),
+    ).toThrow("不得由调用方覆盖");
+    expect(() =>
+      createCodexAppServerArguments(["hooks.PreToolUse=[]", "hooks.PreToolUse=[]"]),
+    ).toThrow("不得重复");
+    expect(() => createCodexAppServerArguments(["features . shell_tool=true"])).toThrow("key 无效");
+    expect(() => createCodexAppServerArguments(['features."shell_tool"=true'])).toThrow("key 无效");
   });
 
   it("仅使用 Codex 返回的 key/currentHash 生成临时 Trust", () => {

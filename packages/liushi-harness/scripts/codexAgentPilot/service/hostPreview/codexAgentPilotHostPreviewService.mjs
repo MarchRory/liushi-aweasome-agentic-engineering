@@ -10,6 +10,7 @@ import {
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
 import {
+  assertHostTargetSnapshotStable,
   createCodexAppServerArguments,
   createCodexHostApprovalPacket,
   createHookDeclarationOverrides,
@@ -64,6 +65,7 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
   try {
     await chmod(temporaryRoot, 0o700);
     await mkdir(temporaryCodexHome, { mode: 0o700 });
+    await assertHostTargetSnapshotStable(artifacts);
     const untrustedProbe = await dependencies.inspectCodexHooks({
       executable: current.codex.executable,
       arguments: createCodexAppServerArguments(hookDeclarationOverrides),
@@ -78,6 +80,7 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
       expectedTrustStatus: CODEX_HOOK_TRUST_STATUS.Untrusted,
     });
     hookTrustOverride = createHookTrustOverride(untrustedHooks);
+    await assertHostTargetSnapshotStable(artifacts);
     const trustedProbe = await dependencies.inspectCodexHooks({
       executable: current.codex.executable,
       arguments: createCodexAppServerArguments([...hookDeclarationOverrides, hookTrustOverride]),

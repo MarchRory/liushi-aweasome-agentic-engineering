@@ -50,6 +50,16 @@ export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "2.0.0";
 export const PILOT_VERIFICATION_KIND = "custom";
 export const HOST_APPROVAL_SCHEMA_VERSION = "liushi.codex-agent-pilot.host-approval.v1";
 export const CODEX_HOOK_FEATURE_OVERRIDE = "features.hooks=true";
+export const CODEX_RESTRICTED_RUNTIME_OVERRIDES = Object.freeze([
+  "features.shell_tool=false",
+  "features.unified_exec=false",
+  "features.apps=false",
+  "features.multi_agent=false",
+  "features.remote_plugin=false",
+  "features.skill_mcp_dependency_install=false",
+  'web_search="disabled"',
+]);
+export const CODEX_ALLOWED_AGENT_TOOLS = Object.freeze(["apply_patch"]);
 export const CODEX_HOOK_TIMEOUT_SECONDS = 30;
 export const CODEX_APP_SERVER_TIMEOUT_MS = 30_000;
 export const CODEX_APP_SERVER_OUTPUT_LIMIT = 1024 * 1024;

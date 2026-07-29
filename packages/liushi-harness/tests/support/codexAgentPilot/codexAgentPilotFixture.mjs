@@ -1,10 +1,18 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { calculateDigest } from "../../../scripts/codexAgentPilot/digest/index.mjs";
 
 const repositoryRevision = "82632b66f5914e9946edce300e10633a3d5c0cb7";
+const codexAgentPilotTargetSource = `import { describe, expect, it } from "vitest";
+
+describe("fixture target", () => {
+  it("starts from the fixed target snapshot", () => {
+    expect(true).toBe(true);
+  });
+});
+`;
 const artifactTypeByGate = Object.freeze({
   G8: "project_profile_proposal",
   G1: "requirement_contract",
@@ -184,6 +192,19 @@ export function createHappyPathPilotEnvelope(fixture) {
       const existing = activationByManifest.get(manifestDigest);
       if (existing !== undefined) return existing;
       counters.activation += 1;
+      const targetFile = join(
+        fixture.repositoryRoot,
+        "worktrees",
+        "codex-agent-pilot",
+        "test",
+        "utils.test.ts",
+      );
+      await mkdir(dirname(targetFile), { recursive: true });
+      try {
+        await writeFile(targetFile, codexAgentPilotTargetSource, { encoding: "utf8", flag: "wx" });
+      } catch (error) {
+        if (error?.code !== "EEXIST") throw error;
+      }
       const envelope = { status: "success", data: { status: "waiting_agent" } };
       activationByManifest.set(manifestDigest, envelope);
       return envelope;

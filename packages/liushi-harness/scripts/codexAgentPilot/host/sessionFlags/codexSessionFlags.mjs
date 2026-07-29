@@ -1,11 +1,16 @@
 import {
   CODEX_HOOK_EVENTS,
   CODEX_HOOK_FEATURE_OVERRIDE,
+  CODEX_RESTRICTED_RUNTIME_OVERRIDES,
   REASONING_EFFORT,
 } from "../../constants/index.mjs";
 
 const BARE_TOML_KEY = /^[A-Za-z0-9_-]+$/u;
+const DOTTED_TOML_KEY = /^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$/u;
 const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/u;
+const RESTRICTED_RUNTIME_KEYS = new Set(
+  CODEX_RESTRICTED_RUNTIME_OVERRIDES.map((override) => readConfigOverrideKey(override)),
+);
 
 export function createHookDeclarationOverrides(candidateConfig) {
   const hooks = requireRecord(candidateConfig?.hooks, "Candidate hooks");
@@ -43,8 +48,17 @@ export function createHookTrustOverride(hooks) {
   return `hooks.state=${serializeTomlValue(state)}`;
 }
 
+export function createCodexRuntimeOverrides() {
+  return [...CODEX_RESTRICTED_RUNTIME_OVERRIDES];
+}
+
 export function createCodexAppServerArguments(configOverrides) {
-  return [...createConfigArguments(configOverrides), "--strict-config", "app-server", "--stdio"];
+  return [
+    ...createConfigArguments(appendRestrictedRuntimeOverrides(configOverrides)),
+    "--strict-config",
+    "app-server",
+    "--stdio",
+  ];
 }
 
 export function createCodexAgentArguments(input) {
@@ -54,7 +68,7 @@ export function createCodexAgentArguments(input) {
     `model_reasoning_effort=${serializeTomlValue(REASONING_EFFORT)}`,
   ];
   return [
-    ...createConfigArguments(configOverrides),
+    ...createConfigArguments(appendRestrictedRuntimeOverrides(configOverrides)),
     "--strict-config",
     "exec",
     "--ephemeral",
@@ -95,17 +109,38 @@ function createConfigArguments(configOverrides) {
   if (!Array.isArray(configOverrides) || configOverrides.length === 0) {
     throw new Error("Codex SessionFlags 不得为空。");
   }
+  const keys = new Set();
   return configOverrides.flatMap((override) => {
-    if (
-      typeof override !== "string" ||
-      override.length === 0 ||
-      override.includes("\0") ||
-      !override.includes("=")
-    ) {
-      throw new Error("Codex SessionFlag 无效。");
-    }
+    const key = readConfigOverrideKey(override);
+    if (keys.has(key)) throw new Error(`Codex SessionFlag key 不得重复：${key}`);
+    keys.add(key);
     return ["-c", override];
   });
+}
+
+function appendRestrictedRuntimeOverrides(configOverrides) {
+  if (!Array.isArray(configOverrides)) throw new Error("Codex SessionFlags 必须是数组。");
+  for (const override of configOverrides) {
+    const key = readConfigOverrideKey(override);
+    if (RESTRICTED_RUNTIME_KEYS.has(key)) {
+      throw new Error(`Codex 受限 Runtime key 不得由调用方覆盖：${key}`);
+    }
+  }
+  return [...configOverrides, ...createCodexRuntimeOverrides()];
+}
+
+function readConfigOverrideKey(override) {
+  if (
+    typeof override !== "string" ||
+    override.length === 0 ||
+    override.includes("\0") ||
+    !override.includes("=")
+  ) {
+    throw new Error("Codex SessionFlag 无效。");
+  }
+  const key = override.slice(0, override.indexOf("=")).trim();
+  if (!DOTTED_TOML_KEY.test(key)) throw new Error("Codex SessionFlag key 无效。");
+  return key;
 }
 
 function validateHookGroups(groups, event) {
