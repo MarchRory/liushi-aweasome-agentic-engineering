@@ -15,6 +15,7 @@ import {
 } from "../../../constants/index.mjs";
 import { calculateDigest } from "../../../digest/index.mjs";
 import { CODEX_APP_SERVER_OUTCOMES } from "../../../host/index.mjs";
+import { analyzeCodexAppServerProtocol } from "../execution/index.mjs";
 
 export async function createAgentFileChangeEvidenceSession(input, overrides = {}) {
   const createApplication =
@@ -124,7 +125,8 @@ async function recordProcessEvidence(input) {
 }
 
 function validateSuccessfulRunnerResult(result, proposal) {
-  const evidence = result?.protocolEvidence;
+  const protocol = analyzeCodexAppServerProtocol(result?.protocolEvidence);
+  const evidence = protocol.evidence;
   const process = result?.process;
   const authorization = evidence?.authorizations?.[0];
   if (
@@ -134,15 +136,11 @@ function validateSuccessfulRunnerResult(result, proposal) {
     process?.exitCode !== 0 ||
     process?.signal !== null ||
     process?.timedOut !== false ||
+    protocol.valid !== true ||
     evidence?.threadId !== proposal.threadId ||
     evidence?.turnId !== proposal.turnId ||
-    evidence?.completedFileChangeCount !== 1 ||
-    evidence?.approvedCount !== 1 ||
-    evidence?.cancelledCount !== 0 ||
-    evidence?.authorizations?.length !== 1 ||
     authorization?.itemId !== proposal.itemId ||
     authorization?.decision !== CODEX_FILE_CHANGE_DECISION.Accept ||
-    authorization?.valid !== true ||
     typeof authorization?.evidenceDigest !== "string" ||
     typeof evidence?.changeDigest !== "string"
   ) {
