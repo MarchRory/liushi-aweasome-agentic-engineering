@@ -180,6 +180,21 @@ export const CODEX_HOOK_EVENTS = Object.freeze({
   PreToolUse: "PreToolUse",
   PostToolUse: "PostToolUse",
 });
+export const CODEX_HOOK_PERMISSION_MODE = Object.freeze({
+  Default: "default",
+});
+export const CODEX_HOOK_TOOL = Object.freeze({
+  ApplyPatch: "apply_patch",
+});
+export const AGENT_FILE_CHANGE_PROJECTION_SCHEMA_VERSION =
+  "liushi.codex-agent-pilot.app-server-hook-projection.v1";
+export const AGENT_SESSION_PROCESS_HOST_SURFACE = Object.freeze({
+  Automation: "automation",
+});
+export const AGENT_SESSION_PROCESS_OUTCOME = Object.freeze({
+  Completed: "completed",
+});
+export const CODEX_AGENT_EXECUTOR_ID = "openai-codex";
 export const CODEX_HOOK_EVENT_METADATA = Object.freeze({
   PreToolUse: Object.freeze({
     eventName: "preToolUse",

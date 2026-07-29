@@ -63,6 +63,8 @@ describe("Codex Agent Pilot run-agent", () => {
       hostHome: context.packet.runtimeIsolation.plan.profileHome,
       worktreeRoot: context.current.activation.worktreeRoot,
     });
+    expect(runtime.recordPreAction).toHaveBeenCalledOnce();
+    expect(runtime.recordPostAction).toHaveBeenCalledOnce();
     expect(runtime.remove).toHaveBeenCalledOnce();
     expect(result).toMatchObject({
       status: "waiting_closeout",
@@ -591,17 +593,26 @@ function createRuntimeDoubles(overrides = {}) {
   const externalSecurity = overrides.assertNoExternalAgentSkills ?? vi.fn(async () => undefined);
   const credentialSourceValidator =
     overrides.assertCodexAgentAuthSourceStable ?? vi.fn(async () => ({ verified: true }));
+  const recordPreAction = vi.fn(async () => undefined);
+  const recordPostAction = vi.fn(async () => undefined);
+  const createFileChangeEvidenceSession =
+    overrides.createAgentFileChangeEvidenceSession ??
+    vi.fn(async () => ({ recordPreAction, recordPostAction }));
   return {
     environment,
     prepare,
     remove,
     externalSecurity,
     credentialSourceValidator,
+    recordPreAction,
+    recordPostAction,
+    createFileChangeEvidenceSession,
     dependencies: {
       prepareCodexAgentRuntime: prepare,
       removeCodexAgentRuntime: remove,
       assertNoExternalAgentSkills: externalSecurity,
       assertCodexAgentAuthSourceStable: credentialSourceValidator,
+      createAgentFileChangeEvidenceSession: createFileChangeEvidenceSession,
     },
   };
 }

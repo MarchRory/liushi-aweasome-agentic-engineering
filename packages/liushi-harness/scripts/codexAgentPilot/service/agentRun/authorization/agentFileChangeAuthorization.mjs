@@ -32,6 +32,7 @@ export function createAgentFileChangeAuthorizer(input) {
     ) {
       throw new Error("FileChange 审批前 Worktree baseline 发生漂移。");
     }
+    await input.recordPreAction(proposal);
 
     const body = {
       schemaVersion: FILE_CHANGE_AUTHORIZATION_SCHEMA_VERSION,

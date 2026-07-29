@@ -23,6 +23,7 @@ import {
   createCodexAgentExecutionRecord,
   validateCodexAgentExecutionRecord,
 } from "./execution/index.mjs";
+import { createAgentFileChangeEvidenceSession } from "./evidence/index.mjs";
 import {
   createKnownPrelaunchFailure,
   createUninspectedWorktreeChange,
@@ -71,6 +72,8 @@ export async function runCodexAgentPilotAgent(input, overrides = {}) {
     overrides.assertNoExternalAgentSkills ?? assertNoExternalAgentSkills;
   const inspectWorktree =
     overrides.inspectCodexAgentWorktreeChange ?? inspectCodexAgentWorktreeChange;
+  const createFileChangeEvidenceSession =
+    overrides.createAgentFileChangeEvidenceSession ?? createAgentFileChangeEvidenceSession;
   validatePilotActor(input.actorId);
   requirePilotString(input.stateDigest, "stateDigest");
   requirePilotString(input.packetDigest, "packetDigest");
@@ -132,6 +135,7 @@ export async function runCodexAgentPilotAgent(input, overrides = {}) {
     assertCredentialSourceStable,
     validateExternalAgentSecurity,
     inspectWorktree,
+    createFileChangeEvidenceSession,
     initialArtifacts: initial.artifacts,
     initialPacket: initial.packet,
   });
@@ -173,6 +177,12 @@ async function executeLaunchIntent(input) {
       hostHome: fresh.packet.runtimeIsolation.plan.profileHome,
       worktreeRoot: fresh.artifacts.worktreeRoot,
     });
+    const actionEvidence = await input.createFileChangeEvidenceSession({
+      packet: fresh.packet,
+      approvedState: input.approvedState,
+      artifacts: fresh.artifacts,
+      paths: input.paths,
+    });
     const authorizeFileChange = createAgentFileChangeAuthorizer({
       packet: fresh.packet,
       launchState: input.launchState,
@@ -181,6 +191,7 @@ async function executeLaunchIntent(input) {
       launchBaseline,
       paths: input.paths,
       dependencies: input.dependencies,
+      recordPreAction: actionEvidence.recordPreAction,
     });
     try {
       runnerInvoked = true;
@@ -202,6 +213,24 @@ async function executeLaunchIntent(input) {
           fresh.packet.launch.limits.terminationConfirmationTimeoutMs,
       });
       execution = normalizeProcessResult(result);
+      if (result.outcome === CODEX_APP_SERVER_OUTCOMES.Succeeded) {
+        try {
+          await actionEvidence.recordPostAction({
+            runnerResult: result,
+            startedAt,
+            completedAt: requireIsoTimestamp(input.dependencies.now(), "Agent process completedAt"),
+          });
+        } catch (error) {
+          execution = {
+            ...execution,
+            outcome: CODEX_APP_SERVER_OUTCOMES.Failed,
+            error: {
+              ...serializeAgentRunError(error),
+              phase: "session_action_evidence",
+            },
+          };
+        }
+      }
     } catch (error) {
       execution = normalizeProcessError(error);
     }
