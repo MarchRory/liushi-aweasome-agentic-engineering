@@ -9,6 +9,7 @@ import {
   approveCodexAgentPilotHost,
   prepareCodexAgentPilot,
   previewCodexAgentPilotHost,
+  runCodexAgentPilotAgent,
 } from "./service/index.mjs";
 
 export * from "./activation/index.mjs";
@@ -32,6 +33,8 @@ export async function runCodexAgentPilot(argv, dependencies = {}) {
     return approveCodexAgentPilot(input, dependencies);
   if (input.command === pilotCliCommands.approveHost)
     return approveCodexAgentPilotHost(input, dependencies);
+  if (input.command === pilotCliCommands.runAgent)
+    return runCodexAgentPilotAgent(input, dependencies);
   return previewCodexAgentPilotHost(input, dependencies);
 }
 

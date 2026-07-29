@@ -116,4 +116,30 @@ describe("Codex Agent Pilot CLI", () => {
       ]),
     ).toThrow();
   });
+  it("run-agent requires packet digest", () => {
+    expect(() =>
+      parsePilotCli([
+        "run-agent",
+        "--root",
+        "C:\\pilot",
+        "--state-digest",
+        "sha256:state",
+        "--actor-id",
+        "human",
+      ]),
+    ).toThrow("--packet-digest");
+    expect(
+      parsePilotCli([
+        "run-agent",
+        "--root",
+        "C:\\pilot",
+        "--state-digest",
+        "sha256:state",
+        "--packet-digest",
+        "sha256:packet",
+        "--actor-id",
+        "human",
+      ]),
+    ).toMatchObject({ command: "run-agent", packetDigest: "sha256:packet" });
+  });
 });

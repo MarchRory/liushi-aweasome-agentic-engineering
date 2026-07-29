@@ -1,8 +1,12 @@
-import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import process from "node:process";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import {
+  CODEX_AGENT_EXECUTION_MODE,
+  CODEX_MODEL_PROVIDER_ID,
+  CODEX_RESTRICTED_RUNTIME_OVERRIDES,
+} from "../../../scripts/codexAgentPilot/constants/index.mjs";
 import { calculateDigest } from "../../../scripts/codexAgentPilot/digest/index.mjs";
 import {
   approveCodexAgentPilot,
@@ -13,6 +17,7 @@ import { readStateChain } from "../../../scripts/codexAgentPilot/state/index.mjs
 import {
   cleanupCodexAgentPilotFixture,
   createCodexAgentPilotFixture,
+  createCodexAppServerPreflightFixture,
   createHappyPathPilotEnvelope,
 } from "../../support/codexAgentPilot/index.mjs";
 
@@ -24,24 +29,10 @@ afterEach(async () => {
 });
 
 describe("Codex Agent Pilot Host preview", () => {
-  it("只读证明 SessionFlags Trust，并生成仍受 Human Gate 约束的精确审批包", async () => {
+  it("绑定本地正负向预检、隔离运行时和单次 FileChange 审批", async () => {
     const context = await createWaitingHostContext();
-    const candidateConfig = JSON.parse(
-      await readFile(context.current.activation.candidateConfigFile, "utf8"),
-    );
-    const temporaryHomes = [];
-    const inspectCodexHooks = vi.fn(async (input) => {
-      temporaryHomes.push(input.codexHome);
-      return createHookProbe({
-        input,
-        candidateConfig,
-        trustStatus: input.arguments.some(
-          (argument) => typeof argument === "string" && argument.startsWith("hooks.state="),
-        )
-          ? "trusted"
-          : "untrusted",
-      });
-    });
+    const evidence = createCodexAppServerPreflightFixture(context.current);
+    const probeCodexAppServerFileChangeApproval = vi.fn(async () => evidence);
 
     const preview = await previewCodexAgentPilotHost(
       {
@@ -49,7 +40,9 @@ describe("Codex Agent Pilot Host preview", () => {
         stateDigest: context.current.stateDigest,
         actorId: "human-actor",
       },
-      fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+      fixture.dependencies(context.harness.runEnvelope, {
+        probeCodexAppServerFileChangeApproval,
+      }),
     );
 
     const states = await readStateChain(context.prepared.paths.stateRoot);
@@ -63,12 +56,6 @@ describe("Codex Agent Pilot Host preview", () => {
       humanActorId: "human-actor",
       approved: false,
     });
-    expect(final.transition).toEqual({
-      kind: "host_preview",
-      sourceStateDigest: context.current.stateDigest,
-      actorId: "human-actor",
-      packetDigest,
-    });
     expect(final.effects).toMatchObject({
       activationExecuted: true,
       hostPreflightProcesses: 2,
@@ -80,58 +67,83 @@ describe("Codex Agent Pilot Host preview", () => {
       repositoryRevision: "82632b66f5914e9946edce300e10633a3d5c0cb7",
       writeSet: ["test/utils.test.ts"],
       historicalLogicChange: false,
-      targetSnapshot: {
-        relativePath: "test/utils.test.ts",
-        digest: context.current.activation.targetDigest,
+    });
+    expect(packet.execution).toMatchObject({
+      mode: CODEX_AGENT_EXECUTION_MODE.AppServerFileChangeApproval,
+      reconnectAttempts: 0,
+      retryAttempts: 0,
+      provider: {
+        id: CODEX_MODEL_PROVIDER_ID,
+        supports_websockets: false,
       },
     });
-    expect(packet.permissions.allowedTools).toEqual(["apply_patch"]);
-    expect(packet.permissions.runtimeOverrides).toEqual([
-      "features.shell_tool=false",
-      "features.unified_exec=false",
-      "features.apps=false",
-      "features.multi_agent=false",
-      "features.remote_plugin=false",
-      "features.skill_mcp_dependency_install=false",
-      'web_search="disabled"',
+    expect(packet.actionControl).toMatchObject({
+      permissionProfile: ":read-only",
+      approvalPolicy: "on-request",
+      acceptedDecision: "accept",
+      decisionScope: "single_request",
+      grantRootAllowed: false,
+      allowedMutationSurfaces: ["fileChange"],
+      allowedFileChangeKinds: ["update"],
+    });
+    expect(packet.actionControl.allowedAbsolutePaths).toEqual([
+      context.current.activation.targetFile,
     ]);
-    expect(packet.hooks.sessionFlags).toMatchObject({
-      runtimeOverrides: packet.permissions.runtimeOverrides,
+    expect(packet.runtimeIsolation).toMatchObject({
+      externalConfigAllowed: false,
+      externalSkillsAllowed: false,
+      externalMcpAllowed: false,
+      credentialContentReadByHarness: false,
+      cleanupRequiresConfirmedProcessExit: true,
     });
-    expect(await readFile(context.current.activation.promptFile, "utf8")).toContain(
-      `digest=${context.current.activation.targetDigest}`,
+    expect(packet.runtimeIsolation.planDigest).toBe(calculateDigest(packet.runtimeIsolation.plan));
+    expect(packet.runtimeIsolation.environmentPolicy.digest).toBe(
+      calculateDigest({
+        version: packet.runtimeIsolation.environmentPolicy.version,
+        inheritedNames: packet.runtimeIsolation.environmentPolicy.inheritedNames,
+        managedNames: packet.runtimeIsolation.environmentPolicy.managedNames,
+      }),
     );
-    expect(packet.model).toEqual({ id: "gpt-5.6-sol", reasoningEffort: "medium" });
-    expect(packet.hooks.discovered.map((hook) => hook.trustStatus)).toEqual(["trusted", "trusted"]);
-    expect(packet.hooks).toMatchObject({
-      source: "sessionFlags",
-      persistentConfigWrites: 0,
-      persistentTrustWrites: 0,
-      trustBypassAllowed: false,
+    expect(packet.preflight).toMatchObject({
+      appServerProcesses: 2,
+      realModelRequests: 0,
+      evidenceDigest: evidence.evidenceDigest,
     });
-    expect(packet.launch.executed).toBe(false);
-    expect(packet.launch.arguments).toContain("--ignore-user-config");
-    expect(packet.launch.arguments).toContain("--ignore-rules");
+    expect(packet.codex.nativeHookControl).toMatchObject({
+      status: "unavailable",
+      enforcement: false,
+    });
+    expect(packet.compatibilityArtifacts).toMatchObject({
+      enforcement: false,
+      persistentWrites: 0,
+    });
+    expect(packet.launch.arguments).toContain("--strict-config");
+    expect(packet.launch.arguments).toContain("app-server");
     expect(packet.launch.arguments).not.toContain("--dangerously-bypass-hook-trust");
-    expect(inspectCodexHooks).toHaveBeenCalledTimes(2);
+    expect(packet.launch.protocol.thread).toMatchObject({
+      approvalPolicy: "on-request",
+      permissions: ":read-only",
+      modelProvider: CODEX_MODEL_PROVIDER_ID,
+    });
+    expect(packet.model).toEqual({
+      id: "gpt-5.6-sol",
+      reasoningEffort: "medium",
+      launchLimit: 1,
+    });
+    expect(packet.permissions).toBeUndefined();
+    expect(probeCodexAppServerFileChangeApproval).toHaveBeenCalledOnce();
     expect(context.harness.counters).toMatchObject({
       proposal: 3,
       approval: 3,
       activation: 1,
     });
-    for (const temporaryHome of temporaryHomes) {
-      await expect(access(temporaryHome)).rejects.toMatchObject({ code: "ENOENT" });
-    }
+    expect(CODEX_RESTRICTED_RUNTIME_OVERRIDES).toContain('cli_auth_credentials_store="file"');
   });
 
-  it("Trust 未变为 trusted 时 fail closed，不写审批包或新状态", async () => {
+  it("预检证据不匹配固定 Codex identity 时 fail closed", async () => {
     const context = await createWaitingHostContext();
-    const candidateConfig = JSON.parse(
-      await readFile(context.current.activation.candidateConfigFile, "utf8"),
-    );
-    const inspectCodexHooks = vi.fn(async (input) =>
-      createHookProbe({ input, candidateConfig, trustStatus: "untrusted" }),
-    );
+    const evidence = createCodexAppServerPreflightFixture(context.current);
+    evidence.codexVersion = "drifted";
 
     await expect(
       previewCodexAgentPilotHost(
@@ -140,9 +152,11 @@ describe("Codex Agent Pilot Host preview", () => {
           stateDigest: context.current.stateDigest,
           actorId: "human-actor",
         },
-        fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+        fixture.dependencies(context.harness.runEnvelope, {
+          probeCodexAppServerFileChangeApproval: async () => evidence,
+        }),
       ),
-    ).rejects.toThrow("metadata");
+    ).rejects.toThrow("Preflight Evidence");
     expect(await readStateChain(context.prepared.paths.stateRoot)).toHaveLength(4);
     expect(
       (await readdir(context.prepared.paths.controlRoot)).filter((name) =>
@@ -151,13 +165,13 @@ describe("Codex Agent Pilot Host preview", () => {
     ).toEqual([]);
   });
 
-  it("Candidate Hook 漂移在启动 app-server 前即被拒绝", async () => {
+  it("Candidate Hook 兼容性 Artifact 漂移在预检前即被拒绝", async () => {
     const context = await createWaitingHostContext();
     const candidateFile = context.current.activation.candidateConfigFile;
     const candidateConfig = JSON.parse(await readFile(candidateFile, "utf8"));
     candidateConfig.hooks.PreToolUse[0].matcher = "^other$";
     await writeFile(candidateFile, `${JSON.stringify(candidateConfig, null, 2)}\n`, "utf8");
-    const inspectCodexHooks = vi.fn();
+    const probe = vi.fn();
 
     await expect(
       previewCodexAgentPilotHost(
@@ -166,15 +180,17 @@ describe("Codex Agent Pilot Host preview", () => {
           stateDigest: context.current.stateDigest,
           actorId: "human-actor",
         },
-        fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+        fixture.dependencies(context.harness.runEnvelope, {
+          probeCodexAppServerFileChangeApproval: probe,
+        }),
       ),
     ).rejects.toThrow("摘要");
-    expect(inspectCodexHooks).not.toHaveBeenCalled();
+    expect(probe).not.toHaveBeenCalled();
   });
 
   it("Host 预检严格绑定当前 stateDigest 与 Human actor", async () => {
     const context = await createWaitingHostContext();
-    const inspectCodexHooks = vi.fn();
+    const probe = vi.fn();
 
     await expect(
       previewCodexAgentPilotHost(
@@ -183,7 +199,9 @@ describe("Codex Agent Pilot Host preview", () => {
           stateDigest: "sha256:wrong",
           actorId: "human-actor",
         },
-        fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+        fixture.dependencies(context.harness.runEnvelope, {
+          probeCodexAppServerFileChangeApproval: probe,
+        }),
       ),
     ).rejects.toThrow("stateDigest");
     await expect(
@@ -193,16 +211,18 @@ describe("Codex Agent Pilot Host preview", () => {
           stateDigest: context.current.stateDigest,
           actorId: "other-human",
         },
-        fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+        fixture.dependencies(context.harness.runEnvelope, {
+          probeCodexAppServerFileChangeApproval: probe,
+        }),
       ),
     ).rejects.toThrow("actor");
-    expect(inspectCodexHooks).not.toHaveBeenCalled();
+    expect(probe).not.toHaveBeenCalled();
   });
 
-  it("目标文件摘要漂移在 inspectCodexHooks 之前被拒绝", async () => {
+  it("目标文件摘要漂移在本地预检前被拒绝", async () => {
     const context = await createWaitingHostContext();
     await writeFile(context.current.activation.targetFile, "漂移后的目标内容\n", "utf8");
-    const inspectCodexHooks = vi.fn();
+    const probe = vi.fn();
 
     await expect(
       previewCodexAgentPilotHost(
@@ -211,29 +231,19 @@ describe("Codex Agent Pilot Host preview", () => {
           stateDigest: context.current.stateDigest,
           actorId: "human-actor",
         },
-        fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+        fixture.dependencies(context.harness.runEnvelope, {
+          probeCodexAppServerFileChangeApproval: probe,
+        }),
       ),
     ).rejects.toThrow("摘要");
-    expect(inspectCodexHooks).not.toHaveBeenCalled();
+    expect(probe).not.toHaveBeenCalled();
   });
 
-  it("第一次 Hook 探测期间发生的目标漂移会阻止第二次 app-server 启动", async () => {
+  it("本地预检期间目标漂移会阻止审批包落盘", async () => {
     const context = await createWaitingHostContext();
-    const candidateConfig = JSON.parse(
-      await readFile(context.current.activation.candidateConfigFile, "utf8"),
-    );
-    let probeCount = 0;
-    const inspectCodexHooks = vi.fn(async (input) => {
-      probeCount += 1;
-      const probe = createHookProbe({
-        input,
-        candidateConfig,
-        trustStatus: "untrusted",
-      });
-      if (probeCount === 1) {
-        await writeFile(context.current.activation.targetFile, "探测期间漂移\n", "utf8");
-      }
-      return probe;
+    const probe = vi.fn(async () => {
+      await writeFile(context.current.activation.targetFile, "预检期间漂移\n", "utf8");
+      return createCodexAppServerPreflightFixture(context.current);
     });
 
     await expect(
@@ -243,10 +253,12 @@ describe("Codex Agent Pilot Host preview", () => {
           stateDigest: context.current.stateDigest,
           actorId: "human-actor",
         },
-        fixture.dependencies(context.harness.runEnvelope, { inspectCodexHooks }),
+        fixture.dependencies(context.harness.runEnvelope, {
+          probeCodexAppServerFileChangeApproval: probe,
+        }),
       ),
-    ).rejects.toThrow("目标文件快照摘要发生漂移");
-    expect(inspectCodexHooks).toHaveBeenCalledTimes(1);
+    ).rejects.toThrow("摘要");
+    expect(probe).toHaveBeenCalledOnce();
   });
 });
 
@@ -266,58 +278,5 @@ async function createWaitingHostContext() {
     stateDigest = next.stateDigest;
   }
   const current = (await readStateChain(prepared.paths.stateRoot)).at(-1);
-  await mkdir(current.activation.worktreeRoot, { recursive: true });
   return { prepared, current, harness };
-}
-
-function createHookProbe(input) {
-  const platformFamily = process.platform === "win32" ? "windows" : "unix";
-  const sourcePath =
-    platformFamily === "windows"
-      ? "C:\\<session-flags>\\config.toml"
-      : "/<session-flags>/config.toml";
-  const events = [
-    ["PreToolUse", "preToolUse", "pre_tool_use:0:0", "a"],
-    ["PostToolUse", "postToolUse", "post_tool_use:0:0", "b"],
-  ];
-  return {
-    initializeResult: {
-      codexHome: input.input.codexHome,
-      platformFamily,
-      platformOs: process.platform,
-      userAgent: "liushi-harness/0.145.0",
-    },
-    hooksListResponse: {
-      data: [
-        {
-          cwd: input.input.cwd,
-          hooks: events.map(([event, eventName, keySuffix, hash], index) => {
-            const group = input.candidateConfig.hooks[event][0];
-            const handler = group.hooks[0];
-            return {
-              key: `${sourcePath}:${keySuffix}`,
-              eventName,
-              handlerType: "command",
-              matcher: group.matcher,
-              command: platformFamily === "windows" ? handler.commandWindows : handler.command,
-              timeoutSec: handler.timeout,
-              statusMessage: handler.statusMessage,
-              additionalContextLimit: null,
-              sourcePath,
-              source: "sessionFlags",
-              pluginId: null,
-              displayOrder: index,
-              enabled: true,
-              isManaged: false,
-              currentHash: `sha256:${hash.repeat(64)}`,
-              trustStatus: input.trustStatus,
-            };
-          }),
-          warnings: [],
-          errors: [],
-        },
-      ],
-    },
-    stderr: "",
-  };
 }

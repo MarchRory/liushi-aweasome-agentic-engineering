@@ -78,17 +78,32 @@ describe("Codex Agent Pilot state machine", () => {
           digest: final.activation.targetDigest,
         },
       },
+      execution: {
+        mode: "codex_app_server_file_change_approval.v1",
+        modelProvider: "liushi_restricted_openai",
+        modelLaunchLimit: 1,
+        reconnectAttempts: 0,
+        nativeHookControl: {
+          status: "unavailable",
+          enforcement: false,
+        },
+      },
       permissions: {
-        sandbox: "workspace-write",
-        approvalPolicy: "never",
-        ignoreUserConfig: true,
-        allowedTools: ["apply_patch"],
+        profile: ":read-only",
+        approvalPolicy: "on-request",
+        userConfigLoaded: false,
+        projectInstructionsLoaded: false,
+        allowedMutationSurfaces: ["fileChange"],
+        allowedFileChangeKinds: ["update"],
+        fileChangeDecision: "accept",
         runtimeOverrides: expect.any(Array),
       },
       host: {
         codexExecutable: { version: "codex-cli 0.145.0" },
         launchExecuted: false,
         trustWritten: false,
+        hookBound: false,
+        fileChangeApprovalBound: false,
       },
     });
     expect(final.activation.hostPacket.agentPrompt.targetDigest).toBe(

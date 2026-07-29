@@ -35,21 +35,14 @@ export async function readValidatedCodexHostApprovalPacket(input) {
     throw new Error("Host Approval Packet 摘要或状态绑定无效。");
   }
 
-  const sessionFlags = requireRecord(packet.hooks?.sessionFlags, "Host SessionFlags");
-  if (
-    !Array.isArray(sessionFlags.declarationOverrides) ||
-    !Array.isArray(packet.hooks?.discovered) ||
-    typeof sessionFlags.trustOverride !== "string"
-  ) {
-    throw new Error("Host Approval Packet 缺少 SessionFlags 或 Hook Evidence。");
-  }
   const expectedPacket = createCodexHostApprovalPacket({
     state: input.packetState,
     artifacts: input.artifacts,
     worktreeIdentity: input.worktreeIdentity,
-    hookDeclarationOverrides: sessionFlags.declarationOverrides,
-    hookTrustOverride: sessionFlags.trustOverride,
-    trustedHooks: packet.hooks.discovered,
+    preflightEvidence: requireRecord(
+      packet.preflight?.evidence,
+      "Codex App Server Preflight Evidence",
+    ),
   });
   if (
     expectedPacket.packetDigest !== packetDigest ||

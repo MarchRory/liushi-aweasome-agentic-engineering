@@ -5,12 +5,18 @@ import { createCodexAgentPrompt } from "../../activation/prompt/index.mjs";
 import { validateSessionActivationManifest } from "../../activation/validation/index.mjs";
 import {
   AGENT_PROMPT_NAME,
-  APPROVAL_POLICY,
   CANDIDATE_CONFIG_NAME,
-  CODEX_ALLOWED_AGENT_TOOLS,
+  CODEX_AGENT_EXECUTION_MODE,
+  CODEX_ALLOWED_FILE_CHANGE_KINDS,
+  CODEX_ALLOWED_MUTATION_SURFACES,
+  CODEX_APPROVAL_POLICY,
+  CODEX_FILE_CHANGE_DECISION,
+  CODEX_MODEL_LAUNCH_LIMIT,
+  CODEX_MODEL_PROVIDER_ID,
+  CODEX_NATIVE_HOOK_STATUS,
+  CODEX_PERMISSION_PROFILE,
   CODEX_RESTRICTED_RUNTIME_OVERRIDES,
   HOST_PACKET_NAME,
-  PERMISSION_MODE,
   REASONING_EFFORT,
   SOTA_MODEL_ID,
   STATE_STATUS,
@@ -133,12 +139,26 @@ function validatePreliminaryHostPacket(input) {
     packet.model?.id !== SOTA_MODEL_ID ||
     packet.model?.id !== input.state.model ||
     packet.model?.reasoningEffort !== REASONING_EFFORT ||
-    packet.permissions?.sandbox !== PERMISSION_MODE ||
-    packet.permissions?.approvalPolicy !== APPROVAL_POLICY ||
-    packet.permissions?.ignoreUserConfig !== true ||
-    packet.permissions?.ignoreRules !== true ||
+    packet.execution?.mode !== CODEX_AGENT_EXECUTION_MODE.AppServerFileChangeApproval ||
+    packet.execution?.modelProvider !== CODEX_MODEL_PROVIDER_ID ||
+    packet.execution?.modelLaunchLimit !== CODEX_MODEL_LAUNCH_LIMIT ||
+    packet.execution?.reconnectAttempts !== 0 ||
+    packet.execution?.nativeHookControl?.status !== CODEX_NATIVE_HOOK_STATUS.Unavailable ||
+    packet.execution?.nativeHookControl?.enforcement !== false ||
+    packet.permissions?.profile !== CODEX_PERMISSION_PROFILE.ReadOnly ||
+    packet.permissions?.approvalPolicy !== CODEX_APPROVAL_POLICY.OnRequest ||
+    packet.permissions?.userConfigLoaded !== false ||
+    packet.permissions?.projectInstructionsLoaded !== false ||
     packet.permissions?.ephemeral !== true ||
-    !equalStringArrays(packet.permissions?.allowedTools, CODEX_ALLOWED_AGENT_TOOLS) ||
+    !equalStringArrays(
+      packet.permissions?.allowedMutationSurfaces,
+      CODEX_ALLOWED_MUTATION_SURFACES,
+    ) ||
+    !equalStringArrays(
+      packet.permissions?.allowedFileChangeKinds,
+      CODEX_ALLOWED_FILE_CHANGE_KINDS,
+    ) ||
+    packet.permissions?.fileChangeDecision !== CODEX_FILE_CHANGE_DECISION.Accept ||
     !equalStringArrays(packet.permissions?.runtimeOverrides, CODEX_RESTRICTED_RUNTIME_OVERRIDES) ||
     resolve(packet.paths?.worktreeRoot) !== resolve(input.worktreeRoot) ||
     resolve(packet.paths?.candidateConfigFile) !==
@@ -150,6 +170,8 @@ function validatePreliminaryHostPacket(input) {
     packet.candidateHooks?.digest !== input.state.activation.candidateConfigDigest ||
     packet.candidateHooks?.writesExecuted !== false ||
     packet.candidateHooks?.trustBypassAllowed !== false ||
+    packet.candidateHooks?.enforcement !== false ||
+    packet.candidateHooks?.compatibilityOnly !== true ||
     packet.agentPrompt?.digest !== input.state.activation.promptDigest ||
     packet.agentPrompt?.targetDigest !== input.state.activation.targetDigest ||
     packet.host?.codexExecutable?.digest !== input.state.identities.codex.digest ||
@@ -158,7 +180,8 @@ function validatePreliminaryHostPacket(input) {
     packet.host?.codexHomeSource !== input.state.codex.homeSource ||
     packet.host?.launchExecuted !== false ||
     packet.host?.trustWritten !== false ||
-    packet.host?.hookBound !== false
+    packet.host?.hookBound !== false ||
+    packet.host?.fileChangeApprovalBound !== false
   ) {
     throw new Error("Preliminary Host Activation Packet 未精确绑定当前状态。");
   }

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CODEX_DISABLED_AGENT_FEATURES,
+  CODEX_MODEL_PROVIDER_ID,
+} from "../../../scripts/codexAgentPilot/constants/index.mjs";
+import {
   createCodexAgentArguments,
+  createCodexAgentAppServerArguments,
   createCodexAppServerArguments,
   createHookDeclarationOverrides,
   createHookTrustOverride,
@@ -42,17 +47,48 @@ const candidateConfig = {
 };
 
 describe("Codex SessionFlags", () => {
-  it("精确固定 apply_patch-only runtime overrides，并注入两类启动参数", () => {
+  it("精确固定受限 runtime overrides，并注入两类启动参数", () => {
     const runtimeOverrides = createCodexRuntimeOverrides();
 
+    expect(CODEX_DISABLED_AGENT_FEATURES).toEqual([
+      "apps",
+      "artifact",
+      "auth_elicitation",
+      "browser_use",
+      "browser_use_external",
+      "browser_use_full_cdp_access",
+      "code_mode",
+      "code_mode_buffered_exec",
+      "code_mode_host",
+      "code_mode_only",
+      "computer_use",
+      "deferred_executor",
+      "enable_mcp_apps",
+      "executor_capability_discovery",
+      "goals",
+      "image_generation",
+      "in_app_browser",
+      "memories",
+      "multi_agent",
+      "multi_agent_v2",
+      "plugin_sharing",
+      "plugins",
+      "remote_plugin",
+      "request_permissions_tool",
+      "shell_tool",
+      "skill_mcp_dependency_install",
+      "skill_search",
+      "standalone_web_search",
+      "tool_call_mcp_elicitation",
+      "tool_suggest",
+      "unified_exec",
+      "workspace_dependencies",
+    ]);
     expect(runtimeOverrides).toEqual([
-      "features.shell_tool=false",
-      "features.unified_exec=false",
-      "features.apps=false",
-      "features.multi_agent=false",
-      "features.remote_plugin=false",
-      "features.skill_mcp_dependency_install=false",
+      ...CODEX_DISABLED_AGENT_FEATURES.map((feature) => `features.${feature}=false`),
       'web_search="disabled"',
+      "project_doc_max_bytes=0",
+      'cli_auth_credentials_store="file"',
     ]);
     expect(createCodexAppServerArguments([])).toEqual([
       ...runtimeOverrides.flatMap((override) => ["-c", override]),
@@ -73,6 +109,23 @@ describe("Codex SessionFlags", () => {
     expect(
       agentArguments.slice(strictConfigIndex - runtimeArguments.length, strictConfigIndex),
     ).toEqual(runtimeArguments);
+  });
+
+  it("生产 app-server 固定使用无 WebSocket provider 与 strict config", () => {
+    const args = createCodexAgentAppServerArguments();
+    const provider = args.find(
+      (argument) =>
+        typeof argument === "string" &&
+        argument.startsWith(`model_providers.${CODEX_MODEL_PROVIDER_ID}=`),
+    );
+
+    expect(args).toContain(`model_provider="${CODEX_MODEL_PROVIDER_ID}"`);
+    expect(provider).toContain('name="OpenAI"');
+    expect(provider).toContain("requires_openai_auth=true");
+    expect(provider).toContain("supports_websockets=false");
+    expect(provider).not.toContain("base_url");
+    expect(args.slice(-3)).toEqual(["--strict-config", "app-server", "--stdio"]);
+    expect(args).not.toContain("--dangerously-bypass-approvals-and-sandbox");
   });
 
   it("将固定 Hook 声明确定性编码为 TOML CLI override", () => {
@@ -169,6 +222,7 @@ describe("Codex SessionFlags", () => {
     expect(args).toContain("gpt-5.6-sol");
     expect(args).not.toContain("--dangerously-bypass-hook-trust");
     expect(args).not.toContain("--dangerously-bypass-approvals-and-sandbox");
+    expect(args.indexOf("--ask-for-approval")).toBeLessThan(args.indexOf("exec"));
     expect(args.at(-1)).toBe("-");
   });
 });

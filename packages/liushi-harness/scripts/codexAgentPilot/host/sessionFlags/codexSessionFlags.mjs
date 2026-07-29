@@ -1,6 +1,8 @@
 import {
   CODEX_HOOK_EVENTS,
   CODEX_HOOK_FEATURE_OVERRIDE,
+  CODEX_MODEL_PROVIDER,
+  CODEX_MODEL_PROVIDER_ID,
   CODEX_RESTRICTED_RUNTIME_OVERRIDES,
   REASONING_EFFORT,
 } from "../../constants/index.mjs";
@@ -61,6 +63,18 @@ export function createCodexAppServerArguments(configOverrides) {
   ];
 }
 
+export function createCodexAgentAppServerArguments() {
+  const providerOverride = `model_providers.${CODEX_MODEL_PROVIDER_ID}=${serializeTomlValue(
+    CODEX_MODEL_PROVIDER,
+  )}`;
+  return createCodexAppServerArguments([
+    `model_provider=${serializeTomlValue(CODEX_MODEL_PROVIDER_ID)}`,
+    providerOverride,
+    `model_reasoning_effort=${serializeTomlValue(REASONING_EFFORT)}`,
+  ]);
+}
+
+// 仅保留给旧版 exec 合同测试；生产 Pilot 不再通过该入口启动 Agent。
 export function createCodexAgentArguments(input) {
   const configOverrides = [
     ...input.hookDeclarationOverrides,
@@ -70,6 +84,8 @@ export function createCodexAgentArguments(input) {
   return [
     ...createConfigArguments(appendRestrictedRuntimeOverrides(configOverrides)),
     "--strict-config",
+    "--ask-for-approval",
+    input.approvalPolicy,
     "exec",
     "--ephemeral",
     "--ignore-user-config",
@@ -83,8 +99,6 @@ export function createCodexAgentArguments(input) {
     input.model,
     "--sandbox",
     input.sandbox,
-    "--ask-for-approval",
-    input.approvalPolicy,
     "-",
   ];
 }

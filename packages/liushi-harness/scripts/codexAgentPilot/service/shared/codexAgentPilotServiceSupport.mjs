@@ -8,6 +8,8 @@ import {
   CONSUMER_DIRECTORY,
   CONTROL_DIRECTORY,
   GATES,
+  HOST_APPROVAL_DECISION,
+  HOST_APPROVAL_RECORD_SCHEMA_VERSION,
   HOST_PREFLIGHT_PROCESS_COUNT,
   REPOSITORY_DIRECTORY,
   REPOSITORY_ID,
@@ -17,7 +19,7 @@ import {
   STATE_STATUS,
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
-import { listCodexSessionHooks } from "../../host/index.mjs";
+import { probeCodexAppServerFileChangeApproval } from "../../host/index.mjs";
 import { readInstalledManifest } from "../../project/index.mjs";
 import { appendDerivedState } from "../../state/index.mjs";
 import { rejectLink } from "../../validation/index.mjs";
@@ -28,7 +30,7 @@ const defaultDependencies = Object.freeze({
   calculateFileDigest,
   runGit,
   readCodexVersion,
-  inspectCodexHooks: listCodexSessionHooks,
+  probeCodexAppServerFileChangeApproval,
   appendDerivedState,
   now: () => new Date().toISOString(),
 });
@@ -224,6 +226,42 @@ export function validatePendingHostApprovalPilotState(state, paths) {
   }
 }
 
+export function validateHostApprovedPilotState(state, paths) {
+  const approval = state.hostApproval;
+  const { approvalDigest, ...approvalBody } =
+    approval !== null && typeof approval === "object" && !Array.isArray(approval) ? approval : {};
+  if (
+    state.status !== STATE_STATUS.HostApproved ||
+    state.gate !== null ||
+    state.pendingDecisionRequest !== null ||
+    state.paths?.root !== paths.root ||
+    state.pendingHostApproval?.approved !== true ||
+    state.pendingHostApproval?.approvalDigest !== approvalDigest ||
+    state.pendingHostApproval?.packetDigest !== approvalBody.packetDigest ||
+    state.hostPreview?.packetDigest !== approvalBody.packetDigest ||
+    approvalBody.schemaVersion !== HOST_APPROVAL_RECORD_SCHEMA_VERSION ||
+    approvalBody.decision !== HOST_APPROVAL_DECISION.Approved ||
+    approvalBody.sourceStateDigest !== state.previousStateDigest ||
+    approvalBody.activationDigest !== state.activation?.activationDigest ||
+    approvalBody.actor?.kind !== "human" ||
+    approvalBody.actor?.actorId !== state.actor?.humanActorId ||
+    !isCanonicalIsoTimestamp(approvalBody.approvedAt) ||
+    approvalBody.freshLaunchValidationRequired !== true ||
+    calculateDigest(approvalBody) !== approvalDigest ||
+    state.transition?.kind !== "host_approval" ||
+    state.transition?.sourceStateDigest !== approvalBody.sourceStateDigest ||
+    state.transition?.packetDigest !== approvalBody.packetDigest ||
+    state.transition?.actorId !== approvalBody.actor.actorId ||
+    state.transition?.approvalDigest !== approvalDigest ||
+    state.effects?.activationExecuted !== true ||
+    state.effects?.hostPreflightProcesses !== HOST_PREFLIGHT_PROCESS_COUNT ||
+    state.effects?.hookWrites !== 0 ||
+    state.effects?.modelLaunches !== 0
+  ) {
+    throw new Error("当前状态不是可启动 Agent 的 Host Approved 状态。");
+  }
+}
+
 export function capturePilotWorktreeIdentity(worktreeRoot, runGitCommand) {
   return captureRepositoryIdentity(worktreeRoot, runGitCommand);
 }
@@ -326,5 +364,13 @@ function resolveInstalledCliEntrypoint(consumerRoot) {
     "bootstrap",
     "cli",
     "cliEntrypoint.js",
+  );
+}
+
+function isCanonicalIsoTimestamp(value) {
+  return (
+    typeof value === "string" &&
+    !Number.isNaN(Date.parse(value)) &&
+    new Date(value).toISOString() === value
   );
 }

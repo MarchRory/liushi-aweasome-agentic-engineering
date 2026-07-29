@@ -3,6 +3,7 @@ const COMMANDS = Object.freeze({
   approve: "approve",
   previewHost: "preview-host",
   approveHost: "approve-host",
+  runAgent: "run-agent",
 });
 const OPTION_NAMES = Object.freeze({
   root: "--root",
@@ -16,11 +17,11 @@ const OPTION_NAMES = Object.freeze({
 
 export function parsePilotCli(argv) {
   if (!Array.isArray(argv) || argv.length === 0) {
-    throw new Error("必须指定 prepare、approve、preview-host 或 approve-host。");
+    throw new Error("必须指定 prepare、approve、preview-host、approve-host 或 run-agent。");
   }
   const command = argv[0];
   if (!Object.values(COMMANDS).includes(command)) {
-    throw new Error("只支持 prepare、approve、preview-host 或 approve-host。");
+    throw new Error("只支持 prepare、approve、preview-host、approve-host 或 run-agent。");
   }
   const values = new Map();
   for (let index = 1; index < argv.length; index += 1) {
@@ -52,7 +53,7 @@ export function parsePilotCli(argv) {
         }
       : {
           stateDigest: values.get(OPTION_NAMES.stateDigest),
-          ...(command === COMMANDS.approveHost
+          ...([COMMANDS.approveHost, COMMANDS.runAgent].includes(command)
             ? { packetDigest: values.get(OPTION_NAMES.packetDigest) }
             : {}),
         }),
@@ -72,6 +73,8 @@ function requiredOptions(command) {
     ];
   }
   const options = [OPTION_NAMES.root, OPTION_NAMES.stateDigest, OPTION_NAMES.actorId];
-  if (command === COMMANDS.approveHost) options.push(OPTION_NAMES.packetDigest);
+  if ([COMMANDS.approveHost, COMMANDS.runAgent].includes(command)) {
+    options.push(OPTION_NAMES.packetDigest);
+  }
   return options;
 }

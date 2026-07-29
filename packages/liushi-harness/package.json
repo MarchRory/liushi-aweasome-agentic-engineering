@@ -83,6 +83,7 @@
     "pilot:codex-agent:approve": "node scripts/codexAgentPilot/index.mjs approve",
     "pilot:codex-agent:preview-host": "node scripts/codexAgentPilot/index.mjs preview-host",
     "pilot:codex-agent:approve-host": "node scripts/codexAgentPilot/index.mjs approve-host",
+    "pilot:codex-agent:run": "node scripts/codexAgentPilot/index.mjs run-agent",
     "typecheck": "tsc --noEmit",
     "typecheck:ts6": "tsc6 --noEmit"
   },
