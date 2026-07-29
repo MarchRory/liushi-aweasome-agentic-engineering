@@ -211,18 +211,14 @@ describe("Codex Agent Runtime isolation", () => {
       sid: "S-1-5-21-111-222-333-1001",
     });
     expect(parseWindowsUserSid('"USER","S-1-5-21-1-2-3-4"')).toBe("S-1-5-21-1-2-3-4");
-    expect(runProcess).toHaveBeenNthCalledWith(
-      2,
-      "icacls.exe",
-      expect.arrayContaining([
-        "C:\\runtime",
-        "/inheritance:r",
-        "/grant:r",
-        "S-1-5-21-111-222-333-1001:(OI)(CI)F",
-        "SYSTEM:(OI)(CI)F",
-        "/T",
-      ]),
-    );
+    expect(runProcess).toHaveBeenNthCalledWith(2, "icacls.exe", [
+      "C:\\runtime",
+      "/inheritance:r",
+      "/grant:r",
+      "*S-1-5-21-111-222-333-1001:(OI)(CI)F",
+      "SYSTEM:(OI)(CI)F",
+      "/T",
+    ]);
     expect(() =>
       parseWindowsUserSid('"USER","S-1-5-21-1-2-3-4"\n"OTHER","S-1-5-21-5-6-7-8"'),
     ).toThrow();

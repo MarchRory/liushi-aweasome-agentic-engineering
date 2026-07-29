@@ -8,7 +8,7 @@ export async function secureWindowsRuntimeDirectory(root, overrides = {}) {
     root,
     "/inheritance:r",
     "/grant:r",
-    `${sid}:(OI)(CI)F`,
+    `*${sid}:(OI)(CI)F`,
     "SYSTEM:(OI)(CI)F",
     "/T",
   ]);
