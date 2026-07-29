@@ -109,6 +109,19 @@ export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "2.0.0";
 export const CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION =
   "coding-task.session.activate.v1";
 export const PILOT_VERIFICATION_KIND = "custom";
+export const PILOT_VERIFICATION_CHECK_ID = Object.freeze({
+  Test: "public-project.test",
+  Typecheck: "public-project.typecheck",
+});
+export const PILOT_PACKAGE_SCRIPT = Object.freeze({
+  Test: "test",
+  Typecheck: "test:types",
+});
+export const PILOT_VALIDATOR_ID = Object.freeze({
+  NodeProcessExitZero: "node.process.exit-zero",
+  PackageScriptTest: "package_script.test",
+  TypeScriptTypecheck: "typescript.typecheck",
+});
 export const HOST_APPROVAL_SCHEMA_VERSION = "liushi.codex-agent-pilot.host-approval.v2";
 export const CODEX_APP_SERVER_PREFLIGHT_SCHEMA_VERSION =
   "liushi.codex-agent-pilot.app-server-preflight.v2";

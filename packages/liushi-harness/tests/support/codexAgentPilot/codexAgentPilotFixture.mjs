@@ -220,7 +220,18 @@ function createScanReport() {
     repositoryRevision,
     roleHint: "application",
     digest: calculateDigest("candidate"),
-    ruleCandidates: [{ ruleId: "rule-1" }],
+    ruleCandidates: [
+      {
+        ruleId: "rule-test",
+        enforcement: "blocking",
+        validatorIds: ["package_script.test"],
+      },
+      {
+        ruleId: "rule-typecheck",
+        enforcement: "blocking",
+        validatorIds: ["typescript.typecheck"],
+      },
+    ],
     mechanismCandidates: [{ candidateId: "mechanism-1" }],
   };
   return {

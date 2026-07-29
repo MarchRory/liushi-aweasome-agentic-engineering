@@ -1,6 +1,9 @@
 import {
   ARTIFACT_TYPES,
   PACKAGE_MANAGER,
+  PILOT_PACKAGE_SCRIPT,
+  PILOT_VALIDATOR_ID,
+  PILOT_VERIFICATION_CHECK_ID,
   PILOT_VERIFICATION_KIND,
   PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION,
   REPOSITORY_ID,
@@ -38,19 +41,40 @@ export function createProjectProfileProposal(report) {
           rejectedMechanismCandidateIds: [],
           verificationChecks: [
             {
-              checkId: "public-project.test",
+              checkId: PILOT_VERIFICATION_CHECK_ID.Test,
               kind: PILOT_VERIFICATION_KIND,
               requirement: "required",
               command: {
                 executable: command.executable,
-                args: [...command.args, PACKAGE_MANAGER, "test"],
+                args: [...command.args, PACKAGE_MANAGER, PILOT_PACKAGE_SCRIPT.Test],
                 workingDirectory: "",
                 allowedEnvironmentKeys: ["CI", "PATH"],
               },
               timeoutMs: 300000,
               retryable: false,
               selectionMode: "always",
-              validatorIds: ["node.process.exit-zero"],
+              validatorIds: [
+                PILOT_VALIDATOR_ID.NodeProcessExitZero,
+                PILOT_VALIDATOR_ID.PackageScriptTest,
+              ],
+            },
+            {
+              checkId: PILOT_VERIFICATION_CHECK_ID.Typecheck,
+              kind: PILOT_VERIFICATION_KIND,
+              requirement: "required",
+              command: {
+                executable: command.executable,
+                args: [...command.args, PACKAGE_MANAGER, PILOT_PACKAGE_SCRIPT.Typecheck],
+                workingDirectory: "",
+                allowedEnvironmentKeys: ["CI", "PATH"],
+              },
+              timeoutMs: 300000,
+              retryable: false,
+              selectionMode: "always",
+              validatorIds: [
+                PILOT_VALIDATOR_ID.NodeProcessExitZero,
+                PILOT_VALIDATOR_ID.TypeScriptTypecheck,
+              ],
             },
           ],
         },

@@ -42,11 +42,8 @@ afterEach(async () => {
 describe("Codex Agent Pilot security bindings", () => {
   it("所有 Pilot Proposal 均与核心 Schema 和真实解析器保持一致", async () => {
     fixture = await createCodexAgentPilotFixture();
-    const proposals = [
-      createProjectProfileProposal(fixture.report),
-      createRequirementProposal(),
-      createPlanRiskProposal(),
-    ];
+    const profileProposal = createProjectProfileProposal(fixture.report);
+    const proposals = [profileProposal, createRequirementProposal(), createPlanRiskProposal()];
     const planProposal = proposals.at(-1);
 
     expect(PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION).toBe(CORE_PROFILE_PROPOSAL_SCHEMA_VERSION);
@@ -68,6 +65,25 @@ describe("Codex Agent Pilot security bindings", () => {
       ].sort(),
     );
     expect(planProposal.payload).not.toHaveProperty("bindings");
+
+    const checks = profileProposal.payload.repositorySelections[0].verificationChecks;
+    const testCheck = checks.find((check) => check.checkId === "public-project.test");
+    const typecheckCheck = checks.find((check) => check.checkId === "public-project.typecheck");
+    expect(testCheck).toMatchObject({
+      command: { args: expect.arrayContaining(["pnpm@10.33.4", "test"]) },
+      validatorIds: ["node.process.exit-zero", "package_script.test"],
+    });
+    expect(typecheckCheck).toMatchObject({
+      command: { args: expect.arrayContaining(["pnpm@10.33.4", "test:types"]) },
+      validatorIds: ["node.process.exit-zero", "typescript.typecheck"],
+    });
+    const mappedValidatorIds = new Set(checks.flatMap((check) => check.validatorIds));
+    const blockingValidatorIds = fixture.report.profileCandidates[0].ruleCandidates
+      .filter((rule) => rule.enforcement === "blocking")
+      .flatMap((rule) => rule.validatorIds);
+    expect(blockingValidatorIds.every((validatorId) => mappedValidatorIds.has(validatorId))).toBe(
+      true,
+    );
   });
 
   it("拒绝非固定 SOTA 顶层模型，且不创建 Pilot Root", async () => {
