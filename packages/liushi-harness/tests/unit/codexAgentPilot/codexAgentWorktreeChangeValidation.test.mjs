@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { calculateTextDigest } from "../../../scripts/codexAgentPilot/digest/index.mjs";
 import { inspectCodexAgentWorktreeChange } from "../../../scripts/codexAgentPilot/service/agentRun/validation/index.mjs";
+import { createPilotDependencies } from "../../../scripts/codexAgentPilot/service/shared/index.mjs";
 
 const revision = "82632b66f5914e9946edce300e10633a3d5c0cb7";
 let root;
@@ -26,6 +27,28 @@ describe("Codex Agent worktree change validation", () => {
     expect(result).toMatchObject({
       inspected: true,
       revision,
+      statusLines: [" M test/utils.test.ts"],
+      changedPaths: ["test/utils.test.ts"],
+      valid: true,
+    });
+  });
+
+  it("默认 Git runner 保留 porcelain 状态的前导空格", async () => {
+    const fixture = await createFixture({ keepInitialSource: true });
+    const runGit = createPilotDependencies().runGit;
+    runGit(root, ["init", "--quiet"]);
+    runGit(root, ["config", "user.name", "liushi-harness"]);
+    runGit(root, ["config", "user.email", "liushi-harness@example.invalid"]);
+    runGit(root, ["add", "test/utils.test.ts"]);
+    runGit(root, ["commit", "--quiet", "-m", "test fixture"]);
+    await writeFile(fixture.targetFile, "changed\n", "utf8");
+
+    const result = await inspectCodexAgentWorktreeChange({
+      ...fixture,
+      runGit: (cwd, args) => (args[0] === "rev-parse" ? revision : runGit(cwd, args)),
+    });
+
+    expect(result).toMatchObject({
       statusLines: [" M test/utils.test.ts"],
       changedPaths: ["test/utils.test.ts"],
       valid: true,

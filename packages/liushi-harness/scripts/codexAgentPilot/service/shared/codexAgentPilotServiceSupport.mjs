@@ -337,7 +337,7 @@ function runGit(cwd, args) {
     cwd,
     timeout: 60000,
     maxBuffer: 1024 * 1024,
-  }).stdout.trim();
+  }).stdout.trimEnd();
 }
 
 function readCodexVersion(executable) {
