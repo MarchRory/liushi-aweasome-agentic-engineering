@@ -106,6 +106,8 @@ export const REQUIREMENT_PROPOSAL_NAME = "requirementContract.json";
 export const PLAN_RISK_PROPOSAL_FILE_STEM = "planRisk";
 export const REASONING_EFFORT = "medium";
 export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "2.0.0";
+export const CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION =
+  "coding-task.session.activate.v1";
 export const PILOT_VERIFICATION_KIND = "custom";
 export const HOST_APPROVAL_SCHEMA_VERSION = "liushi.codex-agent-pilot.host-approval.v2";
 export const CODEX_APP_SERVER_PREFLIGHT_SCHEMA_VERSION =

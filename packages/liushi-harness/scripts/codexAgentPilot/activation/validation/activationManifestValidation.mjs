@@ -1,8 +1,11 @@
-import { AGENT_ACTOR_ID, COMMAND_TYPES } from "../../constants/index.mjs";
+import {
+  AGENT_ACTOR_ID,
+  CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION,
+  COMMAND_TYPES,
+} from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
 import { createSessionActivationPayloads } from "../manifest/index.mjs";
 
-const ACTIVATION_SCHEMA_VERSION = "coding-task.session.activation.v1";
 const COMMAND_SCHEMA_VERSION = "1.0.0";
 const AGGREGATE_TYPE = "coding_task";
 const IDENTIFIER_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
@@ -22,7 +25,7 @@ export function validateSessionActivationManifest(manifest, input) {
     actionId,
   });
   const expected = {
-    schemaVersion: ACTIVATION_SCHEMA_VERSION,
+    schemaVersion: CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION,
     sessionId: requireIdentifier(manifest.sessionId, "Session ID"),
     createCommand: createExpectedCommand({
       actual: createCommand,

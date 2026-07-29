@@ -31,6 +31,7 @@ import {
   FORBIDDEN_ACTIONS,
   CODEX_HOOK_TIMEOUT_SECONDS,
   CODEX_RESTRICTED_RUNTIME_OVERRIDES,
+  CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION,
 } from "../constants/index.mjs";
 import { calculateDigest, calculateTextDigest } from "../digest/index.mjs";
 import {
@@ -80,7 +81,7 @@ export function createSessionActivationManifest(input) {
     payload: startPayload,
   });
   return {
-    schemaVersion: "coding-task.session.activation.v1",
+    schemaVersion: CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION,
     sessionId,
     createCommand,
     provision: { command: provisionCommand, runtime: { repositoryRoot: input.repositoryRoot } },
