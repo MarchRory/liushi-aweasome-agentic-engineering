@@ -54,6 +54,7 @@ describe("Codex Agent Pilot state machine", () => {
       );
       currentDigest = next.stateDigest;
       expect(next.approvals.at(-1).decision).toBe("approved");
+      expect(next.effects.approvalCount).toBe(next.approvals.length);
       if (expectedGate !== "G4") {
         expect(next.pendingDecisionRequest.gate).toBe(expectedGate === "G8" ? "G1" : "G4");
       }
@@ -201,6 +202,7 @@ describe("Codex Agent Pilot state machine", () => {
     const planFiles = controlFiles.filter((file) => /^planRisk\.[0-9a-f]{64}\.json$/u.test(file));
 
     expect(recovered.pendingDecisionRequest.gate).toBe("G4");
+    expect(recovered.effects.approvalCount).toBe(2);
     expect(basename(recovered.proposal.file)).toBe(planFiles[0]);
     expect(planFiles).toHaveLength(1);
     expect(await readFile(legacyFile, "utf8")).toBe(legacyContent);

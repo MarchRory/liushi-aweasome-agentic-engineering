@@ -93,6 +93,10 @@ export async function approveCodexAgentPilot(input, overrides = {}) {
     approvals: [...current.approvals, approval],
     gateEvaluations: [...current.gateEvaluations, gateEvaluation],
     pendingDecisionRequest: null,
+    effects: {
+      ...current.effects,
+      approvalCount: current.approvals.length + 1,
+    },
     transition: {
       kind: "approval",
       sourceStateDigest: current.stateDigest,
