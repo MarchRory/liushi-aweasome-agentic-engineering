@@ -15,6 +15,7 @@ import {
   REPOSITORY_ID,
   REPOSITORY_REVISION,
   RUNTIME_DIRECTORY,
+  WORKTREE_RELATIVE_PATH,
   WRITE_SET,
   STATE_STATUS,
 } from "../../constants/index.mjs";
@@ -113,7 +114,11 @@ export async function capturePilotIdentities(input) {
 }
 
 export async function capturePilotIdentitiesFromState(state, dependencies) {
-  const repository = captureRepositoryIdentity(state.paths.repositoryRoot, dependencies.runGit);
+  const repository = captureRepositoryIdentity(
+    state.paths.repositoryRoot,
+    dependencies.runGit,
+    WORKTREE_RELATIVE_PATH,
+  );
   const manifest = await readInstalledManifest(state.paths.consumerRoot);
   const cliEntrypoint = resolveInstalledCliEntrypoint(state.paths.consumerRoot);
   return {
@@ -343,14 +348,14 @@ function readCodexVersion(executable) {
   return requirePilotString(version, "Codex version");
 }
 
-function captureRepositoryIdentity(repositoryRoot, runGitCommand) {
+function captureRepositoryIdentity(repositoryRoot, runGitCommand, excludedPath) {
   const revision = runGitCommand(repositoryRoot, ["rev-parse", "HEAD"]);
   if (revision !== REPOSITORY_REVISION) throw new Error("固定仓库 revision 不匹配。");
-  const status = runGitCommand(repositoryRoot, [
-    "status",
-    "--porcelain=v1",
-    "--untracked-files=all",
-  ]);
+  const statusArguments = ["status", "--porcelain=v1", "--untracked-files=all"];
+  if (excludedPath !== undefined) {
+    statusArguments.push("--", ".", `:(exclude)${excludedPath}`);
+  }
+  const status = runGitCommand(repositoryRoot, statusArguments);
   if (status !== "") throw new Error("固定仓库工作区必须保持 clean。");
   return { root: repositoryRoot, revision, clean: true };
 }

@@ -140,6 +140,35 @@ describe("Codex Agent Pilot Host preview", () => {
     expect(CODEX_RESTRICTED_RUNTIME_OVERRIDES).toContain('cli_auth_credentials_store="file"');
   });
 
+  it("主仓身份检查只排除精确受管 Worktree 路径", async () => {
+    const context = await createWaitingHostContext();
+    const repositoryStatusCalls = [];
+    const runGit = (cwd, args) => {
+      if (args[0] !== "status") return context.current.fixedProject.revision;
+      if (cwd !== context.current.paths.repositoryRoot) return "";
+      repositoryStatusCalls.push(args);
+      return args.includes(":(exclude)worktrees/codex-agent-pilot") ? "" : "?? worktrees/";
+    };
+
+    await previewCodexAgentPilotHost(
+      {
+        root: fixture.input.root,
+        stateDigest: context.current.stateDigest,
+        actorId: "human-actor",
+      },
+      fixture.dependencies(context.harness.runEnvelope, {
+        runGit,
+        probeCodexAppServerFileChangeApproval: async () =>
+          createCodexAppServerPreflightFixture(context.current),
+      }),
+    );
+
+    expect(repositoryStatusCalls).toHaveLength(2);
+    expect(
+      repositoryStatusCalls.every((args) => args.includes(":(exclude)worktrees/codex-agent-pilot")),
+    ).toBe(true);
+  });
+
   it("预检证据不匹配固定 Codex identity 时 fail closed", async () => {
     const context = await createWaitingHostContext();
     const evidence = createCodexAppServerPreflightFixture(context.current);
