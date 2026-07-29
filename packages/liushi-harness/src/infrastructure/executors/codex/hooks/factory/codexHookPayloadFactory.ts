@@ -120,7 +120,7 @@ export function createCodexBasePayload(
   const common = {
     hookExecutionId: deriveCodexKey(invocationScopeId, input.hook_event_name),
     executor: "codex",
-    sessionId: binding.schemaVersion === "2.0.0" ? binding.sessionId : input.session_id,
+    sessionId: input.session_id,
     turnId: input.turn_id,
     workspaceId: identity.workspaceId,
     taskId: identity.taskId,

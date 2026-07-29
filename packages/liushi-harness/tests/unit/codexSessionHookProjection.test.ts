@@ -58,7 +58,7 @@ const input = {
 };
 
 describe("Codex Session Hook projection", () => {
-  it("按 v2 Binding 生成 1.1.0 和精确 sessionContext，不采信宿主身份", () => {
+  it("按 v2 Binding 生成 1.1.0，并区分执行器 session 与 Harness sessionContext", () => {
     const binding = createBinding();
     const identity = parseCodexHookBindingIdentity(binding);
     expect(identity.status).toBe(ResultStatus.Success);
@@ -76,7 +76,7 @@ describe("Codex Session Hook projection", () => {
 
     expect(payload).toMatchObject({
       schemaVersion: CANONICAL_SESSION_HOOK_SCHEMA_VERSION,
-      sessionId: binding.sessionId,
+      sessionId: input.session_id,
       workspaceId: binding.workspaceId,
       taskId: binding.taskId,
       actor: { actorId: binding.actorId },
@@ -183,6 +183,7 @@ describe("Codex Session Hook projection", () => {
     expect(command).toMatchObject({
       payload: {
         schemaVersion: CANONICAL_SESSION_HOOK_SCHEMA_VERSION,
+        sessionId: input.session_id,
         workspaceId: binding.workspaceId,
         taskId: binding.taskId,
         actor: { actorId: binding.actorId },

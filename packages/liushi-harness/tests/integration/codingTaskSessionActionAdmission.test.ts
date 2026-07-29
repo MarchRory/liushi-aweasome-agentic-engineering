@@ -28,6 +28,7 @@ const roots: string[] = [];
 const workspaceId = "session-admission-workspace";
 const sourceTaskId = "01ARZ3NDEKTSV4RRFFQ69G5GAA";
 const sessionId = "01ARZ3NDEKTSV4RRFFQ69G5GAB";
+const executorSessionId = "codex-executor-session";
 const codingTaskId = "session-admission-coding-task";
 const repositoryId = "session-admission-repository";
 const agentActorId = "agent:codex";
@@ -79,7 +80,7 @@ describe("CodingTask Session v2 Action Admission 黄金路径", () => {
     });
   });
 
-  it("同一 session 的 Codex Pre/Post 经真实 Adapter 持久化 v2 Intent、Observation、Resolution，Post 重放幂等", async () => {
+  it("外部 executor session 与 Harness session 分离时持久化完整 v2 Action，Post 重放幂等", async () => {
     const fixture = await createFixture();
     const activated = await activate(fixture);
     const preInput = codexInput(fixture.worktreeRoot, "PreToolUse", "tool-session-1");
@@ -119,7 +120,10 @@ describe("CodingTask Session v2 Action Admission 黄金路径", () => {
       status: ActionJournalStatus.IntentRecorded,
       intent: {
         schemaVersion: SESSION_ACTION_JOURNAL_SCHEMA_VERSION,
-        sessionProvenance: { sessionId },
+        sessionProvenance: {
+          sessionId,
+          executorSessionIdDigest: digestOf(executorSessionId),
+        },
       },
     });
 
@@ -169,13 +173,18 @@ describe("CodingTask Session v2 Action Admission 黄金路径", () => {
     void activated;
   });
 
-  it("伪造或不同 session_id fail closed，且不新增 Intent", async () => {
+  it("首次 claim 后不同 session_id fail closed，且不新增 Intent", async () => {
     const fixture = await createFixture();
     await activate(fixture);
+    const claimed = await fixture.application.handleCodexHook.execute(
+      codexInput(fixture.worktreeRoot, "PreToolUse", "tool-claimed"),
+    );
+    expect(claimed.status).toBe(ResultStatus.Success);
+    if (claimed.status === ResultStatus.Success) expect(claimed.value.body).toBeUndefined();
     const before = await readActionLines(fixture);
     const forged = await fixture.application.handleCodexHook.execute({
       ...codexInput(fixture.worktreeRoot, "PreToolUse", "tool-forged"),
-      session_id: "01ARZ3NDEKTSV4RRFFQ69G5GAC",
+      session_id: "different-executor-session",
     });
     expect(forged.status).toBe(ResultStatus.Success);
     if (forged.status === ResultStatus.Success)
@@ -417,7 +426,7 @@ function command(
 }
 function codexInput(cwd: string, event: string, toolUseId: string) {
   return {
-    session_id: sessionId,
+    session_id: executorSessionId,
     cwd,
     hook_event_name: event,
     model: "gpt-5",
