@@ -115,6 +115,7 @@
 - Codex 静态 Capability Probe：版本、帮助输出、命令处理器和 Hook/Native stdin 声明的版本化报告；不可执行或未知版本时 fail closed。
 - Codex Host Result v2 的 `verify-result` 结果验证、Prepare v5/Activation Plan v2/Host Result v2 的 7 条脱敏 Host Evidence 投影，以及通过生产 `NodeHookInputReaderAdapter`、`CodexHookAdapter` 与窄端口 doubles 运行的固定五 Case v2 Contract Suite；真实 Codex CLI `0.144.5` 已完成一次本机验收，但该记录不等于可发布版本矩阵。
 - Codex Managed File：平台无关 InstallPlan Domain、隔离 Runtime Store 持久化、G0 Apply、Installation Revision、Existing Human File 保护、Manifest Claim Provenance、Windows 路径身份、原子文件/Manifest 写入和零 Repository 写入 dry-run E2E。
+- Codex Agent Runtime Isolation：确定性 Runtime Plan、环境白名单、auth.json 元数据快照与隔离副本、Windows/POSIX 权限适配、外部 Skill/Config/MCP 阻断和精确安全清理；固定公开项目 Pilot 只通过构建产物桥消费该唯一正式实现。
 - RequirementWorkflow Aggregate/Reducer、Event Replay、File Store、版本冲突、幂等 Command 和 Human Pause/Resume/Cancel Gateway API。
 - CodingTask 单仓 Aggregate/Reducer、独立 Schema、PlanRisk/G2 ExecutionAuthorization、Attempt 串行约束、Verification 结果接纳和 Human Resolution Domain API。
 - CodingTask Worktree Inspector：真实 Worktree Root containment、分支、HEAD/Base Revision、Git 状态、Rename/Copy 解析、Write Set 越界检查和不泄露本机路径的稳定报告。
@@ -142,6 +143,7 @@
 - 现有 CLI 写命令向 Command Gateway 的完整迁移、Child Workflow、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建和多仓 Verification 影响传播。
 - G0 Rollback/Uninstall、CLI recovery、Codex Host Hook 自动安装、Attestation/Manifest I/O 的公共或隔离 Host CLI 接线、Accepted Head、安装选择门、其他工具/版本/平台验证、Claude-compatible 或 CatPaw Adapter。
 - Agent 自主代码生成、多仓写入 Saga、PR、推送、合并、发布或部署。
+- 完整 Codex Agent Host：App Server Runner、Session Flags、零模型 Preflight 和 Application Host 生命周期；当前只完成 Runtime Isolation。
 - Skill、Connector、Wiki、Obsidian、Memory、Knowledge 或 Agent Registry Runtime。
 - 完整项目 Validator Execution、真实命令输出存储/截断、Flaky/Waiver、Independent Verifier 和 ComplianceReport。
 

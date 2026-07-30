@@ -15,6 +15,8 @@ Hooks 将 Harness 的确定性规则接入执行器生命周期；Agent Runtime 
 
 **状态：S1/S2、停止在 CheckpointBound 的 S3 Closeout、Human-gated Recovery，以及 Delivery 到 Verification/Evidence/PR-ready 的 Completion 已实现，整体仍部分实现。** 当前代码已提供版本化 Canonical Hook Event、严格 PreAction/PostAction Payload、Command Envelope 摘要绑定、Action Hook 授权策略和 Dispatcher。S2 进一步提供 Session Hook Binding v2、Admission State/File Store 和非等待跨进程 Lease；Activation 会自动初始化 Binding/State。PreAction 在同一 Lease 内复验 Activation、Binding、Runtime Provenance、权威 PlanRisk/G2/G4/Write Set，先写入 `pending`，再提交健康 v2 Intent，最后提交 `admittedActionIds`；任一失败均 fail closed，持久化不确定时为 `outcome_unknown`。PostAction 允许 `waiting_agent` 或 `closing` 中已准入 Action，复验 v2 Intent，写入 Trace、绑定 Trace 摘要的 v2 Observation 与受其因果绑定的 Resolution，并支持重放幂等。S3 Closeout 与 Recovery E2E 已证明唯一 ChangeSet-bound Checkpoint 和至多一次 Git 副作用；Delivery Completion E2E 已进一步完成权威 Plan、Verification、Evidence 与 PR-ready 串联。真实 Codex App Server 已通过固定公开项目 Pilot；Interactive TUI 项目 Pilot、企业量化、其他平台 Projection、Role Runtime 和 Human Battle Runtime 尚未实现。
 
+Codex Agent Runtime Isolation 已迁入正式 Infrastructure：Runtime Plan、环境白名单、auth.json 元数据快照与隔离副本、Windows/POSIX 权限策略、外部 Skill/Config/MCP 阻断和精确清理由唯一生产实现负责，固定公开项目 Pilot 只保留构建产物桥。该切片不等于完整 Agent Host；App Server、Session Flags、零模型 Preflight 和 Application Host 生命周期仍待后续实现。
+
 Workflow、Cell、Agent、Skill、Executor 与 Hook 的职责边界已经在 [21 需求生命周期 Workflow Runtime](./21-requirement-workflow-runtime.md) 中建立；本章后续只定义 Hook 映射和 Agent Runtime，不拥有 Workflow 状态。
 
 ## 2. Canonical Hook Event

@@ -76,6 +76,7 @@ Status: Implementation-aware Architecture Baseline
 - [Codex Host 兼容性证据投影](./engineering/codexCompatibilityEvidenceProjection.md)
 - [Codex Contract Evidence 投影](./engineering/codexContractEvidenceProjection.md)
 - [Codex Agent Pilot 验证记录](./engineering/codexAgentPilotValidationRecord.md)
+- [Codex Agent Runtime Isolation](./engineering/codexAgentRuntimeIsolation.md)
 - [Executor Compatibility 发布信任链](./engineering/executorCompatibilityPublication.md)
 - [Executor Compatibility Sigstore Attestation](./engineering/executorCompatibilitySigstoreAttestation.md)
 - [Executor Compatibility Trusted Release](./engineering/executorCompatibilityTrustedRelease.md)

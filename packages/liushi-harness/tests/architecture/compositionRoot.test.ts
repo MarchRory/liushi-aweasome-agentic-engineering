@@ -66,6 +66,7 @@ describe("composition root", () => {
       "FileTraceObservationStore",
       "FileWorkflowRepository",
       "MockVerificationExecutorAdapter",
+      "NodeCodexAgentRuntimeIsolationAdapter",
       "NodeCodingTaskCellRuntimePathAdapter",
       "NodeCommandRunnerAdapter",
       "NodeExecutorCompatibilityPublicationWriterAdapter",

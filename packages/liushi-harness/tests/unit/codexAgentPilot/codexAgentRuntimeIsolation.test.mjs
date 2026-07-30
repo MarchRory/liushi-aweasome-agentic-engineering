@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertNoExternalAgentSkills,
   assertCodexAgentAuthSourceStable,
+  CODEX_AGENT_CREDENTIAL_STRATEGY,
+  CODEX_AGENT_ENVIRONMENT_POLICY_VERSION,
   createCodexAgentEnvironment,
   createCodexAgentRuntimePlan,
   parseWindowsUserSid,
@@ -25,6 +27,16 @@ afterEach(async () => {
 });
 
 describe("Codex Agent Runtime isolation", () => {
+  it("兼容桥保留旧策略常量和值", () => {
+    expect(CODEX_AGENT_ENVIRONMENT_POLICY_VERSION).toBe(
+      "liushi.codex-agent-pilot.environment-policy.v1",
+    );
+    expect(CODEX_AGENT_CREDENTIAL_STRATEGY).toEqual({
+      IsolatedAuthCopy: "isolated_auth_copy",
+    });
+    expect(Object.isFrozen(CODEX_AGENT_CREDENTIAL_STRATEGY)).toBe(true);
+  });
+
   it("确定路径并拒绝空值、路径穿越和非 sha256 摘要", async () => {
     const sourceRoot = await createSourceRoot();
     const source = join(sourceRoot, "codex-home");
