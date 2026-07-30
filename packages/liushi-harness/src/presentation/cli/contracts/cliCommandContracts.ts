@@ -28,6 +28,12 @@ export enum CliCommand {
   CodingTaskSessionCloseout = "coding_task.session.closeout",
   /** 完成 CodingTask Session Delivery、Verification 与 PR-ready。 */
   CodingTaskSessionComplete = "coding_task.session.complete",
+  /** 在 Session 启动前预登记 Pilot Metrics。 */
+  CodingTaskSessionMetricsEnroll = "coding_task.session.metrics.enroll",
+  /** 在 Verification 后结算 Pilot Metrics。 */
+  CodingTaskSessionMetricsSettle = "coding_task.session.metrics.settle",
+  /** 查询单 Session Pilot Metrics 原始事实。 */
+  CodingTaskSessionMetricsReport = "coding_task.session.metrics.report",
   /** 评估 CodingTask Session Closeout Recovery。 */
   CodingTaskSessionCloseoutRecoveryAssess = "coding_task.session.closeout.recovery.assess",
   /** 执行 CodingTask Session Closeout Recovery。 */

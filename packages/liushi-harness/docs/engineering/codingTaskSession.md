@@ -185,10 +185,13 @@ Coverage Proof 现在由 Closeout State v3 消费：`snapshot.changedPaths` 必�
 
 ### S4 Pilot Metrics
 
-- Human Touch 区间。
-- 自动化步骤占比。
-- Retry、Rework、Gate 命中、误报和错误放行。
-- 真实项目基线与 Pilot 对照报告。
+- 已实现：Session 启动前的不可变 Enrollment，冻结任务分层、Revision、Validator 数和步骤分母。
+- 已实现：Verification 后的不可变 Settlement，记录 Human Touch 区间、逐步骤事实和 Human 判定质量事实。
+- 已实现：Activation、受信进程、Closeout、EvidenceBundle 及其终态 Action Journal 的交叉绑定和单 Session 描述性报告。
+- 未实现：跨任务自动化率、HTT 降幅、Retry/Rework Rate、Gate 误报率和错误放行率。
+- 未验证：真实企业 Baseline/Pilot 对照及“HTT 中位数下降 25%”成效。
+
+首切片的数据字典、隐私约束和 Go/No-Go 见 [Pilot Metrics 技术方案](./pilotMetrics.md)。
 
 ## 11. 非目标
 

@@ -13,6 +13,9 @@ import type {
   CodingTaskSessionActivateCliCommand,
   CodingTaskSessionCloseoutCliCommand,
   CodingTaskSessionCompleteCliCommand,
+  CodingTaskSessionMetricsEnrollCliCommand,
+  CodingTaskSessionMetricsReportCliCommand,
+  CodingTaskSessionMetricsSettleCliCommand,
   CodingTaskSessionCloseoutRecoveryAssessCliCommand,
   CodingTaskSessionCloseoutRecoverCliCommand,
   CodingTaskSessionEffectiveCloseoutCliCommand,
@@ -214,6 +217,9 @@ export type ParsedCliCommand =
   | CodingTaskSessionActivateCliCommand
   | CodingTaskSessionCloseoutCliCommand
   | CodingTaskSessionCompleteCliCommand
+  | CodingTaskSessionMetricsEnrollCliCommand
+  | CodingTaskSessionMetricsSettleCliCommand
+  | CodingTaskSessionMetricsReportCliCommand
   | CodingTaskSessionCloseoutRecoveryAssessCliCommand
   | CodingTaskSessionCloseoutRecoverCliCommand
   | CodingTaskSessionEffectiveCloseoutCliCommand

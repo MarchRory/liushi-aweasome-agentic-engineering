@@ -56,6 +56,9 @@ export function resolveCliApplication(
         },
       });
     case CliCommand.CodingTaskSessionEffectiveCloseout:
+    case CliCommand.CodingTaskSessionMetricsEnroll:
+    case CliCommand.CodingTaskSessionMetricsSettle:
+    case CliCommand.CodingTaskSessionMetricsReport:
       return dependencies.applicationFactory.create(storeRoot);
     case CliCommand.Help:
     case CliCommand.Doctor:

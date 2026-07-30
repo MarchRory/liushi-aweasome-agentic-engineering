@@ -104,6 +104,7 @@
 - [Executor Compatibility Trusted Release](./docs/engineering/executorCompatibilityTrustedRelease.md)
 - [Worktree Provision 未知状态恢复](./docs/engineering/worktreeProvisionRecovery.md)
 - [CodingTask Session Delivery 与 Completion](./docs/engineering/codingTaskSessionDelivery.md)
+- [Pilot Metrics 原始事实采集](./docs/engineering/pilotMetrics.md)
 
 ## CLI
 
@@ -124,6 +125,9 @@ liushi-harness cell run --file .\codingTaskCell.json --workspace <workspace-id> 
 liushi-harness coding-task session activate --file .\sessionActivation.json --workspace <workspace-id> --repository <repository-id> --root <absolute-repository-root> --actor-id <agent-id> --json
 liushi-harness coding-task session closeout --file .\sessionCloseoutCommand.json --workspace <workspace-id> --repository <repository-id> --root <absolute-repository-root> --actor-id <agent-id> --json
 liushi-harness coding-task session complete --file .\sessionCompletion.json --workspace <workspace-id> --session <session-id> --repository <repository-id> --root <absolute-repository-root> --actor-id <agent-id> --verification-mode local_command --json
+liushi-harness coding-task session metrics enroll --file .\pilotEnrollment.json --workspace <workspace-id> --session <session-id> --actor-id <human-id> --json
+liushi-harness coding-task session metrics settle --file .\pilotSettlement.json --workspace <workspace-id> --session <session-id> --actor-id <human-id> --json
+liushi-harness coding-task session metrics report --workspace <workspace-id> --session <session-id> --json
 liushi-harness coding-task session closeout assess --workspace <workspace-id> --session <session-id> --repository <repository-id> --root <absolute-repository-root> --json
 liushi-harness coding-task session closeout recover --file .\sessionCloseoutRecoveryCommand.json --workspace <workspace-id> --session <session-id> --repository <repository-id> --root <absolute-repository-root> --actor-id <human-id> --json
 liushi-harness coding-task session closeout effective --workspace <workspace-id> --session <session-id> --json
@@ -156,6 +160,8 @@ liushi-harness hook probe --executor codex [--executable <path-or-command>] --js
 `coding-task session closeout` 的 `--file` 必须是完整、规范且摘要自洽的 Closeout Command Envelope；CLI 不生成 command ID、时间或 digest。CLI 会复验 Envelope 的 Workspace/Actor 与命令行绑定，Manager 再在 Repository Lock 内 fresh 读取 Activation、CodingTask、Binding、可信 Root 和受管 Worktree。`CheckpointBound` 返回成功；`Blocked` 返回冲突；`OutcomeUnknown` 返回专用未知结果退出码。终态不能靠原 Command 重放自动恢复。
 
 `coding-task session complete` 读取完整 Completion 输入，但不接受调用方自报最终 Plan、Attempt、Target Revision、Expected Version 或 Repository Root。CLI 会在 Application 副作用前复验 Workspace、Session 和两个 Agent Actor，并把显式 Repository Root 绑定交给 Production Composition Root；Application 再从权威 Store 重建 Profile、Rule、Plan、受管 Worktree、Verification 与 Evidence。只有 `review_ready` 返回 `0`；确定性阻断或验证失败返回 `4`，`outcome_unknown` 返回 `8` 且不得自动重试。只有显式 `--verification-mode local_command` 才运行项目命令；`fail_closed_mock` 不执行本地验证。
+
+`coding-task session metrics enroll` 必须在 Session Activation 前执行，用于冻结脱敏任务分类、实际 Revision 和步骤分母；Retry 与 Replay 不增加分母。`metrics settle` 只接收 Human 显式记录的原始区间、步骤事实和枚举质量事实，并从 Runtime Store 重建 Activation、受信进程、Closeout、EvidenceBundle 与生成该 Bundle 的终态 Action Journal 后再 create-only 持久化。生产 CLI 默认拒绝 `observed` Human Touch，只接受明确标为 `reported` 的区间；机器时长绝不代填 Human Touch。`metrics report` 只输出单 Session 描述性事实，不计算自动化率、HTT 降幅或企业 ROI；缺少 Enrollment/Settlement 或 `claimEligibility=blocked` 时返回退出码 `4`。完整数据字典与 No-Go 见 [Pilot Metrics 原始事实采集](./docs/engineering/pilotMetrics.md)。
 
 Closeout Recovery 必须先运行 `closeout assess`。只有 Assessment 返回唯一允许的 Resolution，Human 才创建绑定其 Digest 与原 Closeout Version 的完整 Recovery Command，再调用 `closeout recover`；CLI 不提供 `--resolution`，也不替 Human 生成 Command。`committed`/`duplicate` 返回 `0`，冲突或需要 Human 返回 `4`，锁暂不可用返回 `5`，结果未知返回 `8` 且不得自动重试。最后使用 `closeout effective` 查询下游可消费的 Checkpoint；`unresolved` 返回 `4`。完整 SOP 见 [CodingTask Session Closeout Human-gated 恢复](./docs/engineering/codingTaskSessionCloseoutRecovery.md)。
 

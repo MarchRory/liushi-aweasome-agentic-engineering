@@ -16,6 +16,9 @@ import {
   executeCodingTaskSessionActivate,
   executeCodingTaskSessionCloseout,
   executeCodingTaskSessionComplete,
+  executeCodingTaskSessionMetricsEnroll,
+  executeCodingTaskSessionMetricsReport,
+  executeCodingTaskSessionMetricsSettle,
   executeDoctor,
   executeExecutorCompatibilityCommand,
   executeHookBind,
@@ -142,6 +145,24 @@ async function executeCommand(
       );
     case CliCommand.CodingTaskSessionComplete:
       return executeCodingTaskSessionComplete(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
+    case CliCommand.CodingTaskSessionMetricsEnroll:
+      return executeCodingTaskSessionMetricsEnroll(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
+    case CliCommand.CodingTaskSessionMetricsSettle:
+      return executeCodingTaskSessionMetricsSettle(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
+    case CliCommand.CodingTaskSessionMetricsReport:
+      return executeCodingTaskSessionMetricsReport(
         command,
         resolveCliApplication(command, dependencies),
         dependencies,

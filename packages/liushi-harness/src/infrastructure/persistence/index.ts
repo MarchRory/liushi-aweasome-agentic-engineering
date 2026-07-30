@@ -13,3 +13,4 @@ export * from "./fileEvidenceBundleStore/index.js";
 export * from "./executorCompatibilityStoreSupport/index.js";
 export * from "./fileExecutorCompatibilityEvidenceStore/index.js";
 export * from "./fileExecutorCompatibilityMatrixStore/index.js";
+export * from "./filePilotMetricsStore/index.js";

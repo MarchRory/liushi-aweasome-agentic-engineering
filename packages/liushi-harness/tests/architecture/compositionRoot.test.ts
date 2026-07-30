@@ -59,6 +59,7 @@ describe("composition root", () => {
       "FileInstallPlanStore",
       "FileInstallationRevisionStore",
       "FileParentDirectoryDurability",
+      "FilePilotMetricsStore",
       "FileRuntimeHealthAdapter",
       "FileSnapshotStore",
       "FileTaskRepository",

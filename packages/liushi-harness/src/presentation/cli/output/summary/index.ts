@@ -2,3 +2,5 @@ export * from "./executorCompatibilitySummary.js";
 export * from "./executorCompatibilityPublicationSummary.js";
 export * from "./codingTaskSummary.js";
 export * from "./codingTaskSessionCompleteSummary.js";
+export * from "./codingTaskSessionSummaryDispatcher.js";
+export * from "./pilotMetricsSummary.js";

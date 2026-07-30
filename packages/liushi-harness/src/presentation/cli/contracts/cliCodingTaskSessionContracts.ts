@@ -53,6 +53,44 @@ export interface CodingTaskSessionCompleteCliCommand extends BaseCliCommand {
   readonly verificationMode: CliVerificationMode;
 }
 
+/** 在 Session Activation 前预登记 Pilot Metrics。 */
+export interface CodingTaskSessionMetricsEnrollCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  readonly command: CliCommand.CodingTaskSessionMetricsEnroll;
+  /** 不含 recordDigest 的 Enrollment JSON 文件。 */
+  readonly filePath: string;
+  /** CLI 声明的 Workspace 绑定。 */
+  readonly workspaceId: string;
+  /** CLI 声明的 Session 绑定。 */
+  readonly sessionId: string;
+  /** CLI 声明的 Human Actor。 */
+  readonly actorId: string;
+}
+
+/** 在 Session Verification 后结算 Pilot Metrics。 */
+export interface CodingTaskSessionMetricsSettleCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  readonly command: CliCommand.CodingTaskSessionMetricsSettle;
+  /** 不含 recordDigest 的 Settlement JSON 文件。 */
+  readonly filePath: string;
+  /** CLI 声明的 Workspace 绑定。 */
+  readonly workspaceId: string;
+  /** CLI 声明的 Session 绑定。 */
+  readonly sessionId: string;
+  /** CLI 声明的 Human Actor。 */
+  readonly actorId: string;
+}
+
+/** 查询单 Session Pilot Metrics 原始事实。 */
+export interface CodingTaskSessionMetricsReportCliCommand extends BaseCliCommand {
+  /** 规范命令标识。 */
+  readonly command: CliCommand.CodingTaskSessionMetricsReport;
+  /** Harness Workspace 绑定。 */
+  readonly workspaceId: string;
+  /** CodingTask Session 绑定。 */
+  readonly sessionId: string;
+}
+
 /** 评估 CodingTask Session Closeout Recovery 的 CLI 命令。 */
 export interface CodingTaskSessionCloseoutRecoveryAssessCliCommand extends BaseCliCommand {
   /** 规范命令标识。 */

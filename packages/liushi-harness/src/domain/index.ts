@@ -24,3 +24,4 @@ export * from "./codingTaskSessionChangeSet/index.js";
 export * from "./repositoryDelivery/index.js";
 export * from "./verification/index.js";
 export * from "./installation/index.js";
+export * from "./pilotMetrics/index.js";

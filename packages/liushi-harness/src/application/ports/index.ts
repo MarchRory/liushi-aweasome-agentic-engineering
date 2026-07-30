@@ -51,3 +51,4 @@ export type {
   ExecutorCompatibilityAttestationVerifierPort,
   VerifyExecutorCompatibilityAttestationInput,
 } from "./executorCompatibilityAttestation/index.js";
+export * from "./pilotMetricsStore/index.js";

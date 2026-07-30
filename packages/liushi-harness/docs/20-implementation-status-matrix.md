@@ -130,6 +130,7 @@
 - Profile-backed Verification 影响面：由 G8 Check、权威 Changed Paths、Rule Target 和 Validator 映射生成单仓 Plan 与完整 Selection Trace。
 - PRReadyArtifact 权威装配：只接受 Evidence Locator 与预期 Plan Digest，从强一致 Store 读取 Passed Evidence，重算 Task-backed Human Gate，并绑定 Base/Head、Diff Digest、InputBindingSet、Verification、剩余风险和回滚方案。
 - Session Delivery Completion：无额外流程 Store 地串联 G8 Profile、Rule、Plan、平台路径身份、Verification、Evidence 与 PR-ready；真实通过/失败路径均支持跨进程精确重放。
+- Pilot Metrics 首切片：启动前冻结任务分层与步骤分母，验证后 create-only 记录 Human 原始区间、步骤事实和质量事实，并交叉绑定 Activation、受信进程、Closeout、EvidenceBundle 与生成该 Bundle 的终态 Action Journal；只提供单 Session 描述性报告。
 - 兼容 CodingTask Cell CLI：显式单仓 Runtime Binding、封闭 Verification Mode、启动期 Composition Root 映射和副作用前 fail-closed 一致性校验；只供受信宿主预编译 Plan。
 - Executor Compatibility CLI：从三份原始 Codex Host JSON 生成 Host/Contract 双 Artifact 与 12 条 Evidence，编译并内容寻址持久化 Policy/Matrix，按精确 Matrix Digest 跨进程重算查询。
 - Executor Compatibility Attestation：包内 Sign UseCase 重建 G6 Draft 后从可信 Authority 查询权威 Human 审批记录，精确匹配后才使用官方 Sigstore 生成 DSSE Bundle 与内容寻址 Artifact；这些特权入口不从 npm 根或公共 Application 暴露。公开 Verify 以调用方显式 Trusted Root 在禁网状态验证证书链、CT/TLog、可验证时间证据及精确发布者身份。
@@ -137,7 +138,7 @@
 当前 npm 包不提供：
 
 - 自动需求澄清、Plan、Implementation、完整 Verification 和 Learning Workflow。
-- 企业项目 Codex Pilot、量化和多仓交付。
+- 真实企业 Pilot、跨任务 Baseline 对照、效果量化和多仓交付。
 - 现有 CLI 写命令向 Command Gateway 的完整迁移、Child Workflow、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建和多仓 Verification 影响传播。
 - G0 Rollback/Uninstall、CLI recovery、Codex Host Hook 自动安装、Attestation/Manifest I/O 的公共或隔离 Host CLI 接线、Accepted Head、安装选择门、其他工具/版本/平台验证、Claude-compatible 或 CatPaw Adapter。
 - Agent 自主代码生成、多仓写入 Saga、PR、推送、合并、发布或部署。

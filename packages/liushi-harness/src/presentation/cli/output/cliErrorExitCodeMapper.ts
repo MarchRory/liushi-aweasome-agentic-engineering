@@ -51,6 +51,7 @@ export function mapErrorExitCode(code: HarnessErrorCode): number {
     case HarnessErrorCode.ActionExecutionLockReleaseUnknown:
     case HarnessErrorCode.CommandGatewayCommitOutcomeUnknown:
     case HarnessErrorCode.EvidenceBundleCommitOutcomeUnknown:
+    case HarnessErrorCode.PilotMetricsCommitOutcomeUnknown:
     case HarnessErrorCode.ExecutorCompatibilityCommitOutcomeUnknown:
     case HarnessErrorCode.ExecutorCompatibilityPublicationCommitOutcomeUnknown:
     case HarnessErrorCode.ExecutorCompatibilityReleaseArtifactCommitOutcomeUnknown:

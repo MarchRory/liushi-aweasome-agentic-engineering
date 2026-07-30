@@ -48,6 +48,8 @@ export enum HarnessErrorCode {
   ActionExecutionLockReleaseUnknown = "action_execution_lock_release_unknown",
   /** EvidenceBundle 已开始持久化但提交结果未知，禁止自动重试。 */
   EvidenceBundleCommitOutcomeUnknown = "evidence_bundle_commit_outcome_unknown",
+  /** Pilot Metrics 记录已开始持久化但提交结果未知，禁止自动重试。 */
+  PilotMetricsCommitOutcomeUnknown = "pilot_metrics_commit_outcome_unknown",
   /** 请求的 Executor Compatibility Evidence 不存在。 */
   ExecutorCompatibilityEvidenceNotFound = "executor_compatibility_evidence_not_found",
   /** 请求的 Executor Compatibility Matrix 不存在。 */

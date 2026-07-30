@@ -16,15 +16,7 @@ import {
   type CliSuccessEnvelope,
   type RunCliDependencies,
 } from "../contracts/index.js";
-import {
-  writeCodingTaskCellSummary,
-  writeCodingTaskSessionActivationSummary,
-  writeCodingTaskSessionCloseoutRecoveryAssessmentSummary,
-  writeCodingTaskSessionCloseoutRecoverySummary,
-  writeCodingTaskSessionCloseoutSummary,
-  writeCodingTaskSessionCompleteSummary,
-  writeCodingTaskSessionEffectiveCloseoutSummary,
-} from "./summary/index.js";
+import { writeCodingTaskCellSummary, writeCodingTaskSessionSummary } from "./summary/index.js";
 
 /** 将成功结果渲染为稳定 JSON Schema 或 Human 文本。 */
 export function writeSuccess<T>(
@@ -104,30 +96,7 @@ export function writeSuccess<T>(
       writeCodingTaskCellSummary(dependencies.writer, data);
       return;
     }
-    if (command === CliCommand.CodingTaskSessionActivate) {
-      writeCodingTaskSessionActivationSummary(dependencies.writer, data);
-      return;
-    }
-    if (command === CliCommand.CodingTaskSessionCloseout) {
-      writeCodingTaskSessionCloseoutSummary(dependencies.writer, data);
-      return;
-    }
-    if (command === CliCommand.CodingTaskSessionComplete) {
-      writeCodingTaskSessionCompleteSummary(dependencies.writer, data);
-      return;
-    }
-    if (command === CliCommand.CodingTaskSessionCloseoutRecoveryAssess) {
-      writeCodingTaskSessionCloseoutRecoveryAssessmentSummary(dependencies.writer, data);
-      return;
-    }
-    if (command === CliCommand.CodingTaskSessionCloseoutRecover) {
-      writeCodingTaskSessionCloseoutRecoverySummary(dependencies.writer, data);
-      return;
-    }
-    if (command === CliCommand.CodingTaskSessionEffectiveCloseout) {
-      writeCodingTaskSessionEffectiveCloseoutSummary(dependencies.writer, data);
-      return;
-    }
+    if (writeCodingTaskSessionSummary(dependencies.writer, command, data)) return;
     if (command === CliCommand.InitDryRun) {
       const plan = data["plan"];
       if (isRecord(plan)) {
@@ -185,29 +154,7 @@ export function writeBlocked<T>(
     writeCodingTaskCellSummary(dependencies.writer, data);
     return;
   }
-  if (command === CliCommand.CodingTaskSessionActivate) {
-    writeCodingTaskSessionActivationSummary(dependencies.writer, data);
-    return;
-  }
-  if (command === CliCommand.CodingTaskSessionCloseout) {
-    writeCodingTaskSessionCloseoutSummary(dependencies.writer, data);
-    return;
-  }
-  if (command === CliCommand.CodingTaskSessionComplete) {
-    writeCodingTaskSessionCompleteSummary(dependencies.writer, data);
-    return;
-  }
-  if (command === CliCommand.CodingTaskSessionCloseoutRecoveryAssess) {
-    writeCodingTaskSessionCloseoutRecoveryAssessmentSummary(dependencies.writer, data);
-    return;
-  }
-  if (command === CliCommand.CodingTaskSessionCloseoutRecover) {
-    writeCodingTaskSessionCloseoutRecoverySummary(dependencies.writer, data);
-    return;
-  }
-  if (command === CliCommand.CodingTaskSessionEffectiveCloseout) {
-    writeCodingTaskSessionEffectiveCloseoutSummary(dependencies.writer, data);
-  }
+  writeCodingTaskSessionSummary(dependencies.writer, command, data);
 }
 
 /** 将 HarnessError 渲染为稳定 JSON Schema 或 Human 文本。 */

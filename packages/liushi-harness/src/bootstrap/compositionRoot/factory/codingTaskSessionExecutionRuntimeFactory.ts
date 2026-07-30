@@ -4,6 +4,7 @@ import type {
   ActionExecutionLockPort,
   ActionJournalRepository,
   CodingTaskRepository,
+  EvidenceBundleStore,
   ManagedWorktreePathPort,
   RepositoryLockPort,
   RepositoryRootResolverPort,
@@ -36,6 +37,8 @@ export interface CodingTaskSessionExecutionRuntimeFactoryInput {
   readonly hookRuntime: CodingTaskSessionHookRuntimeFactoryOutput;
   /** Action Journal 权威 Repository。 */
   readonly actionJournalRepository: ActionJournalRepository;
+  /** Verification EvidenceBundle 权威存储。 */
+  readonly evidenceBundleStore: EvidenceBundleStore;
   /** 可丢失 Trace Observation 存储。 */
   readonly traceObservationStore: TraceObservationStore;
   /** 权威 Repository Root Resolver。 */
@@ -89,6 +92,7 @@ export function createCodingTaskSessionExecutionRuntime(
     storeDependencies: input.storeDependencies,
     codingTaskRepository: input.codingTaskRepository,
     activationRepository: input.hookRuntime.persistence.activationRepository,
+    evidenceBundleStore: input.evidenceBundleStore,
     bindingStore: input.hookRuntime.bindingStore,
     admissionStateStore: input.hookRuntime.persistence.admissionStateStore,
     admissionCoordinator: input.hookRuntime.admissionCoordinator,

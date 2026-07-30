@@ -22,6 +22,7 @@ import type {
   ResolveRulesUseCase,
   ScanProjectUseCase,
   CreateInstallPlanUseCase,
+  PilotMetricsService,
 } from "#application/index.js";
 
 import type { HookInputReader, JsonDocumentReader } from "../input/index.js";
@@ -93,6 +94,8 @@ export interface CliApplication {
   closeoutCodingTaskSession: CodingTaskSessionCloseoutManager;
   /** 完成 Session Delivery、Verification 与 PR-ready。 */
   completeCodingTaskSessionDelivery: CodingTaskDeliveryCompletionService;
+  /** 预登记、结算并查询 Pilot Metrics 原始事实。 */
+  pilotMetrics: PilotMetricsService;
   /** 只读评估当前 Closeout Recovery。 */
   assessCodingTaskSessionCloseoutRecovery: AssessCodingTaskSessionCloseoutRecoveryUseCase;
   /** 执行 Human Gate 批准的 Closeout Recovery。 */

@@ -6,6 +6,9 @@ import {
   type CodingTaskSessionEffectiveCloseoutCliCommand,
   type CodingTaskSessionCloseoutCliCommand,
   type CodingTaskSessionCompleteCliCommand,
+  type CodingTaskSessionMetricsEnrollCliCommand,
+  type CodingTaskSessionMetricsReportCliCommand,
+  type CodingTaskSessionMetricsSettleCliCommand,
   type CliOutputFormat,
 } from "../../contracts/index.js";
 import type { CollectedCliArguments } from "../collection/index.js";
@@ -25,6 +28,9 @@ export function parseCodingTaskSessionCliCommand(
   | CodingTaskSessionActivateCliCommand
   | CodingTaskSessionCloseoutCliCommand
   | CodingTaskSessionCompleteCliCommand
+  | CodingTaskSessionMetricsEnrollCliCommand
+  | CodingTaskSessionMetricsSettleCliCommand
+  | CodingTaskSessionMetricsReportCliCommand
   | CodingTaskSessionCloseoutRecoveryAssessCliCommand
   | CodingTaskSessionCloseoutRecoverCliCommand
   | CodingTaskSessionEffectiveCloseoutCliCommand
@@ -32,6 +38,45 @@ export function parseCodingTaskSessionCliCommand(
   const command = parseCodingTaskSessionCommandName(collected);
   if (command === undefined) return undefined;
   switch (command) {
+    case CliCommand.CodingTaskSessionMetricsReport:
+      validateAllowedCliOptions(
+        collected,
+        new Set([
+          CliOptionName.Json,
+          CliOptionName.Store,
+          CliOptionName.Workspace,
+          CliOptionName.Session,
+        ]),
+      );
+      return {
+        command,
+        outputFormat,
+        ...(storeRoot === undefined ? {} : { storeRoot }),
+        workspaceId: requireCliOptionValue(collected, CliOptionName.Workspace),
+        sessionId: requireCliOptionValue(collected, CliOptionName.Session),
+      };
+    case CliCommand.CodingTaskSessionMetricsEnroll:
+    case CliCommand.CodingTaskSessionMetricsSettle:
+      validateAllowedCliOptions(
+        collected,
+        new Set([
+          CliOptionName.Json,
+          CliOptionName.Store,
+          CliOptionName.File,
+          CliOptionName.Workspace,
+          CliOptionName.Session,
+          CliOptionName.ActorId,
+        ]),
+      );
+      return {
+        command,
+        outputFormat,
+        ...(storeRoot === undefined ? {} : { storeRoot }),
+        filePath: requireCliOptionValue(collected, CliOptionName.File),
+        workspaceId: requireCliOptionValue(collected, CliOptionName.Workspace),
+        sessionId: requireCliOptionValue(collected, CliOptionName.Session),
+        actorId: requireCliOptionValue(collected, CliOptionName.ActorId),
+      };
     case CliCommand.CodingTaskSessionEffectiveCloseout:
       validateAllowedCliOptions(
         collected,
@@ -172,6 +217,9 @@ function parseCodingTaskSessionCommandName(
   | CliCommand.CodingTaskSessionCloseoutRecover
   | CliCommand.CodingTaskSessionEffectiveCloseout
   | CliCommand.CodingTaskSessionComplete
+  | CliCommand.CodingTaskSessionMetricsEnroll
+  | CliCommand.CodingTaskSessionMetricsSettle
+  | CliCommand.CodingTaskSessionMetricsReport
   | undefined {
   if (isExactCliCommand(collected.positionals, ["coding-task", "session", "activate"])) {
     return CliCommand.CodingTaskSessionActivate;
@@ -181,6 +229,15 @@ function parseCodingTaskSessionCommandName(
   }
   if (isExactCliCommand(collected.positionals, ["coding-task", "session", "complete"])) {
     return CliCommand.CodingTaskSessionComplete;
+  }
+  if (isExactCliCommand(collected.positionals, ["coding-task", "session", "metrics", "enroll"])) {
+    return CliCommand.CodingTaskSessionMetricsEnroll;
+  }
+  if (isExactCliCommand(collected.positionals, ["coding-task", "session", "metrics", "settle"])) {
+    return CliCommand.CodingTaskSessionMetricsSettle;
+  }
+  if (isExactCliCommand(collected.positionals, ["coding-task", "session", "metrics", "report"])) {
+    return CliCommand.CodingTaskSessionMetricsReport;
   }
   if (isExactCliCommand(collected.positionals, ["coding-task", "session", "closeout", "assess"])) {
     return CliCommand.CodingTaskSessionCloseoutRecoveryAssess;

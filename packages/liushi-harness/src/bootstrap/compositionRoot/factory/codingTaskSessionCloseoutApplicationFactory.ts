@@ -8,6 +8,7 @@ import {
   type ChangeSetCheckpointRecoveryPort,
   CodingTaskSessionCloseoutRecoveryAssessmentService,
   CodingTaskSessionEffectiveCloseoutResolver,
+  type PilotMetricsService,
   type CodingTaskSessionCloseoutManagerDependencies,
   type CodingTaskSessionCloseoutRecoveryAssessmentServiceDependencies,
   type InspectGitChangeSetUseCase,
@@ -22,6 +23,7 @@ import type {
   CodingTaskSessionActivationRepository,
   CodingTaskSessionAdmissionStateStore,
   ContentDigestPort,
+  EvidenceBundleStore,
   HookBindingStore,
   ManagedWorktreePathPort,
   RepositoryLockPort,
@@ -36,6 +38,8 @@ import {
   type FileCodingTaskSessionActivationRepositoryDependencies,
 } from "#infrastructure/index.js";
 
+import { createPilotMetricsApplication } from "./pilotMetricsApplicationFactory.js";
+
 /** CodingTask Session Closeout Application Factory 的装配输入。 */
 export interface CodingTaskSessionCloseoutApplicationFactoryInput {
   /** Runtime Store 根目录。 */
@@ -46,6 +50,8 @@ export interface CodingTaskSessionCloseoutApplicationFactoryInput {
   readonly codingTaskRepository: CodingTaskRepository;
   /** 不可变 Activation 持久化 Repository。 */
   readonly activationRepository: CodingTaskSessionActivationRepository;
+  /** Verification EvidenceBundle 权威存储。 */
+  readonly evidenceBundleStore: EvidenceBundleStore;
   /** Session Hook Binding 绑定 Store。 */
   readonly bindingStore: HookBindingStore;
   /** Admission State 持久化 Store。 */
@@ -86,6 +92,8 @@ export interface CodingTaskSessionCloseoutApplicationFactoryOutput {
   readonly recoverCodingTaskSessionCloseout: CodingTaskSessionCloseoutRecoveryCommandService;
   /** 解析原始 Closeout 与 Recovery 后的最终有效 Checkpoint。 */
   readonly resolveCodingTaskSessionEffectiveCloseout: CodingTaskSessionEffectiveCloseoutResolver;
+  /** 真实 Pilot 原始事实度量平面。 */
+  readonly pilotMetrics: PilotMetricsService;
 }
 
 /** 创建不暴露基础设施实现的 Closeout Manager。 */
@@ -162,6 +170,13 @@ export function createCodingTaskSessionCloseoutApplication(
       closeoutStateStore: stateStore,
       recoveryStateStore,
       digest: input.digest,
+    }),
+    pilotMetrics: createPilotMetricsApplication({
+      storeRoot: input.storeRoot,
+      storeDependencies: input.storeDependencies,
+      activationRepository: input.activationRepository,
+      evidenceBundleStore: input.evidenceBundleStore,
+      actionJournalRepository: input.actionJournalRepository,
     }),
   };
 }

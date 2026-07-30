@@ -63,7 +63,6 @@ import {
   createVerificationExecutor,
   createWorktreeApplication,
 } from "./factory/index.js";
-
 /** 唯一 Composition Root，负责构造具体 Adapter 和 Use Case。 */
 export function createHarnessApplication(options: HarnessApplicationOptions): HarnessApplication {
   if (options.storeRoot.trim().length === 0) {
@@ -144,6 +143,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     codingTaskRepository,
     hookRuntime: codingTaskSessionHookRuntime,
     actionJournalRepository,
+    evidenceBundleStore,
     traceObservationStore,
     repositoryRootResolver,
     changeSetApplication,
