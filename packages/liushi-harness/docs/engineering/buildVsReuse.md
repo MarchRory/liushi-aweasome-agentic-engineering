@@ -41,6 +41,10 @@ Domain、Gate、Action Journal、Evidence 和 `outcome_unknown` 是 Harness 自�
 
 ## 引入候选的最低 Gate
 
+### Codex Session Flags 决策
+
+Session Flags 采用自持的受限内联编码器和确定性 CLI builder，不引入完整 TOML 依赖。当前能力只覆盖 `-c key=TOML` 值、Runtime key 路径保护、固定 Provider/reasoning、Hook/Trust 投影和旧 exec 兼容；Preflight、Application Host、Sandbox、Remote Control、File Change Approval、模型路由与 Workflow 继续由各自边界负责。
+
 候选进入实现计划前，至少需要同时满足：
 
 1. 明确对应 Port、Adapter、Capability Probe 和 fail-closed 行为，不允许从 Infrastructure 反向渗透 Domain。

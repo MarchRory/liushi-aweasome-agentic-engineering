@@ -138,6 +138,8 @@ dist/infrastructure/executors/codex/agentHost/appServer/index.js
 - 正常批准、明确拒绝、路径拒绝、协议失败、超时、输出限制和终止未知的分类不变。
 - Preflight、Evidence、SessionFlags 和 Pilot Service 无需感知迁移。
 
+Session Flags 已作为独立 Agent Host Infrastructure 模块完成正式化；Runner 仍只负责 App Server 协议、进程生命周期和 File Change Approval，不吸收 Session Flags、Preflight 或 Application Host 生命周期。
+
 旧 `hooks/list` 客户端不是 File Change Runner 的职责，本切片不合并它。
 
 ## 7. 安全与验收门

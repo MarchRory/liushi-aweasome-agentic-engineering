@@ -48,13 +48,6 @@ export const CODEX_NATIVE_HOOK_CURRENT_PROBE_STATUS = Object.freeze({
 export const CODEX_FILE_CHANGE_KIND = Object.freeze({
   Update: "update",
 });
-export const CODEX_MODEL_PROVIDER_ID = "liushi_restricted_openai";
-export const CODEX_MODEL_PROVIDER = Object.freeze({
-  name: "OpenAI",
-  wire_api: "responses",
-  requires_openai_auth: true,
-  supports_websockets: false,
-});
 export const CODEX_NATIVE_HOOK_ISSUE_URL = "https://github.com/openai/codex/issues/18607";
 export const CODEX_APP_SERVER_PREFLIGHT_SCENARIO = Object.freeze({
   AllowedUpdate: "allowed_update",
@@ -104,7 +97,6 @@ export const SCAN_REPORT_NAME = "scanReport.json";
 export const PROFILE_PROPOSAL_NAME = "projectProfileProposal.json";
 export const REQUIREMENT_PROPOSAL_NAME = "requirementContract.json";
 export const PLAN_RISK_PROPOSAL_FILE_STEM = "planRisk";
-export const REASONING_EFFORT = "medium";
 export const PROJECT_PROFILE_PROPOSAL_SCHEMA_VERSION = "2.0.0";
 export const CODING_TASK_SESSION_ACTIVATION_MANIFEST_SCHEMA_VERSION =
   "coding-task.session.activate.v1";
@@ -136,47 +128,15 @@ export const CODEX_AGENT_TIMEOUT_MS = 15 * 60 * 1000;
 export const CODEX_AGENT_OUTPUT_LIMIT_BYTES = 8 * 1024 * 1024;
 export const CODEX_AGENT_STDERR_LIMIT_BYTES = 256 * 1024;
 export const CODEX_AGENT_TERMINATION_CONFIRMATION_TIMEOUT_MS = 5_000;
-export const CODEX_HOOK_FEATURE_OVERRIDE = "features.hooks=true";
-export const CODEX_DISABLED_AGENT_FEATURES = Object.freeze([
-  "apps",
-  "artifact",
-  "auth_elicitation",
-  "browser_use",
-  "browser_use_external",
-  "browser_use_full_cdp_access",
-  "code_mode",
-  "code_mode_buffered_exec",
-  "code_mode_host",
-  "code_mode_only",
-  "computer_use",
-  "deferred_executor",
-  "enable_mcp_apps",
-  "executor_capability_discovery",
-  "goals",
-  "image_generation",
-  "in_app_browser",
-  "memories",
-  "multi_agent",
-  "multi_agent_v2",
-  "plugin_sharing",
-  "plugins",
-  "remote_plugin",
-  "request_permissions_tool",
-  "shell_tool",
-  "skill_mcp_dependency_install",
-  "skill_search",
-  "standalone_web_search",
-  "tool_call_mcp_elicitation",
-  "tool_suggest",
-  "unified_exec",
-  "workspace_dependencies",
-]);
-export const CODEX_RESTRICTED_RUNTIME_OVERRIDES = Object.freeze([
-  ...CODEX_DISABLED_AGENT_FEATURES.map((feature) => `features.${feature}=false`),
-  'web_search="disabled"',
-  "project_doc_max_bytes=0",
-  'cli_auth_credentials_store="file"',
-]);
+export {
+  CODEX_DISABLED_AGENT_FEATURES,
+  CODEX_HOOK_EVENTS,
+  CODEX_HOOK_FEATURE_OVERRIDE,
+  CODEX_MODEL_PROVIDER,
+  CODEX_MODEL_PROVIDER_ID,
+  CODEX_RESTRICTED_RUNTIME_OVERRIDES,
+  REASONING_EFFORT,
+} from "../../../dist/infrastructure/executors/codex/agentHost/sessionFlags/index.js";
 export const CODEX_ALLOWED_MUTATION_SURFACES = Object.freeze(["fileChange"]);
 export const CODEX_ALLOWED_FILE_CHANGE_KINDS = Object.freeze([CODEX_FILE_CHANGE_KIND.Update]);
 export const CODEX_HOOK_TIMEOUT_SECONDS = 30;
@@ -188,10 +148,6 @@ export const CODEX_MODEL_LAUNCH_LIMIT = 1;
 export const CODEX_APP_SERVER_REQUEST_IDS = Object.freeze({
   Initialize: 1,
   HooksList: 2,
-});
-export const CODEX_HOOK_EVENTS = Object.freeze({
-  PreToolUse: "PreToolUse",
-  PostToolUse: "PostToolUse",
 });
 export const CODEX_HOOK_PERMISSION_MODE = Object.freeze({
   Default: "default",
