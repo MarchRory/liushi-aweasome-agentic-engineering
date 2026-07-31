@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
 
-export function calculateCanonicalJsonSha256(value) {
+/** 计算规范 JSON 的 SHA-256 内容摘要。 */
+export function calculateCanonicalJsonSha256(value: unknown): string {
   const canonicalJson = canonicalizeJson(value);
   return `sha256:${createHash("sha256").update(canonicalJson, "utf8").digest("hex")}`;
 }
 
-function canonicalizeJson(value, ancestors = new Set()) {
+function canonicalizeJson(value: unknown, ancestors = new Set<object>()): string {
   if (value === null) return "null";
   if (typeof value === "string" || typeof value === "boolean") {
     return JSON.stringify(value);
@@ -22,7 +23,7 @@ function canonicalizeJson(value, ancestors = new Set()) {
   ancestors.add(value);
   try {
     if (Array.isArray(value)) {
-      const items = [];
+      const items: string[] = [];
       for (let index = 0; index < value.length; index += 1) {
         const descriptor = Object.getOwnPropertyDescriptor(value, index);
         if (descriptor === undefined || !Object.hasOwn(descriptor, "value")) {
@@ -33,7 +34,7 @@ function canonicalizeJson(value, ancestors = new Set()) {
       return `[${items.join(",")}]`;
     }
 
-    const prototype = Object.getPrototypeOf(value);
+    const prototype: object | null = Object.getPrototypeOf(value) as object | null;
     if (
       (prototype !== Object.prototype && prototype !== null) ||
       Object.getOwnPropertySymbols(value).length > 0

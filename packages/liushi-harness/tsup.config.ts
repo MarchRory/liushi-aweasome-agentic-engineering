@@ -4,6 +4,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/bootstrap/cli/cliEntrypoint.ts",
+    "src/infrastructure/executors/codex/agentHost/appServer/index.ts",
     "src/infrastructure/executors/codex/agentHost/runtimeIsolation/index.ts",
   ],
   format: ["esm", "cjs"],

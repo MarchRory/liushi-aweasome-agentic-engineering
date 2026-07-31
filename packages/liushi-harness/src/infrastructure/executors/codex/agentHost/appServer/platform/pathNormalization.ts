@@ -2,7 +2,8 @@ import { posix, win32 } from "node:path";
 
 const WINDOWS_PATH_PATTERN = /^(?:[A-Za-z]:[\\/]|\\\\)/u;
 
-export function normalizeAbsolutePath(value, label = "path") {
+/** 把绝对路径规范化为对应平台的稳定形式。 */
+export function normalizeAbsolutePath(value: unknown, label = "path"): string {
   if (typeof value !== "string" || value.length === 0 || value.includes("\0")) {
     throw new TypeError(`${label} must be a non-empty path without NUL`);
   }
@@ -15,25 +16,30 @@ export function normalizeAbsolutePath(value, label = "path") {
   return normalized;
 }
 
-export function pathIdentity(value) {
+/** 返回忽略 Windows 大小写差异的路径身份。 */
+export function pathIdentity(value: string): string {
   const normalized = normalizeAbsolutePath(value);
   return WINDOWS_PATH_PATTERN.test(normalized) ? normalized.toLowerCase() : normalized;
 }
 
-export function sameAbsolutePath(left, right) {
+/** 判断两个绝对路径是否指向同一路径身份。 */
+export function sameAbsolutePath(left: string, right: string): boolean {
   return pathIdentity(left) === pathIdentity(right);
 }
 
-export function createAbsolutePathSet(values, label = "paths") {
+/** 规范化并去重一组非空绝对路径。 */
+export function createAbsolutePathSet(values: unknown, label = "paths"): Map<string, string> {
   if (!Array.isArray(values) || values.length === 0) {
     throw new TypeError(`${label} must be a non-empty array`);
   }
 
-  const result = new Map();
+  const result = new Map<string, string>();
   for (const value of values) {
     const normalized = normalizeAbsolutePath(value, label);
     const identity = pathIdentity(normalized);
-    if (result.has(identity)) throw new Error(`${label} must not contain duplicates`);
+    if (result.has(identity)) {
+      throw new Error(`${label} must not contain duplicates`);
+    }
     result.set(identity, normalized);
   }
   return result;

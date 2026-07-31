@@ -143,7 +143,7 @@
 - 现有 CLI 写命令向 Command Gateway 的完整迁移、Child Workflow、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建和多仓 Verification 影响传播。
 - G0 Rollback/Uninstall、CLI recovery、Codex Host Hook 自动安装、Attestation/Manifest I/O 的公共或隔离 Host CLI 接线、Accepted Head、安装选择门、其他工具/版本/平台验证、Claude-compatible 或 CatPaw Adapter。
 - Agent 自主代码生成、多仓写入 Saga、PR、推送、合并、发布或部署。
-- 完整 Codex Agent Host：App Server Runner、Session Flags、零模型 Preflight 和 Application Host 生命周期；当前只完成 Runtime Isolation。
+- 完整 Codex Agent Host：当前已完成 Runtime Isolation 与 App Server Runner；Session Flags、零模型 Preflight 和 Application Host 生命周期仍未实现。
 - Skill、Connector、Wiki、Obsidian、Memory、Knowledge 或 Agent Registry Runtime。
 - 完整项目 Validator Execution、真实命令输出存储/截断、Flaky/Waiver、Independent Verifier 和 ComplianceReport。
 
