@@ -4,7 +4,7 @@
 
 ## Packages
 
-- [liushi-harness](./packages/liushi-harness/README.md): 面向真实软件项目的可审计 Agent Engineering Harness；Codex Session Flags 已正式化，真实 Codex App Server 仍只在固定公开 TypeScript 项目完成受限 Session Pilot，Preflight 与 Application Host 尚未完成。
+- [liushi-harness](./packages/liushi-harness/README.md): 面向真实软件项目的可审计 Agent Engineering Harness；Codex Session Flags 与零模型 App Server Preflight 已正式化，Application Host 尚未完成。
 
 ## Development
 

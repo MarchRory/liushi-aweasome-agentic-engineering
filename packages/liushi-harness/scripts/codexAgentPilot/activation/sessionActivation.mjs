@@ -17,7 +17,6 @@ import {
   CODEX_FILE_CHANGE_DECISION,
   CODEX_MODEL_LAUNCH_LIMIT,
   CODEX_MODEL_PROVIDER_ID,
-  CODEX_NATIVE_HOOK_STATUS,
   CODEX_PERMISSION_PROFILE,
   PILOT_SCHEMA_VERSION,
   REASONING_EFFORT,
@@ -148,10 +147,6 @@ export async function createActivationArtifacts(input) {
       modelProvider: CODEX_MODEL_PROVIDER_ID,
       modelLaunchLimit: CODEX_MODEL_LAUNCH_LIMIT,
       reconnectAttempts: 0,
-      nativeHookControl: {
-        status: CODEX_NATIVE_HOOK_STATUS.Unavailable,
-        enforcement: false,
-      },
     },
     permissions: {
       profile: CODEX_PERMISSION_PROFILE.ReadOnly,

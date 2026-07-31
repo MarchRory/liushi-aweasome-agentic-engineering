@@ -15,8 +15,6 @@ import {
   CODEX_MODEL_LAUNCH_LIMIT,
   CODEX_MODEL_PROVIDER,
   CODEX_MODEL_PROVIDER_ID,
-  CODEX_NATIVE_HOOK_ISSUE_URL,
-  CODEX_NATIVE_HOOK_STATUS,
   CODEX_PERMISSION_PROFILE,
   FORBIDDEN_ACTIONS,
   HOST_APPROVAL_SCHEMA_VERSION,
@@ -97,12 +95,6 @@ export function createCodexHostApprovalPacket(input) {
       homeSource: input.state.codex.homeSource,
       userConfigLoaded: false,
       projectInstructionsLoaded: false,
-      nativeHookControl: {
-        status: CODEX_NATIVE_HOOK_STATUS.Unavailable,
-        enforcement: false,
-        issueUrl: CODEX_NATIVE_HOOK_ISSUE_URL,
-        evidenceDigest: preflightEvidence.nativeHookEvidence.evidenceDigest,
-      },
     },
     harnessCli: input.state.identities.consumer,
     model: {
@@ -216,7 +208,6 @@ export function createCodexHostApprovalPacket(input) {
       exactActor: true,
       launchSeparatelyApproved: true,
       actionControlAcknowledged: true,
-      nativeHookUnavailableAcknowledged: true,
     },
     forbiddenActions: [...FORBIDDEN_ACTIONS],
     forbiddenFlags: [

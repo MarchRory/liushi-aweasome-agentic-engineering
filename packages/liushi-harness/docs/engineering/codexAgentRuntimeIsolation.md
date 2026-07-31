@@ -165,4 +165,4 @@ Root 创建后的任一步失败都必须尝试精确清理。原始错误保持
 
 ## 10. 后续顺序
 
-Runtime Isolation 后续的 App Server Runner 迁移已经完成，固定 Pilot 只通过构建产物桥消费正式实现。Session Flags 已作为独立 Agent Host Infrastructure 模块完成正式化；它只负责确定性 CLI overrides、Runtime key 路径保护、固定 Provider/reasoning、受限 Hook 和临时 Trust 编码。零模型 Preflight 与 Application Host 编排 `preview -> approve -> run -> status` 仍未完成。固定公开项目 Pilot 将持续作为回归 Fixture，企业单仓 Pilot 才负责产生真实生产与量化证据。
+Runtime Isolation 后续的 App Server Runner 迁移已经完成，固定 Pilot 只通过构建产物桥消费正式实现。Session Flags 已作为独立 Agent Host Infrastructure 模块完成正式化；它只负责确定性 CLI overrides、Runtime key 路径保护、固定 Provider/reasoning、受限 Hook 和临时 Trust 编码。零模型 Preflight 也已作为独立模块完成正式化，以两个隔离的真实 Codex 进程验证 File Change Approval 正向放行、负向拒绝和零真实模型请求证据。Application Host 编排 `preview -> approve -> run -> status` 仍未完成。固定公开项目 Pilot 将持续作为回归 Fixture，企业单仓 Pilot 才负责产生真实生产与量化证据。

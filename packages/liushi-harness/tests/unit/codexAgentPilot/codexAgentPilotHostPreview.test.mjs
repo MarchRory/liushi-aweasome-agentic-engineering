@@ -50,6 +50,7 @@ describe("Codex Agent Pilot Host preview", () => {
     const packet = JSON.parse(await readFile(preview.hostApprovalPacketFile, "utf8"));
     const { packetDigest, ...packetBody } = packet;
     expect(states).toHaveLength(5);
+    expect(packet.schemaVersion).toBe("liushi.codex-agent-pilot.host-approval.v3");
     expect(final.status).toBe("waiting_host_approval");
     expect(final.pendingHostApproval).toEqual({
       packetDigest,
@@ -108,11 +109,12 @@ describe("Codex Agent Pilot Host preview", () => {
       appServerProcesses: 2,
       realModelRequests: 0,
       evidenceDigest: evidence.evidenceDigest,
+      evidence: {
+        authorizationOrigin: "synthetic_preflight",
+      },
     });
-    expect(packet.codex.nativeHookControl).toMatchObject({
-      status: "unavailable",
-      enforcement: false,
-    });
+    expect(packet.codex.nativeHookControl).toBeUndefined();
+    expect(packet.requiredHumanApproval.nativeHookUnavailableAcknowledged).toBeUndefined();
     expect(packet.compatibilityArtifacts).toMatchObject({
       enforcement: false,
       persistentWrites: 0,
@@ -185,7 +187,7 @@ describe("Codex Agent Pilot Host preview", () => {
           probeCodexAppServerFileChangeApproval: async () => evidence,
         }),
       ),
-    ).rejects.toThrow("Preflight Evidence");
+    ).rejects.toThrow("Preflight Codex identity");
     expect(await readStateChain(context.prepared.paths.stateRoot)).toHaveLength(4);
     expect(
       (await readdir(context.prepared.paths.controlRoot)).filter((name) =>

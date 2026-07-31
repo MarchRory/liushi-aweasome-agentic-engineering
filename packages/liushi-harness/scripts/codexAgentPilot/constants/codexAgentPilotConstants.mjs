@@ -33,29 +33,8 @@ export const CODEX_ACTION_CONTROL_KIND = Object.freeze({
 export const CODEX_FILE_CHANGE_DECISION_SCOPE = Object.freeze({
   SingleRequest: "single_request",
 });
-export const CODEX_NATIVE_HOOK_STATUS = Object.freeze({
-  Unavailable: "unavailable",
-});
-export const CODEX_NATIVE_HOOK_CONTROL_ROLE = Object.freeze({
-  None: "none",
-});
-export const CODEX_NATIVE_HOOK_BOUNDARY_BASIS = Object.freeze({
-  PinnedVersionAndIssue: "pinned_version_and_issue",
-});
-export const CODEX_NATIVE_HOOK_CURRENT_PROBE_STATUS = Object.freeze({
-  NotRun: "not_run",
-});
 export const CODEX_FILE_CHANGE_KIND = Object.freeze({
   Update: "update",
-});
-export const CODEX_NATIVE_HOOK_ISSUE_URL = "https://github.com/openai/codex/issues/18607";
-export const CODEX_APP_SERVER_PREFLIGHT_SCENARIO = Object.freeze({
-  AllowedUpdate: "allowed_update",
-  OutOfSetUpdate: "out_of_set_update",
-});
-export const CODEX_APP_SERVER_PREFLIGHT_RESULT = Object.freeze({
-  Accepted: "accepted",
-  Cancelled: "cancelled",
 });
 export const WRITE_SET = Object.freeze(["test/utils.test.ts"]);
 export const AGENT_ACTOR_ID = "agent:codex-agent-pilot";
@@ -114,9 +93,7 @@ export const PILOT_VALIDATOR_ID = Object.freeze({
   PackageScriptTest: "package_script.test",
   TypeScriptTypecheck: "typescript.typecheck",
 });
-export const HOST_APPROVAL_SCHEMA_VERSION = "liushi.codex-agent-pilot.host-approval.v2";
-export const CODEX_APP_SERVER_PREFLIGHT_SCHEMA_VERSION =
-  "liushi.codex-agent-pilot.app-server-preflight.v2";
+export const HOST_APPROVAL_SCHEMA_VERSION = "liushi.codex-agent-pilot.host-approval.v3";
 export const HOST_APPROVAL_RECORD_SCHEMA_VERSION =
   "liushi.codex-agent-pilot.host-approval-record.v1";
 export const AGENT_LAUNCH_SCHEMA_VERSION = "liushi.codex-agent-pilot.agent-launch.v1";
@@ -142,8 +119,10 @@ export const CODEX_ALLOWED_FILE_CHANGE_KINDS = Object.freeze([CODEX_FILE_CHANGE_
 export const CODEX_HOOK_TIMEOUT_SECONDS = 30;
 export const CODEX_APP_SERVER_TIMEOUT_MS = 30_000;
 export const CODEX_APP_SERVER_OUTPUT_LIMIT = 1024 * 1024;
-export const HOST_PREFLIGHT_PROCESS_COUNT = 2;
-export const HOST_PREFLIGHT_REAL_MODEL_REQUEST_COUNT = 0;
+export {
+  CODEX_PREFLIGHT_PROCESS_COUNT as HOST_PREFLIGHT_PROCESS_COUNT,
+  CODEX_PREFLIGHT_REAL_MODEL_REQUEST_COUNT as HOST_PREFLIGHT_REAL_MODEL_REQUEST_COUNT,
+} from "../../../dist/infrastructure/executors/codex/agentHost/preflight/index.js";
 export const CODEX_MODEL_LAUNCH_LIMIT = 1;
 export const CODEX_APP_SERVER_REQUEST_IDS = Object.freeze({
   Initialize: 1,

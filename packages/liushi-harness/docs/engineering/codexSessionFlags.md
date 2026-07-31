@@ -19,7 +19,7 @@ Codex 官方 `-c` 参数接收的是单个 `key=TOML` 配置值，而不是完�
 
 ## 与其他模块的边界
 
-Session Flags 不实现完整 Preflight、Application Host 生命周期、Sandbox、Remote Control、File Change Approval、模型路由或 Workflow。Runtime Isolation 负责运行时目录、凭据和环境隔离；App Server Runner 负责 JSONL 协议、进程生命周期和 File Change Approval；未来的 Preflight 负责在调用本模块前验证运行条件；Application Host 负责编排 `preview -> approve -> run -> status`。本切片只宣称 Session Flags 正式化完成，Preflight 与 Application Host 仍未完成。
+Session Flags 不实现 Preflight、Application Host 生命周期、Sandbox、Remote Control、File Change Approval、模型路由或 Workflow。Runtime Isolation 负责运行时目录、凭据和环境隔离；App Server Runner 负责 JSONL 协议、进程生命周期和 File Change Approval；已经正式化的 Preflight 在调用本模块后验证固定 loopback Provider、审批协议和进程退出；Application Host 负责编排 `preview -> approve -> run -> status`。这些职责保持独立，Session Flags 不吸收其他模块的状态或证据。
 
 ## 官方参考
 

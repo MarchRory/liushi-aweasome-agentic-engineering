@@ -83,10 +83,6 @@ describe("Codex Agent Pilot state machine", () => {
         modelProvider: "liushi_restricted_openai",
         modelLaunchLimit: 1,
         reconnectAttempts: 0,
-        nativeHookControl: {
-          status: "unavailable",
-          enforcement: false,
-        },
       },
       permissions: {
         profile: ":read-only",

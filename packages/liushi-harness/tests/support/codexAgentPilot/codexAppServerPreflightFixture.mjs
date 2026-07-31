@@ -1,73 +1,50 @@
 import {
-  CODEX_AGENT_EXECUTION_MODE,
-  CODEX_APP_SERVER_PREFLIGHT_RESULT,
-  CODEX_APP_SERVER_PREFLIGHT_SCENARIO,
-  CODEX_APP_SERVER_PREFLIGHT_SCHEMA_VERSION,
-  CODEX_MODEL_PROVIDER_ID,
-  CODEX_NATIVE_HOOK_BOUNDARY_BASIS,
-  CODEX_NATIVE_HOOK_CONTROL_ROLE,
-  CODEX_NATIVE_HOOK_CURRENT_PROBE_STATUS,
-  CODEX_NATIVE_HOOK_ISSUE_URL,
-  CODEX_NATIVE_HOOK_STATUS,
-  HOST_PREFLIGHT_PROCESS_COUNT,
-  HOST_PREFLIGHT_REAL_MODEL_REQUEST_COUNT,
-} from "../../../scripts/codexAgentPilot/constants/index.mjs";
-import { calculateDigest } from "../../../scripts/codexAgentPilot/digest/index.mjs";
-import { CODEX_APP_SERVER_REQUIRED_THREAD_STATUS_TRANSITIONS } from "../../../scripts/codexAgentPilot/host/agentRunner/appServer/index.mjs";
+  CODEX_APP_SERVER_OUTCOMES,
+  CODEX_APP_SERVER_REQUIRED_THREAD_STATUS_TRANSITIONS,
+} from "../../../scripts/codexAgentPilot/host/agentRunner/appServer/index.mjs";
+import {
+  CODEX_PREFLIGHT_EXPECTED_RESPONSES_REQUEST_COUNT,
+  CodexPreflightResult,
+  CodexPreflightScenario,
+  createCodexAppServerPreflightEvidence,
+} from "../../../scripts/codexAgentPilot/host/preflight/index.mjs";
 
 export function createCodexAppServerPreflightFixture(state) {
-  const nativeHookBody = {
-    status: CODEX_NATIVE_HOOK_STATUS.Unavailable,
-    issueUrl: CODEX_NATIVE_HOOK_ISSUE_URL,
-    controlRole: CODEX_NATIVE_HOOK_CONTROL_ROLE.None,
-    basis: CODEX_NATIVE_HOOK_BOUNDARY_BASIS.PinnedVersionAndIssue,
-    currentPreflight: {
-      status: CODEX_NATIVE_HOOK_CURRENT_PROBE_STATUS.NotRun,
-      processCount: 0,
-    },
-  };
-  const nativeHookEvidence = {
-    ...nativeHookBody,
-    evidenceDigest: calculateDigest(nativeHookBody),
-  };
-  const body = {
-    schemaVersion: CODEX_APP_SERVER_PREFLIGHT_SCHEMA_VERSION,
+  return createCodexAppServerPreflightEvidence({
     codexExecutableDigest: state.identities.codex.digest,
     codexVersion: state.identities.codex.version,
-    executionMode: CODEX_AGENT_EXECUTION_MODE.AppServerFileChangeApproval,
-    processCount: HOST_PREFLIGHT_PROCESS_COUNT,
-    realModelRequests: HOST_PREFLIGHT_REAL_MODEL_REQUEST_COUNT,
-    transport: {
-      providerId: CODEX_MODEL_PROVIDER_ID,
-      supportsWebsockets: false,
-      websocketAttempts: 0,
-      reconnectAttempts: 0,
-    },
-    nativeHookEvidence,
-    positive: createScenario({
-      scenario: CODEX_APP_SERVER_PREFLIGHT_SCENARIO.AllowedUpdate,
-      result: CODEX_APP_SERVER_PREFLIGHT_RESULT.Accepted,
-      targetChanged: true,
-    }),
-    negative: createScenario({
-      scenario: CODEX_APP_SERVER_PREFLIGHT_SCENARIO.OutOfSetUpdate,
-      result: CODEX_APP_SERVER_PREFLIGHT_RESULT.Cancelled,
-      targetChanged: false,
-    }),
-  };
-  return { ...body, evidenceDigest: calculateDigest(body) };
+    scenarioResults: [
+      createScenario({
+        scenario: CodexPreflightScenario.AllowedUpdate,
+        result: CodexPreflightResult.Accepted,
+        outcome: CODEX_APP_SERVER_OUTCOMES.Succeeded,
+        targetChanged: true,
+      }),
+      createScenario({
+        scenario: CodexPreflightScenario.OutOfSetUpdate,
+        result: CodexPreflightResult.Cancelled,
+        outcome: CODEX_APP_SERVER_OUTCOMES.Denied,
+        targetChanged: false,
+      }),
+    ],
+  });
 }
 
 function createScenario(input) {
+  const positive = input.scenario === CodexPreflightScenario.AllowedUpdate;
+  const responsesRequestCount = CODEX_PREFLIGHT_EXPECTED_RESPONSES_REQUEST_COUNT[input.scenario];
   return {
     scenario: input.scenario,
     result: input.result,
+    outcome: input.outcome,
     approvalRequestCount: 1,
     localModelRequestCount: 1,
+    responsesRequestCount,
+    completedResponseCount: responsesRequestCount,
     targetChanged: input.targetChanged,
     processExited: true,
     processMayBeRunning: false,
-    threadStatusTransitions: (input.scenario === CODEX_APP_SERVER_PREFLIGHT_SCENARIO.AllowedUpdate
+    threadStatusTransitions: (positive
       ? CODEX_APP_SERVER_REQUIRED_THREAD_STATUS_TRANSITIONS
       : CODEX_APP_SERVER_REQUIRED_THREAD_STATUS_TRANSITIONS.slice(0, 2)
     ).map((transition) =>

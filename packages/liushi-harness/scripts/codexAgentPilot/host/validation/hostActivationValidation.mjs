@@ -13,7 +13,6 @@ import {
   CODEX_FILE_CHANGE_DECISION,
   CODEX_MODEL_LAUNCH_LIMIT,
   CODEX_MODEL_PROVIDER_ID,
-  CODEX_NATIVE_HOOK_STATUS,
   CODEX_PERMISSION_PROFILE,
   CODEX_RESTRICTED_RUNTIME_OVERRIDES,
   HOST_PACKET_NAME,
@@ -143,8 +142,6 @@ function validatePreliminaryHostPacket(input) {
     packet.execution?.modelProvider !== CODEX_MODEL_PROVIDER_ID ||
     packet.execution?.modelLaunchLimit !== CODEX_MODEL_LAUNCH_LIMIT ||
     packet.execution?.reconnectAttempts !== 0 ||
-    packet.execution?.nativeHookControl?.status !== CODEX_NATIVE_HOOK_STATUS.Unavailable ||
-    packet.execution?.nativeHookControl?.enforcement !== false ||
     packet.permissions?.profile !== CODEX_PERMISSION_PROFILE.ReadOnly ||
     packet.permissions?.approvalPolicy !== CODEX_APPROVAL_POLICY.OnRequest ||
     packet.permissions?.userConfigLoaded !== false ||
