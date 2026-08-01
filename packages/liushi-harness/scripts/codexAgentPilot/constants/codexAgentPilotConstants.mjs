@@ -76,6 +76,7 @@ export const AGENT_PROMPT_NAME = "agentPrompt.txt";
 export const HOST_PACKET_NAME = "hostActivationPacket.json";
 export const HOST_APPROVAL_PACKET_PREFIX = "hostApprovalPacket-";
 export const SESSION_MANIFEST_NAME = "sessionActivation.json";
+export const PILOT_METRICS_ENROLLMENT_NAME = "pilotMetricsEnrollment.json";
 export const SCAN_MANIFEST_NAME = "scanManifest.json";
 export const SCAN_REPORT_NAME = "scanReport.json";
 export const PROFILE_PROPOSAL_NAME = "projectProfileProposal.json";

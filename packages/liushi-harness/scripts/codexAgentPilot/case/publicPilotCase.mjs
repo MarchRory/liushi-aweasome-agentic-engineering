@@ -1,3 +1,4 @@
+import { PilotExecutionMode, PilotStepPhase, PilotTaskClass } from "../../../dist/index.js";
 import {
   PACKAGE_MANAGER,
   PILOT_CASE_SCHEMA_VERSION,
@@ -36,6 +37,17 @@ export function createPublicCodexAgentPilotCase() {
     }),
     writeSet: Object.freeze([...WRITE_SET]),
     historicalLogicChange: false,
+    metrics: Object.freeze({
+      pilotId: "public-defu-module-namespace-v1",
+      taskClass: PilotTaskClass.Test,
+      plannedSteps: Object.freeze([
+        createPlannedStep("requirement_alignment", PilotStepPhase.Plan, PilotExecutionMode.Human),
+        createPlannedStep("plan_confirmation", PilotStepPhase.Plan, PilotExecutionMode.Human),
+        createPlannedStep("implementation", PilotStepPhase.Implement, PilotExecutionMode.Automated),
+        createPlannedStep("verification", PilotStepPhase.Verify, PilotExecutionMode.Automated),
+        createPlannedStep("review", PilotStepPhase.Review, PilotExecutionMode.Human),
+      ]),
+    }),
     verificationChecks: Object.freeze([
       createVerificationCheck({
         checkId: PILOT_VERIFICATION_CHECK_ID.Test,
@@ -116,6 +128,10 @@ export function createPublicCodexAgentPilotCase() {
     agentInstruction:
       "仅修改 test/utils.test.ts，增加 module namespace object 回归测试：动态 import ../src/_utils，并断言 isPlainObject(namespace) 为 true。",
   });
+}
+
+function createPlannedStep(stepId, phase, expectedExecutionMode) {
+  return Object.freeze({ stepId, phase, required: true, expectedExecutionMode });
 }
 
 function createVerificationCheck(input) {

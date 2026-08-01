@@ -19,6 +19,7 @@ export * from "./constants/index.mjs";
 export * from "./digest/index.mjs";
 export * from "./harnessClient/index.mjs";
 export * from "./host/index.mjs";
+export * from "./metrics/index.mjs";
 export * from "./project/index.mjs";
 export * from "./service/index.mjs";
 export * from "./state/index.mjs";

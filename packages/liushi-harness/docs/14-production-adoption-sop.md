@@ -12,7 +12,7 @@
 
 ### 1.1 当前可执行范围
 
-**状态：完整 SOP 设计已完成，确定性 Bootstrap、G0 Apply、单仓 CodingTask Session、Codex Hook 与 Delivery Completion 主线可执行。** 当前可以安装 npm 包、检查 Runtime Store、创建与查询 Task、提交 Artifact、记录 Human Approval、解析 Rule、扫描多仓、通过 G8 编译 ProjectProfile Bundle，并以显式可信单仓绑定完成 Session Activation、受管 Hook 写入、Closeout、Human-gated Recovery、Local Verification 和 PRReadyArtifact 装配。真实 Codex App Server 已在固定公开项目通过一次单文件 Pilot；企业项目身份注入、真实 PRD、量化和多仓交付仍未验证。完整 RequirementWorkflow Runtime、失败修复循环、Skills、Connectors、Memory 和 Learning 尚未实现，因此当前只能声明受限单仓主线，不声明完整生产闭环。
+**状态：完整 SOP 设计已完成，确定性 Bootstrap、G0 Apply、单仓 CodingTask Session、Codex Hook 与 Delivery Completion 主线可执行。** 当前可以安装 npm 包、检查 Runtime Store、创建与查询 Task、提交 Artifact、记录 Human Approval、解析 Rule、扫描多仓、通过 G8 编译 ProjectProfile Bundle，并以显式可信单仓绑定完成 Metrics Enrollment、Session Activation、受管 Hook 写入、Closeout、Human-gated Recovery、Local Verification 和 PRReadyArtifact 装配。真实 Codex App Server 已在固定公开项目通过一次单文件 Pilot；企业项目身份注入、真实 PRD、Settlement/对照量化和多仓交付仍未验证。完整 RequirementWorkflow Runtime、失败修复循环、Skills、Connectors、Memory 和 Learning 尚未实现，因此当前只能声明受限单仓主线，不声明完整生产闭环。
 
 ### 1.2 当前单仓 Session 主线
 
@@ -141,6 +141,7 @@ Case JSON 必须满足以下边界：
 
 - `sourceKind` 固定为 `local_repository`，`repository.source` 是干净本地 Git 仓库的绝对路径，`repository.revision` 是当前完整小写 Commit ID。
 - `writeSet` 精确包含一个规范化 POSIX 相对文件路径，禁止历史业务逻辑改动。
+- `metrics` 必须由 Human 提供脱敏 `pilotId`、封闭 `taskClass` 和非空 `plannedSteps`；步骤 ID 唯一，预期执行模式不得为 `not_executed`。
 - `requirementProposal`、`planRiskProposal` 和 `verificationChecks` 必须通过正式 Harness 契约校验，并与 Repository 和 Write Set 一致。
 - Requirement 与 PlanRisk 仍分别经过 G1、G4 Human Gate；Case 文件不能自行授权写入。
 - `prepare` 不执行 Case 中声明的项目验证命令。验证命令只有在 PlanRisk 获批并进入受控 Session 后才可执行。
@@ -156,9 +157,9 @@ node packages/liushi-harness/scripts/codexAgentPilot/index.mjs prepare `
   --case C:\path\to\pilotCase.json
 ```
 
-随后按输出的当前 `stateDigest` 依次执行三次 `approve`，分别审批 G8、G1、G4；再执行 `preview-host`、使用 Human 确认的 `stateDigest` 与 `packetDigest` 调用 `approve-host`，最后调用 `run-agent`。这些 Digest 只用于绑定跨进程状态转换和 Human 决策，不要求 Human 重新计算，也不得扩展为普通代码改动的额外验收步骤。
+随后按输出的当前 `stateDigest` 依次执行三次 `approve`，分别审批 G8、G1、G4。G4 成功后，Pilot 从已批准状态派生风险等级、写路径数、Required Validator 数、仓库 Revision、实际 Harness Tarball 身份和 Profile Policy Digest，先 create-only 写入 Enrollment，再执行 Session Activation；登记失败时状态保持在 G4，Agent 不会启动。之后执行 `preview-host`、使用 Human 确认的 `stateDigest` 与 `packetDigest` 调用 `approve-host`，最后调用 `run-agent`。这些 Digest 只用于绑定跨进程状态转换和 Human 决策，不要求 Human 重新计算，也不得扩展为普通代码改动的额外验收步骤。
 
-该入口当前只证明配置、状态链和本地仓库复制路径可用。首次真实企业 Case 仍需由 Repository Owner 检查脱敏、Requirement、PlanRisk、验证命令和单文件 Write Set，并采集 Metrics Enrollment/Settlement；完成前不得声明企业提效成立。
+该入口当前只证明配置、状态链、本地仓库复制路径和 Activation 前 Enrollment 控制流可用。首次真实企业 Case 仍需由 Repository Owner 检查脱敏、Requirement、PlanRisk、量化分母、验证命令和单文件 Write Set，并在完成后提交 Metrics Settlement；完成前不得声明企业提效成立。
 
 ## 5. 分级放量
 

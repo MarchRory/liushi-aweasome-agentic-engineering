@@ -2,6 +2,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
+import {
+  PilotEnrollmentSchemaVersion,
+  PilotMetricsCreateDisposition,
+} from "../../../dist/index.js";
 import { calculateDigest } from "../../../scripts/codexAgentPilot/digest/index.mjs";
 
 const repositoryRevision = "82632b66f5914e9946edce300e10633a3d5c0cb7";
@@ -136,6 +140,7 @@ export function createPilotApprovalEnvelope(gate, approvalNumber, args, override
         artifactDigest,
         actor: { kind: "human", actorId: option(args, "--actor-id") },
         idempotencyKey: option(args, "--idempotency-key"),
+        createdAt: "2026-07-29T00:00:00.000Z",
         ...overrides.approval,
       },
       gateEvaluation: {
@@ -152,9 +157,10 @@ export function createPilotApprovalEnvelope(gate, approvalNumber, args, override
 
 /** 创建可推进 G8、G1、G4 的标准 Harness CLI Stub。 */
 export function createHappyPathPilotEnvelope(fixture) {
-  const counters = { proposal: 0, approval: 0, profile: 0, activation: 0 };
+  const counters = { proposal: 0, approval: 0, profile: 0, metrics: 0, activation: 0 };
   const proposalByIdempotencyKey = new Map();
   const approvalByIdempotencyKey = new Map();
+  const enrollmentBySession = new Map();
   const activationByManifest = new Map();
   const runEnvelope = async (_consumerRoot, args) => {
     if (args[0] === "task")
@@ -186,7 +192,31 @@ export function createHappyPathPilotEnvelope(fixture) {
       counters.profile += 1;
       return { status: "success", data: { digest: calculateDigest("profile"), profiles: [] } };
     }
-    if (args[0] === "coding-task") {
+    if (
+      args[0] === "coding-task" &&
+      args[1] === "session" &&
+      args[2] === "metrics" &&
+      args[3] === "enroll"
+    ) {
+      const key = `${option(args, "--workspace")}:${option(args, "--session")}`;
+      const existing = enrollmentBySession.get(key);
+      if (existing !== undefined) {
+        return {
+          status: "success",
+          data: { disposition: PilotMetricsCreateDisposition.Reused, record: existing },
+        };
+      }
+      counters.metrics += 1;
+      const draft = JSON.parse(await readFile(option(args, "--file"), "utf8"));
+      const body = { ...draft, schemaVersion: PilotEnrollmentSchemaVersion.V1 };
+      const record = { ...body, recordDigest: calculateDigest(body) };
+      enrollmentBySession.set(key, record);
+      return {
+        status: "success",
+        data: { disposition: PilotMetricsCreateDisposition.Created, record },
+      };
+    }
+    if (args[0] === "coding-task" && args[1] === "session" && args[2] === "activate") {
       const manifestFile = option(args, "--file");
       const manifestDigest = calculateDigest(JSON.parse(await readFile(manifestFile, "utf8")));
       const existing = activationByManifest.get(manifestDigest);

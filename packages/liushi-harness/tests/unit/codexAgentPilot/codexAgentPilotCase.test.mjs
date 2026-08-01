@@ -38,6 +38,18 @@ describe("Codex Agent Pilot Case", () => {
       },
       writeSet: ["test/utils.test.ts"],
       historicalLogicChange: false,
+      metrics: {
+        pilotId: "public-defu-module-namespace-v1",
+        taskClass: "test",
+        plannedSteps: expect.arrayContaining([
+          {
+            stepId: "implementation",
+            phase: "implement",
+            required: true,
+            expectedExecutionMode: "automated",
+          },
+        ]),
+      },
     });
   });
 
@@ -64,6 +76,17 @@ describe("Codex Agent Pilot Case", () => {
     candidate.writeSet = ["src/index.ts"];
 
     expect(() => validateCodexAgentPilotCase(candidate)).toThrow("与 Write Set 不一致");
+  });
+
+  it("拒绝不完整或重复的量化分母", async () => {
+    fixture = await createCodexAgentPilotFixture();
+    const duplicateStep = await createLocalCase(fixture);
+    duplicateStep.metrics.plannedSteps[1].stepId = duplicateStep.metrics.plannedSteps[0].stepId;
+    expect(() => validateCodexAgentPilotCase(duplicateStep)).toThrow("stepId 必须唯一");
+
+    const notExecuted = await createLocalCase(fixture);
+    notExecuted.metrics.plannedSteps[0].expectedExecutionMode = "not_executed";
+    expect(() => validateCodexAgentPilotCase(notExecuted)).toThrow("不得预登记 not_executed");
   });
 
   it("拒绝无效 Check 和与 Case 不一致的扫描结果", async () => {
@@ -110,6 +133,7 @@ describe("Codex Agent Pilot Case", () => {
         sourceKind: "local_repository",
         writeSet: ["test/utils.test.ts"],
         historicalLogicChange: false,
+        metrics: candidate.metrics,
         requirementProposal: candidate.requirementProposal,
         planRiskProposal: candidate.planRiskProposal,
       },

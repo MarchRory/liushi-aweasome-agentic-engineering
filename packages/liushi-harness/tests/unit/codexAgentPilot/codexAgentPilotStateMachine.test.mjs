@@ -38,6 +38,7 @@ describe("Codex Agent Pilot state machine", () => {
     expect(states).toHaveLength(1);
     expect(states[0].approvals).toHaveLength(0);
     expect(states[0].effects).toMatchObject({
+      metricsEnrollments: 0,
       activationExecuted: false,
       hookWrites: 0,
       modelLaunches: 0,
@@ -105,6 +106,34 @@ describe("Codex Agent Pilot state machine", () => {
     expect(final.activation.hostPacket.agentPrompt.targetDigest).toBe(
       final.activation.targetDigest,
     );
+    expect(final.metrics).toMatchObject({
+      disposition: "created",
+      enrollment: {
+        schemaVersion: "liushi.pilot-metrics.enrollment.v1",
+        pilotId: "public-defu-module-namespace-v1",
+        workspaceId: final.task.workspaceId,
+        sessionId: final.activation.manifest.sessionId,
+        codingTaskId: final.activation.manifest.createCommand.aggregateId,
+        repositoryId: final.fixedProject.repositoryId,
+        taskClass: "test",
+        riskLevel: "medium",
+        historicalLogicChange: false,
+        plannedWritePathCount: 1,
+        requiredValidatorCount: 3,
+        repositoryRevision: final.fixedProject.revision,
+        harnessRevision: final.identities.tarball.digest,
+        policyDigest: final.profile.bundle.digest,
+        enrolledAt: "2026-07-29T00:00:00.000Z",
+        actor: { kind: "human", actorId: "human-actor" },
+      },
+    });
+    const persistedEnrollmentDraft = JSON.parse(
+      await readFile(final.metrics.enrollmentFile, "utf8"),
+    );
+    const { recordDigest, schemaVersion, ...recordDraft } = final.metrics.enrollment;
+    expect(recordDigest).toMatch(/^sha256:/u);
+    expect(schemaVersion).toBe("liushi.pilot-metrics.enrollment.v1");
+    expect(recordDraft).toEqual(persistedEnrollmentDraft);
     const prompt = await readFile(final.activation.promptFile, "utf8");
     const targetSource = await readFile(final.activation.targetFile, "utf8");
     expect(prompt).toContain(`digest=${final.activation.targetDigest}`);
@@ -115,6 +144,7 @@ describe("Codex Agent Pilot state machine", () => {
     );
     expect(prompt).toContain("禁止运行测试、格式化、Git、Closeout、Completion");
     expect(final.effects).toMatchObject({
+      metricsEnrollments: 1,
       activationExecuted: true,
       hookWrites: 0,
       modelLaunches: 0,
@@ -131,6 +161,7 @@ describe("Codex Agent Pilot state machine", () => {
       proposal: 3,
       approval: 3,
       profile: 1,
+      metrics: 1,
       activation: 1,
     });
   });
@@ -364,6 +395,66 @@ describe("Codex Agent Pilot state machine", () => {
       fixture.dependencies(harness.runEnvelope),
     );
     expect(recovered.status).toBe("waiting_host_approval");
+    expect(harness.counters.metrics).toBe(1);
+    expect(harness.counters.activation).toBe(1);
+  });
+
+  it("Metrics Enrollment 失败时保持 G4 且不执行 Activation", async () => {
+    fixture = await createCodexAgentPilotFixture();
+    const harness = createHappyPathPilotEnvelope(fixture);
+    const prepared = await prepareCodexAgentPilot(
+      fixture.input,
+      fixture.dependencies(harness.runEnvelope),
+    );
+    const g1 = await approveCodexAgentPilot(
+      {
+        root: fixture.input.root,
+        stateDigest: prepared.stateDigest,
+        actorId: "human-actor",
+      },
+      fixture.dependencies(harness.runEnvelope),
+    );
+    const g4 = await approveCodexAgentPilot(
+      {
+        root: fixture.input.root,
+        stateDigest: g1.stateDigest,
+        actorId: "human-actor",
+      },
+      fixture.dependencies(harness.runEnvelope),
+    );
+    const failEnrollment = async (consumerRoot, args) => {
+      if (args[0] === "coding-task" && args[2] === "metrics") {
+        return { status: "error", data: {} };
+      }
+      return harness.runEnvelope(consumerRoot, args);
+    };
+
+    await expect(
+      approveCodexAgentPilot(
+        {
+          root: fixture.input.root,
+          stateDigest: g4.stateDigest,
+          actorId: "human-actor",
+        },
+        fixture.dependencies(failEnrollment),
+      ),
+    ).rejects.toThrow("Pilot Metrics Enrollment 未成功");
+    expect((await readStateChain(prepared.paths.stateRoot)).at(-1).stateDigest).toBe(
+      g4.stateDigest,
+    );
+    expect(harness.counters.metrics).toBe(0);
+    expect(harness.counters.activation).toBe(0);
+
+    const recovered = await approveCodexAgentPilot(
+      {
+        root: fixture.input.root,
+        stateDigest: g4.stateDigest,
+        actorId: "human-actor",
+      },
+      fixture.dependencies(harness.runEnvelope),
+    );
+    expect(recovered.status).toBe("waiting_host_approval");
+    expect(harness.counters.metrics).toBe(1);
     expect(harness.counters.activation).toBe(1);
   });
 

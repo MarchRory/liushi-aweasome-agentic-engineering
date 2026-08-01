@@ -6,6 +6,7 @@ import {
   ARTIFACT_TYPES,
   GATES,
   PLAN_RISK_PROPOSAL_FILE_STEM,
+  PILOT_METRICS_ENROLLMENT_NAME,
   REQUIREMENT_PROPOSAL_NAME,
   SESSION_MANIFEST_NAME,
   STATE_STATUS,
@@ -16,6 +17,10 @@ import {
   createPilotProposalIdempotencyKey,
   resolvePilotCliEntrypoint,
 } from "../../harnessClient/index.mjs";
+import {
+  createCodexAgentPilotMetricsEnrollmentDraft,
+  validateCodexAgentPilotMetricsEnrollmentEnvelope,
+} from "../../metrics/index.mjs";
 import { verifyPilotPaths } from "../../project/index.mjs";
 import { readControlJson, readStateChain, writeControlJsonIdempotent } from "../../state/index.mjs";
 import { requireExistingDirectory } from "../../validation/index.mjs";
@@ -258,6 +263,26 @@ async function progressG4(input) {
     ...common,
     deferHostArtifacts: true,
   });
+  const metricsEnrollmentFile = join(input.paths.controlRoot, PILOT_METRICS_ENROLLMENT_NAME);
+  const metricsEnrollmentDraft = createCodexAgentPilotMetricsEnrollmentDraft({
+    fixedProject: input.current.fixedProject,
+    task: input.current.task,
+    profile: input.current.profile,
+    identities: input.current.identities,
+    manifest: activationPreparation.manifest,
+    enrolledAt: input.approval.createdAt,
+    actorId: input.actorId,
+  });
+  await writeControlJsonIdempotent(metricsEnrollmentFile, metricsEnrollmentDraft);
+  const metricsEnrollment = validateCodexAgentPilotMetricsEnrollmentEnvelope(
+    await input.consumer.enrollMetrics(
+      metricsEnrollmentFile,
+      activationPreparation.manifest.sessionId,
+      input.actorId,
+      input.paths.runtimeRoot,
+    ),
+    metricsEnrollmentDraft,
+  );
   const activated = await input.consumer.activateSession(
     manifestFile,
     input.paths.repositoryRoot,
@@ -281,9 +306,15 @@ async function progressG4(input) {
     gate: null,
     pendingDecisionRequest: null,
     executionAuthorization,
+    metrics: {
+      enrollmentFile: metricsEnrollmentFile,
+      disposition: metricsEnrollment.disposition,
+      enrollment: metricsEnrollment.enrollment,
+    },
     activation: { ...artifacts, result: activated.data },
     effects: {
-      approvalCount: input.approvedState.approvals.length,
+      ...input.approvedState.effects,
+      metricsEnrollments: 1,
       activationExecuted: true,
       hookWrites: 0,
       modelLaunches: 0,

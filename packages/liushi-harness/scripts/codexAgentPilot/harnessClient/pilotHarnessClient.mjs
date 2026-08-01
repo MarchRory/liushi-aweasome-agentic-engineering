@@ -84,6 +84,24 @@ export function createPilotHarnessClient(input) {
         storeRoot,
         "--json",
       ]),
+    enrollMetrics: (file, sessionId, actorId, storeRoot) =>
+      run(input.consumerRoot, [
+        "coding-task",
+        "session",
+        "metrics",
+        "enroll",
+        "--file",
+        file,
+        "--workspace",
+        input.workspaceId,
+        "--session",
+        sessionId,
+        "--actor-id",
+        actorId,
+        "--store",
+        storeRoot,
+        "--json",
+      ]),
     activateSession: (manifestFile, repositoryRoot, actorId, storeRoot) =>
       run(input.consumerRoot, [
         "coding-task",

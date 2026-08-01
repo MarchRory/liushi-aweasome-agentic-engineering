@@ -133,6 +133,7 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
         packageManager: pilotCase.repository.packageManager,
         writeSet: [...pilotCase.writeSet],
         historicalLogicChange: pilotCase.historicalLogicChange,
+        metrics: globalThis.structuredClone(pilotCase.metrics),
         verificationChecks: globalThis.structuredClone(pilotCase.verificationChecks),
         requirementProposal: globalThis.structuredClone(pilotCase.requirementProposal),
         planRiskProposal: globalThis.structuredClone(pilotCase.planRiskProposal),
@@ -157,6 +158,7 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
       gateEvaluations: [],
       effects: {
         approvalCount: 0,
+        metricsEnrollments: 0,
         activationExecuted: false,
         hookWrites: 0,
         modelLaunches: 0,

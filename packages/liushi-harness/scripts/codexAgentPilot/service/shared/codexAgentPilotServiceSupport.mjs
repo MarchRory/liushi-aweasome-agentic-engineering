@@ -1,9 +1,11 @@
 import { rm, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 
 import { runProcess } from "../../../common/process/index.mjs";
 import { createHarnessConsumer } from "../../../publicProjectSmoke/harnessClient/index.mjs";
 import { calculateFileDigest } from "../../../publicProjectSmoke/digest/index.mjs";
+import { normalizePilotCaseMetrics } from "../../case/index.mjs";
 import {
   CONSUMER_DIRECTORY,
   CONTROL_DIRECTORY,
@@ -11,6 +13,7 @@ import {
   HOST_APPROVAL_DECISION,
   HOST_APPROVAL_RECORD_SCHEMA_VERSION,
   HOST_PREFLIGHT_PROCESS_COUNT,
+  PILOT_METRICS_ENROLLMENT_NAME,
   REPOSITORY_DIRECTORY,
   RUNTIME_DIRECTORY,
   WORKTREE_RELATIVE_PATH,
@@ -18,6 +21,11 @@ import {
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
 import { probeCodexAppServerFileChangeApproval } from "../../host/index.mjs";
+import {
+  createCodexAgentPilotMetricsEnrollmentDraft,
+  isSuccessfulPilotMetricsEnrollmentDisposition,
+  validateCodexAgentPilotMetricsEnrollmentRecord,
+} from "../../metrics/index.mjs";
 import { readInstalledManifest } from "../../project/index.mjs";
 import { appendDerivedState } from "../../state/index.mjs";
 import { rejectLink } from "../../validation/index.mjs";
@@ -182,6 +190,7 @@ export function validateCurrentPilotState(state, paths) {
 
 export function validateWaitingHostPilotState(state, paths) {
   validateFixedProjectState(state);
+  validateMetricsEnrollmentState(state);
   if (
     state.status !== STATE_STATUS.WaitingHostApproval ||
     state.gate !== null ||
@@ -200,6 +209,7 @@ export function validateWaitingHostPilotState(state, paths) {
 
 export function validatePendingHostApprovalPilotState(state, paths) {
   validateFixedProjectState(state);
+  validateMetricsEnrollmentState(state);
   if (
     state.status !== STATE_STATUS.WaitingHostApproval ||
     state.gate !== null ||
@@ -227,6 +237,7 @@ export function validatePendingHostApprovalPilotState(state, paths) {
 
 export function validateHostApprovedPilotState(state, paths) {
   validateFixedProjectState(state);
+  validateMetricsEnrollmentState(state);
   const approval = state.hostApproval;
   const { approvalDigest, ...approvalBody } =
     approval !== null && typeof approval === "object" && !Array.isArray(approval) ? approval : {};
@@ -276,7 +287,8 @@ export function validateRecordedApproval(input) {
     input.approval.artifactDigest !== input.artifact.digest ||
     input.approval.actor?.kind !== "human" ||
     input.approval.actor?.actorId !== input.expectedActorId ||
-    input.approval.idempotencyKey !== input.expectedIdempotencyKey
+    input.approval.idempotencyKey !== input.expectedIdempotencyKey ||
+    !isCanonicalIsoTimestamp(input.approval.createdAt)
   ) {
     throw new Error("Approval 未绑定当前 DecisionRequest 与 Artifact。");
   }
@@ -370,10 +382,34 @@ function validateFixedProjectState(state) {
     JSON.stringify(requirement?.includedScopes) !== JSON.stringify(project.writeSet) ||
     JSON.stringify(requirement?.repositories) !== JSON.stringify([project.repositoryId]) ||
     JSON.stringify(plan?.writeSet) !== JSON.stringify(project.writeSet) ||
-    plan?.historicalLogicChange !== false
+    plan?.historicalLogicChange !== false ||
+    !isDeepStrictEqual(project?.metrics, normalizePilotCaseMetrics(project?.metrics))
   ) {
     throw new Error("Pilot Case 状态绑定无效。");
   }
+}
+
+function validateMetricsEnrollmentState(state) {
+  const approval = Array.isArray(state.approvals) ? state.approvals.at(-1) : undefined;
+  const expectedDraft = createCodexAgentPilotMetricsEnrollmentDraft({
+    fixedProject: state.fixedProject,
+    task: state.task,
+    profile: state.profile,
+    identities: state.identities,
+    manifest: state.activation?.manifest,
+    enrolledAt: approval?.createdAt,
+    actorId: state.actor?.humanActorId,
+  });
+  if (
+    approval?.gate !== GATES.G4 ||
+    state.metrics?.enrollmentFile !==
+      join(state.paths?.controlRoot, PILOT_METRICS_ENROLLMENT_NAME) ||
+    !isSuccessfulPilotMetricsEnrollmentDisposition(state.metrics?.disposition) ||
+    state.effects?.metricsEnrollments !== 1
+  ) {
+    throw new Error("Pilot Metrics Enrollment 状态绑定无效。");
+  }
+  validateCodexAgentPilotMetricsEnrollmentRecord(state.metrics.enrollment, expectedDraft);
 }
 
 function resolveInstalledCliEntrypoint(consumerRoot) {

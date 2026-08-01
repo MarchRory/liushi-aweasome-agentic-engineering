@@ -192,6 +192,23 @@ Human 冻结任务分类与步骤
 
 Pilot Metrics 是可选能力。未启用时，现有 CodingTask Session 主线行为保持不变。
 
+### 8.1 Codex Agent Pilot 接线
+
+仓库内 `scripts/codexAgentPilot` 已把 Enrollment 接到真实控制流，而不是要求操作者在
+G4 和 Activation 之间手工拼接命令：
+
+1. `Pilot Case v1` 由 Human 显式声明脱敏 `pilotId`、`taskClass` 和 `plannedSteps`。
+2. G4 Approval 成功后，Pilot 先创建并持久化 Session Manifest，以取得稳定 Session 与 CodingTask ID。
+3. Pilot 从已批准的 PlanRisk、Write Set、Required Checks、Repository Revision、实际 Tarball
+   身份和已编译 Profile 派生其余 Enrollment 字段。
+4. 生产 `metrics enroll` 返回 `created` 或 `reused`，且记录与 Draft 完整一致后，才调用
+   `coding-task session activate`。
+5. Enrollment 失败、冲突或返回内容不一致时保持在 G4，模型启动次数为零。
+
+该接线复用 Pilot Metrics Domain 已有的 `recordDigest`，没有新增 Pilot 专属摘要。状态链只保存
+CLI 返回的 Enrollment 和 disposition。Settlement 仍在 Closeout、Completion 和权威 Verification
+完成后由 Human 提交，不由 Pilot 猜测 Human Touch 或质量事实。
+
 ## 9. CLI 输入示例
 
 输入文件不包含 `schemaVersion` 或 `recordDigest`，Application 会严格解析后注入版本并计算摘要。

@@ -9,6 +9,7 @@ import {
   PILOT_CASE_RESULT_SUCCESS,
   PILOT_CASE_SAFE_IDENTIFIER_PATTERN,
 } from "./pilotCaseConstants.mjs";
+import { normalizePilotCaseMetrics } from "./pilotCaseMetricsValidation.mjs";
 
 /** 校验并返回不依赖输入对象引用的 Pilot Case。 */
 export function validateCodexAgentPilotCase(input) {
@@ -50,6 +51,7 @@ export function validateCodexAgentPilotCase(input) {
     repository,
     writeSet,
     historicalLogicChange: false,
+    metrics: normalizePilotCaseMetrics(record.metrics),
     verificationChecks: normalizeVerificationChecks(record.verificationChecks),
     requirementProposal,
     planRiskProposal,
