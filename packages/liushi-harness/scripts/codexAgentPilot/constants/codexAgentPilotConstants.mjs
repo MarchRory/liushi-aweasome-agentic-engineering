@@ -50,6 +50,7 @@ export const STATE_STATUS = Object.freeze({
   HostApproved: "host_approved",
   AgentLaunching: "agent_launching",
   WaitingCloseout: "waiting_closeout",
+  WaitingCompletion: "waiting_completion",
   AgentFailed: "agent_failed",
   AgentOutcomeUnknown: "agent_outcome_unknown",
 });
@@ -76,6 +77,7 @@ export const AGENT_PROMPT_NAME = "agentPrompt.txt";
 export const HOST_PACKET_NAME = "hostActivationPacket.json";
 export const HOST_APPROVAL_PACKET_PREFIX = "hostApprovalPacket-";
 export const SESSION_MANIFEST_NAME = "sessionActivation.json";
+export const SESSION_CLOSEOUT_COMMAND_NAME = "sessionCloseout.json";
 export const PILOT_METRICS_ENROLLMENT_NAME = "pilotMetricsEnrollment.json";
 export const SCAN_MANIFEST_NAME = "scanManifest.json";
 export const SCAN_REPORT_NAME = "scanReport.json";
@@ -166,9 +168,9 @@ export const CODEX_HOOK_TRUST_STATUS = Object.freeze({
 });
 
 export const REQUIRED_HUMAN_ACTIONS = Object.freeze([
-  "仅在外部明确批准精确 stateDigest 后运行对应 approve",
+  "审核当前 Gate 的语义内容后，使用 Gate 名称运行对应 approve",
   "审核 agentPrompt.txt、activationDigest、写集与历史业务逻辑判定",
-  "单独批准精确 Host Packet、隔离运行时、FileChange 单次审批与模型启动",
+  "单独审核 Host Packet、隔离运行时、FileChange 单次审批与模型启动",
 ]);
 
 export const FORBIDDEN_ACTIONS = Object.freeze([

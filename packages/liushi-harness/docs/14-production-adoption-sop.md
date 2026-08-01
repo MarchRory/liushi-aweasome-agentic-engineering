@@ -157,7 +157,26 @@ node packages/liushi-harness/scripts/codexAgentPilot/index.mjs prepare `
   --case C:\path\to\pilotCase.json
 ```
 
-随后按输出的当前 `stateDigest` 依次执行三次 `approve`，分别审批 G8、G1、G4。G4 成功后，Pilot 从已批准状态派生风险等级、写路径数、Required Validator 数、仓库 Revision、实际 Harness Tarball 身份和 Profile Policy Digest，先 create-only 写入 Enrollment，再执行 Session Activation；登记失败时状态保持在 G4，Agent 不会启动。之后执行 `preview-host`、使用 Human 确认的 `stateDigest` 与 `packetDigest` 调用 `approve-host`，最后调用 `run-agent`。这些 Digest 只用于绑定跨进程状态转换和 Human 决策，不要求 Human 重新计算，也不得扩展为普通代码改动的额外验收步骤。
+随后由 Human 审阅每个 Gate 展示的语义内容，并按 Gate 名称依次批准；CLI 自动从状态链解析内部版本，不接受人工传入 `stateDigest` 或 `packetDigest`：
+
+```powershell
+node packages/liushi-harness/scripts/codexAgentPilot/index.mjs approve --root C:\liushi-pilot\requirement-001 --actor-id human:owner --gate G8
+node packages/liushi-harness/scripts/codexAgentPilot/index.mjs approve --root C:\liushi-pilot\requirement-001 --actor-id human:owner --gate G1
+node packages/liushi-harness/scripts/codexAgentPilot/index.mjs approve --root C:\liushi-pilot\requirement-001 --actor-id human:owner --gate G4
+node packages/liushi-harness/scripts/codexAgentPilot/index.mjs preview-host --root C:\liushi-pilot\requirement-001 --actor-id human:owner
+node packages/liushi-harness/scripts/codexAgentPilot/index.mjs approve-host --root C:\liushi-pilot\requirement-001 --actor-id human:owner
+node packages/liushi-harness/scripts/codexAgentPilot/index.mjs run-agent --root C:\liushi-pilot\requirement-001 --actor-id human:owner
+```
+
+G4 成功后，Pilot 从已批准状态派生风险等级、写路径数、Required Validator 数、仓库 Revision、实际 Harness Tarball 身份和 Profile Policy Digest，先 create-only 写入 Enrollment，再执行 Session Activation；登记失败时状态保持在 G4，Agent 不会启动。`preview-host`、`approve-host` 与 `run-agent` 同样按语义阶段选择唯一来源状态，重复命令只重放原结果，不推进其他阶段。状态与 Packet Digest 仍作为内部审计和并发校验字段输出，但 Human 不负责搬运这些值。
+
+Agent 成功且 Human 已复核实际 Diff 后，执行生产 Closeout 桥形成唯一 Checkpoint：
+
+```powershell
+node packages/liushi-harness/scripts/codexAgentPilot/index.mjs closeout --root C:\liushi-pilot\requirement-001 --actor-id human:owner
+```
+
+该命令当前停止在 `waiting_completion`。后续 Completion、Verification、Evidence、PR-ready 与 Metrics Settlement 继续使用已有生产 CLI；Pilot 的薄 Completion 编排仍是下一主线，不能把 `waiting_completion` 声明为完整交付。
 
 该入口当前只证明配置、状态链、本地仓库复制路径和 Activation 前 Enrollment 控制流可用。首次真实企业 Case 仍需由 Repository Owner 检查脱敏、Requirement、PlanRisk、量化分母、验证命令和单文件 Write Set，并在完成后提交 Metrics Settlement；完成前不得声明企业提效成立。
 

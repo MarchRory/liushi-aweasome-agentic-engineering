@@ -3,14 +3,18 @@ import { dirname, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { parsePilotCli, pilotCliCommands } from "./cli/index.mjs";
+import { bindPilotCliInput, parsePilotCli, pilotCliCommands } from "./cli/index.mjs";
+import { createPilotPaths } from "./service/shared/index.mjs";
 import {
   approveCodexAgentPilot,
   approveCodexAgentPilotHost,
+  closeoutCodexAgentPilot,
   prepareCodexAgentPilot,
   previewCodexAgentPilotHost,
   runCodexAgentPilotAgent,
 } from "./service/index.mjs";
+import { readStateChain } from "./state/index.mjs";
+import { requireExistingDirectory } from "./validation/index.mjs";
 
 export * from "./activation/index.mjs";
 export * from "./case/index.mjs";
@@ -27,16 +31,23 @@ export * from "./validation/index.mjs";
 export * from "./workflow/index.mjs";
 
 export async function runCodexAgentPilot(argv, dependencies = {}) {
-  const input = parsePilotCli(argv);
+  const parsed = parsePilotCli(argv);
   const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-  if (input.command === pilotCliCommands.prepare)
-    return prepareCodexAgentPilot({ ...input, packageRoot }, dependencies);
+  if (parsed.command === pilotCliCommands.prepare)
+    return prepareCodexAgentPilot({ ...parsed, packageRoot }, dependencies);
+  const root = await requireExistingDirectory(parsed.root, "--root");
+  const input = bindPilotCliInput(
+    { ...parsed, root },
+    await readStateChain(createPilotPaths(root).stateRoot),
+  );
   if (input.command === pilotCliCommands.approve)
     return approveCodexAgentPilot(input, dependencies);
   if (input.command === pilotCliCommands.approveHost)
     return approveCodexAgentPilotHost(input, dependencies);
   if (input.command === pilotCliCommands.runAgent)
     return runCodexAgentPilotAgent(input, dependencies);
+  if (input.command === pilotCliCommands.closeout)
+    return closeoutCodexAgentPilot(input, dependencies);
   return previewCodexAgentPilotHost(input, dependencies);
 }
 

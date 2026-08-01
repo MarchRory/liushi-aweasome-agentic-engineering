@@ -159,6 +159,7 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
       effects: {
         approvalCount: 0,
         metricsEnrollments: 0,
+        checkpointCreations: 0,
         activationExecuted: false,
         hookWrites: 0,
         modelLaunches: 0,

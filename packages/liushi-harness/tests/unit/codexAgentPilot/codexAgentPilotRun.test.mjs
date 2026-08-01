@@ -1,12 +1,16 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { setTimeout } from "node:timers/promises";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { calculateCanonicalJsonSha256 } from "../../../scripts/codexAgentPilot/host/agentRunner/appServer/index.mjs";
+import { runCodexAgentPilot } from "../../../scripts/codexAgentPilot/index.mjs";
+import { createSessionCloseoutCommand } from "../../../scripts/codexAgentPilot/service/closeout/index.mjs";
 import {
   approveCodexAgentPilot,
   approveCodexAgentPilotHost,
+  closeoutCodexAgentPilot,
   prepareCodexAgentPilot,
   previewCodexAgentPilotHost,
   runCodexAgentPilotAgent,
@@ -480,7 +484,134 @@ describe("Codex Agent Pilot run-agent", () => {
     expect(runtime.prepare).not.toHaveBeenCalled();
     expect(runner).not.toHaveBeenCalled();
   });
+
+  it("Human 复核 waiting_closeout 后形成唯一 Checkpoint，精确重放不重复执行", async () => {
+    const context = await approvedContext();
+    const waiting = await completeSuccessfulAgentRun(context);
+    const input = {
+      root: fixture.input.root,
+      stateDigest: waiting.stateDigest,
+      actorId: "human-actor",
+    };
+
+    await expect(
+      closeoutCodexAgentPilot(
+        { ...input, actorId: "other-human" },
+        fixture.dependencies(context.harness.runEnvelope),
+      ),
+    ).rejects.toThrow("Human actor 不匹配");
+    expect(context.harness.counters.closeout).toBe(0);
+
+    const first = await runCodexAgentPilot(
+      ["closeout", "--root", fixture.input.root, "--actor-id", "human-actor"],
+      fixture.dependencies(context.harness.runEnvelope),
+    );
+    expect(first).toMatchObject({
+      status: "waiting_completion",
+      replayed: false,
+      closeout: {
+        command: {
+          aggregateId: context.current.activation.manifest.sessionId,
+          actor: { kind: "agent", actorId: "agent:codex-agent-pilot" },
+          payload: {
+            workspaceId: context.current.task.workspaceId,
+            sessionId: context.current.activation.manifest.sessionId,
+          },
+        },
+        result: { status: "checkpoint_bound" },
+        operator: { kind: "human", actorId: "human-actor" },
+      },
+    });
+    expect(context.harness.counters.closeout).toBe(1);
+    const statesAfterFirst = await readStateChain(context.prepared.paths.stateRoot);
+    expect(statesAfterFirst.at(-1).effects.checkpointCreations).toBe(1);
+
+    const replay = await runCodexAgentPilot(
+      ["closeout", "--root", fixture.input.root, "--actor-id", "human-actor"],
+      fixture.dependencies(context.harness.runEnvelope),
+    );
+    expect(replay).toMatchObject({
+      stateDigest: first.stateDigest,
+      replayed: true,
+      status: "waiting_completion",
+    });
+    expect(context.harness.counters.closeout).toBe(1);
+    expect(await readStateChain(context.prepared.paths.stateRoot)).toEqual(statesAfterFirst);
+  });
+
+  it("Closeout 成功但状态追加失败后复用同一 Command 和 Checkpoint", async () => {
+    const context = await approvedContext();
+    const waiting = await completeSuccessfulAgentRun(context);
+    const input = {
+      root: fixture.input.root,
+      stateDigest: waiting.stateDigest,
+      actorId: "human-actor",
+    };
+
+    await expect(
+      closeoutCodexAgentPilot(
+        input,
+        fixture.dependencies(context.harness.runEnvelope, {
+          appendDerivedState: async () => {
+            throw new Error("注入 Closeout 状态追加失败");
+          },
+        }),
+      ),
+    ).rejects.toThrow("注入 Closeout 状态追加失败");
+    expect(context.harness.counters.closeout).toBe(1);
+    expect((await readStateChain(context.prepared.paths.stateRoot)).at(-1).stateDigest).toBe(
+      waiting.stateDigest,
+    );
+
+    const recovered = await closeoutCodexAgentPilot(
+      input,
+      fixture.dependencies(context.harness.runEnvelope),
+    );
+    expect(recovered.status).toBe("waiting_completion");
+    expect(context.harness.counters.closeout).toBe(1);
+  });
+
+  it("拒绝执行未绑定当前 Session 的既有 Closeout Command", async () => {
+    const context = await approvedContext();
+    const waiting = await completeSuccessfulAgentRun(context);
+    const staleCommand = createSessionCloseoutCommand({
+      workspaceId: waiting.task.workspaceId,
+      sessionId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      agentActorId: waiting.actor.agentActorId,
+      correlationId: waiting.activation.manifest.createCommand.correlationId,
+      submittedAt: "2026-07-29T00:00:00.000Z",
+    });
+    await writeFile(
+      join(context.prepared.paths.controlRoot, "sessionCloseout.json"),
+      `${JSON.stringify(staleCommand, null, 2)}\n`,
+      "utf8",
+    );
+
+    await expect(
+      closeoutCodexAgentPilot(
+        {
+          root: fixture.input.root,
+          stateDigest: waiting.stateDigest,
+          actorId: "human-actor",
+        },
+        fixture.dependencies(context.harness.runEnvelope),
+      ),
+    ).rejects.toThrow("未绑定当前 Pilot Session");
+    expect(context.harness.counters.closeout).toBe(0);
+  });
 });
+
+async function completeSuccessfulAgentRun(context) {
+  const runtime = createRuntimeDoubles();
+  await runAgent(context, {
+    ...runtime.dependencies,
+    runCodexAgentAppServer: async (input) => {
+      const authorization = await authorizeTargetChange(input, context);
+      return createRunnerResult({ authorization });
+    },
+  });
+  return (await readStateChain(context.prepared.paths.stateRoot)).at(-1);
+}
 
 async function authorizeTargetChange(input, context) {
   const authorization = await input.authorizeFileChange({

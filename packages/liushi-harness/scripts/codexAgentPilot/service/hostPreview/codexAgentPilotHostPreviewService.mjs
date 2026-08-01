@@ -22,6 +22,7 @@ import {
   capturePilotWorktreeIdentity,
   createPilotDependencies,
   createPilotPaths,
+  validatePendingHostApprovalPilotState,
   validatePilotActor,
   validateStablePilotIdentities,
   validateWaitingHostPilotState,
@@ -34,7 +35,9 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
   const paths = createPilotPaths(root);
   const states = await readStateChain(paths.stateRoot);
   const current = states.at(-1);
-  if (current.stateDigest !== input.stateDigest) throw new Error("stateDigest 不匹配。");
+  if (current.stateDigest !== input.stateDigest) {
+    return resolveHostPreviewReplay(states, input, paths);
+  }
   if (current.actor?.humanActorId !== input.actorId) throw new Error("Human actor 不匹配。");
   validateWaitingHostPilotState(current, paths);
   await verifyPilotPaths(paths);
@@ -111,12 +114,31 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
     },
     { expectedPreviousStateDigest: current.stateDigest },
   );
+  return projectResult(appended.state, appended.file, false);
+}
+
+function resolveHostPreviewReplay(states, input, paths) {
+  const replay = states.find(
+    (state) =>
+      state.transition?.kind === "host_preview" &&
+      state.transition?.sourceStateDigest === input.stateDigest,
+  );
+  if (replay === undefined) throw new Error("Host Preview stateDigest 不匹配。");
+  validatePendingHostApprovalPilotState(replay, paths);
+  if (replay.pendingHostApproval.humanActorId !== input.actorId) {
+    throw new Error("Host Preview replay Human actor 不匹配。");
+  }
+  return projectResult(replay, undefined, true);
+}
+
+function projectResult(state, stateFile, replayed) {
   return {
-    status: appended.state.status,
-    stateFile: appended.file,
-    stateDigest: appended.state.stateDigest,
-    hostApprovalPacketFile: packetFile,
-    hostApprovalPacketDigest: packet.packetDigest,
-    pendingHostApproval: appended.state.pendingHostApproval,
+    status: state.status,
+    stateFile,
+    stateDigest: state.stateDigest,
+    hostApprovalPacketFile: state.hostPreview.packetFile,
+    hostApprovalPacketDigest: state.hostPreview.packetDigest,
+    pendingHostApproval: state.pendingHostApproval,
+    replayed,
   };
 }

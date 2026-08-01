@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import {
+  CodingTaskSessionCloseoutStatus,
   PilotEnrollmentSchemaVersion,
   PilotMetricsCreateDisposition,
 } from "../../../dist/index.js";
@@ -157,11 +158,19 @@ export function createPilotApprovalEnvelope(gate, approvalNumber, args, override
 
 /** 创建可推进 G8、G1、G4 的标准 Harness CLI Stub。 */
 export function createHappyPathPilotEnvelope(fixture) {
-  const counters = { proposal: 0, approval: 0, profile: 0, metrics: 0, activation: 0 };
+  const counters = {
+    proposal: 0,
+    approval: 0,
+    profile: 0,
+    metrics: 0,
+    activation: 0,
+    closeout: 0,
+  };
   const proposalByIdempotencyKey = new Map();
   const approvalByIdempotencyKey = new Map();
   const enrollmentBySession = new Map();
   const activationByManifest = new Map();
+  const closeoutByCommand = new Map();
   const runEnvelope = async (_consumerRoot, args) => {
     if (args[0] === "task")
       return { status: "success", data: { taskId: "01ARZ3NDEKTSV4RRFFQ69G5FCX" } };
@@ -237,6 +246,21 @@ export function createHappyPathPilotEnvelope(fixture) {
       }
       const envelope = { status: "success", data: { status: "waiting_agent" } };
       activationByManifest.set(manifestDigest, envelope);
+      return envelope;
+    }
+    if (args[0] === "coding-task" && args[1] === "session" && args[2] === "closeout") {
+      const command = JSON.parse(await readFile(option(args, "--file"), "utf8"));
+      const existing = closeoutByCommand.get(command.commandId);
+      if (existing !== undefined) return existing;
+      counters.closeout += 1;
+      const envelope = {
+        status: "success",
+        data: {
+          status: CodingTaskSessionCloseoutStatus.CheckpointBound,
+          checkpoint: { commit: "fixture-checkpoint" },
+        },
+      };
+      closeoutByCommand.set(command.commandId, envelope);
       return envelope;
     }
     throw new Error(`unexpected command ${args.join(" ")}`);

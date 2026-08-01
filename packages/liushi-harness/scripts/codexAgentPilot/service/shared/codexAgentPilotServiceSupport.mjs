@@ -13,7 +13,6 @@ import {
   HOST_APPROVAL_DECISION,
   HOST_APPROVAL_RECORD_SCHEMA_VERSION,
   HOST_PREFLIGHT_PROCESS_COUNT,
-  PILOT_METRICS_ENROLLMENT_NAME,
   REPOSITORY_DIRECTORY,
   RUNTIME_DIRECTORY,
   WORKTREE_RELATIVE_PATH,
@@ -21,11 +20,7 @@ import {
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
 import { probeCodexAppServerFileChangeApproval } from "../../host/index.mjs";
-import {
-  createCodexAgentPilotMetricsEnrollmentDraft,
-  isSuccessfulPilotMetricsEnrollmentDisposition,
-  validateCodexAgentPilotMetricsEnrollmentRecord,
-} from "../../metrics/index.mjs";
+import { validateCodexAgentPilotMetricsEnrollmentState } from "../../metrics/index.mjs";
 import { readInstalledManifest } from "../../project/index.mjs";
 import { appendDerivedState } from "../../state/index.mjs";
 import { rejectLink } from "../../validation/index.mjs";
@@ -163,7 +158,7 @@ export async function validateStablePilotIdentities(state, dependencies) {
 }
 
 export function validateCurrentPilotState(state, paths) {
-  validateFixedProjectState(state);
+  validatePilotFixedProjectState(state);
   if (state.paths?.root !== paths.root) {
     throw new Error("固定项目或状态路径绑定无效。");
   }
@@ -189,8 +184,8 @@ export function validateCurrentPilotState(state, paths) {
 }
 
 export function validateWaitingHostPilotState(state, paths) {
-  validateFixedProjectState(state);
-  validateMetricsEnrollmentState(state);
+  validatePilotFixedProjectState(state);
+  validateCodexAgentPilotMetricsEnrollmentState(state);
   if (
     state.status !== STATE_STATUS.WaitingHostApproval ||
     state.gate !== null ||
@@ -208,8 +203,8 @@ export function validateWaitingHostPilotState(state, paths) {
 }
 
 export function validatePendingHostApprovalPilotState(state, paths) {
-  validateFixedProjectState(state);
-  validateMetricsEnrollmentState(state);
+  validatePilotFixedProjectState(state);
+  validateCodexAgentPilotMetricsEnrollmentState(state);
   if (
     state.status !== STATE_STATUS.WaitingHostApproval ||
     state.gate !== null ||
@@ -236,8 +231,8 @@ export function validatePendingHostApprovalPilotState(state, paths) {
 }
 
 export function validateHostApprovedPilotState(state, paths) {
-  validateFixedProjectState(state);
-  validateMetricsEnrollmentState(state);
+  validatePilotFixedProjectState(state);
+  validateCodexAgentPilotMetricsEnrollmentState(state);
   const approval = state.hostApproval;
   const { approvalDigest, ...approvalBody } =
     approval !== null && typeof approval === "object" && !Array.isArray(approval) ? approval : {};
@@ -367,7 +362,7 @@ function captureRepositoryIdentity(repositoryRoot, runGitCommand, expectedRevisi
   return { root: repositoryRoot, revision, clean: true };
 }
 
-function validateFixedProjectState(state) {
+export function validatePilotFixedProjectState(state) {
   const project = state.fixedProject;
   const requirement = project?.requirementProposal?.payload;
   const plan = project?.planRiskProposal?.payload;
@@ -387,29 +382,6 @@ function validateFixedProjectState(state) {
   ) {
     throw new Error("Pilot Case 状态绑定无效。");
   }
-}
-
-function validateMetricsEnrollmentState(state) {
-  const approval = Array.isArray(state.approvals) ? state.approvals.at(-1) : undefined;
-  const expectedDraft = createCodexAgentPilotMetricsEnrollmentDraft({
-    fixedProject: state.fixedProject,
-    task: state.task,
-    profile: state.profile,
-    identities: state.identities,
-    manifest: state.activation?.manifest,
-    enrolledAt: approval?.createdAt,
-    actorId: state.actor?.humanActorId,
-  });
-  if (
-    approval?.gate !== GATES.G4 ||
-    state.metrics?.enrollmentFile !==
-      join(state.paths?.controlRoot, PILOT_METRICS_ENROLLMENT_NAME) ||
-    !isSuccessfulPilotMetricsEnrollmentDisposition(state.metrics?.disposition) ||
-    state.effects?.metricsEnrollments !== 1
-  ) {
-    throw new Error("Pilot Metrics Enrollment 状态绑定无效。");
-  }
-  validateCodexAgentPilotMetricsEnrollmentRecord(state.metrics.enrollment, expectedDraft);
 }
 
 function resolveInstalledCliEntrypoint(consumerRoot) {

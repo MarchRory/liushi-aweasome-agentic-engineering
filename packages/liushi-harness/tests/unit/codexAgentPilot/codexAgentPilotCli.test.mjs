@@ -1,24 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePilotCli } from "../../../scripts/codexAgentPilot/cli/index.mjs";
+import { bindPilotCliInput, parsePilotCli } from "../../../scripts/codexAgentPilot/cli/index.mjs";
+import { runCodexAgentPilot } from "../../../scripts/codexAgentPilot/index.mjs";
+import {
+  cleanupCodexAgentPilotFixture,
+  createCodexAgentPilotFixture,
+  createHappyPathPilotEnvelope,
+} from "../../support/codexAgentPilot/index.mjs";
 
 describe("Codex Agent Pilot CLI", () => {
-  it("严格解析 prepare 与 approve，拒绝未知、重复和多余选项", () => {
-    expect(
-      parsePilotCli([
-        "prepare",
-        "--root",
-        "C:\\pilot",
-        "--actor-id",
-        "human",
-        "--codex",
-        "C:\\codex.exe",
-        "--codex-home",
-        "C:\\home",
-        "--model",
-        "gpt-5.6-sol",
-      ]),
-    ).toMatchObject({ command: "prepare", actorId: "human" });
+  it("prepare 接受本地 Case，其他命令不暴露内部摘要", () => {
     expect(
       parsePilotCli([
         "prepare",
@@ -36,102 +27,48 @@ describe("Codex Agent Pilot CLI", () => {
         "C:\\pilot-case.json",
       ]),
     ).toMatchObject({ command: "prepare", caseFile: "C:\\pilot-case.json" });
-    expect(
-      parsePilotCli([
-        "approve",
-        "--root",
-        "C:\\pilot",
-        "--state-digest",
-        "sha256:a",
-        "--actor-id",
-        "human",
-      ]).command,
-    ).toBe("approve");
-    expect(
-      parsePilotCli([
-        "preview-host",
-        "--root",
-        "C:\\pilot",
-        "--state-digest",
-        "sha256:b",
-        "--actor-id",
-        "human",
-      ]).command,
-    ).toBe("preview-host");
-    expect(
-      parsePilotCli([
-        "approve-host",
-        "--root",
-        "C:\\pilot",
-        "--state-digest",
-        "sha256:b",
-        "--packet-digest",
-        "sha256:packet",
-        "--actor-id",
-        "human",
-      ]),
-    ).toMatchObject({
-      command: "approve-host",
-      stateDigest: "sha256:b",
-      packetDigest: "sha256:packet",
-      actorId: "human",
-    });
-    expect(() =>
-      parsePilotCli([
-        "approve-host",
-        "--root",
-        "C:\\pilot",
-        "--state-digest",
-        "sha256:b",
-        "--actor-id",
-        "human",
-      ]),
-    ).toThrow("--packet-digest");
-    for (const extraArguments of [
-      ["--model", "gpt-5.6-sol"],
-      ["--packet-digest", "sha256:packet", "--packet-digest", "sha256:other"],
-    ]) {
-      expect(() =>
-        parsePilotCli([
-          "approve-host",
-          "--root",
-          "C:\\pilot",
-          "--state-digest",
-          "sha256:b",
-          "--packet-digest",
-          "sha256:packet",
-          "--actor-id",
-          "human",
-          ...extraArguments,
-        ]),
-      ).toThrow();
+
+    for (const command of ["preview-host", "approve-host", "run-agent", "closeout"]) {
+      expect(parsePilotCli([command, "--root", "C:\\pilot", "--actor-id", "human"])).toEqual({
+        command,
+        root: "C:\\pilot",
+        actorId: "human",
+      });
     }
     expect(() =>
       parsePilotCli([
-        "approve",
+        "closeout",
         "--root",
         "C:\\pilot",
-        "--state-digest",
-        "sha256:a",
         "--actor-id",
         "human",
-        "--model",
-        "gpt-5.6-sol",
+        "--state-digest",
+        "sha256:state",
       ]),
-    ).toThrow();
+    ).toThrow("不支持选项");
     expect(() =>
       parsePilotCli([
-        "approve",
+        "approve-host",
         "--root",
         "C:\\pilot",
-        "--state-digest",
-        "sha256:a",
         "--actor-id",
         "human",
-        "--case",
-        "C:\\pilot-case.json",
+        "--packet-digest",
+        "sha256:packet",
       ]),
-    ).toThrow("不适用于");
+    ).toThrow("不支持选项");
+  });
+
+  it("approve 使用语义 Gate，拒绝无效 Gate 和多余选项", () => {
+    expect(
+      parsePilotCli(["approve", "--root", "C:\\pilot", "--actor-id", "human", "--gate", "G4"]),
+    ).toEqual({ command: "approve", root: "C:\\pilot", actorId: "human", gate: "G4" });
+    expect(() =>
+      parsePilotCli(["approve", "--root", "C:\\pilot", "--actor-id", "human", "--gate", "G2"]),
+    ).toThrow("只支持 G8、G1、G4");
+    expect(() => parsePilotCli(["approve", "--root", "C:\\pilot", "--actor-id", "human"])).toThrow(
+      "--gate",
+    );
     expect(() =>
       parsePilotCli([
         "approve",
@@ -139,37 +76,104 @@ describe("Codex Agent Pilot CLI", () => {
         "C:\\pilot",
         "--root",
         "C:\\other",
-        "--state-digest",
-        "sha256:a",
         "--actor-id",
         "human",
+        "--gate",
+        "G8",
       ]),
-    ).toThrow();
+    ).toThrow("不能重复");
   });
-  it("run-agent requires packet digest", () => {
-    expect(() =>
-      parsePilotCli([
-        "run-agent",
-        "--root",
-        "C:\\pilot",
-        "--state-digest",
-        "sha256:state",
-        "--actor-id",
-        "human",
-      ]),
-    ).toThrow("--packet-digest");
+
+  it("按语义阶段选择权威状态，摘要只在调用 Service 前内部注入", () => {
+    const states = [
+      state("sha256:g8", "waiting_human_approval", { gate: "G8" }),
+      state("sha256:g1", "waiting_human_approval", { gate: "G1" }),
+      state("sha256:g4", "waiting_human_approval", { gate: "G4" }),
+      state("sha256:host-source", "waiting_host_approval"),
+      state("sha256:host-pending", "waiting_host_approval", {
+        hostPreview: {},
+        pendingHostApproval: { approved: false, packetDigest: "sha256:packet" },
+      }),
+      state("sha256:host-approved", "host_approved", {
+        hostApproval: { packetDigest: "sha256:packet" },
+      }),
+      state("sha256:closeout", "waiting_closeout"),
+    ];
+
     expect(
-      parsePilotCli([
-        "run-agent",
-        "--root",
-        "C:\\pilot",
-        "--state-digest",
-        "sha256:state",
-        "--packet-digest",
-        "sha256:packet",
-        "--actor-id",
-        "human",
+      bindPilotCliInput(
+        { command: "approve", root: "C:\\pilot", actorId: "human", gate: "G1" },
+        states,
+      ),
+    ).toMatchObject({ gate: "G1", stateDigest: "sha256:g1" });
+    expect(
+      bindPilotCliInput({ command: "preview-host", root: "C:\\pilot", actorId: "human" }, states),
+    ).toMatchObject({ stateDigest: "sha256:host-source" });
+    expect(
+      bindPilotCliInput({ command: "approve-host", root: "C:\\pilot", actorId: "human" }, states),
+    ).toMatchObject({ stateDigest: "sha256:host-pending", packetDigest: "sha256:packet" });
+    expect(
+      bindPilotCliInput({ command: "run-agent", root: "C:\\pilot", actorId: "human" }, states),
+    ).toMatchObject({ stateDigest: "sha256:host-approved", packetDigest: "sha256:packet" });
+    expect(
+      bindPilotCliInput({ command: "closeout", root: "C:\\pilot", actorId: "human" }, states),
+    ).toMatchObject({ stateDigest: "sha256:closeout" });
+  });
+
+  it("语义阶段不存在时拒绝猜测或推进其他 Gate", () => {
+    expect(() =>
+      bindPilotCliInput({ command: "approve", root: "C:\\pilot", actorId: "human", gate: "G4" }, [
+        state("sha256:g1", "waiting_human_approval", { gate: "G1" }),
       ]),
-    ).toMatchObject({ command: "run-agent", packetDigest: "sha256:packet" });
+    ).toThrow("等待 G4");
+  });
+
+  it("真实入口只凭 Gate 完成审批并稳定重放，不要求 Human 搬运摘要", async () => {
+    const fixture = await createCodexAgentPilotFixture();
+    try {
+      const harness = createHappyPathPilotEnvelope(fixture);
+      const dependencies = fixture.dependencies(harness.runEnvelope);
+      await runCodexAgentPilot(
+        [
+          "prepare",
+          "--root",
+          fixture.input.root,
+          "--actor-id",
+          fixture.input.actorId,
+          "--codex",
+          fixture.input.codex,
+          "--codex-home",
+          fixture.input.codexHome,
+          "--model",
+          fixture.input.model,
+        ],
+        dependencies,
+      );
+      const g8 = await approveThroughCli(fixture, harness, "G8");
+      const replay = await approveThroughCli(fixture, harness, "G8");
+      expect(replay.stateDigest).toBe(g8.stateDigest);
+      expect(harness.counters.approval).toBe(1);
+
+      await approveThroughCli(fixture, harness, "G1");
+      const g4 = await approveThroughCli(fixture, harness, "G4");
+      expect(g4).toMatchObject({
+        status: "waiting_host_approval",
+        effects: { approvalCount: 3, activationExecuted: true },
+      });
+      expect(harness.counters.approval).toBe(3);
+    } finally {
+      await cleanupCodexAgentPilotFixture(fixture);
+    }
   });
 });
+
+function state(stateDigest, status, overrides = {}) {
+  return { stateDigest, status, ...overrides };
+}
+
+function approveThroughCli(fixture, harness, gate) {
+  return runCodexAgentPilot(
+    ["approve", "--root", fixture.input.root, "--actor-id", fixture.input.actorId, "--gate", gate],
+    fixture.dependencies(harness.runEnvelope),
+  );
+}

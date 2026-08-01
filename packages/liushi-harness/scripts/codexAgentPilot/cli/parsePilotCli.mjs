@@ -1,9 +1,12 @@
+import { GATES } from "../constants/index.mjs";
+
 const COMMANDS = Object.freeze({
   prepare: "prepare",
   approve: "approve",
   previewHost: "preview-host",
   approveHost: "approve-host",
   runAgent: "run-agent",
+  closeout: "closeout",
 });
 const OPTION_NAMES = Object.freeze({
   root: "--root",
@@ -12,17 +15,18 @@ const OPTION_NAMES = Object.freeze({
   codexHome: "--codex-home",
   model: "--model",
   caseFile: "--case",
-  stateDigest: "--state-digest",
-  packetDigest: "--packet-digest",
+  gate: "--gate",
 });
 
 export function parsePilotCli(argv) {
   if (!Array.isArray(argv) || argv.length === 0) {
-    throw new Error("必须指定 prepare、approve、preview-host、approve-host 或 run-agent。");
+    throw new Error(
+      "必须指定 prepare、approve、preview-host、approve-host、run-agent 或 closeout。",
+    );
   }
   const command = argv[0];
   if (!Object.values(COMMANDS).includes(command)) {
-    throw new Error("只支持 prepare、approve、preview-host、approve-host 或 run-agent。");
+    throw new Error("只支持 prepare、approve、preview-host、approve-host、run-agent 或 closeout。");
   }
   const values = new Map();
   for (let index = 1; index < argv.length; index += 1) {
@@ -56,12 +60,9 @@ export function parsePilotCli(argv) {
             ? { caseFile: values.get(OPTION_NAMES.caseFile) }
             : {}),
         }
-      : {
-          stateDigest: values.get(OPTION_NAMES.stateDigest),
-          ...([COMMANDS.approveHost, COMMANDS.runAgent].includes(command)
-            ? { packetDigest: values.get(OPTION_NAMES.packetDigest) }
-            : {}),
-        }),
+      : command === COMMANDS.approve
+        ? { gate: parseGate(values.get(OPTION_NAMES.gate)) }
+        : {}),
   };
 }
 
@@ -77,9 +78,16 @@ function requiredOptions(command) {
       OPTION_NAMES.model,
     ];
   }
-  const options = [OPTION_NAMES.root, OPTION_NAMES.stateDigest, OPTION_NAMES.actorId];
-  if ([COMMANDS.approveHost, COMMANDS.runAgent].includes(command)) {
-    options.push(OPTION_NAMES.packetDigest);
+  return [
+    OPTION_NAMES.root,
+    OPTION_NAMES.actorId,
+    ...(command === COMMANDS.approve ? [OPTION_NAMES.gate] : []),
+  ];
+}
+
+function parseGate(value) {
+  if (!Object.values(GATES).includes(value)) {
+    throw new Error(`--gate 只支持 ${Object.values(GATES).join("、")}。`);
   }
-  return options;
+  return value;
 }

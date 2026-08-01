@@ -84,6 +84,7 @@
     "pilot:codex-agent:preview-host": "pnpm build && node scripts/codexAgentPilot/index.mjs preview-host",
     "pilot:codex-agent:approve-host": "pnpm build && node scripts/codexAgentPilot/index.mjs approve-host",
     "pilot:codex-agent:run": "pnpm build && node scripts/codexAgentPilot/index.mjs run-agent",
+    "pilot:codex-agent:closeout": "pnpm build && node scripts/codexAgentPilot/index.mjs closeout",
     "typecheck": "tsc --noEmit",
     "typecheck:ts6": "tsc6 --noEmit"
   },

@@ -140,6 +140,27 @@ describe("Codex Agent Pilot Host preview", () => {
       activation: 1,
     });
     expect(CODEX_RESTRICTED_RUNTIME_OVERRIDES).toContain('cli_auth_credentials_store="file"');
+
+    const replayProbe = vi.fn(() => {
+      throw new Error("重放不得再次执行 Host Preflight");
+    });
+    const replay = await previewCodexAgentPilotHost(
+      {
+        root: fixture.input.root,
+        stateDigest: context.current.stateDigest,
+        actorId: "human-actor",
+      },
+      fixture.dependencies(context.harness.runEnvelope, {
+        probeCodexAppServerFileChangeApproval: replayProbe,
+      }),
+    );
+    expect(replay).toMatchObject({
+      stateDigest: final.stateDigest,
+      hostApprovalPacketDigest: packetDigest,
+      replayed: true,
+    });
+    expect(replayProbe).not.toHaveBeenCalled();
+    expect(await readStateChain(context.prepared.paths.stateRoot)).toHaveLength(5);
   });
 
   it("主仓身份检查只排除精确受管 Worktree 路径", async () => {
