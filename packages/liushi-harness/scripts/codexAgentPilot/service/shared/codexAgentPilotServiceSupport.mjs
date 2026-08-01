@@ -373,6 +373,18 @@ export function validatePilotFixedProjectState(state) {
     typeof project?.agentInstruction !== "string" ||
     !Array.isArray(project?.writeSet) ||
     project.writeSet.length !== 1 ||
+    !Array.isArray(project?.ruleTargets) ||
+    project.ruleTargets.length !== project.writeSet.length ||
+    project.ruleTargets.some(
+      (target, index) =>
+        target?.relativePath !== project.writeSet[index] ||
+        typeof target?.targetId !== "string" ||
+        typeof target?.language !== "string" ||
+        typeof target?.fileKind !== "string" ||
+        typeof target?.operation !== "string",
+    ) ||
+    !Array.isArray(project?.availableCapabilityIds) ||
+    new Set(project.availableCapabilityIds).size !== project.availableCapabilityIds.length ||
     project.historicalLogicChange !== false ||
     JSON.stringify(requirement?.includedScopes) !== JSON.stringify(project.writeSet) ||
     JSON.stringify(requirement?.repositories) !== JSON.stringify([project.repositoryId]) ||

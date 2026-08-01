@@ -51,6 +51,8 @@ export const STATE_STATUS = Object.freeze({
   AgentLaunching: "agent_launching",
   WaitingCloseout: "waiting_closeout",
   WaitingCompletion: "waiting_completion",
+  WaitingSettlement: "waiting_settlement",
+  Completed: "completed",
   AgentFailed: "agent_failed",
   AgentOutcomeUnknown: "agent_outcome_unknown",
 });
@@ -78,7 +80,10 @@ export const HOST_PACKET_NAME = "hostActivationPacket.json";
 export const HOST_APPROVAL_PACKET_PREFIX = "hostApprovalPacket-";
 export const SESSION_MANIFEST_NAME = "sessionActivation.json";
 export const SESSION_CLOSEOUT_COMMAND_NAME = "sessionCloseout.json";
+export const SESSION_COMPLETION_INPUT_NAME = "sessionCompletion.json";
 export const PILOT_METRICS_ENROLLMENT_NAME = "pilotMetricsEnrollment.json";
+export const PILOT_METRICS_SETTLEMENT_NAME = "pilotMetricsSettlement.json";
+export const PILOT_METRICS_FACTS_SCHEMA_VERSION = "liushi.codex-agent-pilot.metrics-facts.v1";
 export const SCAN_MANIFEST_NAME = "scanManifest.json";
 export const SCAN_REPORT_NAME = "scanReport.json";
 export const PROFILE_PROPOSAL_NAME = "projectProfileProposal.json";

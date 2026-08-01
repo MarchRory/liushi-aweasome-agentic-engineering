@@ -26,6 +26,8 @@
     "pilot:codex-agent:approve": "pnpm --filter liushi-harness build && node packages/liushi-harness/scripts/codexAgentPilot/index.mjs approve",
     "pilot:codex-agent:preview-host": "pnpm --filter liushi-harness build && node packages/liushi-harness/scripts/codexAgentPilot/index.mjs preview-host",
     "pilot:codex-agent:closeout": "pnpm --filter liushi-harness build && node packages/liushi-harness/scripts/codexAgentPilot/index.mjs closeout",
+    "pilot:codex-agent:complete": "pnpm --filter liushi-harness build && node packages/liushi-harness/scripts/codexAgentPilot/index.mjs complete",
+    "pilot:codex-agent:settle": "pnpm --filter liushi-harness build && node packages/liushi-harness/scripts/codexAgentPilot/index.mjs settle",
     "smoke:package": "pnpm --filter liushi-harness build && pnpm --filter liushi-harness smoke:package",
     "smoke:public-project": "pnpm --filter liushi-harness smoke:public-project",
     "test": "pnpm --recursive --if-present test",

@@ -132,6 +132,8 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
         roleHint: pilotCase.repository.roleHint,
         packageManager: pilotCase.repository.packageManager,
         writeSet: [...pilotCase.writeSet],
+        ruleTargets: globalThis.structuredClone(pilotCase.ruleTargets),
+        availableCapabilityIds: [...pilotCase.availableCapabilityIds],
         historicalLogicChange: pilotCase.historicalLogicChange,
         metrics: globalThis.structuredClone(pilotCase.metrics),
         verificationChecks: globalThis.structuredClone(pilotCase.verificationChecks),
@@ -159,7 +161,9 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
       effects: {
         approvalCount: 0,
         metricsEnrollments: 0,
+        metricsSettlements: 0,
         checkpointCreations: 0,
+        completionExecutions: 0,
         activationExecuted: false,
         hookWrites: 0,
         modelLaunches: 0,

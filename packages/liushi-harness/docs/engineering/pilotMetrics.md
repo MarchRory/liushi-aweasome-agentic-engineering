@@ -331,3 +331,14 @@ CLI 返回的 Enrollment 和 disposition。Settlement 仍在 Closeout、Completi
 
 若 Human Touch 未完整记录，应使用 `incomplete` 或 `not_measured`，不得补估；`not_measured`
 不能同时携带区间。`observed` 仅保留给受信宿主，当前生产 CLI 会关闭式拒绝。
+
+### 9.3 Pilot Human Facts 边界
+
+上一节是底层生产 `coding-task session metrics settle` 的完整机器契约，供受信宿主调用。仓库内 `codexAgentPilot settle` 不要求 Human 创建该文件，而只接受 `liushi.codex-agent-pilot.metrics-facts.v1`：
+
+- Human 只记录 `humanTouchEntries`、逐一覆盖预登记分母的 `stepFacts`、可选 `qualityFacts` 和 `attestation`。
+- Human Facts 不包含 Workspace、Session、CodingTask、Repository、Enrollment、Verification、Evidence、PR-ready、Actor、结算时间或任何摘要。
+- Pilot 从不可变状态链与生产结果重建这些字段；任一证据缺失、漂移或步骤覆盖不完整时关闭式失败，状态保持 `waiting_settlement`。
+- `qualityFacts.evidenceSource` 只能引用 `requirement`、`plan`、`agent_execution`、`checkpoint`、`verification` 或 `pr_ready`，Pilot 将语义来源解析为当前权威证据摘要。
+
+完整命令和 Human Facts 示例见 [生产接入 SOP](../14-production-adoption-sop.md#47-脱敏企业-pilot-case)。

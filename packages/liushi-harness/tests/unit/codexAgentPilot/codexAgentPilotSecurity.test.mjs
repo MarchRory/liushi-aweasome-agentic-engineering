@@ -106,7 +106,7 @@ describe("Codex Agent Pilot security bindings", () => {
     ["GateEvaluation Artifact", { gateEvaluation: { artifactId: "other" } }],
   ])("拒绝未绑定当前状态的 %s", (_name, mutation) => {
     const artifact = {
-      artifactId: "artifact-G8",
+      artifactId: "01ARZ3NDEKTSV4RRFFQ69G5FCA",
       digest: calculateDigest({ gate: "G8" }),
     };
     const request = {

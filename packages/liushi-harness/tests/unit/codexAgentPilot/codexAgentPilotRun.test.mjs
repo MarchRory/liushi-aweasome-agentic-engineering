@@ -599,7 +599,169 @@ describe("Codex Agent Pilot run-agent", () => {
     ).rejects.toThrow("未绑定当前 Pilot Session");
     expect(context.harness.counters.closeout).toBe(0);
   });
+
+  it("Completion 生成 PR-ready Artifact，Human Facts 结算后完成且全程支持重放", async () => {
+    const context = await approvedContext();
+    await completeSuccessfulAgentRun(context);
+    const dependencies = fixture.dependencies(context.harness.runEnvelope);
+    await runCodexAgentPilot(
+      ["closeout", "--root", fixture.input.root, "--actor-id", "human-actor"],
+      dependencies,
+    );
+
+    const completed = await runCodexAgentPilot(
+      ["complete", "--root", fixture.input.root, "--actor-id", "human-actor"],
+      dependencies,
+    );
+    expect(completed).toMatchObject({
+      status: "waiting_settlement",
+      replayed: false,
+      completion: {
+        result: {
+          status: "review_ready",
+          evidenceBundle: { status: "passed" },
+          prReadyArtifact: { artifactDigest: expect.stringMatching(/^sha256:/u) },
+        },
+      },
+    });
+    expect(context.harness.counters.completion).toBe(1);
+    const completionStates = await readStateChain(context.prepared.paths.stateRoot);
+    expect(completionStates.at(-1).effects.completionExecutions).toBe(1);
+
+    const completionReplay = await runCodexAgentPilot(
+      ["complete", "--root", fixture.input.root, "--actor-id", "human-actor"],
+      dependencies,
+    );
+    expect(completionReplay).toMatchObject({
+      status: "waiting_settlement",
+      replayed: true,
+      stateDigest: completed.stateDigest,
+    });
+    expect(context.harness.counters.completion).toBe(1);
+
+    const factsFile = join(fixture.outerRoot, "metricsFacts.json");
+    const waitingSettlement = completionStates.at(-1);
+    const facts = createMetricsFacts(waitingSettlement);
+    await writeFile(factsFile, `${JSON.stringify(facts, null, 2)}\n`, "utf8");
+    expect(JSON.stringify(facts)).not.toContain("sha256:");
+
+    const settled = await runCodexAgentPilot(
+      ["settle", "--root", fixture.input.root, "--actor-id", "human-actor", "--facts", factsFile],
+      dependencies,
+    );
+    expect(settled).toMatchObject({
+      status: "completed",
+      replayed: false,
+      prReadyArtifact: { artifactDigest: expect.stringMatching(/^sha256:/u) },
+      settlement: {
+        operator: { kind: "human", actorId: "human-actor" },
+        result: { record: { attestation: "complete" } },
+      },
+    });
+    expect(context.harness.counters.settlement).toBe(1);
+    const settledStates = await readStateChain(context.prepared.paths.stateRoot);
+    expect(settledStates.at(-1).effects.metricsSettlements).toBe(1);
+
+    const settlementReplay = await runCodexAgentPilot(
+      ["settle", "--root", fixture.input.root, "--actor-id", "human-actor", "--facts", factsFile],
+      dependencies,
+    );
+    expect(settlementReplay).toMatchObject({
+      status: "completed",
+      replayed: true,
+      stateDigest: settled.stateDigest,
+    });
+    expect(context.harness.counters.settlement).toBe(1);
+    expect(await readStateChain(context.prepared.paths.stateRoot)).toEqual(settledStates);
+  });
+
+  it("Completion 失败或 Human Facts 不完整时不推进 Pilot 状态", async () => {
+    const context = await approvedContext();
+    await completeSuccessfulAgentRun(context);
+    await runCodexAgentPilot(
+      ["closeout", "--root", fixture.input.root, "--actor-id", "human-actor"],
+      fixture.dependencies(context.harness.runEnvelope),
+    );
+    const beforeCompletion = await readStateChain(context.prepared.paths.stateRoot);
+    const blockedCompletion = async (consumerRoot, args) =>
+      args[0] === "coding-task" && args[1] === "session" && args[2] === "complete"
+        ? { status: "success", data: { status: "verification_failed" } }
+        : context.harness.runEnvelope(consumerRoot, args);
+    await expect(
+      runCodexAgentPilot(
+        ["complete", "--root", fixture.input.root, "--actor-id", "human-actor"],
+        fixture.dependencies(blockedCompletion),
+      ),
+    ).rejects.toThrow("未形成 PR-ready Artifact");
+    expect(await readStateChain(context.prepared.paths.stateRoot)).toEqual(beforeCompletion);
+
+    await runCodexAgentPilot(
+      ["complete", "--root", fixture.input.root, "--actor-id", "human-actor"],
+      fixture.dependencies(context.harness.runEnvelope),
+    );
+    const waitingSettlement = (await readStateChain(context.prepared.paths.stateRoot)).at(-1);
+    const incompleteFacts = createMetricsFacts(waitingSettlement);
+    incompleteFacts.stepFacts.pop();
+    const factsFile = join(fixture.outerRoot, "incompleteMetricsFacts.json");
+    await writeFile(factsFile, `${JSON.stringify(incompleteFacts, null, 2)}\n`, "utf8");
+    const beforeSettlement = await readStateChain(context.prepared.paths.stateRoot);
+
+    await expect(
+      runCodexAgentPilot(
+        ["settle", "--root", fixture.input.root, "--actor-id", "human-actor", "--facts", factsFile],
+        fixture.dependencies(context.harness.runEnvelope),
+      ),
+    ).rejects.toThrow("逐一覆盖全部预登记步骤");
+    expect(context.harness.counters.settlement).toBe(0);
+    expect(await readStateChain(context.prepared.paths.stateRoot)).toEqual(beforeSettlement);
+
+    const observedFacts = createMetricsFacts(waitingSettlement);
+    observedFacts.humanTouchEntries.push({
+      entryId: "observed-review",
+      category: "review",
+      source: "observed",
+      startedAt: "2026-07-28T23:58:00.000Z",
+      completedAt: "2026-07-28T23:59:00.000Z",
+      durationMs: 60000,
+    });
+    const observedFactsFile = join(fixture.outerRoot, "observedMetricsFacts.json");
+    await writeFile(observedFactsFile, `${JSON.stringify(observedFacts, null, 2)}\n`, "utf8");
+    await expect(
+      runCodexAgentPilot(
+        [
+          "settle",
+          "--root",
+          fixture.input.root,
+          "--actor-id",
+          "human-actor",
+          "--facts",
+          observedFactsFile,
+        ],
+        fixture.dependencies(context.harness.runEnvelope),
+      ),
+    ).rejects.toThrow("不符合预登记边界");
+    await expect(
+      readFile(join(context.prepared.paths.controlRoot, "pilotMetricsSettlement.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    expect(context.harness.counters.settlement).toBe(0);
+    expect(await readStateChain(context.prepared.paths.stateRoot)).toEqual(beforeSettlement);
+  });
 });
+
+function createMetricsFacts(state) {
+  return {
+    schemaVersion: "liushi.codex-agent-pilot.metrics-facts.v1",
+    humanTouchEntries: [],
+    stepFacts: state.metrics.enrollment.plannedSteps.map((step) => ({
+      stepId: step.stepId,
+      actualExecutionMode: step.expectedExecutionMode,
+      outcome: "completed",
+      attemptCount: 1,
+    })),
+    qualityFacts: [],
+    attestation: "complete",
+  };
+}
 
 async function completeSuccessfulAgentRun(context) {
   const runtime = createRuntimeDoubles();

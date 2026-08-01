@@ -3,9 +3,25 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import {
+  ActorKind,
+  PROJECT_DISCOVERY_REPORT_SCHEMA_VERSION,
+  PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION,
+  PROJECT_SCANNER_VERSION,
+  RULE_SCHEMA_VERSION,
   CodingTaskSessionCloseoutStatus,
   PilotEnrollmentSchemaVersion,
   PilotMetricsCreateDisposition,
+  PilotSettlementSchemaVersion,
+  ProjectDiscoveryStatus,
+  ProjectProfilePromotionStatus,
+  RepositoryRole,
+  RuleCategory,
+  RuleEnforcement,
+  RuleFileKind,
+  RuleOperation,
+  RuleScopeLevel,
+  RuleSourceKind,
+  RuleStatus,
 } from "../../../dist/index.js";
 import { calculateDigest } from "../../../scripts/codexAgentPilot/digest/index.mjs";
 
@@ -22,6 +38,11 @@ const artifactTypeByGate = Object.freeze({
   G8: "project_profile_proposal",
   G1: "requirement_contract",
   G4: "plan_risk",
+});
+const artifactIdByGate = Object.freeze({
+  G8: "01ARZ3NDEKTSV4RRFFQ69G5FCA",
+  G1: "01ARZ3NDEKTSV4RRFFQ69G5FCB",
+  G4: "01ARZ3NDEKTSV4RRFFQ69G5FCC",
 });
 
 /** 创建 Pilot 单元测试所需的隔离文件树与可替换外部边界。 */
@@ -102,7 +123,7 @@ export async function cleanupCodexAgentPilotFixture(fixture) {
 /** 创建严格绑定 Artifact 的 Proposal Envelope。 */
 export function createPilotProposalEnvelope(gate, overrides = {}) {
   const artifact = {
-    artifactId: `artifact-${gate}`,
+    artifactId: artifactIdByGate[gate],
     artifactType: artifactTypeByGate[gate],
     digest: calculateDigest({ gate }),
     ...overrides.artifact,
@@ -125,7 +146,7 @@ export function createPilotProposalEnvelope(gate, overrides = {}) {
 
 /** 创建与 CLI 参数、Artifact 和 Human actor 完整绑定的 Approval Envelope。 */
 export function createPilotApprovalEnvelope(gate, approvalNumber, args, overrides = {}) {
-  const artifactId = `artifact-${gate}`;
+  const artifactId = artifactIdByGate[gate];
   const artifactDigest = calculateDigest({ gate });
   const approvalId = `approval-${approvalNumber}`;
   return {
@@ -165,6 +186,8 @@ export function createHappyPathPilotEnvelope(fixture) {
     metrics: 0,
     activation: 0,
     closeout: 0,
+    completion: 0,
+    settlement: 0,
   };
   const proposalByIdempotencyKey = new Map();
   const approvalByIdempotencyKey = new Map();
@@ -199,7 +222,26 @@ export function createHappyPathPilotEnvelope(fixture) {
     }
     if (args[0] === "profile") {
       counters.profile += 1;
-      return { status: "success", data: { digest: calculateDigest("profile"), profiles: [] } };
+      return {
+        status: "success",
+        data: {
+          digest: calculateDigest("profile"),
+          profiles: [],
+          ruleCatalog: {
+            workspaceRef: {
+              workspaceId: "liushi-codex-agent-pilot",
+              workspaceGraphRevision: "graph-1",
+            },
+            repositoryRefs: [
+              {
+                repositoryId: "unjs-defu",
+                repositoryRevision,
+                projectProfileRevision: "1",
+              },
+            ],
+          },
+        },
+      };
     }
     if (
       args[0] === "coding-task" &&
@@ -244,11 +286,28 @@ export function createHappyPathPilotEnvelope(fixture) {
       } catch (error) {
         if (error?.code !== "EEXIST") throw error;
       }
-      const envelope = { status: "success", data: { status: "waiting_agent" } };
+      const envelope = {
+        status: "success",
+        data: {
+          status: "waiting_agent",
+          receipts: [
+            { stage: "create", receipt: { status: "committed", committedVersion: 1 } },
+            {
+              stage: "start_attempt",
+              receipt: { status: "committed", committedVersion: 2 },
+            },
+          ],
+        },
+      };
       activationByManifest.set(manifestDigest, envelope);
       return envelope;
     }
-    if (args[0] === "coding-task" && args[1] === "session" && args[2] === "closeout") {
+    if (
+      args[0] === "coding-task" &&
+      args[1] === "session" &&
+      args[2] === "closeout" &&
+      args[3] === "--file"
+    ) {
       const command = JSON.parse(await readFile(option(args, "--file"), "utf8"));
       const existing = closeoutByCommand.get(command.commandId);
       if (existing !== undefined) return existing;
@@ -263,38 +322,159 @@ export function createHappyPathPilotEnvelope(fixture) {
       closeoutByCommand.set(command.commandId, envelope);
       return envelope;
     }
+    if (
+      args[0] === "coding-task" &&
+      args[1] === "session" &&
+      args[2] === "closeout" &&
+      args[3] === "effective"
+    ) {
+      return {
+        status: "success",
+        data: {
+          status: "resolved",
+          source: "original",
+          checkpoint: { bindingDigest: calculateDigest("fixture-checkpoint-binding") },
+        },
+      };
+    }
+    if (args[0] === "coding-task" && args[1] === "session" && args[2] === "complete") {
+      counters.completion += 1;
+      const completion = JSON.parse(await readFile(option(args, "--file"), "utf8"));
+      return {
+        status: "success",
+        data: {
+          status: "review_ready",
+          evidenceBundle: {
+            status: "passed",
+            verificationRunId: completion.verification.verificationRunId,
+            planId: completion.verification.planId,
+          },
+          prReadyArtifact: {
+            artifactDigest: calculateDigest({
+              commandId: completion.deliveryCommand.commandId,
+            }),
+          },
+        },
+      };
+    }
+    if (
+      args[0] === "coding-task" &&
+      args[1] === "session" &&
+      args[2] === "metrics" &&
+      args[3] === "settle"
+    ) {
+      counters.settlement += 1;
+      const draft = JSON.parse(await readFile(option(args, "--file"), "utf8"));
+      const body = { ...draft, schemaVersion: PilotSettlementSchemaVersion.V1 };
+      return {
+        status: "success",
+        data: {
+          disposition: PilotMetricsCreateDisposition.Created,
+          record: { ...body, recordDigest: calculateDigest(body) },
+        },
+      };
+    }
     throw new Error(`unexpected command ${args.join(" ")}`);
   };
   return { counters, runEnvelope };
 }
 
 function createScanReport() {
+  const workspaceId = "liushi-codex-agent-pilot";
+  const repositoryId = "unjs-defu";
+  const rules = [
+    createScanRule({
+      ruleId: "rule-test",
+      familyKey: "test.execution",
+      outcomeKey: "test.required",
+      validatorId: "package_script.test",
+    }),
+    createScanRule({
+      ruleId: "rule-typecheck",
+      familyKey: "typecheck.execution",
+      outcomeKey: "typecheck.required",
+      validatorId: "typescript.typecheck",
+    }),
+  ];
   const candidate = {
-    repositoryId: "unjs-defu",
+    schemaVersion: PROJECT_PROFILE_CANDIDATE_SCHEMA_VERSION,
+    repositoryId,
     repositoryRevision,
-    roleHint: "application",
-    digest: calculateDigest("candidate"),
-    ruleCandidates: [
+    roleHint: RepositoryRole.Application,
+    status: ProjectDiscoveryStatus.Complete,
+    inventory: {
+      fileCount: 1,
+      directoryCount: 1,
+      skippedLinkCount: 0,
+      ignoredDirectoryCount: 0,
+    },
+    languages: [{ languageId: "typescript", fileCount: 1 }],
+    packageManagers: [],
+    packages: [],
+    compilerConfigs: [],
+    frameworkHints: [],
+    configFiles: [],
+    mechanismCandidates: [],
+    ruleCandidates: rules,
+    diagnostics: [],
+  };
+  const candidateWithDigest = withDigest(candidate);
+  return withDigest({
+    schemaVersion: PROJECT_DISCOVERY_REPORT_SCHEMA_VERSION,
+    scannerVersion: PROJECT_SCANNER_VERSION,
+    status: ProjectDiscoveryStatus.Complete,
+    profilePromotionStatus: ProjectProfilePromotionStatus.HumanReviewRequired,
+    workspaceId,
+    workspaceGraphRevision: "graph-1",
+    profileCandidates: [candidateWithDigest],
+    dependencyEdges: [],
+    dependencyAmbiguities: [],
+  });
+}
+
+function createScanRule(input) {
+  return withDigest({
+    schemaVersion: RULE_SCHEMA_VERSION,
+    ruleId: input.ruleId,
+    version: "1.0.0",
+    status: RuleStatus.Candidate,
+    category: RuleCategory.Testing,
+    enforcement: RuleEnforcement.Blocking,
+    familyKey: input.familyKey,
+    outcomeKey: input.outcomeKey,
+    scope: {
+      level: RuleScopeLevel.Repository,
+      workspaceId: "liushi-codex-agent-pilot",
+      repositoryId: "unjs-defu",
+    },
+    selector: {
+      repositoryIds: ["unjs-defu"],
+      pathGlobs: ["test/**"],
+      languages: ["typescript"],
+      fileKinds: [RuleFileKind.Test],
+      operations: [RuleOperation.Modify],
+    },
+    statement: `必须通过 ${input.validatorId} 验证。`,
+    rationale: "固定 Pilot 需要确定性验证后才能进入评审。",
+    validatorIds: [input.validatorId],
+    requiredCapabilityIds: [],
+    sourceRefs: [
       {
-        ruleId: "rule-test",
-        enforcement: "blocking",
-        validatorIds: ["package_script.test"],
-      },
-      {
-        ruleId: "rule-typecheck",
-        enforcement: "blocking",
-        validatorIds: ["typescript.typecheck"],
+        kind: RuleSourceKind.ProjectFile,
+        sourceId: "package.json",
+        revision: repositoryRevision,
       },
     ],
-    mechanismCandidates: [{ candidateId: "mechanism-1" }],
-  };
-  return {
-    status: "complete",
-    workspaceId: "liushi-codex-agent-pilot",
-    workspaceGraphRevision: "graph-1",
-    digest: calculateDigest("report"),
-    profileCandidates: [candidate],
-  };
+    invalidationRefs: [],
+    approvedExampleRefs: [],
+    negativeExampleRefs: [],
+    conflictsWithRuleIds: [],
+    owner: { kind: ActorKind.Human, actorId: "human-actor" },
+  });
+}
+
+function withDigest(value) {
+  return { ...value, digest: calculateDigest(value) };
 }
 
 function gateAt(number) {

@@ -1,4 +1,10 @@
-import { PilotExecutionMode, PilotStepPhase, PilotTaskClass } from "../../../dist/index.js";
+import {
+  PilotExecutionMode,
+  PilotStepPhase,
+  PilotTaskClass,
+  RuleFileKind,
+  RuleOperation,
+} from "../../../dist/index.js";
 import {
   PACKAGE_MANAGER,
   PILOT_CASE_SCHEMA_VERSION,
@@ -36,6 +42,16 @@ export function createPublicCodexAgentPilotCase() {
       packageManager: PACKAGE_MANAGER,
     }),
     writeSet: Object.freeze([...WRITE_SET]),
+    ruleTargets: Object.freeze([
+      Object.freeze({
+        targetId: "target-test-utils-test-ts",
+        relativePath: "test/utils.test.ts",
+        language: "typescript",
+        fileKind: RuleFileKind.Test,
+        operation: RuleOperation.Modify,
+      }),
+    ]),
+    availableCapabilityIds: Object.freeze([]),
     historicalLogicChange: false,
     metrics: Object.freeze({
       pilotId: "public-defu-module-namespace-v1",

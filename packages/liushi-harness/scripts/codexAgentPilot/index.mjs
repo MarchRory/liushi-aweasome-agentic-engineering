@@ -8,10 +8,12 @@ import { createPilotPaths } from "./service/shared/index.mjs";
 import {
   approveCodexAgentPilot,
   approveCodexAgentPilotHost,
+  completeCodexAgentPilot,
   closeoutCodexAgentPilot,
   prepareCodexAgentPilot,
   previewCodexAgentPilotHost,
   runCodexAgentPilotAgent,
+  settleCodexAgentPilot,
 } from "./service/index.mjs";
 import { readStateChain } from "./state/index.mjs";
 import { requireExistingDirectory } from "./validation/index.mjs";
@@ -48,6 +50,9 @@ export async function runCodexAgentPilot(argv, dependencies = {}) {
     return runCodexAgentPilotAgent(input, dependencies);
   if (input.command === pilotCliCommands.closeout)
     return closeoutCodexAgentPilot(input, dependencies);
+  if (input.command === pilotCliCommands.complete)
+    return completeCodexAgentPilot(input, dependencies);
+  if (input.command === pilotCliCommands.settle) return settleCodexAgentPilot(input, dependencies);
   return previewCodexAgentPilotHost(input, dependencies);
 }
 

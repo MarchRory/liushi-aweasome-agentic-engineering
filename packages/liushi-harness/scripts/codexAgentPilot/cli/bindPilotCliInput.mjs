@@ -62,6 +62,20 @@ function findCommandSource(input, states) {
       "未找到等待 Human 复核变更的 Closeout 状态。",
     );
   }
+  if (input.command === pilotCliCommands.complete) {
+    return requireSource(
+      states,
+      (state) => state.status === STATE_STATUS.WaitingCompletion,
+      "未找到等待 Completion 的状态。",
+    );
+  }
+  if (input.command === pilotCliCommands.settle) {
+    return requireSource(
+      states,
+      (state) => state.status === STATE_STATUS.WaitingSettlement,
+      "未找到等待 Metrics Settlement 的状态。",
+    );
+  }
   throw new Error(`无法绑定 Pilot 命令 ${input.command}。`);
 }
 

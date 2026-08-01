@@ -1,6 +1,12 @@
 import { isAbsolute, posix, win32 } from "node:path";
 
-import { parseArtifactProposal, validateProjectVerificationChecks } from "../../../dist/index.js";
+import {
+  parseArtifactProposal,
+  RULE_REGISTRY_ID_PATTERN,
+  RuleFileKind,
+  RuleOperation,
+  validateProjectVerificationChecks,
+} from "../../../dist/index.js";
 import { PILOT_CASE_SCHEMA_VERSION, PILOT_CASE_SOURCE_KIND } from "../constants/index.mjs";
 import {
   PILOT_CASE_GIT_REVISION_PATTERN,
@@ -24,6 +30,11 @@ export function validateCodexAgentPilotCase(input) {
   const taskSource = requireText(record.taskSource, "taskSource");
   const repository = normalizeRepository(record.repository);
   const writeSet = normalizeWriteSet(record.writeSet);
+  const ruleTargets = normalizeRuleTargets(record.ruleTargets, writeSet);
+  const availableCapabilityIds = normalizeRegistryIds(
+    record.availableCapabilityIds,
+    "availableCapabilityIds",
+  );
   if (record.historicalLogicChange !== false) {
     throw new Error("Pilot Case v1 只接受 historicalLogicChange=false 的低风险任务。");
   }
@@ -50,6 +61,8 @@ export function validateCodexAgentPilotCase(input) {
     taskSource,
     repository,
     writeSet,
+    ruleTargets,
+    availableCapabilityIds,
     historicalLogicChange: false,
     metrics: normalizePilotCaseMetrics(record.metrics),
     verificationChecks: normalizeVerificationChecks(record.verificationChecks),
@@ -57,6 +70,60 @@ export function validateCodexAgentPilotCase(input) {
     planRiskProposal,
     agentInstruction: requireText(record.agentInstruction, "agentInstruction"),
   };
+}
+
+function normalizeRuleTargets(input, writeSet) {
+  if (!Array.isArray(input)) {
+    throw new Error("ruleTargets 必须逐一覆盖 writeSet。");
+  }
+  const targetIds = new Set();
+  input.forEach((target, index) => {
+    const record = requireExactRecord(
+      target,
+      ["targetId", "relativePath", "language", "fileKind", "operation"],
+      `ruleTargets[${index}]`,
+    );
+    const targetId = requireRegistryId(record.targetId, `ruleTargets[${index}].targetId`);
+    if (targetIds.has(targetId)) throw new Error("ruleTargets 的 targetId 必须唯一。");
+    targetIds.add(targetId);
+  });
+  if (input.length !== writeSet.length) {
+    throw new Error("ruleTargets 必须逐一覆盖 writeSet。");
+  }
+  return input.map((target, index) => {
+    const record = requireExactRecord(
+      target,
+      ["targetId", "relativePath", "language", "fileKind", "operation"],
+      `ruleTargets[${index}]`,
+    );
+    const targetId = requireRegistryId(record.targetId, `ruleTargets[${index}].targetId`);
+    const relativePath = requireText(record.relativePath, `ruleTargets[${index}].relativePath`);
+    if (relativePath !== writeSet[index]) {
+      throw new Error("ruleTargets 的路径必须与 writeSet 逐一一致。");
+    }
+    const language = requireRegistryId(record.language, `ruleTargets[${index}].language`);
+    if (!Object.values(RuleFileKind).includes(record.fileKind)) {
+      throw new Error(`ruleTargets[${index}].fileKind 无效。`);
+    }
+    if (!Object.values(RuleOperation).includes(record.operation)) {
+      throw new Error(`ruleTargets[${index}].operation 无效。`);
+    }
+    return {
+      targetId,
+      relativePath,
+      language,
+      fileKind: record.fileKind,
+      operation: record.operation,
+    };
+  });
+}
+
+function normalizeRegistryIds(input, label) {
+  if (!Array.isArray(input)) throw new Error(`${label} 必须是 Registry ID 数组。`);
+  const values = input.map((value, index) => requireRegistryId(value, `${label}[${index}]`));
+  if (new Set(values).size !== values.length)
+    throw new Error(`${label} 不得包含重复 Registry ID。`);
+  return values;
 }
 
 function normalizeRepository(input) {
@@ -172,6 +239,14 @@ function requireIdentifier(value, label) {
   return text;
 }
 
+function requireRegistryId(value, label) {
+  const text = requireText(value, label);
+  if (!RULE_REGISTRY_ID_PATTERN.test(text)) {
+    throw new Error(`${label} 必须是安全 Registry ID。`);
+  }
+  return text;
+}
+
 function requireText(value, label) {
   if (
     typeof value !== "string" ||
@@ -199,4 +274,17 @@ function requireRecord(value, label) {
     throw new Error(`${label} 必须是对象。`);
   }
   return value;
+}
+
+function requireExactRecord(value, keys, label) {
+  const record = requireRecord(value, label);
+  const actualKeys = Object.keys(record).sort();
+  const expectedKeys = [...keys].sort();
+  if (
+    actualKeys.length !== expectedKeys.length ||
+    actualKeys.some((key, index) => key !== expectedKeys[index])
+  ) {
+    throw new Error(`${label} 字段必须严格匹配。`);
+  }
+  return record;
 }

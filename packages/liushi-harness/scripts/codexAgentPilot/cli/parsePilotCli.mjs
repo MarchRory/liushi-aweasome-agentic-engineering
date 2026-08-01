@@ -7,6 +7,8 @@ const COMMANDS = Object.freeze({
   approveHost: "approve-host",
   runAgent: "run-agent",
   closeout: "closeout",
+  complete: "complete",
+  settle: "settle",
 });
 const OPTION_NAMES = Object.freeze({
   root: "--root",
@@ -16,17 +18,20 @@ const OPTION_NAMES = Object.freeze({
   model: "--model",
   caseFile: "--case",
   gate: "--gate",
+  facts: "--facts",
 });
 
 export function parsePilotCli(argv) {
   if (!Array.isArray(argv) || argv.length === 0) {
     throw new Error(
-      "必须指定 prepare、approve、preview-host、approve-host、run-agent 或 closeout。",
+      "必须指定 prepare、approve、preview-host、approve-host、run-agent、closeout、complete 或 settle。",
     );
   }
   const command = argv[0];
   if (!Object.values(COMMANDS).includes(command)) {
-    throw new Error("只支持 prepare、approve、preview-host、approve-host、run-agent 或 closeout。");
+    throw new Error(
+      "只支持 prepare、approve、preview-host、approve-host、run-agent、closeout、complete 或 settle。",
+    );
   }
   const values = new Map();
   for (let index = 1; index < argv.length; index += 1) {
@@ -62,7 +67,9 @@ export function parsePilotCli(argv) {
         }
       : command === COMMANDS.approve
         ? { gate: parseGate(values.get(OPTION_NAMES.gate)) }
-        : {}),
+        : command === COMMANDS.settle
+          ? { factsFile: values.get(OPTION_NAMES.facts) }
+          : {}),
   };
 }
 
@@ -82,6 +89,7 @@ function requiredOptions(command) {
     OPTION_NAMES.root,
     OPTION_NAMES.actorId,
     ...(command === COMMANDS.approve ? [OPTION_NAMES.gate] : []),
+    ...(command === COMMANDS.settle ? [OPTION_NAMES.facts] : []),
   ];
 }
 

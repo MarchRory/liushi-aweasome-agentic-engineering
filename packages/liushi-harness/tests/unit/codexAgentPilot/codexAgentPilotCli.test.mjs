@@ -28,13 +28,29 @@ describe("Codex Agent Pilot CLI", () => {
       ]),
     ).toMatchObject({ command: "prepare", caseFile: "C:\\pilot-case.json" });
 
-    for (const command of ["preview-host", "approve-host", "run-agent", "closeout"]) {
+    for (const command of ["preview-host", "approve-host", "run-agent", "closeout", "complete"]) {
       expect(parsePilotCli([command, "--root", "C:\\pilot", "--actor-id", "human"])).toEqual({
         command,
         root: "C:\\pilot",
         actorId: "human",
       });
     }
+    expect(
+      parsePilotCli([
+        "settle",
+        "--root",
+        "C:\\pilot",
+        "--actor-id",
+        "human",
+        "--facts",
+        "C:\\facts.json",
+      ]),
+    ).toEqual({
+      command: "settle",
+      root: "C:\\pilot",
+      actorId: "human",
+      factsFile: "C:\\facts.json",
+    });
     expect(() =>
       parsePilotCli([
         "closeout",
@@ -98,6 +114,8 @@ describe("Codex Agent Pilot CLI", () => {
         hostApproval: { packetDigest: "sha256:packet" },
       }),
       state("sha256:closeout", "waiting_closeout"),
+      state("sha256:completion", "waiting_completion"),
+      state("sha256:settlement", "waiting_settlement"),
     ];
 
     expect(
@@ -118,6 +136,20 @@ describe("Codex Agent Pilot CLI", () => {
     expect(
       bindPilotCliInput({ command: "closeout", root: "C:\\pilot", actorId: "human" }, states),
     ).toMatchObject({ stateDigest: "sha256:closeout" });
+    expect(
+      bindPilotCliInput({ command: "complete", root: "C:\\pilot", actorId: "human" }, states),
+    ).toMatchObject({ stateDigest: "sha256:completion" });
+    expect(
+      bindPilotCliInput(
+        {
+          command: "settle",
+          root: "C:\\pilot",
+          actorId: "human",
+          factsFile: "C:\\facts.json",
+        },
+        states,
+      ),
+    ).toMatchObject({ stateDigest: "sha256:settlement", factsFile: "C:\\facts.json" });
   });
 
   it("语义阶段不存在时拒绝猜测或推进其他 Gate", () => {
