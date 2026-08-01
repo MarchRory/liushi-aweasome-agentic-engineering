@@ -1,4 +1,9 @@
 export const PILOT_SCHEMA_VERSION = "liushi.codex-agent-pilot.v1";
+export const PILOT_CASE_SCHEMA_VERSION = "liushi.codex-agent-pilot.case.v1";
+export const PILOT_CASE_SOURCE_KIND = Object.freeze({
+  FixedPublic: "fixed_public",
+  LocalRepository: "local_repository",
+});
 export const STATE_SCHEMA_VERSION = "liushi.codex-agent-pilot.state.v1";
 export const STATE_DIRECTORY = "state";
 export const CONTROL_DIRECTORY = "control";

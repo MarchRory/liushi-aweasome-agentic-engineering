@@ -13,6 +13,7 @@ import {
 } from "./service/index.mjs";
 
 export * from "./activation/index.mjs";
+export * from "./case/index.mjs";
 export * from "./cli/index.mjs";
 export * from "./constants/index.mjs";
 export * from "./digest/index.mjs";

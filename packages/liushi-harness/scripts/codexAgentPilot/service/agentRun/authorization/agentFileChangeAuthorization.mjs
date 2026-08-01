@@ -26,6 +26,7 @@ export function createAgentFileChangeAuthorizer(input) {
     const worktreeIdentity = capturePilotWorktreeIdentity(
       input.artifacts.worktreeRoot,
       input.dependencies.runGit,
+      input.approvedState.fixedProject.revision,
     );
     if (
       calculateDigest(worktreeIdentity) !== calculateDigest(input.launchBaseline.worktreeIdentity)

@@ -394,7 +394,10 @@ describe("Codex Agent Pilot state machine", () => {
     const staleManifest = createSessionActivationManifest({
       workspaceId: g4.task.workspaceId,
       taskId: "stale-task",
+      repositoryId: g4.fixedProject.repositoryId,
+      repositoryRevision: g4.fixedProject.revision,
       repositoryRoot: prepared.paths.repositoryRoot,
+      writeSet: g4.fixedProject.writeSet,
       executionAuthorization: { stale: true },
     });
     await writeFile(manifestFile, `${JSON.stringify(staleManifest, null, 2)}\n`, "utf8");

@@ -9,9 +9,6 @@ import {
   REQUIREMENT_PROPOSAL_NAME,
   SESSION_MANIFEST_NAME,
   STATE_STATUS,
-  TASK_SOURCE,
-  WORKSPACE_ID,
-  REPOSITORY_ID,
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
 import {
@@ -63,9 +60,9 @@ export async function approveCodexAgentPilot(input, overrides = {}) {
   const approvalIdempotencyKey = `codex-agent-pilot:${current.revision}:${request.decisionRequestId}`;
   const consumer = createPilotHarnessClient({
     consumerRoot: paths.consumerRoot,
-    workspaceId: WORKSPACE_ID,
-    repositoryId: REPOSITORY_ID,
-    source: TASK_SOURCE,
+    workspaceId: current.task.workspaceId,
+    repositoryId: current.fixedProject.repositoryId,
+    source: current.task.source,
     runEnvelope: dependencies.runEnvelope,
   });
   const approvalEnvelope = await consumer.approve(
@@ -148,7 +145,10 @@ async function progressG8(input) {
     input.paths.runtimeRoot,
   );
   const requirementFile = join(input.paths.controlRoot, REQUIREMENT_PROPOSAL_NAME);
-  await writeControlJsonIdempotent(requirementFile, createRequirementProposal());
+  await writeControlJsonIdempotent(
+    requirementFile,
+    createRequirementProposal(input.current.fixedProject),
+  );
   const proposed = await input.consumer.proposeArtifact(
     input.current.task.taskId,
     requirementFile,
@@ -189,7 +189,7 @@ async function progressG8(input) {
 
 async function progressG1(input) {
   requirePilotRecord(input.current.profile?.bundle, "ProjectProfile Bundle");
-  const planProposal = createPlanRiskProposal();
+  const planProposal = createPlanRiskProposal(input.current.fixedProject);
   const planProposalDigest = calculateDigest(planProposal).replace("sha256:", "");
   const planFile = join(
     input.paths.controlRoot,
@@ -229,6 +229,7 @@ async function progressG4(input) {
   const executionAuthorization = createExecutionAuthorization({
     planArtifact: input.current.proposal.artifact,
     gateEvaluation: input.gateEvaluation,
+    historicalLogicChange: input.current.fixedProject.historicalLogicChange,
   });
   const manifestFile = join(input.paths.controlRoot, SESSION_MANIFEST_NAME);
   const common = {
@@ -238,7 +239,13 @@ async function progressG4(input) {
     consumerRoot: input.paths.consumerRoot,
     manifestFile,
     taskId: input.current.task.taskId,
-    workspaceId: WORKSPACE_ID,
+    workspaceId: input.current.task.workspaceId,
+    repositoryId: input.current.fixedProject.repositoryId,
+    repositoryRevision: input.current.fixedProject.revision,
+    packageManager: input.current.fixedProject.packageManager,
+    writeSet: input.current.fixedProject.writeSet,
+    historicalLogicChange: input.current.fixedProject.historicalLogicChange,
+    agentInstruction: input.current.fixedProject.agentInstruction,
     executionAuthorization,
     codexExecutable: input.current.codex.executable,
     codexHome: input.current.codex.homeSource,

@@ -122,7 +122,7 @@ function createInput() {
     artifacts: { worktreeRoot: "C:\\pilot" },
     approvedState: {
       task: { workspaceId: "workspace" },
-      fixedProject: { repositoryId: "repository" },
+      fixedProject: { repositoryId: "repository", writeSet: ["test/utils.test.ts"] },
       actor: { agentActorId: "agent:pilot" },
       activation: { manifest: { sessionId: "session-1" } },
       identities: {

@@ -21,6 +21,23 @@ describe("Codex Agent Pilot CLI", () => {
     ).toMatchObject({ command: "prepare", actorId: "human" });
     expect(
       parsePilotCli([
+        "prepare",
+        "--root",
+        "C:\\pilot",
+        "--actor-id",
+        "human",
+        "--codex",
+        "C:\\codex.exe",
+        "--codex-home",
+        "C:\\home",
+        "--model",
+        "gpt-5.6-sol",
+        "--case",
+        "C:\\pilot-case.json",
+      ]),
+    ).toMatchObject({ command: "prepare", caseFile: "C:\\pilot-case.json" });
+    expect(
+      parsePilotCli([
         "approve",
         "--root",
         "C:\\pilot",
@@ -102,6 +119,19 @@ describe("Codex Agent Pilot CLI", () => {
         "gpt-5.6-sol",
       ]),
     ).toThrow();
+    expect(() =>
+      parsePilotCli([
+        "approve",
+        "--root",
+        "C:\\pilot",
+        "--state-digest",
+        "sha256:a",
+        "--actor-id",
+        "human",
+        "--case",
+        "C:\\pilot-case.json",
+      ]),
+    ).toThrow("不适用于");
     expect(() =>
       parsePilotCli([
         "approve",

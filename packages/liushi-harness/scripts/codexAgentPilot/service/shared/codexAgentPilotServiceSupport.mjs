@@ -12,11 +12,8 @@ import {
   HOST_APPROVAL_RECORD_SCHEMA_VERSION,
   HOST_PREFLIGHT_PROCESS_COUNT,
   REPOSITORY_DIRECTORY,
-  REPOSITORY_ID,
-  REPOSITORY_REVISION,
   RUNTIME_DIRECTORY,
   WORKTREE_RELATIVE_PATH,
-  WRITE_SET,
   STATE_STATUS,
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
@@ -91,7 +88,11 @@ export function readCompiledProfile(envelope) {
 }
 
 export async function capturePilotIdentities(input) {
-  const repository = captureRepositoryIdentity(input.repositoryRoot, input.runGit);
+  const repository = captureRepositoryIdentity(
+    input.repositoryRoot,
+    input.runGit,
+    input.repositoryRevision,
+  );
   const manifest = await readInstalledManifest(input.consumerRoot);
   const tarball = join(input.root, "pack", input.packageArtifact.fileName);
   const cliEntrypoint = resolveInstalledCliEntrypoint(input.consumerRoot);
@@ -117,6 +118,7 @@ export async function capturePilotIdentitiesFromState(state, dependencies) {
   const repository = captureRepositoryIdentity(
     state.paths.repositoryRoot,
     dependencies.runGit,
+    state.fixedProject.revision,
     WORKTREE_RELATIVE_PATH,
   );
   const manifest = await readInstalledManifest(state.paths.consumerRoot);
@@ -153,12 +155,8 @@ export async function validateStablePilotIdentities(state, dependencies) {
 }
 
 export function validateCurrentPilotState(state, paths) {
-  if (
-    state.paths?.root !== paths.root ||
-    state.fixedProject?.repositoryId !== REPOSITORY_ID ||
-    state.fixedProject?.revision !== REPOSITORY_REVISION ||
-    JSON.stringify(state.fixedProject.writeSet) !== JSON.stringify(WRITE_SET)
-  ) {
+  validateFixedProjectState(state);
+  if (state.paths?.root !== paths.root) {
     throw new Error("固定项目或状态路径绑定无效。");
   }
   if (!Object.values(GATES).includes(state.gate)) {
@@ -183,14 +181,12 @@ export function validateCurrentPilotState(state, paths) {
 }
 
 export function validateWaitingHostPilotState(state, paths) {
+  validateFixedProjectState(state);
   if (
     state.status !== STATE_STATUS.WaitingHostApproval ||
     state.gate !== null ||
     state.pendingDecisionRequest !== null ||
     state.paths?.root !== paths.root ||
-    state.fixedProject?.repositoryId !== REPOSITORY_ID ||
-    state.fixedProject?.revision !== REPOSITORY_REVISION ||
-    JSON.stringify(state.fixedProject.writeSet) !== JSON.stringify(WRITE_SET) ||
     state.fixedProject.historicalLogicChange !== false ||
     !["waiting_agent", "waiting_for_agent"].includes(state.activation?.result?.status) ||
     state.effects?.activationExecuted !== true ||
@@ -203,14 +199,12 @@ export function validateWaitingHostPilotState(state, paths) {
 }
 
 export function validatePendingHostApprovalPilotState(state, paths) {
+  validateFixedProjectState(state);
   if (
     state.status !== STATE_STATUS.WaitingHostApproval ||
     state.gate !== null ||
     state.pendingDecisionRequest !== null ||
     state.paths?.root !== paths.root ||
-    state.fixedProject?.repositoryId !== REPOSITORY_ID ||
-    state.fixedProject?.revision !== REPOSITORY_REVISION ||
-    JSON.stringify(state.fixedProject.writeSet) !== JSON.stringify(WRITE_SET) ||
     state.fixedProject.historicalLogicChange !== false ||
     !["waiting_agent", "waiting_for_agent"].includes(state.activation?.result?.status) ||
     state.effects?.activationExecuted !== true ||
@@ -232,6 +226,7 @@ export function validatePendingHostApprovalPilotState(state, paths) {
 }
 
 export function validateHostApprovedPilotState(state, paths) {
+  validateFixedProjectState(state);
   const approval = state.hostApproval;
   const { approvalDigest, ...approvalBody } =
     approval !== null && typeof approval === "object" && !Array.isArray(approval) ? approval : {};
@@ -267,8 +262,8 @@ export function validateHostApprovedPilotState(state, paths) {
   }
 }
 
-export function capturePilotWorktreeIdentity(worktreeRoot, runGitCommand) {
-  return captureRepositoryIdentity(worktreeRoot, runGitCommand);
+export function capturePilotWorktreeIdentity(worktreeRoot, runGitCommand, expectedRevision) {
+  return captureRepositoryIdentity(worktreeRoot, runGitCommand, expectedRevision);
 }
 
 export function validateRecordedApproval(input) {
@@ -319,7 +314,7 @@ export function createExecutionAuthorization(input) {
       requiredGates: input.gateEvaluation.requiredGates ?? [],
       satisfiedApprovalIds: input.gateEvaluation.satisfiedApprovals,
     },
-    historicalLogicChange: false,
+    historicalLogicChange: input.historicalLogicChange,
   };
 }
 
@@ -348,9 +343,9 @@ function readCodexVersion(executable) {
   return requirePilotString(version, "Codex version");
 }
 
-function captureRepositoryIdentity(repositoryRoot, runGitCommand, excludedPath) {
+function captureRepositoryIdentity(repositoryRoot, runGitCommand, expectedRevision, excludedPath) {
   const revision = runGitCommand(repositoryRoot, ["rev-parse", "HEAD"]);
-  if (revision !== REPOSITORY_REVISION) throw new Error("固定仓库 revision 不匹配。");
+  if (revision !== expectedRevision) throw new Error("固定仓库 revision 不匹配。");
   const statusArguments = ["status", "--porcelain=v1", "--untracked-files=all"];
   if (excludedPath !== undefined) {
     statusArguments.push("--", ".", `:(exclude)${excludedPath}`);
@@ -358,6 +353,27 @@ function captureRepositoryIdentity(repositoryRoot, runGitCommand, excludedPath) 
   const status = runGitCommand(repositoryRoot, statusArguments);
   if (status !== "") throw new Error("固定仓库工作区必须保持 clean。");
   return { root: repositoryRoot, revision, clean: true };
+}
+
+function validateFixedProjectState(state) {
+  const project = state.fixedProject;
+  const requirement = project?.requirementProposal?.payload;
+  const plan = project?.planRiskProposal?.payload;
+  if (
+    typeof project?.repositoryId !== "string" ||
+    typeof project?.revision !== "string" ||
+    typeof project?.packageManager !== "string" ||
+    typeof project?.agentInstruction !== "string" ||
+    !Array.isArray(project?.writeSet) ||
+    project.writeSet.length !== 1 ||
+    project.historicalLogicChange !== false ||
+    JSON.stringify(requirement?.includedScopes) !== JSON.stringify(project.writeSet) ||
+    JSON.stringify(requirement?.repositories) !== JSON.stringify([project.repositoryId]) ||
+    JSON.stringify(plan?.writeSet) !== JSON.stringify(project.writeSet) ||
+    plan?.historicalLogicChange !== false
+  ) {
+    throw new Error("Pilot Case 状态绑定无效。");
+  }
 }
 
 function resolveInstalledCliEntrypoint(consumerRoot) {

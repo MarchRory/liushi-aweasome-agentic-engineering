@@ -83,6 +83,8 @@ async function createFixture(options = {}) {
   return {
     worktreeRoot: root,
     targetFile,
+    expectedRevision: revision,
+    writeSet: ["test/utils.test.ts"],
     initialTargetDigest: calculateTextDigest(initialSource),
   };
 }

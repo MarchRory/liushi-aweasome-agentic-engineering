@@ -133,6 +133,33 @@ liushi-harness knowledge sync --dry-run
 
 Setup、Prompt 修正、Agent 等待期间 Human 实际操作和返工都计入 HTT，不能只统计写代码时间。
 
+### 4.7 脱敏企业 Pilot Case
+
+当前仓库 checkout 已提供 `Pilot Case v1` 入口，用于把一个已由 Human 对齐的低风险单仓需求接入真实 Codex golden path。该入口位于 `scripts/codexAgentPilot`，尚未进入 npm Tarball 或正式产品 CLI。
+
+Case JSON 必须满足以下边界：
+
+- `sourceKind` 固定为 `local_repository`，`repository.source` 是干净本地 Git 仓库的绝对路径，`repository.revision` 是当前完整小写 Commit ID。
+- `writeSet` 精确包含一个规范化 POSIX 相对文件路径，禁止历史业务逻辑改动。
+- `requirementProposal`、`planRiskProposal` 和 `verificationChecks` 必须通过正式 Harness 契约校验，并与 Repository 和 Write Set 一致。
+- Requirement 与 PlanRisk 仍分别经过 G1、G4 Human Gate；Case 文件不能自行授权写入。
+- `prepare` 不执行 Case 中声明的项目验证命令。验证命令只有在 PlanRisk 获批并进入受控 Session 后才可执行。
+
+```powershell
+pnpm --filter liushi-harness build
+node packages/liushi-harness/scripts/codexAgentPilot/index.mjs prepare `
+  --root C:\liushi-pilot\requirement-001 `
+  --actor-id human:owner `
+  --codex C:\path\to\codex.exe `
+  --codex-home C:\path\to\isolated-codex-home `
+  --model gpt-5.6-sol `
+  --case C:\path\to\pilotCase.json
+```
+
+随后按输出的当前 `stateDigest` 依次执行三次 `approve`，分别审批 G8、G1、G4；再执行 `preview-host`、使用 Human 确认的 `stateDigest` 与 `packetDigest` 调用 `approve-host`，最后调用 `run-agent`。这些 Digest 只用于绑定跨进程状态转换和 Human 决策，不要求 Human 重新计算，也不得扩展为普通代码改动的额外验收步骤。
+
+该入口当前只证明配置、状态链和本地仓库复制路径可用。首次真实企业 Case 仍需由 Repository Owner 检查脱敏、Requirement、PlanRisk、验证命令和单文件 Write Set，并采集 Metrics Enrollment/Settlement；完成前不得声明企业提效成立。
+
 ## 5. 分级放量
 
 | Level          | 行为                                    | 升级条件                               |

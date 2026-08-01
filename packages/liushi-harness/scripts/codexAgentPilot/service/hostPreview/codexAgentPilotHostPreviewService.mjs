@@ -45,6 +45,7 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
   const worktreeIdentity = capturePilotWorktreeIdentity(
     artifacts.worktreeRoot,
     dependencies.runGit,
+    current.fixedProject.revision,
   );
   const preflightEvidence = await dependencies.probeCodexAppServerFileChangeApproval({
     executable: current.codex.executable,
@@ -59,6 +60,7 @@ export async function previewCodexAgentPilotHost(input, overrides = {}) {
   const finalWorktreeIdentity = capturePilotWorktreeIdentity(
     finalArtifacts.worktreeRoot,
     dependencies.runGit,
+    current.fixedProject.revision,
   );
   if (calculateDigest(worktreeIdentity) !== calculateDigest(finalWorktreeIdentity)) {
     throw new Error("Host 预检期间 Worktree identity 发生漂移。");

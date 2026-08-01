@@ -15,6 +15,8 @@ export async function inspectWorktreeChangeSafely(input) {
       worktreeRoot: input.artifacts.worktreeRoot,
       targetFile: input.artifacts.targetFile,
       initialTargetDigest: input.initialTargetDigest ?? input.artifacts.targetDigest,
+      expectedRevision: input.expectedRevision,
+      writeSet: input.writeSet,
       runGit: input.dependencies.runGit,
     });
   } catch (error) {

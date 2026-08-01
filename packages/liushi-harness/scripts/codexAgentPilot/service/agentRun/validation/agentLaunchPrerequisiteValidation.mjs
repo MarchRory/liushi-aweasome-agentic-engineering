@@ -29,6 +29,7 @@ export async function validateFreshLaunchPrerequisites(input) {
   const worktreeIdentity = capturePilotWorktreeIdentity(
     artifacts.worktreeRoot,
     input.dependencies.runGit,
+    input.approvedState.fixedProject.revision,
   );
   const { packet } = await readValidatedCodexHostApprovalPacket({
     state: input.approvedState,
@@ -68,6 +69,7 @@ export async function captureAgentLaunchBaseline(input) {
   const worktreeIdentity = capturePilotWorktreeIdentity(
     input.artifacts.worktreeRoot,
     input.dependencies.runGit,
+    input.expectedRevision,
   );
   if (
     targetDigest !== input.artifacts.targetDigest ||

@@ -11,7 +11,6 @@ import {
   CODEX_HOOK_EVENTS,
   CODEX_HOOK_PERMISSION_MODE,
   CODEX_HOOK_TOOL,
-  WRITE_SET,
 } from "../../../constants/index.mjs";
 import { calculateDigest } from "../../../digest/index.mjs";
 import { CODEX_APP_SERVER_OUTCOMES } from "../../../host/index.mjs";
@@ -88,9 +87,12 @@ function createPreInput(input, proposal) {
       schemaVersion: AGENT_FILE_CHANGE_PROJECTION_SCHEMA_VERSION,
       projection: CODEX_AGENT_EXECUTION_MODE.AppServerFileChangeApproval,
       appServerProposal: proposal,
-      command: ["*** Begin Patch", `*** Update File: ${WRITE_SET[0]}`, "@@", "*** End Patch"].join(
-        "\n",
-      ),
+      command: [
+        "*** Begin Patch",
+        `*** Update File: ${input.approvedState.fixedProject.writeSet[0]}`,
+        "@@",
+        "*** End Patch",
+      ].join("\n"),
     },
   };
 }

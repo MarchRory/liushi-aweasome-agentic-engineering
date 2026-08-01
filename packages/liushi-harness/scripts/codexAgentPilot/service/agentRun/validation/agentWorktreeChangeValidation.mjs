@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 
-import { REPOSITORY_REVISION, WRITE_SET } from "../../../constants/index.mjs";
 import { calculateTextDigest } from "../../../digest/index.mjs";
 import { requireExistingFile } from "../../../validation/index.mjs";
 
@@ -14,7 +13,7 @@ export async function inspectCodexAgentWorktreeChange(input) {
   const statusLines = status === "" ? [] : status.split(/\r?\n/u);
   const targetFile = await requireExistingFile(input.targetFile, "Agent 目标文件");
   const targetDigest = calculateTextDigest(await readFile(targetFile, "utf8"));
-  const expectedStatus = ` M ${WRITE_SET[0]}`;
+  const expectedStatus = ` M ${input.writeSet[0]}`;
   return {
     inspected: true,
     revision,
@@ -22,7 +21,7 @@ export async function inspectCodexAgentWorktreeChange(input) {
     changedPaths: statusLines.map((line) => line.slice(3)),
     targetDigest,
     valid:
-      revision === REPOSITORY_REVISION &&
+      revision === input.expectedRevision &&
       statusLines.length === 1 &&
       statusLines[0] === expectedStatus &&
       targetDigest !== input.initialTargetDigest,

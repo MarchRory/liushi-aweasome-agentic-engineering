@@ -61,6 +61,7 @@ export async function approveCodexAgentPilotHost(input, overrides = {}) {
   const worktreeIdentity = capturePilotWorktreeIdentity(
     artifacts.worktreeRoot,
     dependencies.runGit,
+    current.fixedProject.revision,
   );
   await readValidatedCodexHostApprovalPacket({
     state: current,

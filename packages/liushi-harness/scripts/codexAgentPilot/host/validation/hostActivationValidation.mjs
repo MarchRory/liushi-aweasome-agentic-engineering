@@ -19,7 +19,6 @@ import {
   REASONING_EFFORT,
   SOTA_MODEL_ID,
   STATE_STATUS,
-  WRITE_SET,
 } from "../../constants/index.mjs";
 import { calculateDigest, calculateTextDigest } from "../../digest/index.mjs";
 import { readControlJson } from "../../state/index.mjs";
@@ -33,7 +32,7 @@ export async function readValidatedHostActivation(state, paths) {
     promptFile: join(paths.controlRoot, AGENT_PROMPT_NAME),
     hostPacketFile: join(paths.controlRoot, HOST_PACKET_NAME),
     manifestFile: activation.manifestFile,
-    targetFile: join(worktreeRoot, WRITE_SET[0]),
+    targetFile: join(worktreeRoot, state.fixedProject.writeSet[0]),
   };
   for (const [name, file] of Object.entries(expectedFiles)) {
     await requireExistingFile(file, name);
@@ -49,7 +48,10 @@ export async function readValidatedHostActivation(state, paths) {
   validateSessionActivationManifest(manifest, {
     workspaceId: state.task.workspaceId,
     taskId: state.task.taskId,
+    repositoryId: state.fixedProject.repositoryId,
+    repositoryRevision: state.fixedProject.revision,
     repositoryRoot: paths.repositoryRoot,
+    writeSet: state.fixedProject.writeSet,
     executionAuthorization: state.executionAuthorization,
   });
   validateActivationPaths(activation, expectedFiles, worktreeRoot);
@@ -113,6 +115,9 @@ function validateArtifactDigests(input) {
     taskId: input.state.task.taskId,
     targetSource: input.targetSource,
     targetDigest: input.activation.targetDigest,
+    writeSet: input.state.fixedProject.writeSet,
+    historicalLogicChange: input.state.fixedProject.historicalLogicChange,
+    agentInstruction: input.state.fixedProject.agentInstruction,
   });
   if (input.prompt !== expectedPrompt) {
     throw new Error("Agent Prompt 未精确绑定目标文件快照。");
@@ -162,7 +167,11 @@ function validatePreliminaryHostPacket(input) {
       resolve(input.expectedFiles.candidateConfigFile) ||
     resolve(packet.paths?.promptFile) !== resolve(input.expectedFiles.promptFile) ||
     resolve(packet.paths?.targetFile) !== resolve(input.expectedFiles.targetFile) ||
-    packet.project?.targetSnapshot?.relativePath !== WRITE_SET[0] ||
+    packet.project?.repositoryId !== input.state.fixedProject.repositoryId ||
+    packet.project?.repositoryRevision !== input.state.fixedProject.revision ||
+    !equalStringArrays(packet.project?.writeSet, input.state.fixedProject.writeSet) ||
+    packet.project?.historicalLogicChange !== input.state.fixedProject.historicalLogicChange ||
+    packet.project?.targetSnapshot?.relativePath !== input.state.fixedProject.writeSet[0] ||
     packet.project?.targetSnapshot?.digest !== input.state.activation.targetDigest ||
     packet.candidateHooks?.digest !== input.state.activation.candidateConfigDigest ||
     packet.candidateHooks?.writesExecuted !== false ||

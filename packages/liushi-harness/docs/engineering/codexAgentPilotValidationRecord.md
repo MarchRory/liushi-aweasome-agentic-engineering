@@ -49,3 +49,11 @@ Pilot 只允许目标文件变更；Closeout 后工作树干净，Checkpoint 只
 - Human Touch Time、自动化比例、返工率和错误放行率的统计显著性。
 
 该 Pilot 后续已将 Session Completion 暴露为独立 CLI；下一主线是在不放宽 Runtime Binding 与 Human Gate 的前提下运行脱敏企业需求 Pilot 并采集量化证据。
+
+## 6. 企业 Pilot 接入准备
+
+仓库内 Codex Agent Pilot 已新增可选 `--case <absolute-json-file>` 入口。`Pilot Case v1` 可以绑定干净本地仓库、完整 Commit ID、单文件 Write Set、Human 已对齐的 Requirement/PlanRisk、Required Verification Checks 和 Agent Instruction；固定 `unjs/defu` Case 继续作为默认公开回归。
+
+该入口沿用原有 G8、G1、G4、Host Approval 和单次 FileChange 授权，不增加新的 Digest 类型，也不允许 `historicalLogicChange=true`。真实 Git 测试已验证本地仓库按精确 Revision 隔离复制，Pilot 单元集已覆盖自定义 Case 的路径越界、契约不一致和旧固定 Case 回归。
+
+这仍不是企业 Pilot 结果：尚未在企业代码和真实 PRD 上运行，也没有 HTT、自动化率、返工率或错误放行率数据。下一验证门仍是一个脱敏、低风险、单仓、单文件的真实需求 Case。

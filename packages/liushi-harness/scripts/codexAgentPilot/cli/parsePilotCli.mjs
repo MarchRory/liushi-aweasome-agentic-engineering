@@ -11,6 +11,7 @@ const OPTION_NAMES = Object.freeze({
   codex: "--codex",
   codexHome: "--codex-home",
   model: "--model",
+  caseFile: "--case",
   stateDigest: "--state-digest",
   packetDigest: "--packet-digest",
 });
@@ -39,6 +40,7 @@ export function parsePilotCli(argv) {
   for (const option of required)
     if (!values.has(option)) throw new Error(`缺少必需选项 ${option}。`);
   const allowed = new Set(required);
+  if (command === COMMANDS.prepare) allowed.add(OPTION_NAMES.caseFile);
   for (const option of values.keys())
     if (!allowed.has(option)) throw new Error(`选项 ${option} 不适用于 ${command}。`);
   return {
@@ -50,6 +52,9 @@ export function parsePilotCli(argv) {
           codex: values.get(OPTION_NAMES.codex),
           codexHome: values.get(OPTION_NAMES.codexHome),
           model: values.get(OPTION_NAMES.model),
+          ...(values.has(OPTION_NAMES.caseFile)
+            ? { caseFile: values.get(OPTION_NAMES.caseFile) }
+            : {}),
         }
       : {
           stateDigest: values.get(OPTION_NAMES.stateDigest),

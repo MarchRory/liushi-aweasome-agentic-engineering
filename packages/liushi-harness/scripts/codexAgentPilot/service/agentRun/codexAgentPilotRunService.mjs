@@ -285,6 +285,8 @@ async function executeLaunchIntent(input) {
     : await inspectWorktreeChangeSafely({
         artifacts,
         initialTargetDigest: launchBaseline?.target.digest,
+        expectedRevision: input.approvedState.fixedProject.revision,
+        writeSet: input.approvedState.fixedProject.writeSet,
         dependencies: input.dependencies,
         inspectWorktree: input.inspectWorktree,
       });

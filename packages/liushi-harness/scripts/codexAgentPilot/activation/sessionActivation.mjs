@@ -9,7 +9,6 @@ import {
   AGENT_PROMPT_NAME,
   COMMAND_TYPES,
   HOST_PACKET_NAME,
-  PACKAGE_MANAGER,
   CODEX_AGENT_EXECUTION_MODE,
   CODEX_ALLOWED_FILE_CHANGE_KINDS,
   CODEX_ALLOWED_MUTATION_SURFACES,
@@ -20,11 +19,8 @@ import {
   CODEX_PERMISSION_PROFILE,
   PILOT_SCHEMA_VERSION,
   REASONING_EFFORT,
-  REPOSITORY_ID,
-  REPOSITORY_REVISION,
   STATE_STATUS,
   WORKTREE_RELATIVE_PATH,
-  WRITE_SET,
   CANDIDATE_CONFIG_NAME,
   REQUIRED_HUMAN_ACTIONS,
   FORBIDDEN_ACTIONS,
@@ -107,7 +103,7 @@ export async function createActivationArtifacts(input) {
   if (input.deferHostArtifacts === true) {
     return { manifest, manifestFile: input.manifestFile, worktreeRoot };
   }
-  const targetFile = join(worktreeRoot, WRITE_SET[0]);
+  const targetFile = join(worktreeRoot, input.writeSet[0]);
   const targetSource = await readFile(targetFile, "utf8");
   const targetDigest = calculateTextDigest(targetSource);
   const candidateConfig = createCandidateConfig({
@@ -123,6 +119,9 @@ export async function createActivationArtifacts(input) {
     taskId: input.taskId,
     targetSource,
     targetDigest,
+    writeSet: input.writeSet,
+    historicalLogicChange: input.historicalLogicChange,
+    agentInstruction: input.agentInstruction,
   });
   const promptFile = join(input.controlRoot, AGENT_PROMPT_NAME);
   await writeControlTextIdempotent(promptFile, prompt);
@@ -131,12 +130,13 @@ export async function createActivationArtifacts(input) {
     schemaVersion: PILOT_SCHEMA_VERSION,
     status: STATE_STATUS.WaitingHostApproval,
     project: {
-      repositoryId: REPOSITORY_ID,
-      repositoryRevision: REPOSITORY_REVISION,
-      packageManager: PACKAGE_MANAGER,
-      writeSet: [...WRITE_SET],
+      repositoryId: input.repositoryId,
+      repositoryRevision: input.repositoryRevision,
+      packageManager: input.packageManager,
+      writeSet: [...input.writeSet],
+      historicalLogicChange: input.historicalLogicChange,
       targetSnapshot: {
-        relativePath: WRITE_SET[0],
+        relativePath: input.writeSet[0],
         digest: targetDigest,
       },
     },

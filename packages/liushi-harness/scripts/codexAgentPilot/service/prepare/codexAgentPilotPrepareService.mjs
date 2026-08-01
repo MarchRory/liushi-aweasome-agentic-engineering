@@ -1,29 +1,24 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
+import { createPublicCodexAgentPilotCase, readCodexAgentPilotCase } from "../../case/index.mjs";
 import {
   AGENT_ACTOR_ID,
   ARTIFACT_TYPES,
   GATES,
-  PACKAGE_MANAGER,
+  PILOT_CASE_SOURCE_KIND,
   PILOT_SCHEMA_VERSION,
   PROFILE_PROPOSAL_NAME,
-  REPOSITORY_ID,
-  REPOSITORY_REVISION,
-  REPOSITORY_URL,
   SCAN_REPORT_NAME,
   SOTA_MODEL_ID,
   STATE_STATUS,
-  TASK_SOURCE,
-  WORKSPACE_ID,
-  WRITE_SET,
 } from "../../constants/index.mjs";
 import { calculateDigest } from "../../digest/index.mjs";
 import {
   createPilotHarnessClient,
   createPilotProposalIdempotencyKey,
 } from "../../harnessClient/index.mjs";
-import { preparePublicProject } from "../../project/index.mjs";
+import { prepareLocalProjectPilot, preparePublicProject } from "../../project/index.mjs";
 import { appendState, createStateStore, writeControlJson } from "../../state/index.mjs";
 import {
   requireExistingDirectory,
@@ -53,6 +48,10 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
   const codexHome = await requireExistingDirectory(input.codexHome, "--codex-home");
   await requireExistingFile(join(codexHome, "config.toml"), "--codex-home/config.toml");
   const codexVersion = dependencies.readCodexVersion(codexExecutable);
+  const pilotCase =
+    input.caseFile === undefined
+      ? createPublicCodexAgentPilotCase()
+      : await readCodexAgentPilotCase(input.caseFile);
   let rootCreated = false;
   let succeeded = false;
   try {
@@ -64,15 +63,21 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
       mkdir(paths.runtimeRoot, { recursive: true }),
       mkdir(paths.stateRoot, { recursive: true }),
     ]);
-    const project = await preparePublicProject(
-      { root, controlRoot: paths.controlRoot, packageRoot: input.packageRoot },
-      dependencies,
-    );
+    const projectInput = {
+      root,
+      controlRoot: paths.controlRoot,
+      packageRoot: input.packageRoot,
+      pilotCase,
+    };
+    const project =
+      pilotCase.sourceKind === PILOT_CASE_SOURCE_KIND.LocalRepository
+        ? await prepareLocalProjectPilot(projectInput, dependencies)
+        : await preparePublicProject(projectInput, dependencies);
     const consumer = createPilotHarnessClient({
       consumerRoot: project.consumerRoot,
-      workspaceId: WORKSPACE_ID,
-      repositoryId: REPOSITORY_ID,
-      source: TASK_SOURCE,
+      workspaceId: pilotCase.workspaceId,
+      repositoryId: pilotCase.repository.id,
+      source: pilotCase.taskSource,
       runEnvelope: dependencies.runEnvelope,
     });
     const taskEnvelope = await consumer.createTask(input.actorId, paths.runtimeRoot);
@@ -83,7 +88,7 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
     const reportFile = join(paths.controlRoot, SCAN_REPORT_NAME);
     await writeControlJson(reportFile, report);
     const proposalFile = join(paths.controlRoot, PROFILE_PROPOSAL_NAME);
-    await writeControlJson(proposalFile, createProjectProfileProposal(report));
+    await writeControlJson(proposalFile, createProjectProfileProposal(report, pilotCase));
     const proposed = await consumer.proposeArtifact(
       taskId,
       proposalFile,
@@ -110,6 +115,7 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
       codexExecutable,
       codexVersion,
       codexHome,
+      repositoryRevision: pilotCase.repository.revision,
       runGit: dependencies.runGit,
     });
     const stateStore = await createStateStore(paths.controlRoot);
@@ -120,17 +126,22 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
       actor: { humanActorId: input.actorId, agentActorId: AGENT_ACTOR_ID },
       model: input.model,
       fixedProject: {
-        repositoryId: REPOSITORY_ID,
-        repositoryUrl: REPOSITORY_URL,
-        revision: REPOSITORY_REVISION,
-        packageManager: PACKAGE_MANAGER,
-        writeSet: [...WRITE_SET],
-        historicalLogicChange: false,
+        repositoryId: pilotCase.repository.id,
+        sourceKind: pilotCase.sourceKind,
+        revision: pilotCase.repository.revision,
+        roleHint: pilotCase.repository.roleHint,
+        packageManager: pilotCase.repository.packageManager,
+        writeSet: [...pilotCase.writeSet],
+        historicalLogicChange: pilotCase.historicalLogicChange,
+        verificationChecks: globalThis.structuredClone(pilotCase.verificationChecks),
+        requirementProposal: globalThis.structuredClone(pilotCase.requirementProposal),
+        planRiskProposal: globalThis.structuredClone(pilotCase.planRiskProposal),
+        agentInstruction: pilotCase.agentInstruction,
       },
       paths,
       codex: { executable: codexExecutable, homeSource: codexHome },
       identities,
-      task: { workspaceId: WORKSPACE_ID, taskId, source: TASK_SOURCE },
+      task: { workspaceId: pilotCase.workspaceId, taskId, source: pilotCase.taskSource },
       scan: {
         manifestFile: project.scanManifestFile,
         reportFile,
@@ -138,6 +149,10 @@ export async function prepareCodexAgentPilot(input, overrides = {}) {
       },
       proposal: { file: proposalFile, artifact, request },
       pendingDecisionRequest: request,
+      pilotCase: {
+        schemaVersion: pilotCase.schemaVersion,
+        sourceKind: pilotCase.sourceKind,
+      },
       approvals: [],
       gateEvaluations: [],
       effects: {
