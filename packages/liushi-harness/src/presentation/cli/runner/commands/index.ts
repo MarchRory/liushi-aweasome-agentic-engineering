@@ -10,3 +10,4 @@ export * from "./projectCommands.js";
 export * from "./initCommands.js";
 export * from "./projectPolicy/index.js";
 export * from "./taskLifecycle/index.js";
+export * from "./requirementCommands.js";

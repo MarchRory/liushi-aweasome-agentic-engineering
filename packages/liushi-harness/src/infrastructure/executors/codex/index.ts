@@ -4,3 +4,4 @@ export * from "./agentHost/index.js";
 export * from "./capabilityProbe/index.js";
 export * from "./compatibilityEvidence/index.js";
 export * from "./contractEvidence/index.js";
+export * from "./requirementAnalysis/index.js";

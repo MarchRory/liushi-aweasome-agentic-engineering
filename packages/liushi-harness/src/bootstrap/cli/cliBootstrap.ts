@@ -1,5 +1,6 @@
 import {
   NodeJsonDocumentReaderAdapter,
+  NodeTextDocumentReaderAdapter,
   runCli,
   CliApplicationBindingScope,
   CliVerificationMode,
@@ -11,6 +12,8 @@ import {
   createCodexHookProjection,
   NodeHookInputReaderAdapter,
   StaticRepositoryRootResolverAdapter,
+  CodexRequirementAnalysisAgentAdapter,
+  NodeCommandRunnerAdapter,
 } from "#infrastructure/index.js";
 import packageJson from "../../../package.json" with { type: "json" };
 import { createHarnessApplication, VerificationExecutionMode } from "../compositionRoot/index.js";
@@ -33,6 +36,7 @@ export async function runCliBootstrap(args: readonly string[]): Promise<number> 
     applicationFactory: createProductionCliApplicationFactory(),
     writer,
     jsonDocumentReader: new NodeJsonDocumentReaderAdapter(),
+    textDocumentReader: new NodeTextDocumentReaderAdapter(),
     hookInputReader: new NodeHookInputReaderAdapter(),
     hookConfigProjector: { project: () => createCodexHookProjection() },
   });
@@ -77,6 +81,17 @@ export function createProductionCliApplicationFactory(): CliApplicationFactory {
                     startupConfig.verificationMode,
                   ),
                 }),
+          });
+        case CliApplicationBindingScope.RequirementAnalysis:
+          return createHarnessApplication({
+            storeRoot,
+            packageVersion: packageJson.version,
+            repositoryRootResolver,
+            requirementAnalysisAgent: new CodexRequirementAnalysisAgentAdapter(
+              startupConfig.executable,
+              startupConfig.model,
+              new NodeCommandRunnerAdapter(),
+            ),
           });
       }
     },

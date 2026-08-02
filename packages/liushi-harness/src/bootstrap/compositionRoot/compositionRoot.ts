@@ -21,8 +21,6 @@ import {
   ResolveRulesUseCase,
   SelectVerificationPlanUseCase,
   ScanProjectUseCase,
-  RequirementWorkflowCommandHandler,
-  WorkflowCommandService,
 } from "#application/index.js";
 import { HarnessError, HarnessErrorCode } from "#common/index.js";
 import {
@@ -34,7 +32,6 @@ import {
   FileTraceObservationStore,
   FileSnapshotStore,
   FileTaskRepository,
-  FileWorkflowRepository,
   FileCodingTaskRepository,
   NodeProjectFileSystemAdapter,
   NodeWorktreeInspectorAdapter,
@@ -59,6 +56,7 @@ import {
   createExecutorCompatibilityAttestationApplication,
   createManagedFileInstallationApplication,
   createRuntimeHealthUseCase,
+  createRequirementApplication,
   createUnresolvedProvisionGuard,
   createVerificationExecutor,
   createWorktreeApplication,
@@ -85,10 +83,6 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const taskRepository = new FileTaskRepository(options.storeRoot, {
     eventIdGenerator,
     snapshotStore: new FileSnapshotStore(),
-    lockManager,
-    parentDirectoryDurability,
-  });
-  const workflowRepository = new FileWorkflowRepository(options.storeRoot, {
     lockManager,
     parentDirectoryDurability,
   });
@@ -237,6 +231,15 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       ? {}
       : { runtimeBinding: options.codingTaskSessionRuntimeBinding }),
   });
+  const requirementApplication = createRequirementApplication({
+    storeRoot: options.storeRoot,
+    requirementAnalysisAgent: options.requirementAnalysisAgent,
+    applicationCommandGateway,
+    lockManager,
+    parentDirectoryDurability,
+    clock,
+    eventIdGenerator,
+  });
   return {
     applicationCommandGateway,
     evidenceBundleStore,
@@ -276,10 +279,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     resolveRules,
     selectVerificationPlan,
     scanProject: new ScanProjectUseCase(projectFileSystem, projectConfigParser, digest),
-    workflowCommands: new WorkflowCommandService(
-      applicationCommandGateway,
-      new RequirementWorkflowCommandHandler(workflowRepository, clock, eventIdGenerator),
-    ),
+    ...requirementApplication,
     inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
     inspectGitChangeSet: changeSetApplication.inspectGitChangeSet,
     changeSetCheckpoints: changeSetApplication.changeSetCheckpoints,

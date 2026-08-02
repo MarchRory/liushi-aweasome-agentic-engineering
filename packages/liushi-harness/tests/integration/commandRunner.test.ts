@@ -6,6 +6,21 @@ import { ResultStatus } from "../../src/common/index.js";
 import { NodeCommandRunnerAdapter } from "../../src/infrastructure/index.js";
 
 describe("Node Command Runner", () => {
+  it("将 stdin 写入子进程并关闭输入流", async () => {
+    const result = await new NodeCommandRunnerAdapter().run({
+      executable: process.execPath,
+      args: [
+        "-e",
+        "process.stdin.setEncoding('utf8'); process.stdin.on('data', d => process.stdout.write(d));",
+      ],
+      stdin: "stdin-ok",
+      timeoutMs: 1000,
+    });
+
+    expect(result.status).toBe(ResultStatus.Success);
+    if (result.status === ResultStatus.Failure) return;
+    expect(result.value).toMatchObject({ exitCode: 0, stdout: "stdin-ok", stderr: "" });
+  });
   it("使用非 shell 子进程收集 stdout 和退出码", async () => {
     const result = await new NodeCommandRunnerAdapter().run({
       executable: process.execPath,

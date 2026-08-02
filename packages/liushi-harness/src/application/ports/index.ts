@@ -52,3 +52,4 @@ export type {
   VerifyExecutorCompatibilityAttestationInput,
 } from "./executorCompatibilityAttestation/index.js";
 export * from "./pilotMetricsStore/index.js";
+export type * from "./requirementAnalysisAgent/index.js";

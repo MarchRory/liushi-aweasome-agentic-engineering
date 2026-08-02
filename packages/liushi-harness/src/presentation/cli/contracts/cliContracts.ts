@@ -9,6 +9,7 @@ import type {
   ExecutorCompatibilityQueryCliCommand,
 } from "./cliExecutorCompatibilityContracts.js";
 import type { InitApplyCliCommand, InitDryRunCliCommand } from "./cliInstallationContracts.js";
+import type { RequirementAnalyzeCliCommand } from "./cliRequirementContracts.js";
 import type {
   CodingTaskSessionActivateCliCommand,
   CodingTaskSessionCloseoutCliCommand,
@@ -214,6 +215,7 @@ export type ParsedCliCommand =
   | ProjectScanCliCommand
   | ProfileCompileCliCommand
   | CellRunCliCommand
+  | RequirementAnalyzeCliCommand
   | CodingTaskSessionActivateCliCommand
   | CodingTaskSessionCloseoutCliCommand
   | CodingTaskSessionCompleteCliCommand

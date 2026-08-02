@@ -6,4 +6,6 @@ export enum CliApplicationBindingScope {
   CodingTaskCell = "coding_task_cell",
   /** 绑定 CodingTask Session 运行时。 */
   CodingTaskSession = "coding_task_session",
+  /** 绑定只读 Requirement 分析 Agent。 */
+  RequirementAnalysis = "requirement_analysis",
 }

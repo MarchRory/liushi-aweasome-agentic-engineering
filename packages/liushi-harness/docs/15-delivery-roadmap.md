@@ -65,6 +65,10 @@ Human、Lead 与六角色评审已经确认：
 
 详细方案见 [21 需求生命周期 Workflow 产品与技术方案](./21-requirement-workflow-runtime.md) 与 [ADR-014](./decisions/ADR-014-workflow-semantic-core-and-studio-boundary.md)。Workflow 可以进入前置契约实现，但真实 Executor 仍受 S0-S3 完成门约束。
 
+2026-08-02 的全局审计发现底层控制面深度已经超过用户价值链完整度。后续顺序以
+[ADR-015](./decisions/adr015ValueFirstGoldenPath.md) 为准：冻结重复 Pilot、发布证明和恢复协议深化，
+优先交付 `PRD -> Requirement Proposal -> Human Battle`，并将摘要保留在系统内部。
+
 ## 5. 待排序能力切片
 
 以下切片按 Workflow 评审后的依赖顺序推进；无依赖冲突的基础能力可以并行。
@@ -83,13 +87,27 @@ Human、Lead 与六角色评审已经确认：
 | 多仓写入与 Worktree      | `partial`     | 多仓身份、Profile、Write Set 规范化、Managed Worktree 创建/检查、未知 Provision Human 对账与下游 Guard、Workspace/Repository 排他 Lock、单仓受控文件变更与 Git Checkpoint                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Workspace Registry、Worktree 清理/重建、跨仓 Saga、Compensation                                               |
 | 生产安装、升级与卸载     | `partial`     | npm 发布物、跨平台 Tarball Smoke 脚本、Windows 干净安装证据、ESM/CJS、双 CLI Bin、Doctor、许可证门禁、独立 Consumer 驱动固定公开项目 Cell、Codex Managed File dry-run、G0 Apply 与 Installation Revision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Ubuntu CI 运行证据、Migration、Rollback、Uninstall                                                            |
 
-### 5.1 CodingTask 与 Session S1-S3 进展修订
+### 5.1 PRD 到 Requirement Proposal
+
+状态：`implemented`
+
+- `requirement analyze` 已接入生产 CLI、Composition Root 和 executor-neutral Application Port。
+- Codex Adapter 使用 ephemeral、read-only Sandbox、禁用 Hooks 和显式模型，不创建 Task、不写 Store、不修改 Repository。
+- 专用 Strict Structured Outputs 线格式与领域 Proposal 分离，所有嵌套对象均通过“properties 全部 required”测试门；领域可选 Evidence 字段在线格式中使用 `null`，Adapter 归一化后再次执行领域复验。
+- Application 强制单仓、空 Human Answer 和 Evidence 引用完整性，`unknowns` 投影为 Human Battle 问题。
+- 真实 Codex CLI `0.145.0` 正向烟测返回 `human_battle_required`，目标 Repository 前后均无变更。
+
+下一切片固定为 Human Battle 修订与确认：Human 回答 unknowns 后形成新 Proposal Revision，再复用现有 Task、Artifact 和 Gate 能力持久化；随后才进入 PlanRisk。完整 Skill Registry、Memory、Studio、Release Host 和新一轮公开 Pilot 不插队。
+
+### 5.2 CodingTask 与 Session S1-S3 进展修订
 
 CodingTask 当前已经完成 Domain Core、File Store/Replay、Command Gateway/Service、默认权威授权解析、Managed Worktree Provision/Inspector、未知 Provision Human 对账与下游 Guard、Workspace/Repository 排他 Lock、Action 级执行锁和 Intent-first `JournaledActionRunner`、受控文件变更、可信 Repository Root、Git Checkpoint、ImplementationSubmitted Attempt 收口、Checkpoint 后权威绑定 Verification Target Revision、Verification 版本化命令与 EvidenceBundle、G8 Profile-backed 单仓影响面、fail-closed Mock、显式 Local Command Runner、受信预编排 CLI 单仓 Cell、单仓 PRReadyArtifact 权威装配，以及 Executor Compatibility Matrix Domain、Host/Contract 双 Artifact Store 和重算查询 CLI。CodingTask Session Activation S1 已完成独立 Domain、不可变 Activation Record/File Repository、Session 级跨进程 Lease、`Create -> Provision -> StartAttempt` 后权威读取、耐久化 `outcome_unknown`、CLI `coding-task session activate`、跨实例复用和真实 Git E2E。S2 已完成 Session Hook Binding v2、Admission State/File Store、非等待 Lease、Activation 自动初始化、PreAction 健康 v2 Intent 准入，以及 PostAction Trace、Trace 摘要绑定的 v2 Observation 与受其因果绑定的 Resolution 闭合；缺失 Post、未完成 Human/Retry 状态和跨 Store 提交未知都会阻断 Closing 或进入 `outcome_unknown`。S3 已完成提交前 Snapshot 与提交后 Commit ChangeSet 的独立重建、摘要双向绑定、提交前漂移零副作用拒绝和已存在 Checkpoint 幂等恢复；Closeout Process State/File Store 已持久化完整阶段证据并提供 CAS 与未知结果分类。`CodingTaskSessionCloseoutManager`、生产 CLI 和真实 Git E2E 已在 Repository Lock 内完成 `beginClosing`、Action Coverage、权威 Snapshot、Checkpoint execute + inspect 与 `bindCheckpoint`，严格停止在 `CheckpointBound`，同一 Command 跨 Application 重放不产生第二个 Commit。Human-gated Closeout Recovery 已完成 Composition Root、CLI、确定性故障注入和真实 Git 恢复 E2E；Delivery Submission 已在锁内复验 Original/Recovery Effective Checkpoint，只追加唯一 `ImplementationSubmitted` Event，并证明不会创建第二个 Commit。`completeCodingTaskSessionDelivery` 已继续串联 G8 Profile、Rule、Plan、平台路径身份、Verification、Evidence 与 PR-ready，通过和失败路径均完成跨进程真实 Git E2E，并由薄 CLI 暴露为受信宿主入口。`waiting_agent` 只允许动作继续竞争 Admission，不是脱离 Hook 的文件写入授权。CLI 的 Root 与 Actor 仍只是操作员声明；企业接入必须由受信包装器或 Human 批准 Registry 注入可信 Runtime Binding。真实 Codex App Server 已在固定 `unjs/defu@82632b66`、单文件 Write Set、单次模型启动和唯一 Checkpoint 下完成公开项目 Pilot；该结果不等于企业项目生产 Pilot 或量化提效结论。
 
 Closeout Recovery 已完成只读 Assessment、独立 Process State、File Store、Human Command Contract、应用层 Handler/Service、Effective Resolver、生产 Composition Root 与 CLI：三态 Checkpoint Assessment、原 Closeout Command 与权威身份复验、fresh Snapshot 漂移检查、唯一 `RetryOnce`/`BindExisting` Resolution、canonical Assessment Digest、严格六状态、Human Command 身份连续性、Checkpoint/Snapshot/ChangeSet 绑定和 successor 校验，create-only 初始化、独立短时锁、精确 CAS、严格重建和未知结果分类，以及 Human-only Envelope、精确四字段 Payload、canonical request digest 重算、Repository Lock 内 fresh reassessment、仅 CAS winner 的单次 execute 和 Executing 只读恢复。Resolver 优先短路原 `CheckpointBound`，并只在 Recovery 与原终态的身份、版本、完整 State Digest、Snapshot、ChangeSet 和路径全部精确绑定时投影恢复 Checkpoint。CLI 提供 `assess`、完整 Human Command `recover`、只读 `effective` 与完整尾链 `complete`，不允许直接指定 Recovery Resolution 或写 State。确定性真实 Git E2E 已覆盖 `NotApplied -> RetryOnce` 的零到唯一 Commit，以及真实 Commit 后观察未知的 `BindExisting` 零新增 Commit，并验证精确重放、Effective Checkpoint、干净 Worktree 和原 Closeout 字节不变。Delivery Submission 与 Completion 进一步消费 Resolver，重算授权、解析可信 Root、复验新鲜 Checkpoint，并完成权威 Verification/Evidence/PRReady 串联。公开项目 Pilot 证明真实 Codex 可以消费该链，但不关闭企业身份、共享路径祖先替换 TOCTOU 或多仓边界。
 
-Codex 兼容性路径现已把 Host Projector 的 7 条 Evidence 与确定性 Contract Suite 的 5 条 ContractTest 合并为 12 条；真实 Codex CLI `0.144.5`、Windows x64、Interactive TUI 的受验输入已全部 Passed，编译为本机 `compatible` Matrix，并通过 Query 重算。确定性 Publication Bundle 已绑定 Tarball、源码 Revision、双 Artifact、12 条 Evidence、Policy 和 Matrix，并可由 create-only CLI 原子写出；P3a 已新增固定发布者身份、Release Candidate、Human G6 摘要复验和未签名 in-toto Draft，P3b/P4b3 已交付包内 Sigstore 签名、内容寻址 Artifact、确定性 Manifest、Consumer Trust Profile、独立 Manifest Human G6、可信 Release Approval Authority 边界，以及公开的完整双 DSSE 离线验证链。P4c1 已交付包内严格 canonical Artifact Reader 和受信输出根约束下的 create-only Writer，不设置任意企业文件大小预算；P4c2a 已交付固定身份的企业 HTTPS Authority Adapter。Authority 只按审批主题与制品摘要查询权威记录；为避免同进程伪造 Authority 后滥用环境凭据，npm 根和 `HarnessApplication` 不暴露 Signer、Sign UseCase 或 Authority 工厂。Release Host、Accepted Head 和安装信任门已冻结，不再作为下一实现门。Closeout、Recovery、Delivery Submission、权威 Completion、独立 Completion CLI 和真实 Codex 公开项目 Pilot 已闭合当前单仓验证门；仓库内 `Pilot Case v1` 已补齐脱敏本地仓库、Human 对齐 Artifact、Required Checks、单文件写集、Activation 前 Metrics Enrollment，以及不要求 Human 搬运 Digest 的 Gate/Host/Run/Closeout/Completion/Settlement 命令。Pilot 薄编排现可推进到 `completed`；下一步固定为运行首个真实企业 Case 并采集真实 Metrics，Claude-compatible/CatPaw Adapter 继续冻结。Rollback/Uninstall、Worktree 清理/重建、失败分类/受限重试和多仓编排仍是后续能力。
+Codex 兼容性路径已经具备 Host/Contract Evidence、Matrix 重算、Publication Bundle、包内 Sigstore/Manifest 离线验证和固定公开项目 Pilot。它们保留为可用基础设施，但 Release Host、Accepted Head、安装信任门和新的兼容性深化继续冻结；这些能力不再决定主线优先级。
+
+当前主线由 ADR-015 固定为需求价值链。`requirement analyze` 已闭合 PRD 到 Human Battle Proposal 的只读入口；下一步先完成 Human Answer、Proposal Revision、Artifact/Gate 与 PlanRisk 接线，再运行真实企业 Case 采集 Metrics。Claude-compatible/CatPaw、Rollback/Uninstall、Worktree 清理/重建、失败分类/受限重试和多仓编排仍是后续能力。
 
 ## 6. 每个切片的统一开工门
 

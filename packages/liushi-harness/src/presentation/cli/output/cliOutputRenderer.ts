@@ -96,6 +96,10 @@ export function writeSuccess<T>(
       writeCodingTaskCellSummary(dependencies.writer, data);
       return;
     }
+    if (command === CliCommand.RequirementAnalyze) {
+      writeRequirementAnalysisSummary(dependencies, data);
+      return;
+    }
     if (writeCodingTaskSessionSummary(dependencies.writer, command, data)) return;
     if (command === CliCommand.InitDryRun) {
       const plan = data["plan"];
@@ -237,6 +241,39 @@ function scalarString(value: unknown): string {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
     ? String(value)
     : "unknown";
+}
+
+function writeRequirementAnalysisSummary(
+  dependencies: RunCliDependencies,
+  data: Record<string, unknown>,
+): void {
+  const proposal = data["proposal"];
+  const payload = isRecord(proposal) ? proposal["payload"] : undefined;
+  if (!isRecord(payload)) return;
+
+  dependencies.writer.stdout(
+    `Requirement analysis: status=${humanText(data["analysisStatus"])} repository=${humanText(data["repositoryId"])}\n`,
+  );
+  dependencies.writer.stdout(`Problem: ${humanText(payload["problem"])}\n`);
+  writeHumanList(dependencies, "Goals", payload["goals"]);
+  writeHumanList(dependencies, "Acceptance criteria", payload["acceptanceCriteria"]);
+  writeHumanList(dependencies, "Human questions", data["humanQuestions"]);
+}
+
+function writeHumanList(dependencies: RunCliDependencies, title: string, value: unknown): void {
+  const entries = Array.isArray(value) ? value : [];
+  dependencies.writer.stdout(`${title}:\n`);
+  if (entries.length === 0) {
+    dependencies.writer.stdout("- none\n");
+    return;
+  }
+  for (const entry of entries) dependencies.writer.stdout(`- ${humanText(entry)}\n`);
+}
+
+function humanText(value: unknown): string {
+  return scalarString(value)
+    .replace(/[\u0000-\u001f\u007f]/gu, " ")
+    .trim();
 }
 
 export { CLI_EXIT_CODE_SUCCESS, CLI_EXIT_CODE_UNEXPECTED };

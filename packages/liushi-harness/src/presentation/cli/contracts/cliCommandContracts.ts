@@ -22,6 +22,8 @@ export enum CliCommand {
   ProfileCompile = "profile.compile",
   /** 执行 CodingTask Cell。 */
   CellRun = "cell.run",
+  /** 只读分析 PRD 并生成 Requirement Contract Proposal。 */
+  RequirementAnalyze = "requirement.analyze",
   /** 激活外部 Agent CodingTask Session。 */
   CodingTaskSessionActivate = "coding_task.session.activate",
   /** 关闭外部 Agent CodingTask Session，并停在 CheckpointBound。 */

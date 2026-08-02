@@ -64,7 +64,7 @@ const artifactProposalSchema = z.discriminatedUnion("artifactType", [
   projectProfileProposalSchema,
 ]);
 
-/** 鏍￠獙鏈煡杈撳叆骞惰繑鍥炰弗鏍?Artifact Proposal銆?*/
+/** 校验未知输入并返回严格的 Artifact Proposal。 */
 export function parseArtifactProposal(input: unknown): Result<ArtifactProposal, HarnessError> {
   const parsed = artifactProposalSchema.safeParse(input);
   if (!parsed.success) {

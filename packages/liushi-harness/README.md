@@ -50,6 +50,7 @@
 - Runtime Store 的 `Committed` Installation Revision 是所有权证据，Repository Manifest 自声明不可信；相同已提交 Approval 返回 `Reused`，物理现场已完成但 checkpoint 未闭合时只补齐元数据。Partial、Mixed、Unknown 和漂移状态必须 Human 介入，不盲目重试或自动回滚。
 - Closeout Recovery CLI、确定性故障注入与真实 Git 恢复 E2E 已完成；Rollback 和 Uninstall 仍未实现。`actor-id` 只是审计身份声明，不是认证机制，企业使用须由外部受信任包装器或身份系统注入。
 - Workflow Domain 已冻结 RequirementWorkflow 的固定 Cell 顺序、Verification FailureTaxonomy 路由，以及 Human Pause/Resume/Cancel 控制策略；S2 Aggregate、Reducer、File Store 和 Gateway Command API 已实现，CLI Workflow 命令、Child 引用和运行时 Cell 仍未实现。
+- `requirement analyze` 已提供第一条面向需求生命周期的真实 Agent 入口：读取 PRD 与单仓代码上下文，通过显式 Codex 模型、只读 Sandbox 和严格 Structured Outputs 生成 `RequirementContractProposal`，再由 Application 复验仓库边界、Human Answers 与 Evidence 引用。该命令不创建 Task、不写 Runtime Store、不修改 Repository；存在 `unknowns` 时返回 `human_battle_required`，但不会替 Human 批准需求。
 - CodingTask 已提供单仓 Aggregate、独立 Schema、File Store/Replay、Versioned Command Gateway/Service、权威 ExecutionAuthorization、G2 历史逻辑确认绑定、Attempt 串行状态机、Verification 结果接纳和 Human Resolution；Managed Worktree Provision Command 已通过 Repository Lock、JournaledActionRunner 和真实 `shell=false` Git Adapter 创建 Worktree。
 - `implementationCommands` 已在权威授权、Write Set、Repository Lock 与 Action Journal 边界内提供受控文件变更；`implementationSubmissions` 使用可信 Repository Root 和原生 Git 创建单一 Checkpoint，以 `ImplementationSubmitted` 收口 Attempt，并对 Git/Event 非 ACID 中间态提供 Human 恢复入口。
 - `verificationCommands` 已提供版本化 Verification 执行与 EvidenceBundle 接纳；VerificationPlan、显式 Local Command Runner 和强一致 EvidenceBundle Store 已落地，默认执行模式仍为 fail-closed Mock。
@@ -68,7 +69,7 @@
 - Codex Agent Host Session Flags 已迁入正式 Infrastructure，提供确定性 `-c key=TOML` 组装、受限 Runtime key 保护、固定生产 Provider/reasoning、受限 Hook/临时 Trust 编码和旧 exec 兼容；旧 Pilot 只保留唯一 dist bridge。详见 [Codex Agent Host Session Flags](./docs/engineering/codexSessionFlags.md)。
 - Codex Host Result 已升级为 v2：删除 `productionVerified`，返回 `hostEvidenceVerified=true`、`matrixSupportClaim=not_evaluated`、`verifiedAt`、Prepare/Plan/Probe 摘要和 `verificationEnvironment`。`verify-result` 运行时实际读取 Node 的 platform/arch，并要求与 Prepare Manifest 精确一致后才通过；Host Result 只是受验来源，不自行声明 Matrix 支持等级。2026-07-16 的真实 v2 Host 已经通过结果门并编译出本机 `compatible` Matrix；历史旧版结果仍不能复用，本次本机记录也不能直接当作受信发布矩阵。
 
-现有 CLI 写命令向 Application Command Gateway 的完整迁移、企业项目 Pilot 与量化、G0 Rollback/Uninstall、隔离 Release Host、Attestation/Manifest CLI 与 Artifact I/O 接线、Accepted Head 与安装信任门、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、完整 Agent Host Runtime（当前已正式化 Codex Runtime Isolation、Session Flags、App Server Runner 与零模型 Preflight）、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前包仍不声明完整生产闭环；公开项目 Pilot 只证明其精确单仓边界，仓库内 `Pilot Case v1` 只提供脱敏企业需求的接入桥。Session Completion 独立 CLI 与 Pilot Completion/Settlement 薄编排已交付，下一主线是运行首个真实企业 Case 并采集 Metrics；Release Host、Studio、Skills/Memory/Connectors、Claude/CatPaw 扩张继续冻结。当前 P3b/P4b3 的签名实现、P4c1 Artifact Reader/Writer 和 P4c2a 企业 HTTPS Authority Adapter 都只作为包内待装配能力存在；npm 公共 API 与 `createHarnessApplication` 不提供签名入口，离线 Verify 仍是公开能力。Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
+现有 CLI 写命令向 Application Command Gateway 的完整迁移、企业项目 Pilot 与量化、G0 Rollback/Uninstall、隔离 Release Host、Attestation/Manifest CLI 与 Artifact I/O 接线、Accepted Head 与安装信任门、Claude-compatible/CatPaw 平台适配、实时 Span 生命周期与 OTel Exporter、完整 RequirementWorkflow Cell Runtime、Worktree 清理/重建、多仓写入编排、Import Graph 与多仓 Verification 影响传播、重试/Flaky、Waiver、完整 Agent Host Runtime（当前已正式化 Codex Runtime Isolation、Session Flags、App Server Runner 与零模型 Preflight）、其他 Canonical 生命周期事件、Validator Execution、Instruction Projection、Memory、Skills、Connectors 和 Profile 持久化 Registry 仍属于后续实现范围。当前包仍不声明完整生产闭环；公开项目 Pilot 只证明其精确单仓边界，仓库内 `Pilot Case v1` 只提供脱敏企业需求的接入桥。`requirement analyze` 已交付 PRD 到 Requirement Proposal 的只读入口；下一主线是接入 Human Battle 修订与确认，再把获确认 Proposal 交给现有 Artifact/Gate 链生成 PlanRisk。企业 Case 和 Metrics 要在这条用户路径闭合后进行；Release Host、Studio、Skills/Memory/Connectors、Claude/CatPaw 扩张继续冻结。当前 P3b/P4b3 的签名实现、P4c1 Artifact Reader/Writer 和 P4c2a 企业 HTTPS Authority Adapter 都只作为包内待装配能力存在；npm 公共 API 与 `createHarnessApplication` 不提供签名入口，离线 Verify 仍是公开能力。Profile Promotion 和 InstallPlan dry-run 都不写入业务配置，G0 Apply 也不代表代码已经通过合规验证。
 
 本轮 S3 修订已补齐 CodingTask 的 append-only File Store、严格 Event Schema、Hash Chain、Locator 绑定、候选 Replay、Versioned Command Gateway、Command Service，以及从上游 Task Replay 重算 PlanRisk/G2/Write Set 的权威授权解析。CodingTask 的测试替身可以通过 Composition Root 注入，但默认路径不会信任调用方自报的 `allow`。
 
@@ -121,6 +122,7 @@
 liushi-harness doctor --json
 liushi-harness task create --workspace <workspace-id> --source <ticket-url> --json
 liushi-harness task status --workspace <workspace-id> --task <task-ulid> --json
+liushi-harness requirement analyze --prd <absolute-prd-file> --workspace <workspace-id> --repository <repository-id> --root <absolute-repository-root> --model <model-id> [--executable <path-or-command>] --json
 liushi-harness artifact propose --workspace <workspace-id> --task <task-ulid> --file .\requirement.json --json
 liushi-harness approval decide --workspace <workspace-id> --task <task-ulid> --request <request-ulid> --request-digest <sha256:digest> --decision approved --idempotency-key <stable-key> --json
 liushi-harness rules resolve --catalog .\ruleCatalog.json --context .\ruleContext.json --json
@@ -145,6 +147,8 @@ liushi-harness hook config --executor codex > .codex/hooks.json
 liushi-harness hook bind --root <repository-root> --workspace <workspace-id> --task <task-ulid> --artifact <plan-risk-artifact-ulid> --artifact-digest <sha256:digest> --actor-id <human-id>
 liushi-harness hook probe --executor codex [--executable <path-or-command>] --json
 ```
+
+`requirement analyze` 是 Report-only 入口。PRD 文件与 Repository Root 必须是绝对路径，模型必须显式选择；Codex 以 `--ephemeral --sandbox read-only` 运行并禁用项目 Hooks。输出中的 `proposal` 可由 Human 修订后交给既有 `artifact propose`，但当前命令不会自动创建 Task、提交 Artifact、记录 Human Answer 或启动编码。真实 Codex 正向烟测已证明它可以返回 `human_battle_required`，且目标仓库前后保持零变更；这不是企业项目提效结论。
 
 `hook config` 只向 stdout 输出配置，不自动创建或覆盖 `.codex/hooks.json`；重定向、审阅和项目受信任必须由 Human 执行。`hook bind` 只接受精确的、已通过 G4 的 PlanRisk Digest，涉及历史业务逻辑时还必须通过 G2；R4 始终拒绝。`hook handle` 由 Codex Hook 通过 stdin 调用，输出平台原生 JSON，不使用 CLI JSON Envelope。
 

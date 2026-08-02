@@ -23,9 +23,10 @@ import type {
   ScanProjectUseCase,
   CreateInstallPlanUseCase,
   PilotMetricsService,
+  AnalyzeRequirementUseCase,
 } from "#application/index.js";
 
-import type { HookInputReader, JsonDocumentReader } from "../input/index.js";
+import type { HookInputReader, JsonDocumentReader, TextDocumentReader } from "../input/index.js";
 import type { CliApplicationBindingScope, CliVerificationMode } from "../enums/index.js";
 
 /** CLI 启动期由操作员显式提供的 Repository 绑定。 */
@@ -68,11 +69,24 @@ export interface CliCodingTaskSessionApplicationStartupConfig {
   readonly verificationMode?: CliVerificationMode;
 }
 
+/** Requirement Analysis 作用域的 CLI Application 启动配置。 */
+export interface CliRequirementAnalysisApplicationStartupConfig {
+  /** 明确的 Application 绑定作用域。 */
+  readonly scope: CliApplicationBindingScope.RequirementAnalysis;
+  /** 分析阶段绑定的单仓只读根。 */
+  readonly repositoryBinding: CliRepositoryBinding;
+  /** 实际运行的 Codex 可执行文件或命令名。 */
+  readonly executable: string;
+  /** 顶层 Requirement 分析使用的显式模型。 */
+  readonly model: string;
+}
+
 /** CLI Application 的 discriminated union 启动配置。 */
 export type CliApplicationStartupConfig =
   | CliRepositoryApplicationStartupConfig
   | CliCodingTaskCellApplicationStartupConfig
-  | CliCodingTaskSessionApplicationStartupConfig;
+  | CliCodingTaskSessionApplicationStartupConfig
+  | CliRequirementAnalysisApplicationStartupConfig;
 
 /** 生成只读、可序列化的执行器配置投影。 */
 export interface HookConfigProjector {
@@ -124,6 +138,8 @@ export interface CliApplication {
   resolveRules: ResolveRulesUseCase;
   /** 显式多仓只读 Project Discovery Use Case。 */
   scanProject: ScanProjectUseCase;
+  /** 只读 Requirement 分析 Use Case。 */
+  analyzeRequirement: AnalyzeRequirementUseCase;
   /** Codex Executor Compatibility 编译 Use Case。 */
   compileCodexExecutorCompatibility: CompileCodexExecutorCompatibilityUseCase;
   /** Executor Compatibility 精确查询 Use Case。 */
@@ -156,6 +172,8 @@ export interface RunCliDependencies {
   writer: CliWriter;
   /** 受大小限制的 JSON 文档读取边界。 */
   jsonDocumentReader: JsonDocumentReader;
+  /** Requirement Analyze 使用的受限 UTF-8 文本读取边界。 */
+  textDocumentReader?: TextDocumentReader;
   /** Hook Handle 使用的 Stdin 读取边界。 */
   hookInputReader?: HookInputReader;
   /** Hook Config 使用的只读配置投影器。 */

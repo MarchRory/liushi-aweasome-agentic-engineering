@@ -4,6 +4,7 @@ export const EXPECTED_BIN_NAMES = ["liushi-harness", "lh"];
 
 export const EXPECTED_HELP_COMMANDS = [
   "doctor",
+  "requirement analyze",
   "cell run",
   "coding-task session activate",
   "coding-task session closeout",

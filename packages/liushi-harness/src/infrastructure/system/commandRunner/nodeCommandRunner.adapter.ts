@@ -75,6 +75,13 @@ export class NodeCommandRunnerAdapter implements CommandRunner {
           }),
         );
       });
+      if (request.stdin !== undefined) {
+        child.stdin?.on("error", () => {
+          terminalError = "stdin_error";
+          child.kill();
+        });
+        child.stdin?.end(request.stdin);
+      }
       child.on("close", (exitCode) => {
         clearTimeout(timer);
         finish(

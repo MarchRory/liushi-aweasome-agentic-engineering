@@ -88,6 +88,10 @@ export enum CliOptionName {
   SourceRevision = "--source-revision",
   /** 指定不可覆盖的绝对输出文件。 */
   Output = "--output",
+  /** 指定待分析的 PRD 文本文件。 */
+  Prd = "--prd",
+  /** 指定顶层 Agent 使用的模型。 */
+  Model = "--model",
 }
 
 const CLI_OPTION_BY_NAME = new Map<string, CliOptionName>(
@@ -186,6 +190,18 @@ export function parseProbeExecutable(value: string): string {
     throw createInvalidCliOptionError(CliOptionName.Executable, "Executable must not contain NUL.");
   }
   return executable;
+}
+
+/** 校验并规范化显式模型标识。 */
+export function parseModelId(value: string): string {
+  const model = value.trim();
+  if (model.length === 0) {
+    throw createInvalidCliOptionError(CliOptionName.Model, "Model must be non-empty.");
+  }
+  if (model.includes("\0")) {
+    throw createInvalidCliOptionError(CliOptionName.Model, "Model must not contain NUL.");
+  }
+  return model;
 }
 
 /** 创建带稳定 Option 诊断字段的 InvalidInput Error。 */

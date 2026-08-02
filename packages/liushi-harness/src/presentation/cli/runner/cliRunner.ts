@@ -32,6 +32,7 @@ import {
   executeTaskStatus,
   executeInitApply,
   executeInitDryRun,
+  executeRequirementAnalyze,
 } from "./commands/index.js";
 import {
   CLI_EXIT_CODE_SUCCESS,
@@ -131,6 +132,12 @@ async function executeCommand(
       );
     case CliCommand.CellRun:
       return executeCellRun(command, resolveCliApplication(command, dependencies), dependencies);
+    case CliCommand.RequirementAnalyze:
+      return executeRequirementAnalyze(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
     case CliCommand.CodingTaskSessionActivate:
       return executeCodingTaskSessionActivate(
         command,

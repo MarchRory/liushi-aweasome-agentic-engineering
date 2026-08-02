@@ -57,6 +57,7 @@ import type {
   WorktreeProvisionRecoveryCommandService,
   RecordAgentSessionProcessEvidenceService,
   PilotMetricsService,
+  AnalyzeRequirementUseCase,
 } from "#application/index.js";
 import type {
   CodingTaskExecutionAuthorizationResolver,
@@ -64,6 +65,7 @@ import type {
   RepositoryRootResolverPort,
   VerificationExecutorPort,
   ExecutorCompatibilityAttestationVerifierPort,
+  RequirementAnalysisAgent,
 } from "#application/ports/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
 
@@ -135,6 +137,8 @@ export interface HarnessApplication {
   selectVerificationPlan: SelectVerificationPlanUseCase;
   /** 显式多仓只读 Project Discovery。 */
   scanProject: ScanProjectUseCase;
+  /** 只读生成待 Human 审阅的 Requirement Contract Proposal。 */
+  analyzeRequirement: AnalyzeRequirementUseCase;
   /** RequirementWorkflow 的版本化写入入口。 */
   workflowCommands: WorkflowCommandService;
   /** CodingTask 的版本化写入入口。 */
@@ -229,4 +233,6 @@ export interface HarnessApplicationOptions {
   codingTaskSessionRuntimeBinding?: CodingTaskSessionRuntimeBinding;
   /** 可替换的离线 Attestation Verifier；默认禁止 TUF 和网络。 */
   executorCompatibilityAttestationVerifier?: ExecutorCompatibilityAttestationVerifierPort;
+  /** 可注入的只读 Requirement 分析 Agent；未配置时保持关闭。 */
+  requirementAnalysisAgent?: RequirementAnalysisAgent;
 }

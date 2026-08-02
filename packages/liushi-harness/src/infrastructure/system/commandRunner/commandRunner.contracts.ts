@@ -12,6 +12,8 @@ export interface CommandRunRequest {
   timeoutMs: number;
   /** 子进程可见的完整环境变量集合；缺失时继承当前进程环境。 */
   environment?: Readonly<Record<string, string>>;
+  /** 写入子进程 stdin 的文本；未提供时保持旧行为。 */
+  stdin?: string;
   /** stdout 与 stderr 合计允许收集的最大字节数。 */
   maxOutputBytes?: number;
 }
