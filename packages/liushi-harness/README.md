@@ -125,6 +125,8 @@ liushi-harness task create --workspace <workspace-id> --source <ticket-url> --js
 liushi-harness task status --workspace <workspace-id> --task <task-ulid> --json
 liushi-harness requirement analyze --prd <absolute-prd-file> --workspace <workspace-id> --repository <repository-id> --root <absolute-repository-root> --model <model-id> [--executable <path-or-command>] --json
 liushi-harness requirement confirm --file .\requirement-analysis.json --workspace <workspace-id> --task <task-ulid> --repository <repository-id> --actor-id <human-id> [--store <path>] --json
+liushi-harness plan-risk analyze --workspace <workspace-id> --task <task-ulid> --repository <repository-id> --root <absolute-repository-root> --model <model-id> [--executable <path-or-command>] [--store <path>] --json
+liushi-harness plan-risk confirm --file .\plan-risk-analysis.json --workspace <workspace-id> --task <task-ulid> --repository <repository-id> --actor-id <human-id> [--store <path>] --json
 liushi-harness artifact propose --workspace <workspace-id> --task <task-ulid> --file .\requirement.json --json
 liushi-harness approval decide --workspace <workspace-id> --task <task-ulid> --request <request-ulid> --request-digest <sha256:digest> --decision approved --idempotency-key <stable-key> --json
 liushi-harness rules resolve --catalog .\ruleCatalog.json --context .\ruleContext.json --json
@@ -151,6 +153,8 @@ liushi-harness hook probe --executor codex [--executable <path-or-command>] --js
 ```
 
 `requirement analyze` 是 Report-only 入口。PRD 文件与 Repository Root 必须是绝对路径，模型必须显式选择；Codex 以 `--ephemeral --sandbox read-only` 运行并禁用项目 Hooks。使用 `--json` 保存输出后，Human 只需填写 `data.reviewDraft.answers[*].answer`，并按需修订 `data.reviewDraft.proposal` 的目标、范围和验收标准。先用 `task create` 创建目标 Task，再调用 `requirement confirm`；后者会校验每个原始问题都按顺序得到回答，将结构化问答写入最终 Proposal，并在内部提交 Artifact 与 G1 Approval。Human 不输入 DecisionRequest ID、Digest 或幂等键。该链路仍不会生成 PlanRisk 或启动编码；真实 Codex 烟测只证明只读分析可用，不是企业项目提效结论。
+
+`plan-risk analyze` 只接受已通过 G1 的 Requirement，并从启动期绑定解析可信 Repository Root。没有历史逻辑变更时输出可编辑 PlanRisk Review；涉及历史逻辑时先输出 Business Logic Review，Human 回答最多五个阻断问题并运行 `plan-risk confirm` 完成 G2，再重新分析得到 PlanRisk。R1-R3 都必须经过 Human 语义确认；R2/R3 的 G4 由同一次确认在内部完成，R4 关闭式拒绝。Human 不输入 Artifact 或 DecisionRequest Digest。Core 会拒绝 Agent 直接提交 Business Logic/PlanRisk；Human 手工使用 `artifact propose` 提交完整 Proposal 仍是受支持的高级显式确认路径，并继续执行 G2/G4 Policy。分析固定使用只读 Sandbox、禁用 Hooks，不修改 Repository；`confirm` 才写 Runtime Store。
 
 `hook config` 只向 stdout 输出配置，不自动创建或覆盖 `.codex/hooks.json`；重定向、审阅和项目受信任必须由 Human 执行。`hook bind` 只接受精确的、已通过 G4 的 PlanRisk Digest，涉及历史业务逻辑时还必须通过 G2；R4 始终拒绝。`hook handle` 由 Codex Hook 通过 stdin 调用，输出平台原生 JSON，不使用 CLI JSON Envelope。
 

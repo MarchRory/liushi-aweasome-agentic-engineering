@@ -25,6 +25,8 @@ import type {
   PilotMetricsService,
   AnalyzeRequirementUseCase,
   ConfirmRequirementUseCase,
+  AnalyzePlanRiskUseCase,
+  ConfirmPlanRiskUseCase,
 } from "#application/index.js";
 
 import type { HookInputReader, JsonDocumentReader, TextDocumentReader } from "../input/index.js";
@@ -82,12 +84,25 @@ export interface CliRequirementAnalysisApplicationStartupConfig {
   readonly model: string;
 }
 
+/** PlanRisk Analysis 作用域的 CLI Application 启动配置。 */
+export interface CliPlanRiskAnalysisApplicationStartupConfig {
+  /** 明确的 Application 绑定作用域。 */
+  readonly scope: CliApplicationBindingScope.PlanRiskAnalysis;
+  /** 分析阶段绑定的单仓只读根。 */
+  readonly repositoryBinding: CliRepositoryBinding;
+  /** 实际运行的 Codex 可执行文件或命令名。 */
+  readonly executable: string;
+  /** 顶层 Planning 分析使用的显式模型。 */
+  readonly model: string;
+}
+
 /** CLI Application 的 discriminated union 启动配置。 */
 export type CliApplicationStartupConfig =
   | CliRepositoryApplicationStartupConfig
   | CliCodingTaskCellApplicationStartupConfig
   | CliCodingTaskSessionApplicationStartupConfig
-  | CliRequirementAnalysisApplicationStartupConfig;
+  | CliRequirementAnalysisApplicationStartupConfig
+  | CliPlanRiskAnalysisApplicationStartupConfig;
 
 /** 生成只读、可序列化的执行器配置投影。 */
 export interface HookConfigProjector {
@@ -143,6 +158,10 @@ export interface CliApplication {
   analyzeRequirement: AnalyzeRequirementUseCase;
   /** Human Review 后确认 Requirement 的 Use Case。 */
   confirmRequirement: ConfirmRequirementUseCase;
+  /** 基于已批准 Requirement 只读生成 Planning Review。 */
+  analyzePlanRisk: AnalyzePlanRiskUseCase;
+  /** Human Review 后确认 Business Logic/G2 或 PlanRisk/G4。 */
+  confirmPlanRisk: ConfirmPlanRiskUseCase;
   /** Codex Executor Compatibility 编译 Use Case。 */
   compileCodexExecutorCompatibility: CompileCodexExecutorCompatibilityUseCase;
   /** Executor Compatibility 精确查询 Use Case。 */

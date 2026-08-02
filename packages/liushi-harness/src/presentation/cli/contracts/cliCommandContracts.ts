@@ -26,6 +26,10 @@ export enum CliCommand {
   RequirementAnalyze = "requirement.analyze",
   /** 确认 Human Review 并持久化 Requirement 与 G1 Approval。 */
   RequirementConfirm = "requirement.confirm",
+  /** 基于已批准 Requirement 只读生成 Business Logic 或 PlanRisk Review。 */
+  PlanRiskAnalyze = "plan_risk.analyze",
+  /** 确认 Planning Review 并持久化对应 Artifact 与 Gate。 */
+  PlanRiskConfirm = "plan_risk.confirm",
   /** 激活外部 Agent CodingTask Session。 */
   CodingTaskSessionActivate = "coding_task.session.activate",
   /** 关闭外部 Agent CodingTask Session，并停在 CheckpointBound。 */

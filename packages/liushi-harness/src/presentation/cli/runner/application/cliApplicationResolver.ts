@@ -59,6 +59,20 @@ export function resolveCliApplication(
           model: command.model,
         },
       );
+    case CliCommand.PlanRiskAnalyze:
+      return dependencies.applicationFactory.create(
+        command.storeRoot ?? dependencies.defaultStoreRoot,
+        {
+          scope: CliApplicationBindingScope.PlanRiskAnalysis,
+          repositoryBinding: {
+            workspaceId: command.workspaceId,
+            repositoryId: command.repositoryId,
+            repositoryRoot: command.repositoryRoot,
+          },
+          executable: command.executable,
+          model: command.model,
+        },
+      );
     case CliCommand.CodingTaskSessionCloseoutRecoveryAssess:
     case CliCommand.CodingTaskSessionCloseoutRecover:
       return dependencies.applicationFactory.create(storeRoot, {
@@ -79,6 +93,7 @@ export function resolveCliApplication(
     case CliCommand.TaskCreate:
     case CliCommand.TaskStatus:
     case CliCommand.RequirementConfirm:
+    case CliCommand.PlanRiskConfirm:
     case CliCommand.ArtifactPropose:
     case CliCommand.ApprovalDecide:
     case CliCommand.RulesResolve:

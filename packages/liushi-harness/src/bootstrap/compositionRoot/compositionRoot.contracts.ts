@@ -59,6 +59,8 @@ import type {
   RecordAgentSessionProcessEvidenceService,
   PilotMetricsService,
   AnalyzeRequirementUseCase,
+  AnalyzePlanRiskUseCase,
+  ConfirmPlanRiskUseCase,
 } from "#application/index.js";
 import type {
   CodingTaskExecutionAuthorizationResolver,
@@ -67,6 +69,7 @@ import type {
   VerificationExecutorPort,
   ExecutorCompatibilityAttestationVerifierPort,
   RequirementAnalysisAgent,
+  PlanRiskAnalysisAgent,
 } from "#application/ports/index.js";
 import type { Clock, Delay, IdGenerator } from "#common/index.js";
 
@@ -120,7 +123,7 @@ export interface HarnessApplication {
   listRecoverableActions: ListRecoverableActionsUseCase;
   /** 为 Tracker 查询可丢失 Trace Observation。 */
   listTraceObservations: ListTraceObservationsUseCase;
-  /** Artifact 提交与 Gate 计算。 */
+  /** Human Artifact 提交与 Gate 计算；Planning Artifact 拒绝 Agent Actor。 */
   proposeArtifact: ProposeArtifactUseCase;
   /** Human Approval 记录与 Gate 恢复。 */
   recordApproval: RecordApprovalUseCase;
@@ -142,6 +145,10 @@ export interface HarnessApplication {
   analyzeRequirement: AnalyzeRequirementUseCase;
   /** Human Review 后确认并持久化 Requirement 与 G1 Approval。 */
   confirmRequirement: ConfirmRequirementUseCase;
+  /** 基于已批准 Requirement 只读生成 Business Logic 或 PlanRisk Review。 */
+  analyzePlanRisk: AnalyzePlanRiskUseCase;
+  /** Human Review 后确认并持久化 Business Logic/G2 或 PlanRisk/G4。 */
+  confirmPlanRisk: ConfirmPlanRiskUseCase;
   /** RequirementWorkflow 的版本化写入入口。 */
   workflowCommands: WorkflowCommandService;
   /** CodingTask 的版本化写入入口。 */
@@ -238,4 +245,6 @@ export interface HarnessApplicationOptions {
   executorCompatibilityAttestationVerifier?: ExecutorCompatibilityAttestationVerifierPort;
   /** 可注入的只读 Requirement 分析 Agent；未配置时保持关闭。 */
   requirementAnalysisAgent?: RequirementAnalysisAgent;
+  /** 可注入的只读 PlanRisk 分析 Agent；未配置时保持关闭。 */
+  planRiskAnalysisAgent?: PlanRiskAnalysisAgent;
 }

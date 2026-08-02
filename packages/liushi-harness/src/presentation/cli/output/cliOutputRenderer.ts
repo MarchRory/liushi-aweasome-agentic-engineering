@@ -106,6 +106,18 @@ export function writeSuccess<T>(
       );
       return;
     }
+    if (command === CliCommand.PlanRiskAnalyze) {
+      dependencies.writer.stdout(
+        `Planning review: task=${humanText(data["taskId"])} stage=${humanText(data["analysisStatus"])} questions=${countEntries(data["humanQuestions"])}\n`,
+      );
+      return;
+    }
+    if (command === CliCommand.PlanRiskConfirm) {
+      dependencies.writer.stdout(
+        `Planning confirmed: task=${humanText(data["taskId"])} artifact=${humanText(data["artifactId"])} type=${humanText(data["artifactType"])} next=${humanText(data["nextStep"])}\n`,
+      );
+      return;
+    }
     if (writeCodingTaskSessionSummary(dependencies.writer, command, data)) return;
     if (command === CliCommand.InitDryRun) {
       const plan = data["plan"];

@@ -87,6 +87,7 @@ describe("Artifact proposal contracts", () => {
     if (result.status === ResultStatus.Success) {
       expect(result.value.artifactType).toBe(ArtifactType.BusinessLogicChangeContract);
       expect(result.value.status).toBe(ArtifactStatus.Proposed);
+      expect(result.value.payload).not.toHaveProperty("humanAnswers");
     }
   });
 

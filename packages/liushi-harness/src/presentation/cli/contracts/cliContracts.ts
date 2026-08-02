@@ -14,6 +14,10 @@ import type {
   RequirementConfirmCliCommand,
 } from "./cliRequirementContracts.js";
 import type {
+  PlanRiskAnalyzeCliCommand,
+  PlanRiskConfirmCliCommand,
+} from "./cliPlanRiskContracts.js";
+import type {
   CodingTaskSessionActivateCliCommand,
   CodingTaskSessionCloseoutCliCommand,
   CodingTaskSessionCompleteCliCommand,
@@ -220,6 +224,8 @@ export type ParsedCliCommand =
   | CellRunCliCommand
   | RequirementAnalyzeCliCommand
   | RequirementConfirmCliCommand
+  | PlanRiskAnalyzeCliCommand
+  | PlanRiskConfirmCliCommand
   | CodingTaskSessionActivateCliCommand
   | CodingTaskSessionCloseoutCliCommand
   | CodingTaskSessionCompleteCliCommand

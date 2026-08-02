@@ -8,4 +8,6 @@ export enum CliApplicationBindingScope {
   CodingTaskSession = "coding_task_session",
   /** 绑定只读 Requirement 分析 Agent。 */
   RequirementAnalysis = "requirement_analysis",
+  /** 绑定只读 PlanRisk 分析 Agent。 */
+  PlanRiskAnalysis = "plan_risk_analysis",
 }

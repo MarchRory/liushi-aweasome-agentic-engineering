@@ -18,3 +18,4 @@ export * from "./managedFileInstallationApplicationFactory.js";
 export * from "./pilotMetricsApplicationFactory.js";
 export * from "./runtimeApplicationFactory.js";
 export * from "./requirementApplicationFactory.js";
+export * from "./planRiskApplicationFactory.js";

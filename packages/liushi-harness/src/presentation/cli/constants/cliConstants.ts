@@ -38,6 +38,8 @@ export const CLI_USAGE_LINES: readonly string[] = [
   "liushi-harness cell run --file <manifest.json> --workspace <id> --repository <id> --root <absolute-path> --verification-mode <fail_closed_mock|local_command> [--store <path>] [--json]",
   "liushi-harness requirement analyze --prd <absolute-file> --workspace <id> --repository <id> --root <absolute-path> --model <id> [--executable <path-or-command>] [--json]",
   "liushi-harness requirement confirm --file <analysis.json> --workspace <id> --task <ulid> --repository <id> --actor-id <human-id> [--store <path>] [--json]",
+  "liushi-harness plan-risk analyze --workspace <id> --task <ulid> --repository <id> --root <absolute-path> --model <id> [--executable <path-or-command>] [--store <path>] [--json]",
+  "liushi-harness plan-risk confirm --file <analysis.json> --workspace <id> --task <ulid> --repository <id> --actor-id <human-id> [--store <path>] [--json]",
   "liushi-harness coding-task session activate --file <manifest.json> --workspace <id> --repository <id> --root <absolute-path> --actor-id <id> [--store <path>] [--json]",
   "liushi-harness coding-task session closeout --file <command.json> --workspace <id> --repository <id> --root <absolute-path> --actor-id <id> [--store <path>] [--json]",
   "liushi-harness coding-task session complete --file <completion.json> --workspace <id> --session <id> --repository <id> --root <absolute-path> --actor-id <id> --verification-mode <fail_closed_mock|local_command> [--store <path>] [--json]",

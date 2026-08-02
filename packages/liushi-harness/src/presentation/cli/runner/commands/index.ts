@@ -11,3 +11,4 @@ export * from "./initCommands.js";
 export * from "./projectPolicy/index.js";
 export * from "./taskLifecycle/index.js";
 export * from "./requirementCommands.js";
+export * from "./planRiskCommands.js";

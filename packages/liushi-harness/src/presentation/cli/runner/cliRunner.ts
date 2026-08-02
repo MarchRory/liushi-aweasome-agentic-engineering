@@ -34,6 +34,8 @@ import {
   executeInitDryRun,
   executeRequirementAnalyze,
   executeRequirementConfirm,
+  executePlanRiskAnalyze,
+  executePlanRiskConfirm,
 } from "./commands/index.js";
 import {
   CLI_EXIT_CODE_SUCCESS,
@@ -141,6 +143,18 @@ async function executeCommand(
       );
     case CliCommand.RequirementConfirm:
       return executeRequirementConfirm(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
+    case CliCommand.PlanRiskAnalyze:
+      return executePlanRiskAnalyze(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
+    case CliCommand.PlanRiskConfirm:
+      return executePlanRiskConfirm(
         command,
         resolveCliApplication(command, dependencies),
         dependencies,

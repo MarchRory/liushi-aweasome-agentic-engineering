@@ -13,6 +13,7 @@ import {
   NodeHookInputReaderAdapter,
   StaticRepositoryRootResolverAdapter,
   CodexRequirementAnalysisAgentAdapter,
+  CodexPlanRiskAnalysisAgentAdapter,
   NodeCommandRunnerAdapter,
 } from "#infrastructure/index.js";
 import packageJson from "../../../package.json" with { type: "json" };
@@ -88,6 +89,17 @@ export function createProductionCliApplicationFactory(): CliApplicationFactory {
             packageVersion: packageJson.version,
             repositoryRootResolver,
             requirementAnalysisAgent: new CodexRequirementAnalysisAgentAdapter(
+              startupConfig.executable,
+              startupConfig.model,
+              new NodeCommandRunnerAdapter(),
+            ),
+          });
+        case CliApplicationBindingScope.PlanRiskAnalysis:
+          return createHarnessApplication({
+            storeRoot,
+            packageVersion: packageJson.version,
+            repositoryRootResolver,
+            planRiskAnalysisAgent: new CodexPlanRiskAnalysisAgentAdapter(
               startupConfig.executable,
               startupConfig.model,
               new NodeCommandRunnerAdapter(),

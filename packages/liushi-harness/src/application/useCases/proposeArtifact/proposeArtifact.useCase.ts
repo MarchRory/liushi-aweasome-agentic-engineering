@@ -1,5 +1,6 @@
 import type { ArtifactDigestPort, TaskRepository } from "#application/ports/index.js";
 import {
+  ActorKind,
   HarnessError,
   HarnessErrorCode,
   ResultStatus,
@@ -13,6 +14,7 @@ import {
   type Result,
 } from "#common/index.js";
 import {
+  ArtifactType,
   parseArtifactProposal,
   validateArtifactEvidence,
   type ArtifactProposal,
@@ -72,6 +74,18 @@ export class ProposeArtifactUseCase {
     const proposal = parseArtifactProposal(input.proposal);
     if (proposal.status === ResultStatus.Failure) {
       return proposal;
+    }
+    if (
+      actor.value.kind !== ActorKind.Human &&
+      (proposal.value.artifactType === ArtifactType.BusinessLogicChangeContract ||
+        proposal.value.artifactType === ArtifactType.PlanRisk)
+    ) {
+      return failure(
+        new HarnessError(
+          HarnessErrorCode.OperationForbidden,
+          "Business Logic 与 PlanRisk Proposal 必须由 Human 明确提交。",
+        ),
+      );
     }
     const evidence = validateArtifactEvidence(proposal.value);
     if (evidence.status === ResultStatus.Failure) {

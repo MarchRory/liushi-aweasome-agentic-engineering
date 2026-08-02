@@ -12,6 +12,7 @@ import { parseInitCliCommand } from "./initCliCommandParser.js";
 import { parseExecutorCompatibilityCliCommand } from "./executorCompatibilityCliCommandParser.js";
 import { parseCodingTaskSessionCliCommand } from "./codingTaskSessionCliCommandParser.js";
 import { parseRequirementCliCommand } from "./requirementCliCommandParser.js";
+import { parsePlanRiskCliCommand } from "./planRiskCliCommandParser.js";
 import {
   CliOptionName,
   parseAbsolutePath,
@@ -60,6 +61,8 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
   if (codingTaskSession !== undefined) return codingTaskSession;
   const requirement = parseRequirementCliCommand(collected, outputFormat, storeRoot);
   if (requirement !== undefined) return requirement;
+  const planRisk = parsePlanRiskCliCommand(collected, outputFormat, storeRoot);
+  if (planRisk !== undefined) return planRisk;
   if (isExactCommand(collected.positionals, ["task", "create"])) {
     validateAllowedOptions(
       collected,

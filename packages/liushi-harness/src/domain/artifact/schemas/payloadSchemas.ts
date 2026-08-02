@@ -94,7 +94,8 @@ const riskOperationSchema = z
   })
   .strict();
 
-export const planRiskPayloadSchema = z
+/** PlanRisk 基础对象 Schema，供完整 Artifact 与未绑定 Digest 的 Review 复用。 */
+export const planRiskPayloadObjectSchema = z
   .object({
     steps: z.array(planRiskStepSchema).max(MAX_ARTIFACT_LIST_ITEMS),
     readSet: pathArraySchema,
@@ -108,15 +109,15 @@ export const planRiskPayloadSchema = z
     requiredGates: z.array(z.enum(GateId)).max(MAX_ARTIFACT_LIST_ITEMS),
     businessLogicArtifactDigest: artifactDigestSchema.optional(),
   })
-  .strict()
-  .refine(
-    (payload) =>
-      !payload.historicalLogicChange || payload.businessLogicArtifactDigest !== undefined,
-    {
-      message: "historicalLogicChange=true requires businessLogicArtifactDigest.",
-      path: ["businessLogicArtifactDigest"],
-    },
-  );
+  .strict();
+
+export const planRiskPayloadSchema = planRiskPayloadObjectSchema.refine(
+  (payload) => !payload.historicalLogicChange || payload.businessLogicArtifactDigest !== undefined,
+  {
+    message: "historicalLogicChange=true requires businessLogicArtifactDigest.",
+    path: ["businessLogicArtifactDigest"],
+  },
+);
 
 /** 灏?Requirement Payload Schema 杈撳嚭鏄犲皠涓?exact-optional 棰嗗煙濂戠害銆?*/
 export function mapRequirementPayload(

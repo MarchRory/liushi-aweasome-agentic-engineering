@@ -585,6 +585,29 @@ describe("Task approval workflow 生产语义集成测试", () => {
     expect(await readEvents(storeRoot)).toHaveLength(before.length);
   });
 
+  it.each([
+    ["BusinessLogic", businessLogicProposal()],
+    ["PlanRisk", planRiskProposal(RiskLevel.R2)],
+  ])("Agent 不能直接提交 %s Planning Artifact", async (_name, proposal) => {
+    const storeRoot = await runtimeStores.create("liushi-agent-planning-forbidden-");
+    const app = makeApp(storeRoot);
+    await createTask(app);
+    const before = await readEvents(storeRoot);
+
+    const result = await app.proposeArtifact.execute({
+      workspaceId: WORKSPACE_ID,
+      taskId: TASK_ID,
+      actor: { kind: ActorKind.Agent, actorId: "planning-agent" },
+      proposal,
+    });
+
+    expect(result.status).toBe(ResultStatus.Failure);
+    if (result.status === ResultStatus.Failure) {
+      expect(result.error.code).toBe(HarnessErrorCode.OperationForbidden);
+    }
+    expect(await readEvents(storeRoot)).toEqual(before);
+  });
+
   it("R2 PlanRisk 必须经过 G4 Human Approval 才进入 Implementation", async () => {
     const storeRoot = await runtimeStores.create("liushi-r2-g4-approval-");
     const app = makeApp(storeRoot);
@@ -801,6 +824,23 @@ function planRiskProposal(riskLevel: RiskLevel) {
       testPlan: ["Run integration tests."],
       rollbackPlan: ["Restore from backup."],
       requiredGates: [],
+    },
+  };
+}
+
+function businessLogicProposal() {
+  return {
+    artifactType: ArtifactType.BusinessLogicChangeContract,
+    status: ArtifactStatus.Proposed,
+    payload: {
+      currentBehavior: { facts: [], inferences: [] },
+      plannedBehavior: ["保留既有审批语义。"],
+      differences: ["由 Human 明确提交变更契约。"],
+      affectedConsumers: ["Planning workflow"],
+      invariants: ["Agent 不能代替 Human 提交。"],
+      rollback: ["拒绝未确认的变更。"],
+      evidence: [],
+      unknowns: [],
     },
   };
 }

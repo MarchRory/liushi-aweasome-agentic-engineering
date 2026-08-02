@@ -38,7 +38,7 @@ import {
   NodeCommandRunnerAdapter,
   Rfc8785Sha256DigestAdapter,
   StructuredProjectConfigParserAdapter,
-  StaticRepositoryRootResolverAdapter,
+  StaticRepositoryRootResolverAdapter as StaticRootResolver,
   SystemDelayAdapter,
   SystemClock,
   UlidGenerator,
@@ -57,6 +57,7 @@ import {
   createManagedFileInstallationApplication,
   createRuntimeHealthUseCase,
   createRequirementApplication,
+  createPlanRiskApplication,
   createUnresolvedProvisionGuard,
   createVerificationExecutor,
   createWorktreeApplication,
@@ -76,8 +77,7 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const decisionRequestIdGenerator = options.decisionRequestIdGenerator ?? new UlidGenerator();
   const approvalIdGenerator = options.approvalIdGenerator ?? new UlidGenerator();
   const repositoryLockIdGenerator = options.repositoryLockIdGenerator ?? new UlidGenerator();
-  const repositoryRootResolver =
-    options.repositoryRootResolver ?? new StaticRepositoryRootResolverAdapter();
+  const repositoryRootResolver = options.repositoryRootResolver ?? new StaticRootResolver();
   const lockManager = new ExclusiveFileLockManager();
   const parentDirectoryDurability = new FileParentDirectoryDurability();
   const taskRepository = new FileTaskRepository(options.storeRoot, {
@@ -90,11 +90,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     lockManager,
     parentDirectoryDurability,
   });
-  const codingTaskAuthorizationResolver = createCodingTaskAuthorizationResolver(
-    options.codingTaskAuthorizationResolver,
-    taskRepository,
-    clock,
-  );
+  // prettier-ignore
+  const codingTaskAuthorizationResolver = createCodingTaskAuthorizationResolver(options.codingTaskAuthorizationResolver, taskRepository, clock);
   const actionJournalRepository = new FileActionJournalRepository(options.storeRoot, {
     lockManager,
     parentDirectoryDurability,
@@ -235,18 +232,6 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
       ? {}
       : { runtimeBinding: options.codingTaskSessionRuntimeBinding }),
   });
-  const requirementApplication = createRequirementApplication({
-    storeRoot: options.storeRoot,
-    requirementAnalysisAgent: options.requirementAnalysisAgent,
-    proposeArtifact,
-    recordApproval,
-    digest,
-    applicationCommandGateway,
-    lockManager,
-    parentDirectoryDurability,
-    clock,
-    eventIdGenerator,
-  });
   return {
     applicationCommandGateway,
     evidenceBundleStore,
@@ -273,7 +258,26 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     resolveRules,
     selectVerificationPlan,
     scanProject: new ScanProjectUseCase(projectFileSystem, projectConfigParser, digest),
-    ...requirementApplication,
+    ...createRequirementApplication({
+      storeRoot: options.storeRoot,
+      requirementAnalysisAgent: options.requirementAnalysisAgent,
+      proposeArtifact,
+      recordApproval,
+      digest,
+      applicationCommandGateway,
+      lockManager,
+      parentDirectoryDurability,
+      clock,
+      eventIdGenerator,
+    }),
+    ...createPlanRiskApplication({
+      taskRepository,
+      planRiskAnalysisAgent: options.planRiskAnalysisAgent,
+      repositoryRootResolver,
+      proposeArtifact,
+      recordApproval,
+      digest,
+    }),
     inspectWorktree: new InspectWorktreeUseCase(worktreeInspector),
     inspectGitChangeSet: changeSetApplication.inspectGitChangeSet,
     changeSetCheckpoints: changeSetApplication.changeSetCheckpoints,

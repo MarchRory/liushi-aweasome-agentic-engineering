@@ -48,3 +48,4 @@ export * from "./verificationCommand/index.js";
 export * from "./installationPlanning/index.js";
 export * from "./installationApply/index.js";
 export * from "./requirementAnalysis/index.js";
+export * from "./planRiskAnalysis/index.js";
