@@ -18,6 +18,7 @@ import type {
   VerifyExecutorCompatibilityReleaseAttestationUseCase,
   VerifyExecutorCompatibilityReleaseManifestUseCase,
   CompileProjectProfileUseCase,
+  ConfirmRequirementUseCase,
   CreateTaskUseCase,
   GetTaskStatusUseCase,
   GetTaskTimelineUseCase,
@@ -139,6 +140,8 @@ export interface HarnessApplication {
   scanProject: ScanProjectUseCase;
   /** 只读生成待 Human 审阅的 Requirement Contract Proposal。 */
   analyzeRequirement: AnalyzeRequirementUseCase;
+  /** Human Review 后确认并持久化 Requirement 与 G1 Approval。 */
+  confirmRequirement: ConfirmRequirementUseCase;
   /** RequirementWorkflow 的版本化写入入口。 */
   workflowCommands: WorkflowCommandService;
   /** CodingTask 的版本化写入入口。 */

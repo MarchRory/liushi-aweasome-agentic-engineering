@@ -204,6 +204,10 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const compileProjectProfile = new CompileProjectProfileUseCase(taskRepository, digest);
   const resolveRules = new ResolveRulesUseCase(digest);
   const selectVerificationPlan = new SelectVerificationPlanUseCase(digest);
+  // prettier-ignore
+  const proposeArtifact = new ProposeArtifactUseCase(taskRepository, digest, clock, artifactIdGenerator, decisionRequestIdGenerator, delay);
+  // prettier-ignore
+  const recordApproval = new RecordApprovalUseCase(taskRepository, digest, clock, approvalIdGenerator, delay);
   const { verificationCompletion, ...publicCodingTaskCellApplication } = codingTaskCellApplication;
   const { closeoutStateReader, ...deliveryApplication } = codingTaskExecution.deliveryApplication;
   const completeCodingTaskSessionDelivery = new CodingTaskDeliveryCompletionService(
@@ -234,6 +238,9 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
   const requirementApplication = createRequirementApplication({
     storeRoot: options.storeRoot,
     requirementAnalysisAgent: options.requirementAnalysisAgent,
+    proposeArtifact,
+    recordApproval,
+    digest,
     applicationCommandGateway,
     lockManager,
     parentDirectoryDurability,
@@ -257,21 +264,8 @@ export function createHarnessApplication(options: HarnessApplicationOptions): Ha
     getActionJournal: new GetActionJournalUseCase(actionJournalRepository),
     listRecoverableActions: new ListRecoverableActionsUseCase(actionJournalRepository),
     listTraceObservations: new ListTraceObservationsUseCase(traceObservationStore),
-    proposeArtifact: new ProposeArtifactUseCase(
-      taskRepository,
-      digest,
-      clock,
-      artifactIdGenerator,
-      decisionRequestIdGenerator,
-      delay,
-    ),
-    recordApproval: new RecordApprovalUseCase(
-      taskRepository,
-      digest,
-      clock,
-      approvalIdGenerator,
-      delay,
-    ),
+    proposeArtifact,
+    recordApproval,
     recordActionIntent: new RecordActionIntentUseCase(actionJournalRepository),
     recordActionObservation: new RecordActionObservationUseCase(actionJournalRepository),
     recordActionResolution: new RecordActionResolutionUseCase(actionJournalRepository),

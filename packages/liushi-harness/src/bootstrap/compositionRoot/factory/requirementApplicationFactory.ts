@@ -1,10 +1,13 @@
 import {
   AnalyzeRequirementUseCase,
+  ConfirmRequirementUseCase,
   RequirementWorkflowCommandHandler,
   WorkflowCommandService,
   type ApplicationCommandGateway,
+  type ProposeArtifactUseCase,
+  type RecordApprovalUseCase,
 } from "#application/index.js";
-import type { RequirementAnalysisAgent } from "#application/ports/index.js";
+import type { ArtifactDigestPort, RequirementAnalysisAgent } from "#application/ports/index.js";
 import type { Clock, IdGenerator } from "#common/index.js";
 import { failure, HarnessError, HarnessErrorCode } from "#common/index.js";
 import {
@@ -19,6 +22,12 @@ interface RequirementApplicationFactoryInput {
   storeRoot: string;
   /** 可选的真实需求分析 Agent。 */
   requirementAnalysisAgent: RequirementAnalysisAgent | undefined;
+  /** 现有 Artifact Proposal 提交能力。 */
+  proposeArtifact: ProposeArtifactUseCase;
+  /** 现有 Human Approval 记录能力。 */
+  recordApproval: RecordApprovalUseCase;
+  /** Requirement 确认内部幂等绑定使用的摘要实现。 */
+  digest: ArtifactDigestPort;
   /** 统一 Application Command Gateway。 */
   applicationCommandGateway: ApplicationCommandGateway;
   /** Workflow Store 共用的文件锁。 */
@@ -35,6 +44,8 @@ interface RequirementApplicationFactoryInput {
 export interface RequirementApplication {
   /** 只读需求分析用例。 */
   analyzeRequirement: AnalyzeRequirementUseCase;
+  /** Human Review 后的 Requirement 确认用例。 */
+  confirmRequirement: ConfirmRequirementUseCase;
   /** Requirement Workflow 命令服务。 */
   workflowCommands: WorkflowCommandService;
 }
@@ -51,6 +62,11 @@ export function createRequirementApplication(
 
   return {
     analyzeRequirement: new AnalyzeRequirementUseCase(analysisAgent),
+    confirmRequirement: new ConfirmRequirementUseCase(
+      input.proposeArtifact,
+      input.recordApproval,
+      input.digest,
+    ),
     workflowCommands: new WorkflowCommandService(
       input.applicationCommandGateway,
       new RequirementWorkflowCommandHandler(

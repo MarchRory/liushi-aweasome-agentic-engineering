@@ -33,6 +33,7 @@ import {
   executeInitApply,
   executeInitDryRun,
   executeRequirementAnalyze,
+  executeRequirementConfirm,
 } from "./commands/index.js";
 import {
   CLI_EXIT_CODE_SUCCESS,
@@ -134,6 +135,12 @@ async function executeCommand(
       return executeCellRun(command, resolveCliApplication(command, dependencies), dependencies);
     case CliCommand.RequirementAnalyze:
       return executeRequirementAnalyze(
+        command,
+        resolveCliApplication(command, dependencies),
+        dependencies,
+      );
+    case CliCommand.RequirementConfirm:
+      return executeRequirementConfirm(
         command,
         resolveCliApplication(command, dependencies),
         dependencies,

@@ -100,6 +100,12 @@ export function writeSuccess<T>(
       writeRequirementAnalysisSummary(dependencies, data);
       return;
     }
+    if (command === CliCommand.RequirementConfirm) {
+      dependencies.writer.stdout(
+        `Requirement confirmed: task=${humanText(data["taskId"])} artifact=${humanText(data["artifactId"])} next=${humanText(data["nextStep"])}\n`,
+      );
+      return;
+    }
     if (writeCodingTaskSessionSummary(dependencies.writer, command, data)) return;
     if (command === CliCommand.InitDryRun) {
       const plan = data["plan"];

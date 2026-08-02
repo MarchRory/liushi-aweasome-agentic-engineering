@@ -12,9 +12,20 @@
 
 ### 1.1 当前可执行范围
 
-**状态：完整 SOP 设计已完成，确定性 Bootstrap、G0 Apply、单仓 CodingTask Session、Codex Hook 与 Delivery Completion 主线可执行。** 当前可以安装 npm 包、检查 Runtime Store、创建与查询 Task、提交 Artifact、记录 Human Approval、解析 Rule、扫描多仓、通过 G8 编译 ProjectProfile Bundle，并以显式可信单仓绑定完成 Metrics Enrollment、Session Activation、受管 Hook 写入、Closeout、Human-gated Recovery、Local Verification 和 PRReadyArtifact 装配。真实 Codex App Server 已在固定公开项目通过一次单文件 Pilot；企业项目身份注入、真实 PRD、Settlement/对照量化和多仓交付仍未验证。完整 RequirementWorkflow Runtime、失败修复循环、Skills、Connectors、Memory 和 Learning 尚未实现，因此当前只能声明受限单仓主线，不声明完整生产闭环。
+**状态：完整 SOP 设计已完成，PRD 只读分析、Human Requirement 确认、确定性 Bootstrap、G0 Apply、单仓 CodingTask Session、Codex Hook 与 Delivery Completion 可执行。** 当前可以安装 npm 包、检查 Runtime Store、从真实 PRD 生成可编辑 Review Draft、在不输入摘要的情况下持久化 Requirement/G1、创建与查询 Task、提交其他 Artifact、记录 Human Approval、解析 Rule、扫描多仓、通过 G8 编译 ProjectProfile Bundle，并以显式可信单仓绑定完成 Metrics Enrollment、Session Activation、受管 Hook 写入、Closeout、Human-gated Recovery、Local Verification 和 PRReadyArtifact 装配。真实 Codex App Server 已在固定公开项目通过一次单文件 Pilot；自动 PlanRisk、企业项目身份注入、Settlement/对照量化和多仓交付仍未验证。完整 RequirementWorkflow Runtime、失败修复循环、Skills、Connectors、Memory 和 Learning 尚未实现，因此当前只能声明受限单仓主线，不声明完整生产闭环。
 
-### 1.2 当前单仓 Session 主线
+### 1.2 当前 Requirement 主线
+
+```powershell
+liushi-harness requirement analyze --prd <prd-file> --workspace <workspace-id> --repository <repository-id> --root <repository-root> --model <model-id> --json > .\requirement-analysis.json
+liushi-harness task create --workspace <workspace-id> --source <ticket-url> --actor-id <human-id> --json
+# Human 编辑 requirement-analysis.json 中的 data.reviewDraft
+liushi-harness requirement confirm --file .\requirement-analysis.json --workspace <workspace-id> --task <task-id> --repository <repository-id> --actor-id <human-id> --json
+```
+
+`requirement confirm` 本身就是 Human 对修订后语义契约的明确确认。Harness 自动绑定 Proposal、DecisionRequest、Approval 和幂等身份；Human 只审阅问题、答案、目标、范围和验收标准，不复制摘要。该命令成功后下一步是 PlanRisk，目前仍需后续切片生成。
+
+### 1.3 当前单仓 Session 主线
 
 Human 完成 Requirement、PlanRisk、历史业务逻辑和 G8 Profile 审批后，受信宿主按以下顺序调用：
 
@@ -276,7 +287,7 @@ liushi-harness task prepare <task-id>
 - Orchestrator 一次询问一个会改变实现的问题。
 - 默认最多连续五个问题。
 - 生成 RequirementContract，展示目标、非目标、验收、范围和未知。
-- Human Approval 绑定 Contract Digest。
+- Human 通过 `requirement confirm` 明确确认语义契约，Contract Digest 仅由 Harness 内部绑定。
 
 ### 6.3 Plan 与 Risk
 

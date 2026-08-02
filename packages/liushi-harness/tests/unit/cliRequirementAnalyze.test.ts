@@ -28,6 +28,10 @@ describe("requirement analyze CLI", () => {
           proposal: createProposal(["空状态文案由谁确认？"]),
           analysisStatus: "human_battle_required",
           humanQuestions: ["空状态文案由谁确认？"],
+          reviewDraft: {
+            proposal: createProposal(["空状态文案由谁确认？"]),
+            answers: [{ question: "空状态文案由谁确认？", answer: "" }],
+          },
         }),
       ),
     );
@@ -125,6 +129,67 @@ describe("requirement analyze CLI", () => {
     expect(output.stdout.join("")).toContain("- 展示明确状态");
     expect(output.stdout.join("")).toContain("- 状态文案与实际状态一致");
     expect(output.stdout.join("")).toContain("- 是否保留旧入口？");
+  });
+  it("从 analyze JSON 的 data.proposal 和 data.reviewDraft 执行 confirm", async () => {
+    const output = createOutput();
+    const reviewDocument = {
+      data: {
+        proposal: createProposal(["是否保留旧入口？"]),
+        reviewDraft: {
+          proposal: createProposal(["是否保留旧入口？"]),
+          answers: [{ question: "是否保留旧入口？", answer: "保留" }],
+        },
+      },
+    };
+    const executeConfirm = vi.fn(() =>
+      Promise.resolve(
+        success({
+          confirmationStatus: "confirmed",
+          nextStep: "plan_risk",
+          task: { taskId: "task-a" },
+          artifact: { artifactId: "artifact-a" },
+        }),
+      ),
+    );
+    const application = {
+      confirmRequirement: { execute: executeConfirm },
+    } as unknown as CliApplication;
+    const exitCode = await runCli(
+      [
+        "requirement",
+        "confirm",
+        "--file",
+        resolve("analysis.json"),
+        "--workspace",
+        "workspace-a",
+        "--task",
+        "task-a",
+        "--repository",
+        "repo-a",
+        "--actor-id",
+        "human-a",
+        "--json",
+      ],
+      {
+        ...createDependencies(
+          vi.fn(() => application),
+          output.writer,
+        ),
+        jsonDocumentReader: { read: () => Promise.resolve(success(reviewDocument)) },
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(executeConfirm).toHaveBeenCalledWith({
+      workspaceId: "workspace-a",
+      taskId: "task-a",
+      repositoryId: "repo-a",
+      analysisProposal: reviewDocument.data.proposal,
+      review: reviewDocument.data.reviewDraft,
+      actor: { kind: "human", actorId: "human-a" },
+    });
+    expect(output.stdout.join("")).not.toContain("digest");
+    expect(output.stdout.join("")).not.toContain("sha256:");
   });
 });
 

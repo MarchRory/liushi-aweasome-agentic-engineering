@@ -78,6 +78,7 @@ export function resolveCliApplication(
     case CliCommand.Doctor:
     case CliCommand.TaskCreate:
     case CliCommand.TaskStatus:
+    case CliCommand.RequirementConfirm:
     case CliCommand.ArtifactPropose:
     case CliCommand.ApprovalDecide:
     case CliCommand.RulesResolve:

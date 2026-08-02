@@ -50,6 +50,7 @@ describe("CLI doctor 与 help E2E", () => {
         expect.stringContaining("profile compile"),
         expect.stringContaining("cell run"),
         expect.stringContaining("requirement analyze"),
+        expect.stringContaining("requirement confirm"),
         expect.stringContaining("coding-task session activate"),
         expect.stringContaining("coding-task session closeout"),
         expect.stringContaining("coding-task session complete"),

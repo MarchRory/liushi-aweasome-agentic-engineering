@@ -33,6 +33,14 @@ const currentBehaviorSchema = z
   })
   .strict();
 
+/** Requirement Human Answer 的严格领域 Schema。 */
+export const requirementHumanAnswerSchema = z
+  .object({
+    question: nonBlank(MAX_ARTIFACT_TEXT_LENGTH),
+    answer: nonBlank(MAX_ARTIFACT_TEXT_LENGTH),
+  })
+  .strict();
+
 export const requirementPayloadSchema = z
   .object({
     problem: nonBlank(MAX_ARTIFACT_TEXT_LENGTH),
@@ -48,7 +56,7 @@ export const requirementPayloadSchema = z
     evidence: z.array(evidenceRefSchema),
     claims: z.array(claimSchema),
     unknowns: textArraySchema,
-    humanAnswers: textArraySchema,
+    humanAnswers: z.array(requirementHumanAnswerSchema).max(MAX_ARTIFACT_LIST_ITEMS),
   })
   .strict();
 

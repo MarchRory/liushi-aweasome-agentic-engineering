@@ -7,17 +7,13 @@ import {
   success,
   type Result,
 } from "#common/index.js";
-import {
-  ArtifactType,
-  parseArtifactProposal,
-  type RequirementContractProposal,
-} from "#domain/artifact/index.js";
 
 import type {
   AnalyzeRequirementInput,
   AnalyzeRequirementOutput,
 } from "./requirementAnalysis.contracts.js";
 import { RequirementAnalysisStatus } from "./requirementAnalysis.enums.js";
+import { parseUnconfirmedRequirementProposal } from "./requirementProposalValidation.js";
 
 /** 将只读 Agent 输出收敛为可由 Human 审阅的 Requirement Contract Proposal。 */
 export class AnalyzeRequirementUseCase {
@@ -38,30 +34,9 @@ export class AnalyzeRequirementUseCase {
     });
     if (analyzed.status === ResultStatus.Failure) return analyzed;
 
-    const parsed = parseArtifactProposal(analyzed.value);
-    if (parsed.status === ResultStatus.Failure) {
-      return failure(
-        new HarnessError(
-          HarnessErrorCode.InvalidInput,
-          "Requirement analysis agent returned an invalid Artifact Proposal.",
-          { source: "requirement_analysis_agent" },
-          parsed.error,
-        ),
-      );
-    }
-    if (parsed.value.artifactType !== ArtifactType.RequirementContract) {
-      return failure(
-        new HarnessError(
-          HarnessErrorCode.InvalidInput,
-          "Requirement analysis agent must return a Requirement Contract Proposal.",
-          { artifactType: parsed.value.artifactType },
-        ),
-      );
-    }
-
+    const parsed = parseUnconfirmedRequirementProposal(analyzed.value, input.repositoryId);
+    if (parsed.status === ResultStatus.Failure) return parsed;
     const proposal = parsed.value;
-    const boundaryError = validateProposalBoundary(proposal, input.repositoryId);
-    if (boundaryError !== undefined) return failure(boundaryError);
 
     return success({
       workspaceId: input.workspaceId,
@@ -72,6 +47,10 @@ export class AnalyzeRequirementUseCase {
           ? RequirementAnalysisStatus.ReadyForReview
           : RequirementAnalysisStatus.HumanBattleRequired,
       humanQuestions: proposal.payload.unknowns,
+      reviewDraft: {
+        proposal,
+        answers: proposal.payload.unknowns.map((question) => ({ question, answer: "" })),
+      },
     });
   }
 }
@@ -90,39 +69,4 @@ function validateInput(input: AnalyzeRequirementInput): HarnessError | undefined
     : new HarnessError(HarnessErrorCode.InvalidInput, "Requirement analysis input is empty.", {
         field: empty[0],
       });
-}
-
-function validateProposalBoundary(
-  proposal: RequirementContractProposal,
-  repositoryId: string,
-): HarnessError | undefined {
-  if (
-    proposal.payload.repositories.length !== 1 ||
-    proposal.payload.repositories[0] !== repositoryId
-  ) {
-    return new HarnessError(
-      HarnessErrorCode.InvalidInput,
-      "Requirement analysis must remain bound to the selected Repository.",
-      { repositoryId },
-    );
-  }
-  if (proposal.payload.humanAnswers.length !== 0) {
-    return new HarnessError(
-      HarnessErrorCode.OperationForbidden,
-      "Requirement analysis agent cannot provide Human answers.",
-      { field: "humanAnswers" },
-    );
-  }
-
-  const evidenceIds = new Set(proposal.payload.evidence.map((evidence) => evidence.evidenceId));
-  const missingEvidenceId = proposal.payload.claims
-    .flatMap((claim) => claim.evidenceIds)
-    .find((evidenceId) => !evidenceIds.has(evidenceId));
-  return missingEvidenceId === undefined
-    ? undefined
-    : new HarnessError(
-        HarnessErrorCode.InvalidInput,
-        "Requirement analysis claim references missing evidence.",
-        { evidenceId: missingEvidenceId },
-      );
 }

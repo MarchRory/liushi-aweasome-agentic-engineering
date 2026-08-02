@@ -20,6 +20,14 @@ export type BusinessLogicChangeContractArtifact = ArtifactEnvelope<
 /** 宸叉彁浜?PlanRisk Artifact銆?*/
 export type PlanRiskArtifact = ArtifactEnvelope<ArtifactType.PlanRisk, PlanRiskPayload>;
 
+/** Human 对一个 Requirement 未决问题给出的结构化回答。 */
+export interface RequirementHumanAnswer {
+  /** 来自 Requirement Proposal 的原始问题。 */
+  readonly question: string;
+  /** Human 明确给出的业务答案。 */
+  readonly answer: string;
+}
+
 /** Requirement Contract 鐨勪弗鏍?Payload銆?*/
 export interface RequirementContractPayload {
   /** 褰撳墠浠诲姟瑕佽В鍐崇殑闂銆?*/
@@ -48,8 +56,8 @@ export interface RequirementContractPayload {
   claims: readonly Claim[];
   /** 灏氭湭纭浣嗗凡鏄惧紡璁板綍鐨勯棶棰樸€?*/
   unknowns: readonly string[];
-  /** Human 宸插洖绛斿苟绾冲叆濂戠害鐨勯棶棰樸€?*/
-  humanAnswers: readonly string[];
+  /** Human 已回答并纳入契约的结构化问答。 */
+  humanAnswers: readonly RequirementHumanAnswer[];
 }
 
 /** 涓氬姟閫昏緫褰撳墠琛屼负鐨勪簨瀹炰笌鎺ㄦ柇銆?*/

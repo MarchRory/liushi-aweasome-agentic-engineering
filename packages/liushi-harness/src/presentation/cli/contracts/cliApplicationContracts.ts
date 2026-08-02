@@ -24,6 +24,7 @@ import type {
   CreateInstallPlanUseCase,
   PilotMetricsService,
   AnalyzeRequirementUseCase,
+  ConfirmRequirementUseCase,
 } from "#application/index.js";
 
 import type { HookInputReader, JsonDocumentReader, TextDocumentReader } from "../input/index.js";
@@ -140,6 +141,8 @@ export interface CliApplication {
   scanProject: ScanProjectUseCase;
   /** 只读 Requirement 分析 Use Case。 */
   analyzeRequirement: AnalyzeRequirementUseCase;
+  /** Human Review 后确认 Requirement 的 Use Case。 */
+  confirmRequirement: ConfirmRequirementUseCase;
   /** Codex Executor Compatibility 编译 Use Case。 */
   compileCodexExecutorCompatibility: CompileCodexExecutorCompatibilityUseCase;
   /** Executor Compatibility 精确查询 Use Case。 */

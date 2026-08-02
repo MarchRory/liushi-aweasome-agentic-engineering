@@ -87,7 +87,7 @@ Human、Lead 与六角色评审已经确认：
 | 多仓写入与 Worktree      | `partial`     | 多仓身份、Profile、Write Set 规范化、Managed Worktree 创建/检查、未知 Provision Human 对账与下游 Guard、Workspace/Repository 排他 Lock、单仓受控文件变更与 Git Checkpoint                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Workspace Registry、Worktree 清理/重建、跨仓 Saga、Compensation                                               |
 | 生产安装、升级与卸载     | `partial`     | npm 发布物、跨平台 Tarball Smoke 脚本、Windows 干净安装证据、ESM/CJS、双 CLI Bin、Doctor、许可证门禁、独立 Consumer 驱动固定公开项目 Cell、Codex Managed File dry-run、G0 Apply 与 Installation Revision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Ubuntu CI 运行证据、Migration、Rollback、Uninstall                                                            |
 
-### 5.1 PRD 到 Requirement Proposal
+### 5.1 PRD 到获批 Requirement
 
 状态：`implemented`
 
@@ -96,8 +96,10 @@ Human、Lead 与六角色评审已经确认：
 - 专用 Strict Structured Outputs 线格式与领域 Proposal 分离，所有嵌套对象均通过“properties 全部 required”测试门；领域可选 Evidence 字段在线格式中使用 `null`，Adapter 归一化后再次执行领域复验。
 - Application 强制单仓、空 Human Answer 和 Evidence 引用完整性，`unknowns` 投影为 Human Battle 问题。
 - 真实 Codex CLI `0.145.0` 正向烟测返回 `human_battle_required`，目标 Repository 前后均无变更。
+- JSON 输出生成同文件可编辑 `reviewDraft`；Human 填写最多五个非重复问题并修订 Proposal 后，通过 `requirement confirm` 明确执行语义确认。
+- Confirm Use Case 在任何写入前校验 Human Actor、问题覆盖、单仓边界和修订 Proposal，随后复用现有 Artifact 与 G1 Approval；摘要与幂等键仅由 Application 内部绑定。
 
-下一切片固定为 Human Battle 修订与确认：Human 回答 unknowns 后形成新 Proposal Revision，再复用现有 Task、Artifact 和 Gate 能力持久化；随后才进入 PlanRisk。完整 Skill Registry、Memory、Studio、Release Host 和新一轮公开 Pilot 不插队。
+下一切片固定为从已获批 Requirement 生成 PlanRisk，并识别历史业务逻辑、Write Set、风险操作与测试方案。完整 Skill Registry、Memory、Studio、Release Host 和新一轮公开 Pilot 不插队。
 
 ### 5.2 CodingTask 与 Session S1-S3 进展修订
 
@@ -107,7 +109,7 @@ Closeout Recovery 已完成只读 Assessment、独立 Process State、File Store
 
 Codex 兼容性路径已经具备 Host/Contract Evidence、Matrix 重算、Publication Bundle、包内 Sigstore/Manifest 离线验证和固定公开项目 Pilot。它们保留为可用基础设施，但 Release Host、Accepted Head、安装信任门和新的兼容性深化继续冻结；这些能力不再决定主线优先级。
 
-当前主线由 ADR-015 固定为需求价值链。`requirement analyze` 已闭合 PRD 到 Human Battle Proposal 的只读入口；下一步先完成 Human Answer、Proposal Revision、Artifact/Gate 与 PlanRisk 接线，再运行真实企业 Case 采集 Metrics。Claude-compatible/CatPaw、Rollback/Uninstall、Worktree 清理/重建、失败分类/受限重试和多仓编排仍是后续能力。
+当前主线由 ADR-015 固定为需求价值链。`requirement analyze -> requirement confirm` 已闭合 PRD、Human Answer、Proposal Revision、Artifact 与 G1 Gate；下一步生成并确认 PlanRisk，再接入现有 CodingTask 后运行真实企业 Case 采集 Metrics。Claude-compatible/CatPaw、Rollback/Uninstall、Worktree 清理/重建、失败分类/受限重试和多仓编排仍是后续能力。
 
 ## 6. 每个切片的统一开工门
 

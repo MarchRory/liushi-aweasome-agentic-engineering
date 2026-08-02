@@ -34,7 +34,11 @@ describe("AnalyzeRequirementUseCase", () => {
   });
 
   it("拒绝 Agent 伪造 Human Answers", async () => {
-    const result = await executeWith(createProposal({ humanAnswers: ["已由产品确认"] }));
+    const result = await executeWith(
+      createProposal({
+        humanAnswers: [{ question: "是否上线？", answer: "已由产品确认" }],
+      }),
+    );
 
     expect(result.status).toBe(ResultStatus.Failure);
     if (result.status === ResultStatus.Success) return;

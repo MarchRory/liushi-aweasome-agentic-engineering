@@ -1,4 +1,8 @@
-import type { CliOutputFormat, RequirementAnalyzeCliCommand } from "../../contracts/index.js";
+import type {
+  CliOutputFormat,
+  RequirementAnalyzeCliCommand,
+  RequirementConfirmCliCommand,
+} from "../../contracts/index.js";
 import { CliCommand } from "../../contracts/index.js";
 import type { CollectedCliArguments } from "../collection/index.js";
 import {
@@ -17,7 +21,32 @@ import {
 export function parseRequirementCliCommand(
   collected: CollectedCliArguments,
   outputFormat: CliOutputFormat,
-): RequirementAnalyzeCliCommand | undefined {
+  storeRoot: string | undefined,
+): RequirementAnalyzeCliCommand | RequirementConfirmCliCommand | undefined {
+  if (isExactCliCommand(collected.positionals, ["requirement", "confirm"])) {
+    validateAllowedCliOptions(
+      collected,
+      new Set([
+        CliOptionName.Json,
+        CliOptionName.Store,
+        CliOptionName.Workspace,
+        CliOptionName.Task,
+        CliOptionName.Repository,
+        CliOptionName.File,
+        CliOptionName.ActorId,
+      ]),
+    );
+    return {
+      command: CliCommand.RequirementConfirm,
+      outputFormat,
+      ...(storeRoot === undefined ? {} : { storeRoot }),
+      workspaceId: requireCliOptionValue(collected, CliOptionName.Workspace),
+      taskId: requireCliOptionValue(collected, CliOptionName.Task),
+      repositoryId: requireCliOptionValue(collected, CliOptionName.Repository),
+      filePath: requireCliOptionValue(collected, CliOptionName.File),
+      actorId: requireCliOptionValue(collected, CliOptionName.ActorId),
+    };
+  }
   if (!isExactCliCommand(collected.positionals, ["requirement", "analyze"])) return undefined;
 
   validateAllowedCliOptions(

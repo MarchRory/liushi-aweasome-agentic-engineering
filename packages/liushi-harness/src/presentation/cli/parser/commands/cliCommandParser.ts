@@ -58,7 +58,7 @@ export function parseCollectedCliArguments(collected: CollectedCliArguments): Pa
   if (executorCompatibility !== undefined) return executorCompatibility;
   const codingTaskSession = parseCodingTaskSessionCliCommand(collected, outputFormat, storeRoot);
   if (codingTaskSession !== undefined) return codingTaskSession;
-  const requirement = parseRequirementCliCommand(collected, outputFormat);
+  const requirement = parseRequirementCliCommand(collected, outputFormat, storeRoot);
   if (requirement !== undefined) return requirement;
   if (isExactCommand(collected.positionals, ["task", "create"])) {
     validateAllowedOptions(

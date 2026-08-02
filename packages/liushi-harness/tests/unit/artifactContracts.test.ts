@@ -360,7 +360,12 @@ function createRequirementProposal() {
       evidence: [createEvidenceRef()],
       claims: [createFactClaim()],
       unknowns: ["后续 Use Case 如何持久化"],
-      humanAnswers: ["已确认本切片只做契约"],
+      humanAnswers: [
+        {
+          question: "本切片是否只做契约？",
+          answer: "已确认本切片只做契约",
+        },
+      ],
     },
   };
 }

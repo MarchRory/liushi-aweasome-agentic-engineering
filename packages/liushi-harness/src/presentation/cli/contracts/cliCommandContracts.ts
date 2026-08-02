@@ -24,6 +24,8 @@ export enum CliCommand {
   CellRun = "cell.run",
   /** 只读分析 PRD 并生成 Requirement Contract Proposal。 */
   RequirementAnalyze = "requirement.analyze",
+  /** 确认 Human Review 并持久化 Requirement 与 G1 Approval。 */
+  RequirementConfirm = "requirement.confirm",
   /** 激活外部 Agent CodingTask Session。 */
   CodingTaskSessionActivate = "coding_task.session.activate",
   /** 关闭外部 Agent CodingTask Session，并停在 CheckpointBound。 */

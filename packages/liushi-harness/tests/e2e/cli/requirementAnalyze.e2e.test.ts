@@ -67,7 +67,21 @@ describe("requirement analyze CLI E2E", () => {
     expect(await snapshotDirectory(repositoryRoot)).toEqual(repositoryBefore);
     await expect(stat(storeRoot)).rejects.toThrow();
     const analysisEnvelope = JSON.parse(analysisOutput.stdout.join("")) as {
-      data: { proposal: unknown };
+      data: {
+        proposal: Record<string, unknown>;
+        reviewDraft: { proposal: Record<string, unknown>; answers: Array<Record<string, string>> };
+      };
+    };
+    analysisEnvelope.data.reviewDraft.proposal = {
+      ...analysisEnvelope.data.reviewDraft.proposal,
+      payload: {
+        ...(analysisEnvelope.data.reviewDraft.proposal["payload"] as Record<string, unknown>),
+        problem: "Human 修订后的问题",
+      },
+    };
+    analysisEnvelope.data.reviewDraft.answers[0] = {
+      question: "提示文案由谁确认？",
+      answer: "Human 确认保留",
     };
 
     const taskOutput = createOutput();
@@ -76,31 +90,66 @@ describe("requirement analyze CLI E2E", () => {
       createDependencies(storeRoot, applicationFactory, taskOutput.writer),
     );
     const taskEnvelope = JSON.parse(taskOutput.stdout.join("")) as { data: { taskId: string } };
-    const proposalPath = join(root, "proposal.json");
-    await writeFile(proposalPath, JSON.stringify(analysisEnvelope.data.proposal), "utf8");
+    const analysisPath = join(root, "analysis.json");
+    await writeFile(analysisPath, JSON.stringify(analysisEnvelope), "utf8");
 
-    const artifactOutput = createOutput();
-    const artifactExitCode = await runCli(
+    const firstConfirmOutput = createOutput();
+    const firstConfirmExitCode = await runCli(
       [
-        "artifact",
-        "propose",
+        "requirement",
+        "confirm",
         "--workspace",
         "workspace-a",
         "--task",
         taskEnvelope.data.taskId,
+        "--repository",
+        "repo-a",
         "--file",
-        proposalPath,
+        analysisPath,
+        "--actor-id",
+        "human-a",
         "--json",
       ],
-      createDependencies(storeRoot, applicationFactory, artifactOutput.writer),
+      createDependencies(storeRoot, applicationFactory, firstConfirmOutput.writer),
     );
 
-    expect(artifactExitCode).toBe(0);
-    expect(JSON.parse(artifactOutput.stdout.join(""))).toMatchObject({
+    expect(firstConfirmExitCode).toBe(0);
+    expect(JSON.parse(firstConfirmOutput.stdout.join(""))).toMatchObject({
       status: "success",
-      command: "artifact.propose",
-      data: { artifact: { artifactType: ArtifactType.RequirementContract } },
+      command: "requirement.confirm",
+      data: { confirmationStatus: "confirmed", nextStep: "plan_risk" },
     });
+    expect(firstConfirmOutput.stdout.join("")).not.toContain("digest");
+    expect(firstConfirmOutput.stdout.join("")).not.toContain("sha256:");
+
+    const secondConfirmOutput = createOutput();
+    const secondConfirmExitCode = await runCli(
+      [
+        "requirement",
+        "confirm",
+        "--workspace",
+        "workspace-a",
+        "--task",
+        taskEnvelope.data.taskId,
+        "--repository",
+        "repo-a",
+        "--file",
+        analysisPath,
+        "--actor-id",
+        "human-a",
+        "--json",
+      ],
+      createDependencies(storeRoot, applicationFactory, secondConfirmOutput.writer),
+    );
+
+    expect(secondConfirmExitCode).toBe(0);
+    expect(secondConfirmOutput.stdout.join("")).not.toContain("digest");
+    expect(secondConfirmOutput.stdout.join("")).not.toContain("sha256:");
+    const storeText = await readAllFiles(storeRoot);
+    expect(storeText.match(/artifact_committed/g)?.length).toBe(1);
+    expect(storeText.match(/approval_recorded/g)?.length).toBe(1);
+    expect(storeText).toContain('"gate":"G1"');
+    expect(storeText).toContain('"decision":"approved"');
     expect(await snapshotDirectory(repositoryRoot)).toEqual(repositoryBefore);
   });
 });
@@ -168,4 +217,15 @@ async function snapshotDirectory(root: string): Promise<Readonly<Record<string, 
     names.sort().map(async (name) => [name, await readFile(resolve(root, name), "utf8")] as const),
   );
   return Object.fromEntries(entries);
+}
+
+async function readAllFiles(root: string): Promise<string> {
+  const entries = await readdir(root, { withFileTypes: true });
+  const contents = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(root, entry.name);
+      return entry.isDirectory() ? readAllFiles(path) : readFile(path, "utf8");
+    }),
+  );
+  return contents.join("\n");
 }
