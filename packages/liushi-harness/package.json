@@ -80,7 +80,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "canonicalize": "3.0.0",
+    "canonicalize": "4.0.0",
     "jsonc-parser": "3.3.1",
     "minimatch": "10.2.5",
     "ulid": "3.0.2",
